@@ -1,0 +1,72 @@
+{
+  "app": {
+    "title": "MyPartnerAI",
+    "loading": "로딩 중..."
+  },
+  "settings": {
+    "title": "설정",
+    "language": "언어",
+    "llm": {
+      "title": "AI 모델",
+      "provider": "제공자",
+      "model": "모델",
+      "apiKey": "API 키",
+      "endpoint": "엔드포인트",
+      "providers": {
+        "ollama": "Ollama (로컬)",
+        "localai": "LocalAI (로컬)",
+        "claude": "Claude (Anthropic)",
+        "openai": "OpenAI",
+        "gemini": "Google Gemini"
+      }
+    },
+    "voice": {
+      "title": "음성",
+      "stt": {
+        "title": "음성 인식 (STT)",
+        "engine": "엔진",
+        "model": "모델",
+        "engines": {
+          "whisper": "Whisper",
+          "moonshine": "Moonshine",
+          "vosk": "Vosk"
+        }
+      },
+      "tts": {
+        "title": "음성 합성 (TTS)",
+        "engine": "엔진",
+        "voice": "음성",
+        "engines": {
+          "qwen3": "Qwen3-TTS",
+          "kokoro": "Kokoro-82M",
+          "melo": "MeloTTS-Korean"
+        }
+      }
+    },
+    "avatar": {
+      "title": "아바타",
+      "model": "VRM 모델",
+      "select": "모델 선택"
+    },
+    "save": "저장",
+    "cancel": "취소",
+    "reset": "초기화"
+  },
+  "status": {
+    "idle": "대기 중",
+    "listening": "듣는 중...",
+    "processing": "처리 중...",
+    "speaking": "말하는 중...",
+    "error": "오류 발생"
+  },
+  "chat": {
+    "placeholder": "메시지를 입력하세요...",
+    "send": "전송",
+    "voiceInput": "음성 입력"
+  },
+  "errors": {
+    "llmConnection": "AI 서버에 연결할 수 없습니다",
+    "microphoneAccess": "마이크 접근 권한이 필요합니다",
+    "vrmLoad": "VRM 모델을 불러올 수 없습니다"
+  }
+}
