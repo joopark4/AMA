@@ -50,6 +50,8 @@ public/models/
 # Claude
 .claude/
 CLAUDE.md
+AGENTS.md
+GEMINI.md
 
 # Documents
 docs/
