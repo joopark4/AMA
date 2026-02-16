@@ -27,6 +27,15 @@ pub struct RemoteEnvironmentResult {
     pub reason: Option<String>,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WhisperAvailabilityStatus {
+    pub cli_found: bool,
+    pub model_found: bool,
+    pub cli_path: Option<String>,
+    pub model_path: Option<String>,
+}
+
 fn non_empty_env(var_name: &str) -> Option<String> {
     env::var(var_name)
         .ok()
@@ -231,6 +240,39 @@ fn resolve_executable(candidates: &[&str]) -> Option<PathBuf> {
     })
 }
 
+fn resolve_whisper_cli() -> Option<PathBuf> {
+    if let Ok(explicit) = env::var("WHISPER_CLI_PATH") {
+        let explicit_path = PathBuf::from(explicit);
+        if explicit_path.exists() {
+            return Some(explicit_path);
+        }
+    }
+
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let bundled_candidates = [
+                exe_dir.join("../Resources/bin/whisper-cli"),
+                exe_dir.join("../Resources/_up_/bin/whisper-cli"),
+                exe_dir.join("whisper-cli"),
+            ];
+
+            for candidate in bundled_candidates {
+                if candidate.exists() {
+                    return Some(candidate);
+                }
+            }
+        }
+    }
+
+    resolve_executable(&[
+        "whisper-cli",
+        "/opt/homebrew/bin/whisper-cli",
+        "/usr/local/bin/whisper-cli",
+        "whisper",
+        "main",
+    ])
+}
+
 fn model_file_names(model_hint: &str) -> Vec<String> {
     let normalized = if model_hint.trim().is_empty() || model_hint.trim() == "default" {
         "base".to_string()
@@ -255,22 +297,57 @@ fn model_file_names(model_hint: &str) -> Vec<String> {
 
 fn model_search_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
+    let mut push_dir = |path: PathBuf| {
+        if !dirs.iter().any(|existing| existing == &path) {
+            dirs.push(path);
+        }
+    };
 
     if let Ok(path) = env::var("WHISPER_MODEL_DIR") {
-        dirs.push(PathBuf::from(path));
+        push_dir(PathBuf::from(path));
+    }
+
+    if let Ok(path) = env::var("MYPARTNERAI_MODEL_DIR") {
+        push_dir(PathBuf::from(&path).join("whisper"));
+        push_dir(PathBuf::from(path));
+    }
+
+    if let Ok(home) = env::var("HOME") {
+        let home_dir = PathBuf::from(home);
+        push_dir(home_dir.join("models/whisper"));
+        push_dir(home_dir.join("models"));
+        push_dir(home_dir.join(".mypartnerai/models/whisper"));
+        push_dir(home_dir.join(".mypartnerai/models"));
+
+        #[cfg(target_os = "macos")]
+        {
+            push_dir(home_dir.join("Library/Application Support/MyPartnerAI/models/whisper"));
+            push_dir(home_dir.join("Library/Application Support/MyPartnerAI/models"));
+        }
+    }
+
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            push_dir(exe_dir.join("models/whisper"));
+            push_dir(exe_dir.join("models"));
+            push_dir(exe_dir.join("../Resources/models/whisper"));
+            push_dir(exe_dir.join("../Resources/models"));
+            push_dir(exe_dir.join("../Resources/_up_/models/whisper"));
+            push_dir(exe_dir.join("../Resources/_up_/models"));
+        }
     }
 
     if let Ok(cwd) = env::current_dir() {
-        dirs.push(cwd.join("models/whisper"));
-        dirs.push(cwd.join("models"));
-        dirs.push(cwd.join("src-tauri/models/whisper"));
-        dirs.push(cwd.join("src-tauri/models"));
-        dirs.push(cwd.join("public/models/whisper"));
+        push_dir(cwd.join("models/whisper"));
+        push_dir(cwd.join("models"));
+        push_dir(cwd.join("src-tauri/models/whisper"));
+        push_dir(cwd.join("src-tauri/models"));
+        push_dir(cwd.join("public/models/whisper"));
 
         if let Some(parent) = cwd.parent() {
-            dirs.push(parent.join("models/whisper"));
-            dirs.push(parent.join("models"));
-            dirs.push(parent.join("public/models/whisper"));
+            push_dir(parent.join("models/whisper"));
+            push_dir(parent.join("models"));
+            push_dir(parent.join("public/models/whisper"));
         }
     }
 
@@ -294,8 +371,9 @@ fn resolve_whisper_model(model_hint: &str) -> Option<PathBuf> {
         }
     }
 
+    let search_dirs = model_search_dirs();
     let file_names = model_file_names(trimmed);
-    for dir in model_search_dirs() {
+    for dir in &search_dirs {
         for file_name in &file_names {
             let path = dir.join(file_name);
             if path.exists() {
@@ -341,8 +419,33 @@ fn run_whisper_cli(
         args.push(normalized_language.to_string());
     }
 
-    let output = Command::new(whisper_cli)
-        .args(args)
+    let mut command = Command::new(whisper_cli);
+    command.args(args);
+
+    // Ensure bundled runtime dylibs are discoverable when whisper-cli is staged in app resources.
+    if let Some(cli_dir) = whisper_cli.parent() {
+        let bundled_lib_dir = cli_dir.join("../lib");
+        if bundled_lib_dir.exists() {
+            let bundled_lib = bundled_lib_dir.to_string_lossy().to_string();
+
+            if !bundled_lib.is_empty() {
+                let existing_fallback =
+                    env::var("DYLD_FALLBACK_LIBRARY_PATH").unwrap_or_default();
+                let fallback_value = if existing_fallback.is_empty() {
+                    bundled_lib.clone()
+                } else if existing_fallback.split(':').any(|entry| entry == bundled_lib) {
+                    existing_fallback
+                } else {
+                    format!("{bundled_lib}:{existing_fallback}")
+                };
+
+                command.env("DYLD_FALLBACK_LIBRARY_PATH", fallback_value);
+                command.env("DYLD_LIBRARY_PATH", bundled_lib);
+            }
+        }
+    }
+
+    let output = command
         .output()
         .map_err(|e| format!("Failed to run whisper-cli: {e}"))?;
 
@@ -365,15 +468,9 @@ pub async fn transcribe_audio(
     model: String,
     language: String,
 ) -> Result<TranscriptionResult, String> {
-    let whisper_cli = resolve_executable(&[
-        "whisper-cli",
-        "/opt/homebrew/bin/whisper-cli",
-        "/usr/local/bin/whisper-cli",
-        "whisper",
-        "main",
-    ])
+    let whisper_cli = resolve_whisper_cli()
     .ok_or_else(|| {
-        "Whisper CLI executable not found. Install whisper.cpp and ensure whisper-cli is in PATH."
+        "Whisper CLI executable not found. Ensure bundled runtime exists under Resources/bin or install whisper.cpp and add whisper-cli to PATH."
             .to_string()
     })?;
 
@@ -459,16 +556,25 @@ pub async fn synthesize_speech(
 /// Check if Whisper model is available locally
 #[tauri::command]
 pub async fn check_whisper_available() -> bool {
-    let has_whisper_cli = resolve_executable(&[
-        "whisper-cli",
-        "/opt/homebrew/bin/whisper-cli",
-        "/usr/local/bin/whisper-cli",
-        "whisper",
-        "main",
-    ])
-    .is_some();
+    let has_whisper_cli = resolve_whisper_cli().is_some();
     let has_model = resolve_whisper_model("base").is_some();
     has_whisper_cli && has_model
+}
+
+/// Get detailed Whisper dependency status for install guidance.
+#[tauri::command]
+pub async fn get_whisper_availability(model: Option<String>) -> WhisperAvailabilityStatus {
+    let whisper_cli = resolve_whisper_cli();
+
+    let model_name = model.unwrap_or_else(|| "base".to_string());
+    let model_path = resolve_whisper_model(&model_name);
+
+    WhisperAvailabilityStatus {
+        cli_found: whisper_cli.is_some(),
+        model_found: model_path.is_some(),
+        cli_path: whisper_cli.map(|p| p.to_string_lossy().to_string()),
+        model_path: model_path.map(|p| p.to_string_lossy().to_string()),
+    }
 }
 
 /// Check if TTS model is available locally
