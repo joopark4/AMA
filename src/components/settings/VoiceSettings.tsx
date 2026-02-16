@@ -5,8 +5,15 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 
-// Web Speech 모델 목록 (브라우저/OS 엔진 사용)
-const WEB_SPEECH_MODELS = ['default'];
+// Whisper 모델 목록 (whisper.cpp ggml 모델)
+const WHISPER_MODELS = [
+  'tiny',
+  'base',
+  'small',
+  'medium',
+  'large-v3',
+  'large-v3-turbo',
+];
 
 // Supertonic 음성 목록
 const SUPERTONIC_VOICES = {
@@ -26,10 +33,10 @@ export default function VoiceSettings() {
   const { t } = useTranslation();
   const { settings, setSTTSettings, setTTSSettings } = useSettingsStore();
 
-  // 항상 webspeech 엔진 사용, 유효하지 않은 모델은 default로 리셋
+  // 항상 whisper 엔진 사용, 유효하지 않은 모델은 base로 리셋
   useEffect(() => {
-    if (settings.stt.engine !== 'webspeech' || !WEB_SPEECH_MODELS.includes(settings.stt.model)) {
-      setSTTSettings({ engine: 'webspeech', model: 'default' });
+    if (settings.stt.engine !== 'whisper' || !WHISPER_MODELS.includes(settings.stt.model)) {
+      setSTTSettings({ engine: 'whisper', model: 'base' });
     }
     // TTS는 supertonic만 지원하므로 항상 supertonic으로 설정
     if (settings.tts.engine !== 'supertonic') {
@@ -43,21 +50,21 @@ export default function VoiceSettings() {
         {t('settings.voice.title')}
       </h3>
 
-      {/* STT Settings - Web Speech */}
+      {/* STT Settings - Whisper */}
       <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
         <h4 className="text-sm font-medium text-gray-700">
           {t('settings.voice.stt.title')}
         </h4>
 
-        {/* STT Engine Info */}
+        {/* STT Engine Info - Whisper */}
         <div className="flex items-center gap-2 text-xs mb-3">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-            Web Speech
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+            Whisper
           </span>
-          <span className="text-gray-500">macOS 시스템 음성 인식 사용</span>
+          <span className="text-gray-500">로컬 whisper-cli 음성 인식 사용</span>
         </div>
 
-        {/* Web Speech Model */}
+        {/* Whisper Model */}
         <div className="space-y-2">
           <label className="block text-xs font-medium text-gray-600">
             모델 선택
@@ -67,7 +74,7 @@ export default function VoiceSettings() {
             onChange={(e) => setSTTSettings({ model: e.target.value })}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            {WEB_SPEECH_MODELS.map((model) => (
+            {WHISPER_MODELS.map((model) => (
               <option key={model} value={model}>
                 {model}
               </option>

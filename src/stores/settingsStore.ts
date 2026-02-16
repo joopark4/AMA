@@ -7,8 +7,8 @@ import { persist } from 'zustand/middleware';
 
 export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini';
 
-// STT 엔진: webspeech (macOS Web Speech API)
-export type STTEngine = 'webspeech';
+// STT 엔진: whisper (로컬 whisper-cli)
+export type STTEngine = 'whisper';
 
 // TTS 엔진: supertonic (고품질 로컬 TTS)
 export type TTSEngine = 'supertonic';
@@ -91,8 +91,8 @@ const defaultSettings: Settings = {
     endpoint: 'http://localhost:11434',
   },
   stt: {
-    engine: 'webspeech',
-    model: 'default',
+    engine: 'whisper',
+    model: 'base',
   },
   tts: {
     engine: 'supertonic',

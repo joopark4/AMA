@@ -6,7 +6,49 @@ import { useSettingsStore } from '../stores/settingsStore';
 // Polling interval in milliseconds
 const POLL_INTERVAL = 30;
 // Delay before enabling click-through after leaving interactive area
-const CLICK_THROUGH_DELAY = 100;
+const CLICK_THROUGH_DELAY = 180;
+const CURSOR_SANITY_MARGIN = 120;
+
+function isPointInsideRect(x: number, y: number, rect: DOMRect): boolean {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+type CursorPoint = { x: number; y: number };
+
+function buildCursorCandidates(
+  cursorX: number,
+  cursorY: number,
+  windowLeft: number,
+  windowTop: number,
+  dpr: number,
+  viewportHeight: number
+): CursorPoint[] {
+  const base: CursorPoint[] = [
+    // Global -> local (logical)
+    { x: cursorX - windowLeft, y: cursorY - windowTop },
+    // Global physical -> local logical
+    { x: cursorX / dpr - windowLeft, y: cursorY / dpr - windowTop },
+    // Raw fallback (some environments already report local-ish values)
+    { x: cursorX, y: cursorY },
+    { x: cursorX / dpr, y: cursorY / dpr },
+  ];
+
+  // Some APIs report Y with inverted origin; include flipped-Y candidates.
+  const expanded = base.flatMap((p) => [
+    p,
+    { x: p.x, y: viewportHeight - p.y },
+  ]);
+
+  // Deduplicate near-identical candidates to keep checks lightweight.
+  const unique: CursorPoint[] = [];
+  for (const p of expanded) {
+    const exists = unique.some(
+      (u) => Math.abs(u.x - p.x) < 0.5 && Math.abs(u.y - p.y) < 0.5
+    );
+    if (!exists) unique.push(p);
+  }
+  return unique;
+}
 
 /**
  * Hook to manage click-through behavior for transparent windows.
@@ -34,29 +76,72 @@ export function useClickThrough() {
   const checkCursorPosition = useCallback(async () => {
     try {
       const cursor = await windowManager.getCursorPosition();
-      const mouseX = cursor.x;
-      const mouseY = cursor.y;
+      const windowLeft = window.screenX || 0;
+      const windowTop = window.screenY || 0;
+
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const mouseCandidates = buildCursorCandidates(
+        cursor.x,
+        cursor.y,
+        windowLeft,
+        windowTop,
+        dpr,
+        viewportHeight
+      );
+
+      const anyCursorMatches = (predicate: (x: number, y: number) => boolean) =>
+        mouseCandidates.some((p) => predicate(p.x, p.y));
+
+      const hasPlausibleCursorCandidate = mouseCandidates.some(
+        (p) =>
+          p.x >= -CURSOR_SANITY_MARGIN &&
+          p.x <= viewportWidth + CURSOR_SANITY_MARGIN &&
+          p.y >= -CURSOR_SANITY_MARGIN &&
+          p.y <= viewportHeight + CURSOR_SANITY_MARGIN
+      );
+
+      // If cursor conversion looks invalid, fail-safe to interactive mode
+      // so avatar/buttons remain selectable instead of becoming unclickable.
+      if (!hasPlausibleCursorCandidate) {
+        await updateClickThrough(false);
+        return;
+      }
 
       // Check if mouse is over avatar
       const avatarState = useAvatarStore.getState();
       const settingsState = useSettingsStore.getState();
       const avatarPos = avatarState.position;
       const avatarScale = settingsState.settings.avatar?.scale || 1.0;
+      const interactionBounds = avatarState.interactionBounds;
 
-      // Avatar hitbox size - fixed minimum size to ensure clickability
-      const hitboxWidth = Math.max(300, 400 * avatarScale);
-      const hitboxHeight = Math.max(500, 600 * avatarScale);
+      // Avatar position is feet-anchored, so use a feet-based hitbox
+      // that covers the whole body (especially upper body/head) reliably.
+      const hitboxWidth = Math.max(360, 520 * avatarScale);
+      const bodyHeightAboveFeet = Math.max(620, 860 * avatarScale);
+      const feetPadding = Math.max(90, 140 * avatarScale);
 
       const avatarLeft = avatarPos.x - hitboxWidth / 2;
       const avatarRight = avatarPos.x + hitboxWidth / 2;
-      const avatarTop = avatarPos.y - hitboxHeight / 2;
-      const avatarBottom = avatarPos.y + hitboxHeight / 2;
+      const avatarTop = avatarPos.y - bodyHeightAboveFeet;
+      const avatarBottom = avatarPos.y + feetPadding;
 
-      const isOverAvatar =
-        mouseX >= avatarLeft &&
-        mouseX <= avatarRight &&
-        mouseY >= avatarTop &&
-        mouseY <= avatarBottom;
+      const isOverAvatar = interactionBounds
+        ? anyCursorMatches(
+            (x, y) =>
+              x >= interactionBounds.left &&
+              x <= interactionBounds.right &&
+              y >= interactionBounds.top &&
+              y <= interactionBounds.bottom
+          )
+        : anyCursorMatches(
+            (x, y) =>
+              x >= avatarLeft &&
+              x <= avatarRight &&
+              y >= avatarTop &&
+              y <= avatarBottom
+          );
 
       // Check if mouse is over sun (lighting control)
       // Sun is positioned relative to avatar center (fixed distance regardless of scale)
@@ -68,31 +153,38 @@ export function useClickThrough() {
       const sunY = avatarCenterY + sunOffsetY;
       const sunRadius = 30; // Clickable area around sun
 
-      const isOverSun =
-        mouseX >= sunX - sunRadius &&
-        mouseX <= sunX + sunRadius &&
-        mouseY >= sunY - sunRadius &&
-        mouseY <= sunY + sunRadius;
+      const isOverSun = anyCursorMatches(
+        (x, y) =>
+          x >= sunX - sunRadius &&
+          x <= sunX + sunRadius &&
+          y >= sunY - sunRadius &&
+          y <= sunY + sunRadius
+      );
 
-      // Check if mouse is over settings area (bottom-right corner)
-      // Includes status indicator, error messages, and buttons
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
-      const settingsAreaRight = windowWidth;
-      const settingsAreaBottom = windowHeight;
-      const settingsAreaWidth = 350;  // Wider for text input form
-      const settingsAreaHeight = 200; // Taller for error messages with buttons
-
-      const isOverSettings =
-        mouseX >= settingsAreaRight - settingsAreaWidth &&
-        mouseX <= settingsAreaRight &&
-        mouseY >= settingsAreaBottom - settingsAreaHeight &&
-        mouseY <= settingsAreaBottom;
+      // Check any declared interactive DOM region.
+      // This is more robust than hardcoded bottom-right bounds.
+      const interactiveElements = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-interactive="true"]')
+      );
+      const isOverInteractiveDom = interactiveElements.some((el) => {
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        const rect = el.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return false;
+        return mouseCandidates.some((p) => isPointInsideRect(p.x, p.y, rect));
+      });
 
       // Check if settings panel is open (full screen interactive)
       const isSettingsOpen = settingsState.isSettingsOpen;
 
-      const isOverInteractive = isOverAvatar || isOverSun || isOverSettings || isSettingsOpen;
+      // Keep window interactive while dragging/rotating avatar so gestures don't get interrupted.
+      const isAvatarManipulating = avatarState.isDragging || avatarState.isRotating;
+      const isOverInteractive =
+        isAvatarManipulating ||
+        isOverAvatar ||
+        isOverSun ||
+        isOverInteractiveDom ||
+        isSettingsOpen;
 
       // Track interactive state changes with delay
       if (isOverInteractive !== isOverInteractiveRef.current) {

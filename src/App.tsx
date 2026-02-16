@@ -5,6 +5,7 @@ import SpeechBubble from './components/ui/SpeechBubble';
 import StatusIndicator from './components/ui/StatusIndicator';
 import SettingsPanel from './components/ui/SettingsPanel';
 import LightingControl from './components/avatar/LightingControl';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useClickThrough } from './hooks/useClickThrough';
@@ -48,21 +49,33 @@ function App() {
   return (
     <div className="w-full h-full relative">
       {/* Main 3D Avatar Canvas - includes 3D model drag support */}
-      <AvatarCanvas />
+      <ErrorBoundary name="AvatarCanvas">
+        <AvatarCanvas />
+      </ErrorBoundary>
 
       {/* Lighting Control - draggable sun emoji */}
-      <LightingControl />
+      <ErrorBoundary name="LightingControl">
+        <LightingControl />
+      </ErrorBoundary>
 
       {/* Speech Bubble - shows AI responses */}
       {currentResponse && (
-        <SpeechBubble message={currentResponse} />
+        <ErrorBoundary name="SpeechBubble">
+          <SpeechBubble message={currentResponse} />
+        </ErrorBoundary>
       )}
 
       {/* Status Indicator - shows listening/processing state */}
-      <StatusIndicator isProcessing={isProcessing} />
+      <ErrorBoundary name="StatusIndicator">
+        <StatusIndicator isProcessing={isProcessing} />
+      </ErrorBoundary>
 
       {/* Settings Panel - slide-in panel */}
-      {isSettingsOpen && <SettingsPanel />}
+      {isSettingsOpen && (
+        <ErrorBoundary name="SettingsPanel">
+          <SettingsPanel />
+        </ErrorBoundary>
+      )}
     </div>
   );
 }

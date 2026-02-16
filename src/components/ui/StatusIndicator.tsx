@@ -17,6 +17,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
     transcript,
     error: voiceError,
     needsMicrophonePermission,
+    voiceInputUnavailableReason,
     startListening,
     stopListening,
     sendMessage,
@@ -25,6 +26,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
 
   const [textInput, setTextInput] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
+  const isVoiceButtonDisabled = false;
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +40,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
     if (isVoiceListening) {
       stopListening();
     } else {
-      startListening();
+      void startListening();
     }
   };
 
@@ -76,7 +78,14 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
   };
 
   return (
-    <div className="fixed bottom-4 right-4 flex flex-col items-end gap-2 z-50" data-interactive="true">
+    <div
+      className="fixed flex flex-col items-end gap-2 z-50"
+      style={{
+        right: 'max(env(safe-area-inset-right), 1rem)',
+        bottom: 'max(env(safe-area-inset-bottom), 1rem)',
+      }}
+      data-interactive="true"
+    >
       {/* Error display */}
       {voiceError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
@@ -90,6 +99,12 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
               시스템 설정 열기
             </button>
           )}
+        </div>
+      )}
+
+      {!voiceError && voiceInputUnavailableReason && (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
+          <div>{voiceInputUnavailableReason}</div>
         </div>
       )}
 
@@ -165,12 +180,21 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       {/* Voice input button */}
       <button
         onClick={handleVoiceToggle}
+        disabled={isVoiceButtonDisabled}
         className={`p-2 backdrop-blur-sm rounded-full shadow-lg border transition-colors ${
-          isVoiceListening
+          isVoiceButtonDisabled
+            ? 'bg-gray-400 border-gray-300 cursor-not-allowed'
+            : isVoiceListening
             ? 'bg-red-500 border-red-400 hover:bg-red-600 animate-pulse'
             : 'bg-blue-500 border-blue-400 hover:bg-blue-600'
         }`}
-        title={isVoiceListening ? 'Stop listening' : 'Start voice input'}
+        title={
+          isVoiceButtonDisabled
+            ? voiceInputUnavailableReason || 'Voice input unavailable'
+            : isVoiceListening
+              ? 'Stop listening'
+              : 'Start voice input'
+        }
       >
         {isVoiceListening ? (
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
