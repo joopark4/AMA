@@ -3,7 +3,8 @@ import { useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
-import { invoke } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke, isTauri } from '@tauri-apps/api/core';
+import { readFile } from '@tauri-apps/plugin-fs';
 import { useAvatarStore, type AvatarInteractionBounds } from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getEmotionTuning } from '../../config/emotionTuning';
@@ -72,6 +73,59 @@ function smoothStep01(t: number): number {
 
 function wrapPhase01(phase: number): number {
   return ((phase % 1) + 1) % 1;
+}
+
+function isAbsoluteFilePath(path: string): boolean {
+  return (
+    path.startsWith('/') ||
+    /^[A-Za-z]:[\\/]/.test(path) ||
+    path.startsWith('\\\\')
+  );
+}
+
+function isFileUrl(path: string): boolean {
+  return /^file:\/\//i.test(path.trim());
+}
+
+function isLocalFileSource(path: string): boolean {
+  const trimmed = path.trim();
+  return isAbsoluteFilePath(trimmed) || isFileUrl(trimmed);
+}
+
+function toFsReadTarget(path: string): string | URL {
+  const trimmed = path.trim();
+  if (isFileUrl(trimmed)) {
+    return new URL(trimmed);
+  }
+  return trimmed;
+}
+
+function resolveModelUrl(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+
+  if (
+    /^https?:\/\//i.test(trimmed) ||
+    /^asset:\/\//i.test(trimmed) ||
+    /^tauri:\/\//i.test(trimmed) ||
+    /^blob:/i.test(trimmed)
+  ) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('/vrm/')) {
+    return trimmed;
+  }
+
+  if (isAbsoluteFilePath(trimmed)) {
+    if (isTauri()) {
+      return convertFileSrc(trimmed);
+    }
+    if (trimmed.startsWith('/')) return `file://${trimmed}`;
+    return `file:///${trimmed.replace(/\\/g, '/')}`;
+  }
+
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
 /**
@@ -615,194 +669,274 @@ export default function VRMAvatar() {
 
   // Load VRM model
   useEffect(() => {
+    let isEffectActive = true;
+
+    const configuredPath = settings.vrmModelPath?.trim() ?? '';
+
+    if (!configuredPath) {
+      setGroundY(null);
+      setInteractionBounds(null);
+      setLoadError(null);
+      setIsLoading(false);
+
+      const currentVrm = useAvatarStore.getState().vrm;
+      if (currentVrm) {
+        VRMUtils.deepDispose(currentVrm.scene);
+        setVRM(null);
+      }
+      return;
+    }
+
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
 
     setIsLoading(true);
     setLoadError(null);
 
-    // Load from public folder
-    const modelPath = settings.vrmModelPath.startsWith('/')
-      ? settings.vrmModelPath
-      : `/${settings.vrmModelPath}`;
+    const modelPath = resolveModelUrl(configuredPath);
+    const shouldUseFsFallback = isTauri() && isLocalFileSource(configuredPath);
+    let fsFallbackAttempted = false;
+
+    const handleLoaded = (gltf: any) => {
+      if (!isEffectActive) {
+        const staleVRM = gltf?.userData?.vrm as VRM | undefined;
+        if (staleVRM) {
+          VRMUtils.deepDispose(staleVRM.scene);
+        }
+        return;
+      }
+
+      const loadedVRM = gltf.userData.vrm as VRM;
+
+      if (!loadedVRM) {
+        setLoadError('Failed to parse VRM data');
+        setIsLoading(false);
+        return;
+      }
+
+      // Optimize VRM
+      VRMUtils.removeUnnecessaryJoints(gltf.scene);
+      VRMUtils.removeUnnecessaryVertices(gltf.scene);
+
+      // Ensure humanoid rig updates are enabled (some VRM configs disable this).
+      const humanoidAny = loadedVRM.humanoid as any;
+      if (humanoidAny && 'autoUpdateHumanBones' in humanoidAny) {
+        humanoidAny.autoUpdateHumanBones = true;
+      }
+
+      const modelBounds = new THREE.Box3().setFromObject(loadedVRM.scene);
+      if (Number.isFinite(modelBounds.min.y) && Number.isFinite(modelBounds.max.y)) {
+        modelMinYRef.current = modelBounds.min.y;
+        logToTerminal(
+          `[VRM] model bounds minY=${modelBounds.min.y.toFixed(3)} maxY=${modelBounds.max.y.toFixed(3)}`
+        );
+      }
+
+      // Debug: Check Face mesh materials for eye issues
+      loadedVRM.scene.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          const mesh = obj as THREE.Mesh;
+          const meshName = mesh.name;
+
+          // Log Face mesh materials (eyes are part of face)
+          if (meshName.startsWith('Face')) {
+            logToTerminal(`=== ${meshName} Material Info ===`);
+            if (mesh.material) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              materials.forEach((mat, idx) => {
+                const m = mat as any;
+                logToTerminal(`  [${idx}] type: ${mat.type}`);
+                logToTerminal(`  [${idx}] transparent: ${mat.transparent}, opacity: ${m.opacity}`);
+                logToTerminal(`  [${idx}] visible: ${mat.visible}, side: ${m.side}`);
+                if (m.map) {
+                  logToTerminal(`  [${idx}] has texture map: ${m.map.image ? 'loaded' : 'not loaded'}`);
+                }
+                if (m.color) {
+                  logToTerminal(`  [${idx}] color: r=${m.color.r}, g=${m.color.g}, b=${m.color.b}`);
+                }
+              });
+            }
+          }
+
+          // Set transparency for window overlay
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material)
+              ? mesh.material
+              : [mesh.material];
+            materials.forEach((mat) => {
+              if (mat instanceof THREE.Material) {
+                mat.transparent = true;
+              }
+            });
+          }
+        }
+      });
+
+      // Create animation mixer
+      mixerRef.current = new THREE.AnimationMixer(loadedVRM.scene);
+
+      // Debug: Log available expressions to terminal
+      if (loadedVRM.expressionManager) {
+        const expressions = loadedVRM.expressionManager.expressions;
+        const expressionNames = expressions.map(e => e.expressionName);
+        logToTerminal('=== VRM Expressions Available ===');
+        logToTerminal(JSON.stringify(expressionNames, null, 2));
+        logToTerminal('=================================');
+      }
+
+      // Debug: Log all mesh names to find eye meshes
+      logToTerminal('=== All Mesh Names ===');
+      loadedVRM.scene.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          const mesh = obj as THREE.Mesh;
+          logToTerminal(`Mesh: ${mesh.name}`);
+
+          // Check for eye-related meshes and log detailed info
+          const nameLC = mesh.name.toLowerCase();
+          if (nameLC.includes('eye') || nameLC.includes('iris') || nameLC.includes('pupil') || nameLC.includes('highlight')) {
+            logToTerminal(`  >> EYE MESH FOUND: ${mesh.name}`);
+            if (mesh.material) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              materials.forEach((mat, idx) => {
+                const m = mat as any;
+                logToTerminal(`    [${idx}] type: ${mat.type}, visible: ${mat.visible}`);
+                logToTerminal(`    [${idx}] renderOrder: ${mesh.renderOrder}, depthTest: ${m.depthTest}, depthWrite: ${m.depthWrite}`);
+                if (m.map) {
+                  logToTerminal(`    [${idx}] texture: ${m.map.image?.src || 'embedded'}`);
+                }
+              });
+            }
+          }
+        }
+      });
+      logToTerminal('======================');
+
+      // Debug: Check SpringBone for eye bones
+      if (loadedVRM.springBoneManager) {
+        logToTerminal('=== SpringBone Info ===');
+        logToTerminal('SpringBone manager exists: true');
+        logToTerminal('======================');
+      }
+
+      // Rig diagnostics: verify key motion bones exist in humanoid mapping.
+      if (loadedVRM.humanoid) {
+        const humanoid = loadedVRM.humanoid as any;
+        const hasRawGetter = typeof humanoid.getRawBoneNode === 'function';
+        logToTerminal(`=== Humanoid Bone Mapping (${hasRawGetter ? 'normalized+raw' : 'normalized'}) ===`);
+        for (const boneName of DIAGNOSTIC_BONES) {
+          const normalizedNode = loadedVRM.humanoid.getNormalizedBoneNode(boneName as any);
+          const rawNode = hasRawGetter ? humanoid.getRawBoneNode(boneName as any) : null;
+          const status = normalizedNode
+            ? `OK normalized=${normalizedNode.name || '(unnamed)'}`
+            : 'MISSING normalized';
+          const rawStatus = hasRawGetter
+            ? (rawNode ? ` raw=${rawNode.name || '(unnamed)'}` : ' raw=MISSING')
+            : '';
+          logToTerminal(`[Humanoid] ${boneName}: ${status}${rawStatus}`);
+        }
+        logToTerminal('========================================');
+      }
+
+      // Fix eye render order: Face_5 (sclera/white) should render BEFORE other face parts
+      // so that iris/pupil on transparent meshes render on top
+      loadedVRM.scene.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          const mesh = obj as THREE.Mesh;
+          if (mesh.name === 'Face_5') {
+            // Render eye whites first (lower render order)
+            mesh.renderOrder = -10;
+            logToTerminal('Set Face_5 (eye whites) renderOrder to -10');
+          }
+          // Set transparent face meshes to render after Face_5
+          if (mesh.name.startsWith('Face_') && mesh.name !== 'Face_5') {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach((mat) => {
+              if ((mat as THREE.Material).transparent) {
+                mesh.renderOrder = 10;
+              }
+            });
+          }
+        }
+      });
+
+      const previousVRM = useAvatarStore.getState().vrm;
+      if (previousVRM && previousVRM !== loadedVRM) {
+        VRMUtils.deepDispose(previousVRM.scene);
+      }
+
+      setVRM(loadedVRM);
+      setIsLoading(false);
+    };
 
     loader.load(
       modelPath,
-      (gltf) => {
-        const loadedVRM = gltf.userData.vrm as VRM;
-
-        if (!loadedVRM) {
-          setLoadError('Failed to parse VRM data');
-          setIsLoading(false);
-          return;
-        }
-
-        // Optimize VRM
-        VRMUtils.removeUnnecessaryJoints(gltf.scene);
-        VRMUtils.removeUnnecessaryVertices(gltf.scene);
-
-        // Ensure humanoid rig updates are enabled (some VRM configs disable this).
-        const humanoidAny = loadedVRM.humanoid as any;
-        if (humanoidAny && 'autoUpdateHumanBones' in humanoidAny) {
-          humanoidAny.autoUpdateHumanBones = true;
-        }
-
-        const modelBounds = new THREE.Box3().setFromObject(loadedVRM.scene);
-        if (Number.isFinite(modelBounds.min.y) && Number.isFinite(modelBounds.max.y)) {
-          modelMinYRef.current = modelBounds.min.y;
-          logToTerminal(
-            `[VRM] model bounds minY=${modelBounds.min.y.toFixed(3)} maxY=${modelBounds.max.y.toFixed(3)}`
-          );
-        }
-
-        // Debug: Check Face mesh materials for eye issues
-        loadedVRM.scene.traverse((obj) => {
-          if ((obj as THREE.Mesh).isMesh) {
-            const mesh = obj as THREE.Mesh;
-            const meshName = mesh.name;
-
-            // Log Face mesh materials (eyes are part of face)
-            if (meshName.startsWith('Face')) {
-              logToTerminal(`=== ${meshName} Material Info ===`);
-              if (mesh.material) {
-                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                materials.forEach((mat, idx) => {
-                  const m = mat as any;
-                  logToTerminal(`  [${idx}] type: ${mat.type}`);
-                  logToTerminal(`  [${idx}] transparent: ${mat.transparent}, opacity: ${m.opacity}`);
-                  logToTerminal(`  [${idx}] visible: ${mat.visible}, side: ${m.side}`);
-                  if (m.map) {
-                    logToTerminal(`  [${idx}] has texture map: ${m.map.image ? 'loaded' : 'not loaded'}`);
-                  }
-                  if (m.color) {
-                    logToTerminal(`  [${idx}] color: r=${m.color.r}, g=${m.color.g}, b=${m.color.b}`);
-                  }
-                });
-              }
-            }
-
-            // Set transparency for window overlay
-            if (mesh.material) {
-              const materials = Array.isArray(mesh.material)
-                ? mesh.material
-                : [mesh.material];
-              materials.forEach((mat) => {
-                if (mat instanceof THREE.Material) {
-                  mat.transparent = true;
-                }
-              });
-            }
-          }
-        });
-
-        // Create animation mixer
-        mixerRef.current = new THREE.AnimationMixer(loadedVRM.scene);
-
-        // Debug: Log available expressions to terminal
-        if (loadedVRM.expressionManager) {
-          const expressions = loadedVRM.expressionManager.expressions;
-          const expressionNames = expressions.map(e => e.expressionName);
-          logToTerminal('=== VRM Expressions Available ===');
-          logToTerminal(JSON.stringify(expressionNames, null, 2));
-          logToTerminal('=================================');
-        }
-
-        // Debug: Log all mesh names to find eye meshes
-        logToTerminal('=== All Mesh Names ===');
-        loadedVRM.scene.traverse((obj) => {
-          if ((obj as THREE.Mesh).isMesh) {
-            const mesh = obj as THREE.Mesh;
-            logToTerminal(`Mesh: ${mesh.name}`);
-
-            // Check for eye-related meshes and log detailed info
-            const nameLC = mesh.name.toLowerCase();
-            if (nameLC.includes('eye') || nameLC.includes('iris') || nameLC.includes('pupil') || nameLC.includes('highlight')) {
-              logToTerminal(`  >> EYE MESH FOUND: ${mesh.name}`);
-              if (mesh.material) {
-                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                materials.forEach((mat, idx) => {
-                  const m = mat as any;
-                  logToTerminal(`    [${idx}] type: ${mat.type}, visible: ${mat.visible}`);
-                  logToTerminal(`    [${idx}] renderOrder: ${mesh.renderOrder}, depthTest: ${m.depthTest}, depthWrite: ${m.depthWrite}`);
-                  if (m.map) {
-                    logToTerminal(`    [${idx}] texture: ${m.map.image?.src || 'embedded'}`);
-                  }
-                });
-              }
-            }
-          }
-        });
-        logToTerminal('======================');
-
-        // Debug: Check SpringBone for eye bones
-        if (loadedVRM.springBoneManager) {
-          logToTerminal('=== SpringBone Info ===');
-          logToTerminal(`SpringBone manager exists: true`);
-          logToTerminal('======================');
-        }
-
-        // Rig diagnostics: verify key motion bones exist in humanoid mapping.
-        if (loadedVRM.humanoid) {
-          const humanoid = loadedVRM.humanoid as any;
-          const hasRawGetter = typeof humanoid.getRawBoneNode === 'function';
-          logToTerminal(`=== Humanoid Bone Mapping (${hasRawGetter ? 'normalized+raw' : 'normalized'}) ===`);
-          for (const boneName of DIAGNOSTIC_BONES) {
-            const normalizedNode = loadedVRM.humanoid.getNormalizedBoneNode(boneName as any);
-            const rawNode = hasRawGetter ? humanoid.getRawBoneNode(boneName as any) : null;
-            const status = normalizedNode
-              ? `OK normalized=${normalizedNode.name || '(unnamed)'}`
-              : 'MISSING normalized';
-            const rawStatus = hasRawGetter
-              ? (rawNode ? ` raw=${rawNode.name || '(unnamed)'}` : ' raw=MISSING')
-              : '';
-            logToTerminal(`[Humanoid] ${boneName}: ${status}${rawStatus}`);
-          }
-          logToTerminal('========================================');
-        }
-
-        // Fix eye render order: Face_5 (sclera/white) should render BEFORE other face parts
-        // so that iris/pupil on transparent meshes render on top
-        loadedVRM.scene.traverse((obj) => {
-          if ((obj as THREE.Mesh).isMesh) {
-            const mesh = obj as THREE.Mesh;
-            if (mesh.name === 'Face_5') {
-              // Render eye whites first (lower render order)
-              mesh.renderOrder = -10;
-              logToTerminal('Set Face_5 (eye whites) renderOrder to -10');
-            }
-            // Set transparent face meshes to render after Face_5
-            if (mesh.name.startsWith('Face_') && mesh.name !== 'Face_5') {
-              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-              materials.forEach((mat) => {
-                if ((mat as THREE.Material).transparent) {
-                  mesh.renderOrder = 10;
-                }
-              });
-            }
-          }
-        });
-
-        setVRM(loadedVRM);
-        setIsLoading(false);
-      },
+      handleLoaded,
       (progress) => {
         // Progress callback
         const percent = (progress.loaded / progress.total) * 100;
         console.log(`Loading VRM: ${percent.toFixed(1)}%`);
       },
       (error: unknown) => {
+        if (!isEffectActive) {
+          return;
+        }
+
         console.error('Error loading VRM:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        setLoadError(`Failed to load VRM: ${errorMessage}`);
-        setIsLoading(false);
+        if (!shouldUseFsFallback || fsFallbackAttempted) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          setLoadError(`Failed to load VRM: ${errorMessage}`);
+          setIsLoading(false);
+          return;
+        }
+
+        fsFallbackAttempted = true;
+        console.log('[VRM] URL load failed, trying fs read + parse fallback');
+
+        void (async () => {
+          try {
+            const bytes = await readFile(toFsReadTarget(configuredPath));
+            if (!isEffectActive) {
+              return;
+            }
+            const raw = bytes.buffer.slice(
+              bytes.byteOffset,
+              bytes.byteOffset + bytes.byteLength
+            );
+
+            loader.parse(
+              raw,
+              '',
+              handleLoaded,
+              (parseError: unknown) => {
+                if (!isEffectActive) {
+                  return;
+                }
+                const parseErrorMessage =
+                  parseError instanceof Error ? parseError.message : 'Unknown parse error';
+                setLoadError(`Failed to load VRM: ${parseErrorMessage}`);
+                setIsLoading(false);
+              }
+            );
+          } catch (fallbackError) {
+            if (!isEffectActive) {
+              return;
+            }
+            const fallbackMessage =
+              fallbackError instanceof Error ? fallbackError.message : 'Unknown fallback error';
+            setLoadError(`Failed to load VRM: ${fallbackMessage}`);
+            setIsLoading(false);
+          }
+        })();
       }
     );
 
     return () => {
+      isEffectActive = false;
       setGroundY(null);
       setInteractionBounds(null);
-      if (vrm) {
-        VRMUtils.deepDispose(vrm.scene);
+      const currentVrm = useAvatarStore.getState().vrm;
+      if (currentVrm) {
+        VRMUtils.deepDispose(currentVrm.scene);
         setVRM(null);
       }
     };

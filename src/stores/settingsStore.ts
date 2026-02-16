@@ -84,6 +84,45 @@ interface SettingsState {
   resetSettings: () => void;
 }
 
+const LEGACY_BUNDLED_VRM_PATHS = new Set([
+  '/vrm/eunyeon_ps.vrm',
+  'vrm/eunyeon_ps.vrm',
+]);
+
+const SUPPORTED_WHISPER_MODELS = new Set(['base', 'small', 'medium']);
+const SUPPORTED_SUPERTONIC_VOICES = new Set([
+  'F1', 'F2', 'F3', 'F4', 'F5',
+  'M1', 'M2', 'M3', 'M4', 'M5',
+]);
+
+function normalizeVrmModelPath(path: unknown): string {
+  if (typeof path !== 'string') return '';
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+  const normalized = trimmed.replace(/\\/g, '/');
+  if (LEGACY_BUNDLED_VRM_PATHS.has(normalized)) return '';
+  return trimmed;
+}
+
+function normalizeWhisperModel(model: unknown): string {
+  if (typeof model !== 'string') return 'base';
+  const normalized = model.trim().toLowerCase();
+  if (!normalized) return 'base';
+  if (SUPPORTED_WHISPER_MODELS.has(normalized)) return normalized;
+
+  // Support legacy persisted values such as ggml-small.bin, small.en, etc.
+  if (normalized.includes('medium')) return 'medium';
+  if (normalized.includes('small')) return 'small';
+  return 'base';
+}
+
+function normalizeSupertonicVoice(voice: unknown): string {
+  if (typeof voice !== 'string') return 'F1';
+  const normalized = voice.trim().toUpperCase();
+  if (SUPPORTED_SUPERTONIC_VOICES.has(normalized)) return normalized;
+  return 'F1';
+}
+
 const defaultSettings: Settings = {
   llm: {
     provider: 'ollama',
@@ -99,7 +138,7 @@ const defaultSettings: Settings = {
     voice: 'F1',
   },
   language: 'ko',
-  vrmModelPath: '/vrm/eunyeon_ps.vrm',
+  vrmModelPath: '',
   avatar: {
     scale: 1.0,
     movementSpeed: 50,
@@ -146,7 +185,12 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            stt: { ...state.settings.stt, ...stt },
+            stt: {
+              ...state.settings.stt,
+              ...stt,
+              engine: 'whisper',
+              model: normalizeWhisperModel(stt.model ?? state.settings.stt.model),
+            },
           },
         })),
 
@@ -154,7 +198,12 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({
           settings: {
             ...state.settings,
-            tts: { ...state.settings.tts, ...tts },
+            tts: {
+              ...state.settings.tts,
+              ...tts,
+              engine: 'supertonic',
+              voice: normalizeSupertonicVoice(tts.voice ?? state.settings.tts.voice),
+            },
           },
         })),
 
@@ -173,7 +222,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       setVrmModelPath: (path) =>
         set((state) => ({
-          settings: { ...state.settings, vrmModelPath: path },
+          settings: { ...state.settings, vrmModelPath: normalizeVrmModelPath(path) },
         })),
 
       toggleSettings: () =>
@@ -187,6 +236,37 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
+      version: 3,
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return persistedState;
+        }
+
+        const state = persistedState as { settings?: Partial<Settings> } & Record<string, unknown>;
+        if (!state.settings) return persistedState;
+
+        const normalizedSettings: Partial<Settings> = {
+          ...state.settings,
+          stt: {
+            ...(state.settings.stt || defaultSettings.stt),
+            engine: 'whisper',
+            model: normalizeWhisperModel(state.settings.stt?.model),
+          },
+          tts: {
+            ...(state.settings.tts || defaultSettings.tts),
+            engine: 'supertonic',
+            voice: normalizeSupertonicVoice(state.settings.tts?.voice),
+          },
+        };
+
+        return {
+          ...state,
+          settings: {
+            ...normalizedSettings,
+            vrmModelPath: normalizeVrmModelPath(normalizedSettings.vrmModelPath),
+          },
+        };
+      },
     }
   )
 );

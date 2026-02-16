@@ -7,6 +7,7 @@ import { screenAnalyzer } from '../services/ai/screenAnalyzer';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
 import { parseVoiceCommand, type VoiceCommandType } from '../services/voice/voiceCommandParser';
 import { audioProcessor } from '../services/voice/audioProcessor';
+import { ttsRouter } from '../services/voice/ttsRouter';
 import { permissions } from '../services/tauri/permissions';
 import type { Message as LLMMessage } from '../services/ai/types';
 import { invoke } from '@tauri-apps/api/core';
@@ -48,17 +49,68 @@ function getRuntimeVoiceInputBlockReason(
   return null;
 }
 
+interface WhisperAvailabilityStatus {
+  cliFound: boolean;
+  modelFound: boolean;
+  cliPath?: string;
+  modelPath?: string;
+}
+
+function getWhisperInstallGuide(
+  status: WhisperAvailabilityStatus | null,
+  language: Language,
+  model: string
+): string {
+  const isKo = language === 'ko';
+  const normalizedModel = model?.trim() || 'base';
+  const modelFileName = normalizedModel.endsWith('.bin')
+    ? normalizedModel
+    : `ggml-${normalizedModel}.bin`;
+  if (!status) {
+    return isKo
+      ? 'Whisper 엔진 상태 확인에 실패했습니다. 앱을 다시 실행한 뒤 다시 시도해 주세요.'
+      : 'Failed to verify Whisper runtime status. Restart the app and try again.';
+  }
+
+  const missingCli = !status || !status.cliFound;
+  const missingModel = !status || !status.modelFound;
+
+  const cliGuide = isKo
+    ? '내장 Whisper 런타임을 찾지 못했습니다. 최신 배포본으로 재설치 후 다시 실행해 주세요. (개발 환경에서는 `brew install whisper-cpp`로 대체 가능)'
+    : 'Bundled Whisper runtime is missing. Reinstall the latest app build and restart. (For dev setup, install with `brew install whisper-cpp`.)';
+
+  const modelGuide = isKo
+    ? `모델 파일 미설치: \`${modelFileName}\`을 \`models/whisper/\`에 배치하거나 \`WHISPER_MODEL_PATH\`를 설정하세요.`
+    : `Model is missing: place \`${modelFileName}\` under \`models/whisper/\` or set \`WHISPER_MODEL_PATH\`.`;
+
+  if (missingCli && missingModel) {
+    return `${cliGuide} ${modelGuide}`;
+  }
+
+  if (missingCli) return cliGuide;
+  if (missingModel) return modelGuide;
+
+  return isKo
+    ? 'Whisper 로컬 음성 인식 엔진을 확인하지 못했습니다.'
+    : 'Unable to verify local Whisper dependencies.';
+}
+
 function getVoiceInputUnavailableReason(
   hasLocalWhisper: boolean,
-  hasCheckedLocalWhisper: boolean
+  hasCheckedLocalWhisper: boolean,
+  whisperStatus: WhisperAvailabilityStatus | null,
+  language: Language,
+  model: string
 ): string | null {
   if (hasLocalWhisper) return null;
 
   if (isTauriDesktopRuntime() && !hasCheckedLocalWhisper) {
-    return '로컬 음성 인식 엔진 확인 중입니다. 잠시만 기다려 주세요.';
+    return language === 'ko'
+      ? '로컬 음성 인식 엔진 확인 중입니다. 잠시만 기다려 주세요.'
+      : 'Checking local speech recognition dependencies...';
   }
 
-  return 'Whisper 로컬 음성 인식 엔진을 찾을 수 없습니다. whisper-cli와 모델을 설치해 주세요.';
+  return getWhisperInstallGuide(whisperStatus, language, model);
 }
 
 function isScreenRequest(text: string): boolean {
@@ -173,6 +225,7 @@ interface UseConversationReturn {
   isVoiceInputSupported: boolean;
   isVoiceInputRuntimeBlocked: boolean;
   voiceInputUnavailableReason: string | null;
+  ttsUnavailableReason: string | null;
   startListening: () => Promise<void>;
   stopListening: () => void;
   sendMessage: (text: string) => Promise<void>;
@@ -186,6 +239,8 @@ export function useConversation(): UseConversationReturn {
   const [needsMicrophonePermission, setNeedsMicrophonePermission] = useState(false);
   const [isLocalWhisperAvailable, setIsLocalWhisperAvailable] = useState(false);
   const [hasCheckedLocalWhisper, setHasCheckedLocalWhisper] = useState(false);
+  const [whisperStatus, setWhisperStatus] = useState<WhisperAvailabilityStatus | null>(null);
+  const [isSupertonicAvailable, setIsSupertonicAvailable] = useState(true);
   const [isRemoteSession, setIsRemoteSession] = useState(false);
 
   const isProcessingRef = useRef(false);
@@ -211,10 +266,20 @@ export function useConversation(): UseConversationReturn {
     runtimeVoiceInputBlockReason === null && isLocalWhisperAvailable;
   const isVoiceInputSupported = hasLocalWhisper;
   const isVoiceInputRuntimeBlocked = Boolean(runtimeVoiceInputBlockReason);
-  const voiceInputUnavailableReason = runtimeVoiceInputBlockReason || getVoiceInputUnavailableReason(
-    hasLocalWhisper,
-    hasCheckedLocalWhisper
-  );
+  const voiceInputUnavailableReason =
+    runtimeVoiceInputBlockReason ||
+    getVoiceInputUnavailableReason(
+      hasLocalWhisper,
+      hasCheckedLocalWhisper,
+      whisperStatus,
+      settings.language,
+      settings.stt.model
+    );
+  const ttsUnavailableReason = isSupertonicAvailable
+    ? null
+    : settings.language === 'ko'
+      ? 'Supertonic 모델 파일을 찾을 수 없습니다. `models/supertonic/onnx`와 `models/supertonic/voice_styles`를 준비한 뒤 앱을 재실행해 주세요.'
+      : 'Supertonic model files are missing. Prepare `models/supertonic/onnx` and `models/supertonic/voice_styles`, then restart the app.';
 
   const showVoiceCommandFeedback = useCallback(async (
     message: string,
@@ -288,6 +353,7 @@ export function useConversation(): UseConversationReturn {
       if (runtimeVoiceInputBlockReason) {
         if (!cancelled) {
           setIsLocalWhisperAvailable(false);
+          setWhisperStatus(null);
           setHasCheckedLocalWhisper(true);
         }
         return;
@@ -296,20 +362,41 @@ export function useConversation(): UseConversationReturn {
       if (!isTauriDesktopRuntime()) {
         if (!cancelled) {
           setIsLocalWhisperAvailable(false);
+          setWhisperStatus(null);
           setHasCheckedLocalWhisper(true);
         }
         return;
       }
 
       try {
+        const detail = await invoke<WhisperAvailabilityStatus>('get_whisper_availability', {
+          model: settings.stt.model || 'base',
+        });
+        if (!cancelled) {
+          setWhisperStatus(detail);
+          setIsLocalWhisperAvailable(Boolean(detail.cliFound && detail.modelFound));
+        }
+        return;
+      } catch (err) {
+        log('Failed to check detailed Whisper availability:', err);
+      }
+
+      try {
         const available = await invoke<boolean>('check_whisper_available');
         if (!cancelled) {
+          setWhisperStatus(
+            available
+              ? { cliFound: true, modelFound: true }
+              : null
+          );
           setIsLocalWhisperAvailable(available);
         }
-      } catch (err) {
-        log('Failed to check local Whisper availability:', err);
+      } catch (fallbackErr) {
+        log('Failed to run fallback Whisper availability check:', fallbackErr);
         if (!cancelled) {
-          setIsLocalWhisperAvailable(false);
+          setWhisperStatus(null);
+          // If runtime check fails unexpectedly, allow attempting STT and report concrete errors on use.
+          setIsLocalWhisperAvailable(true);
         }
       } finally {
         if (!cancelled) {
@@ -323,7 +410,31 @@ export function useConversation(): UseConversationReturn {
     return () => {
       cancelled = true;
     };
-  }, [runtimeVoiceInputBlockReason]);
+  }, [runtimeVoiceInputBlockReason, settings.stt.model]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkTtsAvailability = async () => {
+      try {
+        const available = await ttsRouter.isAvailable();
+        if (!cancelled) {
+          setIsSupertonicAvailable(available);
+        }
+      } catch (err) {
+        log('Failed to check Supertonic availability:', err);
+        if (!cancelled) {
+          setIsSupertonicAvailable(false);
+        }
+      }
+    };
+
+    void checkTtsAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const transcribeWithLocalWhisper = useCallback(async (audioData: ArrayBuffer): Promise<string> => {
     const audioBase64 = arrayBufferToBase64(audioData);
@@ -688,6 +799,7 @@ export function useConversation(): UseConversationReturn {
     isVoiceInputSupported,
     isVoiceInputRuntimeBlocked,
     voiceInputUnavailableReason,
+    ttsUnavailableReason,
     startListening,
     stopListening,
     sendMessage,
