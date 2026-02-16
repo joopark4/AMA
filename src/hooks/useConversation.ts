@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useConversationStore } from '../stores/conversationStore';
 import { useAvatarStore, type Emotion, type GestureType } from '../stores/avatarStore';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useSettingsStore, type Language } from '../stores/settingsStore';
 import { llmRouter } from '../services/ai/llmRouter';
 import { screenAnalyzer } from '../services/ai/screenAnalyzer';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
+import { parseVoiceCommand, type VoiceCommandType } from '../services/voice/voiceCommandParser';
+import { audioProcessor } from '../services/voice/audioProcessor';
 import { permissions } from '../services/tauri/permissions';
 import type { Message as LLMMessage } from '../services/ai/types';
 import { invoke } from '@tauri-apps/api/core';
@@ -27,9 +29,36 @@ const SYSTEM_PROMPT = `당신은 "은연"이라는 이름의 친근하고 귀여
 - 공감과 감정 표현을 잘합니다
 - 한국어로 대화합니다`;
 
-function getSpeechRecognitionCtor(): SpeechRecognitionConstructor | null {
-  if (typeof window === 'undefined') return null;
-  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+function isTauriDesktopRuntime(): boolean {
+  if (typeof window === 'undefined') return false;
+  const w = window as Window & {
+    __TAURI__?: unknown;
+    __TAURI_INTERNALS__?: unknown;
+  };
+  return Boolean(w.__TAURI__ || w.__TAURI_INTERNALS__);
+}
+
+function getRuntimeVoiceInputBlockReason(
+  isRemoteSession: boolean
+): string | null {
+  if (isRemoteSession) {
+    return '현재 원격 연결 상태에서는 음성 인식을 사용할 수 없습니다. 텍스트 입력을 사용해 주세요.';
+  }
+
+  return null;
+}
+
+function getVoiceInputUnavailableReason(
+  hasLocalWhisper: boolean,
+  hasCheckedLocalWhisper: boolean
+): string | null {
+  if (hasLocalWhisper) return null;
+
+  if (isTauriDesktopRuntime() && !hasCheckedLocalWhisper) {
+    return '로컬 음성 인식 엔진 확인 중입니다. 잠시만 기다려 주세요.';
+  }
+
+  return 'Whisper 로컬 음성 인식 엔진을 찾을 수 없습니다. whisper-cli와 모델을 설치해 주세요.';
 }
 
 function isScreenRequest(text: string): boolean {
@@ -81,6 +110,59 @@ function pickGesture(emotion: Emotion, text: string): GestureType {
   return null;
 }
 
+interface LocalTranscriptionResult {
+  text: string;
+  confidence: number;
+  language: string;
+}
+
+interface RemoteEnvironmentResult {
+  isRemote: boolean;
+  detector?: string;
+  reason?: string;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+function getVoiceCommandResponse(command: VoiceCommandType, language: Language): string {
+  if (language === 'en') {
+    const english: Record<VoiceCommandType, string> = {
+      'open-settings': 'Opened settings.',
+      'close-settings': 'Closed settings.',
+      'open-microphone-settings': 'Opened microphone settings.',
+      'clear-messages': 'Cleared conversation history.',
+      'stop-speaking': 'Stopped voice output.',
+      'set-language-ko': 'Switched language to Korean.',
+      'set-language-en': 'Switched language to English.',
+      'show-help': 'Voice commands: open/close settings, open microphone settings, clear chat, stop speaking, switch language.',
+    };
+    return english[command];
+  }
+
+  const korean: Record<VoiceCommandType, string> = {
+    'open-settings': '설정 창을 열었어.',
+    'close-settings': '설정 창을 닫았어.',
+    'open-microphone-settings': '마이크 설정을 열었어.',
+    'clear-messages': '대화 기록을 지웠어.',
+    'stop-speaking': '음성 출력을 멈췄어.',
+    'set-language-ko': '언어를 한국어로 바꿨어.',
+    'set-language-en': '언어를 영어로 바꿨어.',
+    'show-help': '사용 가능한 음성 명령은 설정 열기/닫기, 마이크 설정 열기, 대화 기록 지우기, 말 멈추기, 언어 전환이야.',
+  };
+  return korean[command];
+}
+
 interface UseConversationReturn {
   isListening: boolean;
   isProcessing: boolean;
@@ -88,6 +170,9 @@ interface UseConversationReturn {
   transcript: string;
   error: string | null;
   needsMicrophonePermission: boolean;
+  isVoiceInputSupported: boolean;
+  isVoiceInputRuntimeBlocked: boolean;
+  voiceInputUnavailableReason: string | null;
   startListening: () => Promise<void>;
   stopListening: () => void;
   sendMessage: (text: string) => Promise<void>;
@@ -99,22 +184,233 @@ export function useConversation(): UseConversationReturn {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [needsMicrophonePermission, setNeedsMicrophonePermission] = useState(false);
+  const [isLocalWhisperAvailable, setIsLocalWhisperAvailable] = useState(false);
+  const [hasCheckedLocalWhisper, setHasCheckedLocalWhisper] = useState(false);
+  const [isRemoteSession, setIsRemoteSession] = useState(false);
 
   const isProcessingRef = useRef(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const { settings } = useSettingsStore();
+  const localRecordingRef = useRef(false);
+  const { settings, openSettings, closeSettings, setLanguage } = useSettingsStore();
 
   const {
     addMessage,
     setCurrentResponse,
     setStatus,
     clearCurrentResponse,
+    clearMessages,
     isProcessing,
     isSpeaking,
   } = useConversationStore();
 
   const { setEmotion, triggerGesture, startDancing, stopDancing } = useAvatarStore();
   const { speak, stop: stopSpeaking } = useSpeechSynthesis();
+  const runtimeVoiceInputBlockReason = getRuntimeVoiceInputBlockReason(
+    isRemoteSession
+  );
+  const hasLocalWhisper =
+    runtimeVoiceInputBlockReason === null && isLocalWhisperAvailable;
+  const isVoiceInputSupported = hasLocalWhisper;
+  const isVoiceInputRuntimeBlocked = Boolean(runtimeVoiceInputBlockReason);
+  const voiceInputUnavailableReason = runtimeVoiceInputBlockReason || getVoiceInputUnavailableReason(
+    hasLocalWhisper,
+    hasCheckedLocalWhisper
+  );
+
+  const showVoiceCommandFeedback = useCallback(async (
+    message: string,
+    emotion: Emotion = 'happy',
+    speakOut = true
+  ) => {
+    addMessage({ role: 'assistant', content: message });
+    setCurrentResponse(message);
+    setEmotion(emotion);
+
+    if (speakOut) {
+      setStatus('speaking');
+      try {
+        await speak(message);
+      } catch (err) {
+        log('Voice command TTS error:', err);
+      }
+      setStatus('idle');
+    } else {
+      setStatus('idle');
+    }
+
+    const responseHoldMs = Math.max(
+      emotionTuningGlobal.responseClearMs,
+      getEmotionTuning(emotion).expressionHoldMs
+    );
+    setTimeout(() => {
+      setEmotion('neutral');
+      clearCurrentResponse();
+    }, responseHoldMs);
+  }, [addMessage, setCurrentResponse, setEmotion, setStatus, speak, clearCurrentResponse]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkRemoteEnvironment = async () => {
+      if (!isTauriDesktopRuntime()) {
+        if (!cancelled) {
+          setIsRemoteSession(false);
+        }
+        return;
+      }
+
+      try {
+        const result = await invoke<RemoteEnvironmentResult>('detect_remote_environment');
+        if (!cancelled) {
+          setIsRemoteSession(Boolean(result?.isRemote));
+          if (result?.isRemote) {
+            log('Remote session detected:', result.detector || 'unknown', result.reason || '');
+          }
+        }
+      } catch (err) {
+        log('Failed to detect remote environment:', err);
+        if (!cancelled) {
+          setIsRemoteSession(false);
+        }
+      }
+    };
+
+    void checkRemoteEnvironment();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkLocalWhisperAvailability = async () => {
+      if (runtimeVoiceInputBlockReason) {
+        if (!cancelled) {
+          setIsLocalWhisperAvailable(false);
+          setHasCheckedLocalWhisper(true);
+        }
+        return;
+      }
+
+      if (!isTauriDesktopRuntime()) {
+        if (!cancelled) {
+          setIsLocalWhisperAvailable(false);
+          setHasCheckedLocalWhisper(true);
+        }
+        return;
+      }
+
+      try {
+        const available = await invoke<boolean>('check_whisper_available');
+        if (!cancelled) {
+          setIsLocalWhisperAvailable(available);
+        }
+      } catch (err) {
+        log('Failed to check local Whisper availability:', err);
+        if (!cancelled) {
+          setIsLocalWhisperAvailable(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setHasCheckedLocalWhisper(true);
+        }
+      }
+    };
+
+    void checkLocalWhisperAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [runtimeVoiceInputBlockReason]);
+
+  const transcribeWithLocalWhisper = useCallback(async (audioData: ArrayBuffer): Promise<string> => {
+    const audioBase64 = arrayBufferToBase64(audioData);
+    const result = await invoke<LocalTranscriptionResult>('transcribe_audio', {
+      audioBase64,
+      model: settings.stt.model || 'base',
+      language: settings.language,
+    });
+    return result.text?.trim() || '';
+  }, [settings.stt.model, settings.language]);
+
+  const handleVoiceCommand = useCallback(async (text: string): Promise<boolean> => {
+    const command = parseVoiceCommand(text);
+    if (!command) return false;
+
+    log('Voice command detected:', command.type, 'from:', text);
+    setError(null);
+    setNeedsMicrophonePermission(false);
+
+    const getCurrentLanguage = () => useSettingsStore.getState().settings.language;
+
+    switch (command.type) {
+      case 'open-settings': {
+        openSettings();
+        await showVoiceCommandFeedback(getVoiceCommandResponse(command.type, getCurrentLanguage()));
+        return true;
+      }
+      case 'close-settings': {
+        closeSettings();
+        await showVoiceCommandFeedback(getVoiceCommandResponse(command.type, getCurrentLanguage()));
+        return true;
+      }
+      case 'open-microphone-settings': {
+        try {
+          await permissions.openMicrophoneSettings();
+          await showVoiceCommandFeedback(getVoiceCommandResponse(command.type, getCurrentLanguage()));
+        } catch (err) {
+          log('Failed to open microphone settings from voice command:', err);
+          const fallbackMessage = getCurrentLanguage() === 'en'
+            ? 'Failed to open microphone settings. Please open system settings manually.'
+            : '마이크 설정을 열지 못했어. 시스템 설정에서 직접 확인해줘.';
+          await showVoiceCommandFeedback(fallbackMessage, 'sad');
+        }
+        return true;
+      }
+      case 'clear-messages': {
+        clearMessages();
+        clearCurrentResponse();
+        await showVoiceCommandFeedback(getVoiceCommandResponse(command.type, getCurrentLanguage()));
+        return true;
+      }
+      case 'stop-speaking': {
+        stopSpeaking();
+        clearCurrentResponse();
+        await showVoiceCommandFeedback(
+          getVoiceCommandResponse(command.type, getCurrentLanguage()),
+          'neutral',
+          false
+        );
+        return true;
+      }
+      case 'set-language-ko': {
+        setLanguage('ko');
+        await showVoiceCommandFeedback(getVoiceCommandResponse(command.type, 'ko'));
+        return true;
+      }
+      case 'set-language-en': {
+        setLanguage('en');
+        await showVoiceCommandFeedback(getVoiceCommandResponse(command.type, 'en'));
+        return true;
+      }
+      case 'show-help': {
+        await showVoiceCommandFeedback(getVoiceCommandResponse(command.type, getCurrentLanguage()));
+        return true;
+      }
+      default:
+        return false;
+    }
+  }, [
+    openSettings,
+    closeSettings,
+    setLanguage,
+    clearMessages,
+    clearCurrentResponse,
+    stopSpeaking,
+    showVoiceCommandFeedback,
+  ]);
 
   // Send message to LLM and get response
   const sendMessage = useCallback(async (text: string) => {
@@ -251,18 +547,36 @@ export function useConversation(): UseConversationReturn {
     }
   }, [addMessage, setCurrentResponse, clearCurrentResponse, setStatus, setEmotion, speak, triggerGesture, startDancing, stopDancing]);
 
+  const handleRecognizedInput = useCallback(async (text: string) => {
+    const isCommandHandled = await handleVoiceCommand(text);
+    if (!isCommandHandled) {
+      await sendMessage(text);
+    }
+  }, [handleVoiceCommand, sendMessage]);
+
   useEffect(() => {
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-        recognitionRef.current = null;
+      if (localRecordingRef.current) {
+        localRecordingRef.current = false;
+        void audioProcessor.stopRecording().catch(() => {});
       }
+      audioProcessor.dispose();
     };
   }, []);
 
-  // Start voice recognition (Web Speech API)
+  // Start voice recognition (local Whisper only)
   const startListening = useCallback(async () => {
     if (isListening || isProcessingRef.current) return;
+
+    if (!isVoiceInputSupported) {
+      const reason = voiceInputUnavailableReason || '현재 환경에서는 음성 인식을 지원하지 않습니다.';
+      log('STT blocked by runtime policy:', reason);
+      setError(reason);
+      setNeedsMicrophonePermission(false);
+      setStatus('error');
+      setEmotion('sad');
+      return;
+    }
 
     // Stop any ongoing speech
     stopSpeaking();
@@ -270,119 +584,88 @@ export function useConversation(): UseConversationReturn {
     setError(null);
     setNeedsMicrophonePermission(false);
 
-    const hasMicAccess = await permissions.requestMicrophoneAccess();
-    if (!hasMicAccess) {
-      setNeedsMicrophonePermission(true);
-      setError('마이크 권한이 필요합니다.');
+    if (!hasLocalWhisper) {
+      setError(voiceInputUnavailableReason || 'Whisper 로컬 음성 인식을 사용할 수 없습니다.');
       setStatus('error');
       setEmotion('sad');
       return;
     }
 
-    const SpeechRecognitionCtor = getSpeechRecognitionCtor();
-    if (!SpeechRecognitionCtor) {
-      setError('현재 환경에서는 음성 인식을 지원하지 않습니다. 텍스트 입력을 사용해 주세요.');
-      setStatus('error');
-      setEmotion('sad');
-      return;
-    }
-
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
-      recognitionRef.current = null;
-    }
-
-    const recognition = new SpeechRecognitionCtor();
-    recognitionRef.current = recognition;
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    recognition.lang = settings.language === 'ko' ? 'ko-KR' : 'en-US';
-
-    recognition.onstart = () => {
-      log('STT started');
+    try {
+      await audioProcessor.startRecording();
+      localRecordingRef.current = true;
       setTranscript('');
       setIsListening(true);
       setStatus('listening');
       setEmotion('neutral');
-    };
-
-    recognition.onresult = (event) => {
-      let interimText = '';
-      let finalText = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const chunk = result[0]?.transcript?.trim() || '';
-        if (!chunk) continue;
-        if (result.isFinal) {
-          finalText += `${finalText ? ' ' : ''}${chunk}`;
-        } else {
-          interimText += `${interimText ? ' ' : ''}${chunk}`;
-        }
-      }
-
-      if (interimText) {
-        setTranscript(interimText);
-      }
-
-      if (finalText) {
-        const normalized = finalText.trim();
-        setTranscript(normalized);
-        recognition.stop();
-        void sendMessage(normalized);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      log('STT error:', event.error, event.message);
-      setIsListening(false);
-
-      if (event.error === 'aborted') return;
-
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        setNeedsMicrophonePermission(true);
-        setError('마이크 권한이 필요합니다.');
-      } else {
-        setError(`음성 인식 오류: ${event.error}`);
-      }
-
-      setStatus('error');
-      setEmotion('sad');
-    };
-
-    recognition.onend = () => {
-      log('STT ended');
-      setIsListening(false);
-      setTranscript('');
-      if (useConversationStore.getState().status === 'listening') {
-        setStatus('idle');
-        setEmotion('neutral');
-      }
-    };
-
-    try {
-      recognition.start();
+      log('Local Whisper recording started');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(`음성 인식을 시작할 수 없습니다: ${message}`);
+      log('Local Whisper recording failed:', message);
+      const permissionDenied = /permission|not.?allowed|denied|disallowed/i.test(message);
+      setNeedsMicrophonePermission(permissionDenied);
+      setError(permissionDenied ? '마이크 권한이 필요합니다.' : `로컬 음성 인식을 시작할 수 없습니다: ${message}`);
       setStatus('error');
       setEmotion('sad');
     }
-  }, [isListening, setStatus, stopSpeaking, clearCurrentResponse, sendMessage, settings.language, setEmotion]);
+  }, [
+    isListening,
+    hasLocalWhisper,
+    isVoiceInputSupported,
+    voiceInputUnavailableReason,
+    setStatus,
+    stopSpeaking,
+    clearCurrentResponse,
+    setEmotion,
+  ]);
 
   // Stop voice recognition
   const stopListening = useCallback(() => {
     log('stopListening called');
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
+    if (localRecordingRef.current) {
+      localRecordingRef.current = false;
+      setIsListening(false);
+      setTranscript('');
+      setStatus('processing');
+      setEmotion('thinking');
+
+      void (async () => {
+        try {
+          const audioData = await audioProcessor.stopRecording();
+          const recognizedText = await transcribeWithLocalWhisper(audioData);
+
+          if (!recognizedText) {
+            setStatus('idle');
+            setEmotion('neutral');
+            return;
+          }
+
+          setTranscript(recognizedText);
+          await handleRecognizedInput(recognizedText);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          log('Local Whisper transcription failed:', message);
+          const permissionDenied = /permission|not.?allowed|denied|disallowed/i.test(message);
+          setNeedsMicrophonePermission(permissionDenied);
+          setError(permissionDenied ? '마이크 권한이 필요합니다.' : `로컬 음성 인식 오류: ${message}`);
+          setStatus('error');
+          setEmotion('sad');
+        }
+      })();
+
+      return;
     }
+
     setIsListening(false);
     setStatus('idle');
     setTranscript('');
     setEmotion('neutral');
-  }, [setStatus, setEmotion]);
+  }, [
+    setStatus,
+    setEmotion,
+    handleRecognizedInput,
+    transcribeWithLocalWhisper,
+  ]);
 
   // Open microphone settings
   const openMicrophoneSettings = useCallback(async () => {
@@ -402,6 +685,9 @@ export function useConversation(): UseConversationReturn {
     transcript,
     error,
     needsMicrophonePermission,
+    isVoiceInputSupported,
+    isVoiceInputRuntimeBlocked,
+    voiceInputUnavailableReason,
     startListening,
     stopListening,
     sendMessage,

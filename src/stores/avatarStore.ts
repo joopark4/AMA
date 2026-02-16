@@ -18,6 +18,13 @@ export interface AvatarBounds {
   maxY: number;
 }
 
+export interface AvatarInteractionBounds {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
 interface AvatarState {
   vrm: VRM | null;
   isLoaded: boolean;
@@ -47,6 +54,7 @@ interface AvatarState {
   currentExpressionValues: Record<string, number>;
 
   bounds: AvatarBounds;
+  interactionBounds: AvatarInteractionBounds | null;
   groundY: number | null;
   locomotionStyle: LocomotionStyle;
   isDragging: boolean;
@@ -87,6 +95,7 @@ interface AvatarState {
   setCurrentExpression: (expressions: Record<string, number>) => void;
 
   setBounds: (bounds: AvatarBounds) => void;
+  setInteractionBounds: (bounds: AvatarInteractionBounds | null) => void;
   setGroundY: (groundY: number | null) => void;
   setLocomotionStyle: (style: LocomotionStyle) => void;
   setIsDragging: (isDragging: boolean) => void;
@@ -98,14 +107,30 @@ interface AvatarState {
 
 const getInitialBounds = (): AvatarBounds => {
   if (typeof window !== 'undefined') {
+    const defaultScale = 1.0;
+    // Horizontal margin target: 8% of viewport width.
+    const marginX = Math.max(
+      window.innerWidth * 0.08,
+      Math.max(80, 120 * defaultScale)
+    );
+    const floorY = window.innerHeight - Math.max(95, 130 * defaultScale) - 8;
+
     return {
-      minX: 50,
-      maxX: window.innerWidth - 50,
-      minY: 100,
-      maxY: window.innerHeight - 100,
+      minX: marginX,
+      maxX: window.innerWidth - marginX,
+      minY: floorY,
+      maxY: floorY,
     };
   }
-  return { minX: 50, maxX: 1920, minY: 100, maxY: 1080 };
+  return { minX: 120, maxX: 1800, minY: 900, maxY: 900 };
+};
+
+const getInitialPosition = (): Position => {
+  const initialBounds = getInitialBounds();
+  return {
+    x: initialBounds.maxX,
+    y: initialBounds.maxY,
+  };
 };
 
 export const useAvatarStore = create<AvatarState>((set, get) => ({
@@ -114,7 +139,7 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
   isLoading: false,
   loadError: null,
 
-  position: { x: typeof window !== 'undefined' ? window.innerWidth / 2 : 400, y: typeof window !== 'undefined' ? window.innerHeight / 2 : 400 },
+  position: getInitialPosition(),
   targetPosition: null,
   velocity: { x: 0, y: 0 },
 
@@ -137,6 +162,7 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
   currentExpressionValues: {},
 
   bounds: getInitialBounds(),
+  interactionBounds: null,
   groundY: null,
   locomotionStyle: 'stroll',
   isDragging: false,
@@ -191,6 +217,7 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
   setCurrentExpression: (expressions) => set({ currentExpressionValues: expressions }),
 
   setBounds: (bounds) => set({ bounds }),
+  setInteractionBounds: (interactionBounds) => set({ interactionBounds }),
   setGroundY: (groundY) => set({ groundY }),
   setLocomotionStyle: (locomotionStyle) => set({ locomotionStyle }),
   setIsDragging: (isDragging) => set({ isDragging }),
