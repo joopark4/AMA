@@ -73,59 +73,13 @@ class TTSRouter {
       voice: settings.tts.voice,
     });
     log('Synthesize complete, audioData size:', result.audioData.byteLength);
-
-    // ArrayBuffer를 Base64로 변환
-    const bytes = new Uint8Array(result.audioData);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    try {
+      await this.playViaHtmlAudio(result.audioData);
+      return;
+    } catch (htmlAudioError) {
+      log('HTMLAudio playback failed, fallback to WebAudio decode:', htmlAudioError);
+      await this.playViaWebAudio(result.audioData);
     }
-    const base64 = btoa(binary);
-    const dataUrl = `data:audio/wav;base64,${base64}`;
-    log('Data URL created, length:', dataUrl.length);
-
-    return new Promise((resolve, reject) => {
-      const audio = new Audio();
-      audio.volume = 1.0;
-
-      let lastLoggedSecond = -1;
-
-      audio.onloadedmetadata = () => {
-        log('Audio metadata loaded, duration:', audio.duration);
-      };
-
-      audio.oncanplaythrough = () => {
-        log('Audio canplaythrough');
-      };
-
-      audio.onended = () => {
-        log('Audio playback ended at:', audio.currentTime);
-        resolve();
-      };
-
-      audio.onerror = () => {
-        log('Audio error:', audio.error?.message || 'unknown');
-        reject(new Error('Audio playback error'));
-      };
-
-      audio.ontimeupdate = () => {
-        const currentSecond = Math.floor(audio.currentTime);
-        if (currentSecond !== lastLoggedSecond) {
-          lastLoggedSecond = currentSecond;
-          log('Playing:', currentSecond, '/', Math.floor(audio.duration), 'sec');
-        }
-      };
-
-      // Data URL 설정 및 재생
-      audio.src = dataUrl;
-
-      audio.play().then(() => {
-        log('Audio play() started, duration:', audio.duration);
-      }).catch((err) => {
-        log('Audio play() failed:', err);
-        reject(err);
-      });
-    });
   }
 
   // 기존 blob URL 방식 (fallback)
@@ -137,6 +91,89 @@ class TTSRouter {
 
     const blob = new Blob([result.audioData], { type: 'audio/wav' });
     return URL.createObjectURL(blob);
+  }
+
+  private async playViaHtmlAudio(audioData: ArrayBuffer): Promise<void> {
+    const blob = new Blob([audioData], { type: 'audio/wav' });
+    const objectUrl = URL.createObjectURL(blob);
+    log('Blob URL created for HTMLAudio playback');
+
+    return new Promise((resolve, reject) => {
+      const audio = new Audio();
+      audio.volume = 1.0;
+      audio.preload = 'auto';
+      let released = false;
+      let lastLoggedSecond = -1;
+
+      const release = () => {
+        if (released) return;
+        released = true;
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      audio.onloadedmetadata = () => {
+        log('Audio metadata loaded, duration:', audio.duration);
+      };
+
+      audio.oncanplaythrough = () => {
+        log('Audio canplaythrough');
+      };
+
+      audio.onended = () => {
+        log('Audio playback ended at:', audio.currentTime);
+        release();
+        resolve();
+      };
+
+      audio.onerror = () => {
+        const mediaError = audio.error?.message || audio.error?.code || 'unknown';
+        log('Audio error:', mediaError);
+        release();
+        reject(new Error(`Audio playback error: ${mediaError}`));
+      };
+
+      audio.ontimeupdate = () => {
+        const currentSecond = Math.floor(audio.currentTime);
+        if (currentSecond !== lastLoggedSecond) {
+          lastLoggedSecond = currentSecond;
+          log('Playing:', currentSecond, '/', Math.floor(audio.duration), 'sec');
+        }
+      };
+
+      audio.src = objectUrl;
+      audio.play().then(() => {
+        log('Audio play() started, duration:', audio.duration);
+      }).catch((err) => {
+        release();
+        log('Audio play() failed:', err);
+        reject(err);
+      });
+    });
+  }
+
+  private async playViaWebAudio(audioData: ArrayBuffer): Promise<void> {
+    const audioContext = this.getAudioContext();
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
+    const audioBuffer = await audioContext.decodeAudioData(audioData.slice(0));
+    const source = audioContext.createBufferSource();
+    const gain = audioContext.createGain();
+    gain.gain.value = 1.2;
+
+    source.buffer = audioBuffer;
+    source.connect(gain);
+    gain.connect(audioContext.destination);
+
+    return new Promise((resolve) => {
+      source.onended = () => {
+        log('WebAudio playback ended');
+        resolve();
+      };
+      source.start(0);
+      log('WebAudio playback started');
+    });
   }
 }
 

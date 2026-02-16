@@ -5,14 +5,11 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 
-// Whisper 모델 목록 (whisper.cpp ggml 모델)
+// Whisper 모델 목록 (배포 기본 포함 모델)
 const WHISPER_MODELS = [
-  'tiny',
   'base',
   'small',
   'medium',
-  'large-v3',
-  'large-v3-turbo',
 ];
 
 // Supertonic 음성 목록
@@ -28,6 +25,7 @@ const SUPERTONIC_VOICES = {
   M4: '남성 4',
   M5: '남성 5',
 };
+const SUPERTONIC_VOICE_KEYS = Object.keys(SUPERTONIC_VOICES);
 
 export default function VoiceSettings() {
   const { t } = useTranslation();
@@ -39,7 +37,10 @@ export default function VoiceSettings() {
       setSTTSettings({ engine: 'whisper', model: 'base' });
     }
     // TTS는 supertonic만 지원하므로 항상 supertonic으로 설정
-    if (settings.tts.engine !== 'supertonic') {
+    if (
+      settings.tts.engine !== 'supertonic' ||
+      !SUPERTONIC_VOICE_KEYS.includes(settings.tts.voice || '')
+    ) {
       setTTSSettings({ engine: 'supertonic', voice: 'F1' });
     }
   }, []);

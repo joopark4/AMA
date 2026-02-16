@@ -9,6 +9,13 @@ use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -22,11 +29,13 @@ fn main() {
             commands::voice::transcribe_audio,
             commands::voice::synthesize_speech,
             commands::voice::check_whisper_available,
+            commands::voice::get_whisper_availability,
             commands::voice::check_tts_available,
             commands::voice::detect_remote_environment,
             commands::settings::open_microphone_settings,
             commands::settings::open_accessibility_settings,
             commands::settings::open_screen_recording_settings,
+            commands::settings::pick_vrm_file,
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
