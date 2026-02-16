@@ -12,6 +12,7 @@
 import type { TTSResult, TTSClient, TTSOptions } from './types';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
+import { BaseDirectory, readFile } from '@tauri-apps/plugin-fs';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -19,6 +20,15 @@ const log = (...args: any[]) => {
   console.log('[Supertonic]', ...args);
   invoke('log_to_terminal', { message: `[Supertonic] ${message}` }).catch(() => {});
 };
+
+function isTauriDesktopRuntime(): boolean {
+  if (typeof window === 'undefined') return false;
+  const w = window as Window & {
+    __TAURI__?: unknown;
+    __TAURI_INTERNALS__?: unknown;
+  };
+  return Boolean(w.__TAURI__ || w.__TAURI_INTERNALS__);
+}
 
 // ONNX Runtime은 동적으로 import (Vite 최적화 우회)
 let ort: any = null;
@@ -34,6 +44,10 @@ async function getOrt() {
 
 // Supertonic 음성 스타일
 export type SupertonicVoice = 'M1' | 'M2' | 'M3' | 'M4' | 'M5' | 'F1' | 'F2' | 'F3' | 'F4' | 'F5';
+const SUPERTONIC_VOICE_LIST: SupertonicVoice[] = [
+  'M1', 'M2', 'M3', 'M4', 'M5',
+  'F1', 'F2', 'F3', 'F4', 'F5',
+];
 
 // 지원 언어
 export type SupertonicLanguage = 'en' | 'ko' | 'es' | 'pt' | 'fr';
@@ -67,6 +81,18 @@ const DEFAULT_CONFIG: SupertonicConfig = {
   defaultSpeed: 1.05,
   defaultSteps: 2,
 };
+
+function normalizeVoice(
+  voice: string | undefined,
+  fallback: SupertonicVoice
+): SupertonicVoice {
+  if (typeof voice !== 'string') return fallback;
+  const normalized = voice.trim().toUpperCase();
+  if (SUPERTONIC_VOICE_LIST.includes(normalized as SupertonicVoice)) {
+    return normalized as SupertonicVoice;
+  }
+  return fallback;
+}
 
 // TTS 설정 (tts.json에서 로드)
 interface TTSConfigs {
@@ -217,6 +243,8 @@ export class SupertonicClient implements TTSClient {
   private config: SupertonicConfig;
   private isInitialized = false;
   private initPromise: Promise<void> | null = null;
+  private resolvedBasePath: string | null = null;
+  private resolvedResourcePrefix: string | null = null;
 
   // ONNX 세션들 (동적 로드로 인해 any 사용)
   private dpOrt: any = null;
@@ -236,6 +264,110 @@ export class SupertonicClient implements TTSClient {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
+  private getBundledResourceCandidates(): string[] {
+    return ['models/supertonic', '_up_/models/supertonic'];
+  }
+
+  private getAbsoluteWebUrl(path: string): string {
+    if (/^https?:\/\//i.test(path)) return path;
+
+    if (typeof window === 'undefined') {
+      return path;
+    }
+
+    try {
+      return new URL(path, window.location.origin).toString();
+    } catch {
+      return path;
+    }
+  }
+
+  private async readBundledAsset(relativePath: string): Promise<Uint8Array> {
+    const sanitizedRelativePath = relativePath.replace(/^\//, '');
+    const tryRead = async (prefix: string): Promise<Uint8Array> => {
+      const fullPath = `${prefix.replace(/\/$/, '')}/${sanitizedRelativePath}`;
+      return readFile(fullPath, { baseDir: BaseDirectory.Resource });
+    };
+
+    if (this.resolvedResourcePrefix) {
+      return tryRead(this.resolvedResourcePrefix);
+    }
+
+    const readErrors: string[] = [];
+    for (const prefix of this.getBundledResourceCandidates()) {
+      try {
+        const bytes = await tryRead(prefix);
+        this.resolvedResourcePrefix = prefix;
+        return bytes;
+      } catch (error) {
+        readErrors.push(`${prefix}: ${(error as Error)?.message || String(error)}`);
+      }
+    }
+
+    throw new Error(`Bundled asset read failed for ${sanitizedRelativePath}. ${readErrors.join(' | ')}`);
+  }
+
+  private async readJsonAsset(relativePath: string): Promise<any> {
+    if (this.resolvedResourcePrefix) {
+      const bytes = await this.readBundledAsset(relativePath);
+      const text = new TextDecoder().decode(bytes);
+      return JSON.parse(text);
+    }
+
+    const basePath = await this.resolveBasePath();
+    const response = await fetch(this.getAbsoluteWebUrl(`${basePath}/${relativePath}`));
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${relativePath}: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  private async getModelSource(relativePath: string): Promise<string | Uint8Array> {
+    if (this.resolvedResourcePrefix) {
+      return this.readBundledAsset(relativePath);
+    }
+
+    const basePath = await this.resolveBasePath();
+    return this.getAbsoluteWebUrl(`${basePath}/${relativePath}`);
+  }
+
+  private async resolveBasePath(): Promise<string> {
+    if (this.resolvedBasePath) {
+      return this.resolvedBasePath;
+    }
+
+    const fallbackPath = this.config.basePath;
+    if (!isTauriDesktopRuntime()) {
+      this.resolvedResourcePrefix = null;
+      this.resolvedBasePath = fallbackPath;
+      return fallbackPath;
+    }
+
+    const requiredVoice = this.config.defaultVoice;
+    const resourceCandidates = this.getBundledResourceCandidates();
+
+    for (const resourceCandidate of resourceCandidates) {
+      try {
+        await Promise.all([
+          readFile(`${resourceCandidate}/onnx/tts.json`, { baseDir: BaseDirectory.Resource }),
+          readFile(`${resourceCandidate}/voice_styles/${requiredVoice}.json`, { baseDir: BaseDirectory.Resource }),
+        ]);
+
+        this.resolvedResourcePrefix = resourceCandidate;
+        this.resolvedBasePath = `resource://${resourceCandidate}`;
+        log('Using bundled Supertonic assets from resource:', resourceCandidate);
+        return this.resolvedBasePath;
+      } catch (error) {
+        log('Bundled Supertonic resource candidate failed:', resourceCandidate, error);
+      }
+    }
+
+    this.resolvedResourcePrefix = null;
+    this.resolvedBasePath = fallbackPath;
+    log('Using web Supertonic asset path fallback:', fallbackPath);
+    return fallbackPath;
+  }
+
   /**
    * 모델 및 음성 스타일 초기화
    */
@@ -249,37 +381,37 @@ export class SupertonicClient implements TTSClient {
 
   private async _initialize(): Promise<void> {
     try {
-      console.log('[Supertonic] Loading configuration from', this.config.basePath);
+      const basePath = await this.resolveBasePath();
+      console.log('[Supertonic] Loading configuration from', basePath);
 
       // tts.json 설정 로드
-      const cfgsUrl = `${this.config.basePath}/onnx/tts.json`;
-      console.log('[Supertonic] Fetching config from:', cfgsUrl);
-      const cfgsResponse = await fetch(cfgsUrl);
-      if (!cfgsResponse.ok) {
-        throw new Error(`Failed to fetch tts.json: ${cfgsResponse.status} ${cfgsResponse.statusText}`);
-      }
-      this.cfgs = await cfgsResponse.json();
+      this.cfgs = await this.readJsonAsset('onnx/tts.json');
       console.log('[Supertonic] Config loaded, sample_rate:', this.cfgs!.ae.sample_rate);
       this.sampleRate = this.cfgs!.ae.sample_rate;
 
       // unicode_indexer.json 로드
-      const indexerResponse = await fetch(`${this.config.basePath}/onnx/unicode_indexer.json`);
-      const indexer = await indexerResponse.json();
+      const indexer = await this.readJsonAsset('onnx/unicode_indexer.json');
       this.textProcessor = new UnicodeProcessor(indexer);
 
       // 동적으로 ort 가져오기
       const ortModule = await getOrt();
 
       // 공식 Supertonic 구현과 동일: WebGPU 시도 후 WASM 폴백
-      const loadOnnx = async (onnxPath: string, options: any): Promise<any> => {
-        console.log(`[Supertonic] Loading ${onnxPath}...`);
-        const session = await ortModule.InferenceSession.create(onnxPath, options);
-        console.log(`[Supertonic] ${onnxPath} loaded`);
+      const loadOnnx = async (
+        modelLabel: string,
+        modelSource: string | Uint8Array,
+        options: any
+      ): Promise<any> => {
+        console.log(`[Supertonic] Loading ${modelLabel}...`);
+        const session = await ortModule.InferenceSession.create(modelSource, options);
+        console.log(`[Supertonic] ${modelLabel} loaded`);
         return session;
       };
 
       const modelNames = ['duration_predictor', 'text_encoder', 'vector_estimator', 'vocoder'];
-      const modelPaths = modelNames.map(name => `${this.config.basePath}/onnx/${name}.onnx`);
+      const modelSources = await Promise.all(
+        modelNames.map((name) => this.getModelSource(`onnx/${name}.onnx`))
+      );
 
       // WebGPU 시도
       let sessionOptions: any = {
@@ -290,9 +422,9 @@ export class SupertonicClient implements TTSClient {
       try {
         console.log('[Supertonic] Trying WebGPU...');
         const sessions: any[] = [];
-        for (let i = 0; i < modelPaths.length; i++) {
-          console.log(`[Supertonic] Loading ${modelNames[i]} (${i + 1}/${modelPaths.length})...`);
-          const session = await loadOnnx(modelPaths[i], sessionOptions);
+        for (let i = 0; i < modelSources.length; i++) {
+          console.log(`[Supertonic] Loading ${modelNames[i]} (${i + 1}/${modelSources.length})...`);
+          const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
           sessions.push(session);
         }
         [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
@@ -307,9 +439,9 @@ export class SupertonicClient implements TTSClient {
         };
 
         const sessions: any[] = [];
-        for (let i = 0; i < modelPaths.length; i++) {
-          console.log(`[Supertonic] Loading ${modelNames[i]} with WASM (${i + 1}/${modelPaths.length})...`);
-          const session = await loadOnnx(modelPaths[i], sessionOptions);
+        for (let i = 0; i < modelSources.length; i++) {
+          console.log(`[Supertonic] Loading ${modelNames[i]} with WASM (${i + 1}/${modelSources.length})...`);
+          const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
           sessions.push(session);
         }
         [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
@@ -337,15 +469,7 @@ export class SupertonicClient implements TTSClient {
       return this.voiceStyles.get(voice)!;
     }
 
-    const stylePath = `${this.config.basePath}/voice_styles/${voice}.json`;
-    console.log('[Supertonic] Loading voice style:', stylePath);
-
-    const response = await fetch(stylePath);
-    if (!response.ok) {
-      throw new Error(`Failed to load voice style: ${response.status}`);
-    }
-
-    const voiceStyle = await response.json();
+    const voiceStyle = await this.readJsonAsset(`voice_styles/${voice}.json`);
     const ortModule = await getOrt();
 
     // TTL 텐서 생성
@@ -373,7 +497,7 @@ export class SupertonicClient implements TTSClient {
     }
 
     const { settings } = useSettingsStore.getState();
-    const voice = (options?.voice || settings.tts.voice || this.config.defaultVoice) as SupertonicVoice;
+    const voice = normalizeVoice(options?.voice || settings.tts.voice, this.config.defaultVoice);
     const speed = options?.speed || this.config.defaultSpeed;
     const language = this.detectLanguage(text, settings.language);
     const totalStep = this.config.defaultSteps;
@@ -679,9 +803,29 @@ export class SupertonicClient implements TTSClient {
    */
   async isAvailable(): Promise<boolean> {
     try {
-      const modelPath = `${this.config.basePath}/onnx/tts.json`;
-      const response = await fetch(modelPath, { method: 'HEAD' });
-      return response.ok;
+      const selectedVoice = useSettingsStore.getState().settings.tts.voice;
+      const voice = normalizeVoice(selectedVoice, this.config.defaultVoice);
+      await this.resolveBasePath();
+
+      if (this.resolvedResourcePrefix) {
+        await Promise.all([
+          this.readBundledAsset('onnx/tts.json'),
+          this.readBundledAsset(`voice_styles/${voice}.json`),
+        ]);
+        return true;
+      }
+
+      const basePath = this.resolvedBasePath || this.config.basePath;
+      const requiredAssets = [
+        `${basePath}/onnx/tts.json`,
+        `${basePath}/voice_styles/${voice}.json`,
+      ];
+
+      for (const assetPath of requiredAssets) {
+        const response = await fetch(assetPath, { method: 'GET' });
+        if (!response.ok) return false;
+      }
+      return true;
     } catch {
       return false;
     }

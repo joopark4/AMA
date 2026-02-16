@@ -1,4 +1,5 @@
 use std::process::Command;
+use tauri_plugin_dialog::DialogExt;
 
 /// Open system settings for microphone permission
 #[tauri::command]
@@ -98,4 +99,25 @@ pub fn open_screen_recording_settings() -> Result<(), String> {
     {
         Err("Not implemented for Linux".to_string())
     }
+}
+
+/// Open native file picker to select a VRM model file.
+#[tauri::command]
+pub async fn pick_vrm_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let selected = app
+        .dialog()
+        .file()
+        .add_filter("VRM Model", &["vrm"])
+        .set_title("Select VRM Model")
+        .blocking_pick_file();
+
+    let Some(file_path) = selected else {
+        return Ok(None);
+    };
+
+    let path = file_path
+        .into_path()
+        .map_err(|e| format!("Invalid selected file path: {e}"))?;
+
+    Ok(Some(path.to_string_lossy().to_string()))
 }

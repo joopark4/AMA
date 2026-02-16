@@ -2,27 +2,18 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
-import { open } from '@tauri-apps/plugin-dialog';
+import { pickVrmFile } from '../../services/tauri/fileDialog';
 
 export default function AvatarSettings() {
   const { t } = useTranslation();
   const { settings, setVrmModelPath, setAvatarSettings } = useSettingsStore();
   const { setEmotion, emotion } = useAvatarStore();
-  const { speak, isSpeaking, stop } = useSpeechSynthesis();
+  const { speak, isSpeaking, stop, error: ttsError } = useSpeechSynthesis();
 
   const handleSelectVRM = async () => {
     try {
-      const selected = await open({
-        multiple: false,
-        filters: [
-          {
-            name: 'VRM Model',
-            extensions: ['vrm'],
-          },
-        ],
-      });
-
-      if (selected && typeof selected === 'string') {
+      const selected = await pickVrmFile();
+      if (selected) {
         setVrmModelPath(selected);
       }
     } catch (error) {
@@ -47,6 +38,7 @@ export default function AvatarSettings() {
           <input
             type="text"
             value={settings.vrmModelPath}
+            placeholder="선택된 VRM 파일 없음"
             readOnly
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 text-sm"
           />
@@ -123,6 +115,11 @@ export default function AvatarSettings() {
         >
           {isSpeaking ? 'Stop' : 'Speak: "안녕 나는 은연이라고해"'}
         </button>
+        {ttsError && (
+          <p className="text-xs text-red-600 break-all">
+            TTS Error: {ttsError}
+          </p>
+        )}
       </div>
 
       {/* Physics Settings */}
