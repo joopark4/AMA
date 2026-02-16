@@ -5,6 +5,7 @@
 )]
 
 mod commands;
+use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
@@ -22,12 +23,35 @@ fn main() {
             commands::voice::synthesize_speech,
             commands::voice::check_whisper_available,
             commands::voice::check_tts_available,
+            commands::voice::detect_remote_environment,
             commands::settings::open_microphone_settings,
             commands::settings::open_accessibility_settings,
             commands::settings::open_screen_recording_settings,
         ])
-        .setup(|_app| {
-            // Minimal setup for debugging
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let monitor = window
+                    .current_monitor()
+                    .ok()
+                    .flatten()
+                    .or_else(|| app.primary_monitor().ok().flatten());
+
+                if let Some(monitor) = monitor {
+                    let monitor_size = monitor.size();
+                    let monitor_pos = monitor.position();
+
+                    let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                        width: monitor_size.width,
+                        height: monitor_size.height,
+                    }));
+                    let _ = window.set_position(tauri::Position::Physical(
+                        tauri::PhysicalPosition {
+                            x: monitor_pos.x,
+                            y: monitor_pos.y,
+                        },
+                    ));
+                }
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

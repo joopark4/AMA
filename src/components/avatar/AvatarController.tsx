@@ -39,8 +39,8 @@ const STYLE_CADENCE = {
   bouncy: 6.0,
 } as const;
 
-// Temporary lock mode requested by user: keep avatar idle at the right side.
-const FORCE_RIGHT_IDLE = true;
+// Keep avatar idle (no autonomous wandering), but preserve user-dragged position.
+const FORCE_IDLE_NO_AUTOMOVE = true;
 
 const TURN_PAUSE_DURATION = 0.12;
 const MIN_TURN_DISTANCE = 3;
@@ -109,6 +109,7 @@ export default function AvatarController() {
   const stridePhaseRef = useRef(Math.random() * Math.PI * 2);
   const previousDistanceRef = useRef<number | null>(null);
   const stuckTimeRef = useRef(0);
+  const hasInitializedBottomRightRef = useRef(false);
 
   const {
     position,
@@ -140,7 +141,7 @@ export default function AvatarController() {
   }, [isDragging]);
 
   const scheduleAutoMove = useCallback(() => {
-    if (FORCE_RIGHT_IDLE) return;
+    if (FORCE_IDLE_NO_AUTOMOVE) return;
     if (autoMoveTimerRef.current) {
       clearTimeout(autoMoveTimerRef.current);
     }
@@ -175,10 +176,10 @@ export default function AvatarController() {
     const handleResize = () => {
       const avatarScale = settings.avatar?.scale || 1.0;
       const floorY = getFloorY(avatarScale, useAvatarStore.getState().groundY);
-      // Conservative horizontal margin prevents the full body from leaving the monitor.
-      const marginX = Math.min(
-        window.innerWidth * 0.42,
-        Math.max(200, 300 * avatarScale + 40)
+      // Horizontal margin target: 8% of viewport width.
+      const marginX = Math.max(
+        window.innerWidth * 0.08,
+        Math.max(80, 120 * avatarScale)
       );
 
       const newBounds = {
@@ -190,13 +191,22 @@ export default function AvatarController() {
 
       useAvatarStore.getState().setBounds(newBounds);
 
-      // Clamp current position to new bounds
-      const currentPos = useAvatarStore.getState().position;
+      const state = useAvatarStore.getState();
+
+      // On launch, place avatar at bottom-right based on the actual window resolution.
+      if (!hasInitializedBottomRightRef.current) {
+        state.setPosition({ x: newBounds.maxX, y: newBounds.maxY });
+        hasInitializedBottomRightRef.current = true;
+        return;
+      }
+
+      // On subsequent resizes, preserve current position while clamping to new bounds.
+      const currentPos = state.position;
       const clampedX = Math.max(newBounds.minX, Math.min(newBounds.maxX, currentPos.x));
       const clampedY = newBounds.maxY;
 
       if (clampedX !== currentPos.x || clampedY !== currentPos.y) {
-        useAvatarStore.getState().setPosition({ x: clampedX, y: clampedY });
+        state.setPosition({ x: clampedX, y: clampedY });
       }
     };
 
@@ -207,7 +217,7 @@ export default function AvatarController() {
 
   // Autonomous movement loop
   useEffect(() => {
-    if (FORCE_RIGHT_IDLE) {
+    if (FORCE_IDLE_NO_AUTOMOVE) {
       if (autoMoveTimerRef.current) {
         clearTimeout(autoMoveTimerRef.current);
       }
@@ -233,12 +243,11 @@ export default function AvatarController() {
 
   // Emotion-driven motion behavior
   useEffect(() => {
-    if (FORCE_RIGHT_IDLE) {
+    if (FORCE_IDLE_NO_AUTOMOVE) {
       const state = useAvatarStore.getState();
       state.setTargetPosition(null);
       state.setIsMoving(false);
       state.setAnimationState('idle');
-      state.setFacingRight(true);
       return;
     }
 
@@ -269,11 +278,11 @@ export default function AvatarController() {
 
   // Movement logic
   useFrame((_, delta) => {
-    if (FORCE_RIGHT_IDLE) {
-      const rightX = bounds.maxX;
+    if (FORCE_IDLE_NO_AUTOMOVE) {
+      const clampedX = clamp(position.x, bounds.minX, bounds.maxX);
       const floorY = bounds.maxY;
-      if (Math.abs(position.x - rightX) > 0.05 || Math.abs(position.y - floorY) > 0.05) {
-        setPosition({ x: rightX, y: floorY });
+      if (Math.abs(position.x - clampedX) > 0.05 || Math.abs(position.y - floorY) > 0.05) {
+        setPosition({ x: clampedX, y: floorY });
       }
       if (targetPosition) {
         setTargetPosition(null);
@@ -283,9 +292,6 @@ export default function AvatarController() {
       }
       if (animationState !== 'idle') {
         setAnimationState('idle');
-      }
-      if (!facingRight) {
-        setFacingRight(true);
       }
       horizontalSpeedRef.current = 0;
       verticalVelocityRef.current = 0;

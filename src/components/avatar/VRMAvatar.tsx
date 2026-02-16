@@ -4,7 +4,7 @@ import { VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import { invoke } from '@tauri-apps/api/core';
-import { useAvatarStore } from '../../stores/avatarStore';
+import { useAvatarStore, type AvatarInteractionBounds } from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getEmotionTuning } from '../../config/emotionTuning';
 
@@ -13,9 +13,9 @@ const logToTerminal = (message: string) => {
   invoke('log_to_terminal', { message }).catch(console.error);
 };
 
-const WORLD_Y_RANGE = 2;
-const ROOT_Y_OFFSET = -1.0;
 const GROUND_MARGIN_PX = 8;
+const VISIBILITY_RECOVERY_COOLDOWN_MS = 1200;
+const MAX_GROUND_SOLVE_RETRIES = 120;
 const IDLE_YAW = Math.PI;
 const RIGHT_WALK_YAW = Math.PI * 1.12;
 const LEFT_WALK_YAW = Math.PI * 0.88;
@@ -289,6 +289,17 @@ export default function VRMAvatar() {
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const clockRef = useRef(new THREE.Clock());
   const modelMinYRef = useRef(-1.0);
+  const interactionBoxRef = useRef(new THREE.Box3());
+  const interactionCornersRef = useRef(
+    Array.from({ length: 8 }, () => new THREE.Vector3())
+  );
+  const projectedCornerRef = useRef(new THREE.Vector3());
+  const lastInteractionBoundsRef = useRef<AvatarInteractionBounds | null>(null);
+  const lastVisibilityRecoveryAtRef = useRef(0);
+  const ndcProbeRef = useRef(new THREE.Vector3());
+  const unprojectedProbeRef = useRef(new THREE.Vector3());
+  const rayDirectionProbeRef = useRef(new THREE.Vector3());
+  const worldProbeRef = useRef(new THREE.Vector3());
   const prevScreenPosRef = useRef<{ x: number; y: number } | null>(null);
   const movementSpeedRef = useRef(0);
   const gaitPhaseRef = useRef(Math.random() * Math.PI * 2);
@@ -307,6 +318,7 @@ export default function VRMAvatar() {
     setIsLoading,
     setLoadError,
     setGroundY,
+    setInteractionBounds,
     position,
     targetPosition,
     setPosition,
@@ -334,17 +346,48 @@ export default function VRMAvatar() {
   const { settings } = useSettingsStore();
   const vrm = useAvatarStore((state) => state.vrm);
 
-  const positionToRootWorldY = useCallback((posY: number, viewportHeight: number) => {
-    const worldY = -((posY / viewportHeight) * 2 - 1) * WORLD_Y_RANGE;
-    return worldY + ROOT_Y_OFFSET;
-  }, []);
+  const screenToWorldAtZ = useCallback((screenX: number, screenY: number, targetZ = 0) => {
+    const canvas = gl.domElement;
+    const width = canvas.clientWidth || window.innerWidth;
+    const height = canvas.clientHeight || window.innerHeight;
+    if (width <= 0 || height <= 0) return null;
+
+    const ndc = ndcProbeRef.current.set(
+      (screenX / width) * 2 - 1,
+      -((screenY / height) * 2 - 1),
+      0.5
+    );
+    const unprojected = unprojectedProbeRef.current.copy(ndc).unproject(camera);
+    const rayDirection = rayDirectionProbeRef.current.copy(unprojected).sub(camera.position);
+
+    if (!Number.isFinite(rayDirection.z) || Math.abs(rayDirection.z) < 1e-6) return null;
+
+    const t = (targetZ - camera.position.z) / rayDirection.z;
+    if (!Number.isFinite(t)) return null;
+
+    const world = worldProbeRef.current
+      .copy(camera.position)
+      .add(rayDirection.multiplyScalar(t));
+
+    if (!Number.isFinite(world.x) || !Number.isFinite(world.y) || !Number.isFinite(world.z)) {
+      return null;
+    }
+
+    return { x: world.x, y: world.y, z: world.z };
+  }, [camera, gl.domElement]);
+
+  const positionToRootWorldY = useCallback((posY: number): number | null => {
+    const world = screenToWorldAtZ(0, posY, 0);
+    return world?.y ?? null;
+  }, [screenToWorldAtZ]);
 
   const feetScreenYFromPosition = useCallback((posY: number, scale: number): number | null => {
     const canvas = gl.domElement;
     const height = canvas.clientHeight || window.innerHeight;
     if (height <= 0) return null;
 
-    const rootWorldY = positionToRootWorldY(posY, height);
+    const rootWorldY = positionToRootWorldY(posY);
+    if (rootWorldY === null) return null;
     const feetWorldY = rootWorldY + modelMinYRef.current * scale;
     const feetPoint = new THREE.Vector3(0, feetWorldY, 0);
     feetPoint.project(camera);
@@ -375,6 +418,130 @@ export default function VRMAvatar() {
 
     return Math.max(0, Math.min(height, (low + high) / 2));
   }, [feetScreenYFromPosition, gl.domElement]);
+
+  const publishInteractionBounds = useCallback(() => {
+    const group = groupRef.current;
+    if (!group) {
+      if (lastInteractionBoundsRef.current !== null) {
+        lastInteractionBoundsRef.current = null;
+        setInteractionBounds(null);
+      }
+      return;
+    }
+
+    const canvas = gl.domElement;
+    const width = canvas.clientWidth || window.innerWidth;
+    const height = canvas.clientHeight || window.innerHeight;
+    if (width <= 0 || height <= 0) return;
+
+    const boundsBox = interactionBoxRef.current.setFromObject(group);
+    if (boundsBox.isEmpty()) return;
+
+    const min = boundsBox.min;
+    const max = boundsBox.max;
+    const corners = interactionCornersRef.current;
+    corners[0].set(min.x, min.y, min.z);
+    corners[1].set(min.x, min.y, max.z);
+    corners[2].set(min.x, max.y, min.z);
+    corners[3].set(min.x, max.y, max.z);
+    corners[4].set(max.x, min.y, min.z);
+    corners[5].set(max.x, min.y, max.z);
+    corners[6].set(max.x, max.y, min.z);
+    corners[7].set(max.x, max.y, max.z);
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    for (const corner of corners) {
+      const projected = projectedCornerRef.current.copy(corner).project(camera);
+      if (!Number.isFinite(projected.x) || !Number.isFinite(projected.y)) continue;
+
+      const screenX = (projected.x * 0.5 + 0.5) * width;
+      const screenY = (-projected.y * 0.5 + 0.5) * height;
+
+      minX = Math.min(minX, screenX);
+      minY = Math.min(minY, screenY);
+      maxX = Math.max(maxX, screenX);
+      maxY = Math.max(maxY, screenY);
+    }
+
+    if (
+      !Number.isFinite(minX) ||
+      !Number.isFinite(minY) ||
+      !Number.isFinite(maxX) ||
+      !Number.isFinite(maxY)
+    ) {
+      return;
+    }
+
+    const padX = Math.max(16, width * 0.012);
+    const padY = Math.max(24, height * 0.02);
+
+    const nextBounds: AvatarInteractionBounds = {
+      left: Math.max(0, minX - padX),
+      right: Math.min(width, maxX + padX),
+      top: Math.max(0, minY - padY),
+      bottom: Math.min(height, maxY + padY),
+    };
+
+    const rawWidth = Math.max(1, maxX - minX);
+    const rawHeight = Math.max(1, maxY - minY);
+    const rawArea = rawWidth * rawHeight;
+    const visibleWidth = Math.max(
+      0,
+      Math.min(width, nextBounds.right) - Math.max(0, nextBounds.left)
+    );
+    const visibleHeight = Math.max(
+      0,
+      Math.min(height, nextBounds.bottom) - Math.max(0, nextBounds.top)
+    );
+    const visibleArea = visibleWidth * visibleHeight;
+    const visibleRatio = visibleArea / rawArea;
+    const fullyOutOfViewport =
+      maxX < -80 || minX > width + 80 || maxY < -80 || minY > height + 80;
+    const mostlyInvisible = fullyOutOfViewport || visibleRatio < 0.08;
+
+    if (mostlyInvisible && !isDragging && !isRotating) {
+      const now = performance.now();
+      if (now - lastVisibilityRecoveryAtRef.current >= VISIBILITY_RECOVERY_COOLDOWN_MS) {
+        lastVisibilityRecoveryAtRef.current = now;
+        const fallbackX = clamp(width * 0.82, bounds.minX, bounds.maxX);
+        const avatarScale = settings.avatar?.scale || 1.0;
+        const solvedGroundY = solveGroundPositionY(avatarScale);
+        const fallbackY = solvedGroundY ?? bounds.maxY;
+        if (solvedGroundY !== null) {
+          setGroundY(solvedGroundY);
+        }
+        setPosition({ x: fallbackX, y: fallbackY });
+      }
+    }
+
+    const prevBounds = lastInteractionBoundsRef.current;
+    const hasMeaningfulChange =
+      !prevBounds ||
+      Math.abs(prevBounds.left - nextBounds.left) > 1 ||
+      Math.abs(prevBounds.right - nextBounds.right) > 1 ||
+      Math.abs(prevBounds.top - nextBounds.top) > 1 ||
+      Math.abs(prevBounds.bottom - nextBounds.bottom) > 1;
+
+    if (hasMeaningfulChange) {
+      lastInteractionBoundsRef.current = nextBounds;
+      setInteractionBounds(nextBounds);
+    }
+  }, [
+    camera,
+    gl.domElement,
+    setInteractionBounds,
+    isDragging,
+    isRotating,
+    bounds,
+    setPosition,
+    settings.avatar?.scale,
+    solveGroundPositionY,
+    setGroundY,
+  ]);
 
   // Check if click is on head area (upper 30% of the avatar)
   const isHeadClick = useCallback((e: ThreeEvent<PointerEvent>) => {
@@ -633,12 +800,13 @@ export default function VRMAvatar() {
 
     return () => {
       setGroundY(null);
+      setInteractionBounds(null);
       if (vrm) {
         VRMUtils.deepDispose(vrm.scene);
         setVRM(null);
       }
     };
-  }, [settings.vrmModelPath, setGroundY]);
+  }, [settings.vrmModelPath, setGroundY, setInteractionBounds]);
 
   useEffect(() => {
     hingeProfileRef.current = null;
@@ -649,16 +817,37 @@ export default function VRMAvatar() {
     if (!vrm) return;
 
     const scale = settings.avatar?.scale || 1.0;
+    let retryFrame: number | null = null;
+    let retries = 0;
+
     const recomputeGround = () => {
       const groundY = solveGroundPositionY(scale);
       if (groundY !== null) {
         setGroundY(groundY);
+        return true;
       }
+      return false;
     };
 
-    recomputeGround();
-    window.addEventListener('resize', recomputeGround);
-    return () => window.removeEventListener('resize', recomputeGround);
+    const trySolveGround = () => {
+      if (recomputeGround()) {
+        return;
+      }
+      if (retries >= MAX_GROUND_SOLVE_RETRIES) {
+        return;
+      }
+      retries += 1;
+      retryFrame = window.requestAnimationFrame(trySolveGround);
+    };
+
+    trySolveGround();
+    window.addEventListener('resize', trySolveGround);
+    return () => {
+      if (retryFrame !== null) {
+        window.cancelAnimationFrame(retryFrame);
+      }
+      window.removeEventListener('resize', trySolveGround);
+    };
   }, [vrm, settings.avatar?.scale, setGroundY, solveGroundPositionY]);
 
   // Animation frame update - Base pose and locomotion only
@@ -724,6 +913,7 @@ export default function VRMAvatar() {
         groupRef.current.rotation.x = manualRotation.x;
         groupRef.current.rotation.y = smoothedYawRef.current + manualRotation.y;
       }
+      publishInteractionBounds();
       return;
     }
 
@@ -1355,30 +1545,19 @@ export default function VRMAvatar() {
       groupRef.current.rotation.x = manualRotation.x;
       groupRef.current.rotation.y = smoothedYawRef.current + manualRotation.y;
     }
+    publishInteractionBounds();
   });
 
   if (!vrm) return null;
 
-  // Calculate screen position (convert 2D screen pos to 3D world pos)
-  const screenToWorld = () => {
-    const canvas = gl.domElement;
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-
-    // Normalize position to -1 to 1 range, then scale
-    const x = ((position.x / width) * 2 - 1) * 3;
-    const y = -((position.y / height) * 2 - 1) * 2;
-
-    return { x, y };
-  };
-
-  const worldPos = screenToWorld();
+  const worldPos = screenToWorldAtZ(position.x, position.y, 0);
+  if (!worldPos) return null;
   const avatarScale = settings.avatar?.scale || 1.0;
 
   return (
     <group
       ref={groupRef}
-      position={[worldPos.x, worldPos.y - 1.0, 0]}
+      position={[worldPos.x, worldPos.y, worldPos.z]}
       rotation={[manualRotation.x, smoothedYawRef.current + manualRotation.y, 0]}
       scale={[avatarScale, avatarScale, avatarScale]}
       onPointerDown={handlePointerDown}
