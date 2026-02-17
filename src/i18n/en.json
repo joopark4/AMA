@@ -1,0 +1,96 @@
+{
+  "app": {
+    "title": "MyPartnerAI",
+    "loading": "Loading..."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "llm": {
+      "title": "AI Model",
+      "provider": "Provider",
+      "model": "Model",
+      "apiKey": "API Key",
+      "endpoint": "Endpoint",
+      "providers": {
+        "ollama": "Ollama (Local)",
+        "localai": "LocalAI (Local)",
+        "claude": "Claude (Anthropic)",
+        "openai": "OpenAI",
+        "gemini": "Google Gemini"
+      },
+      "expand": "Expand",
+      "collapse": "Collapse"
+    },
+    "voice": {
+      "title": "Voice",
+      "stt": {
+        "title": "Speech Recognition (STT)",
+        "engine": "Engine",
+        "model": "Model",
+        "engines": {
+          "whisper": "Whisper",
+          "moonshine": "Moonshine",
+          "vosk": "Vosk"
+        }
+      },
+      "tts": {
+        "title": "Text-to-Speech (TTS)",
+        "engine": "Engine",
+        "voice": "Voice",
+        "engines": {
+          "qwen3": "Qwen3-TTS",
+          "kokoro": "Kokoro-82M",
+          "melo": "MeloTTS-Korean"
+        }
+      }
+    },
+    "avatar": {
+      "title": "Avatar",
+      "name": "Avatar Name",
+      "namePlaceholder": "e.g. Eunyeon",
+      "model": "VRM Model",
+      "select": "Select Model"
+    },
+    "save": "Save",
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "licenses": {
+      "title": "Open Source / Model Licenses",
+      "description": "Licenses and reference links for open-source software, AI services, and models used by this app.",
+      "openSourceTitle": "Open Source",
+      "modelTitle": "AI Services / Models",
+      "columns": {
+        "name": "Item",
+        "usage": "Usage",
+        "license": "License / Terms",
+        "link": "Link"
+      },
+      "note": "This information is for reference. Always verify the latest LICENSE and terms before redistribution or production use.",
+      "expand": "Expand",
+      "collapse": "Collapse"
+    }
+  },
+  "status": {
+    "idle": "Idle",
+    "listening": "Listening...",
+    "processing": "Processing...",
+    "speaking": "Speaking...",
+    "error": "Error"
+  },
+  "chat": {
+    "placeholder": "Enter your message...",
+    "send": "Send",
+    "voiceInput": "Voice Input"
+  },
+  "onboarding": {
+    "avatarNameTitle": "Set Avatar Name",
+    "avatarNameDescription": "This is your first launch. Please enter the avatar name you want to use.",
+    "confirmAvatarName": "Save Name"
+  },
+  "errors": {
+    "llmConnection": "Cannot connect to AI server",
+    "microphoneAccess": "Microphone access required",
+    "vrmLoad": "Cannot load VRM model"
+  }
+}
