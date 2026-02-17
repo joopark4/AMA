@@ -13,6 +13,7 @@ const log = (...args: any[]) => {
 class TTSRouter {
   private client: TTSClient;
   private audioContext: AudioContext | null = null;
+  private activePlaybackStopper: (() => void) | null = null;
 
   constructor() {
     this.client = getSupertonicClient();
@@ -34,6 +35,17 @@ class TTSRouter {
       return await this.client.isAvailable();
     } catch {
       return false;
+    }
+  }
+
+  stopPlayback(): void {
+    const stopper = this.activePlaybackStopper;
+    this.activePlaybackStopper = null;
+    if (!stopper) return;
+    try {
+      stopper();
+    } catch (error) {
+      log('Failed to stop active playback:', error);
     }
   }
 
@@ -68,6 +80,7 @@ class TTSRouter {
   // Data URL 방식으로 재생 (Tauri WebView 호환)
   async playAudio(text: string): Promise<void> {
     log('playAudio called');
+    this.stopPlayback();
     const { settings } = useSettingsStore.getState();
     const result = await this.synthesize(text, {
       voice: settings.tts.voice,
@@ -104,11 +117,32 @@ class TTSRouter {
       audio.preload = 'auto';
       let released = false;
       let lastLoggedSecond = -1;
+      let settled = false;
+      let stopCurrent: (() => void) | null = null;
 
       const release = () => {
         if (released) return;
         released = true;
         URL.revokeObjectURL(objectUrl);
+      };
+
+      const clearHandlers = () => {
+        audio.onloadedmetadata = null;
+        audio.oncanplaythrough = null;
+        audio.onended = null;
+        audio.onerror = null;
+        audio.ontimeupdate = null;
+      };
+
+      const settle = (done: () => void) => {
+        if (settled) return;
+        settled = true;
+        if (this.activePlaybackStopper === stopCurrent) {
+          this.activePlaybackStopper = null;
+        }
+        clearHandlers();
+        release();
+        done();
       };
 
       audio.onloadedmetadata = () => {
@@ -121,15 +155,13 @@ class TTSRouter {
 
       audio.onended = () => {
         log('Audio playback ended at:', audio.currentTime);
-        release();
-        resolve();
+        settle(resolve);
       };
 
       audio.onerror = () => {
         const mediaError = audio.error?.message || audio.error?.code || 'unknown';
         log('Audio error:', mediaError);
-        release();
-        reject(new Error(`Audio playback error: ${mediaError}`));
+        settle(() => reject(new Error(`Audio playback error: ${mediaError}`)));
       };
 
       audio.ontimeupdate = () => {
@@ -140,13 +172,26 @@ class TTSRouter {
         }
       };
 
+      stopCurrent = () => {
+        if (settled) return;
+        log('HTMLAudio playback cancelled');
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.src = '';
+        } catch {
+          // ignore cancellation cleanup errors
+        }
+        settle(resolve);
+      };
+      this.activePlaybackStopper = stopCurrent;
+
       audio.src = objectUrl;
       audio.play().then(() => {
         log('Audio play() started, duration:', audio.duration);
       }).catch((err) => {
-        release();
         log('Audio play() failed:', err);
-        reject(err);
+        settle(() => reject(err));
       });
     });
   }
@@ -166,13 +211,52 @@ class TTSRouter {
     source.connect(gain);
     gain.connect(audioContext.destination);
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let stopCurrent: (() => void) | null = null;
+
+      const settle = (done: () => void) => {
+        if (settled) return;
+        settled = true;
+        if (this.activePlaybackStopper === stopCurrent) {
+          this.activePlaybackStopper = null;
+        }
+        source.onended = null;
+        try {
+          source.disconnect();
+        } catch {
+          // ignore disconnect errors
+        }
+        try {
+          gain.disconnect();
+        } catch {
+          // ignore disconnect errors
+        }
+        done();
+      };
+
+      stopCurrent = () => {
+        if (settled) return;
+        log('WebAudio playback cancelled');
+        try {
+          source.stop(0);
+        } catch {
+          // source may already be stopped
+        }
+        settle(resolve);
+      };
+      this.activePlaybackStopper = stopCurrent;
+
       source.onended = () => {
         log('WebAudio playback ended');
-        resolve();
+        settle(resolve);
       };
-      source.start(0);
-      log('WebAudio playback started');
+      try {
+        source.start(0);
+        log('WebAudio playback started');
+      } catch (err) {
+        settle(() => reject(err));
+      }
     });
   }
 }

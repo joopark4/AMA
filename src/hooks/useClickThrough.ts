@@ -57,10 +57,10 @@ export function useClickThrough() {
   const updateClickThrough = useCallback(async (shouldIgnore: boolean) => {
     // Only update if state changed
     if (lastStateRef.current === shouldIgnore) return;
-    lastStateRef.current = shouldIgnore;
 
     try {
       await windowManager.setIgnoreCursorEvents(shouldIgnore);
+      lastStateRef.current = shouldIgnore;
     } catch (error) {
       console.error('Failed to set ignore cursor events:', error);
     }
