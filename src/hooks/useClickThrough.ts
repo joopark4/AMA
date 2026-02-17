@@ -8,6 +8,9 @@ const POLL_INTERVAL = 30;
 // Delay before enabling click-through after leaving interactive area
 const CLICK_THROUGH_DELAY = 180;
 const CURSOR_SANITY_MARGIN = 120;
+const AVATAR_FALLBACK_HALF_WIDTH = 280;
+const AVATAR_FALLBACK_HEIGHT_ABOVE_FEET = 780;
+const AVATAR_FALLBACK_HEIGHT_BELOW_FEET = 160;
 
 function isPointInsideRect(x: number, y: number, rect: DOMRect): boolean {
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
@@ -105,19 +108,13 @@ export function useClickThrough() {
       const avatarState = useAvatarStore.getState();
       const settingsState = useSettingsStore.getState();
       const avatarPos = avatarState.position;
-      const avatarScale = settingsState.settings.avatar?.scale || 1.0;
       const interactionBounds = avatarState.interactionBounds;
 
-      // Avatar position is feet-anchored, so use a feet-based hitbox
-      // that covers the whole body (especially upper body/head) reliably.
-      const hitboxWidth = Math.max(360, 520 * avatarScale);
-      const bodyHeightAboveFeet = Math.max(620, 860 * avatarScale);
-      const feetPadding = Math.max(90, 140 * avatarScale);
-
-      const avatarLeft = avatarPos.x - hitboxWidth / 2;
-      const avatarRight = avatarPos.x + hitboxWidth / 2;
-      const avatarTop = avatarPos.y - bodyHeightAboveFeet;
-      const avatarBottom = avatarPos.y + feetPadding;
+      // Fallback hitbox uses a simple fixed rectangle centered on the avatar feet anchor.
+      const avatarLeft = avatarPos.x - AVATAR_FALLBACK_HALF_WIDTH;
+      const avatarRight = avatarPos.x + AVATAR_FALLBACK_HALF_WIDTH;
+      const avatarTop = avatarPos.y - AVATAR_FALLBACK_HEIGHT_ABOVE_FEET;
+      const avatarBottom = avatarPos.y + AVATAR_FALLBACK_HEIGHT_BELOW_FEET;
 
       const isOverAvatar = interactionBounds
         ? anyCursorMatches(

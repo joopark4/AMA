@@ -360,6 +360,79 @@ async function checkCloudModels(
   return checkClaudeModels(apiKey, candidates);
 }
 
+function createModelStatusMap(models: string[], status: ModelStatus): Record<string, ModelStatus> {
+  return Object.fromEntries(models.map((model) => [model, status])) as Record<string, ModelStatus>;
+}
+
+function pickFirstAvailableModel(
+  candidates: string[],
+  statuses: Record<string, ModelStatus>,
+  currentModel: string
+): string | undefined {
+  if (statuses[currentModel] === 'available') {
+    return undefined;
+  }
+  return candidates.find((model) => statuses[model] === 'available');
+}
+
+interface CloudModelEvaluation {
+  modelListForProvider: string[];
+  statuses: Record<string, ModelStatus>;
+  note: string | null;
+  recommendedModel?: string;
+}
+
+async function evaluateCloudProviderModels(
+  provider: CloudProvider,
+  apiKey: string,
+  currentModel: string
+): Promise<CloudModelEvaluation> {
+  const trimmedApiKey = (apiKey || '').trim();
+
+  if (!trimmedApiKey) {
+    const defaultCandidates = buildCloudCandidateModels(provider, currentModel);
+    return {
+      modelListForProvider: defaultCandidates,
+      statuses: createModelStatusMap(defaultCandidates, 'unknown'),
+      note: 'API Key를 입력하면 사용 가능한 모델을 자동 확인합니다.',
+    };
+  }
+
+  try {
+    const listResult = await listCloudModels(provider, trimmedApiKey);
+    if (listResult.models.length > 0) {
+      const candidateModels = buildCloudCandidateModels(provider, currentModel, listResult.models);
+      const availableSet = new Set(listResult.models);
+      const statuses = Object.fromEntries(
+        candidateModels.map((model) => [model, availableSet.has(model) ? 'available' : 'unknown'])
+      ) as Record<string, ModelStatus>;
+
+      return {
+        modelListForProvider: listResult.models,
+        statuses,
+        note: listResult.note || null,
+        recommendedModel: availableSet.has(currentModel)
+          ? undefined
+          : candidateModels.find((model) => availableSet.has(model)),
+      };
+    }
+  } catch {
+    // Fallback: static candidate probes (works even when list endpoints are blocked)
+  }
+
+  const fallbackCandidates = buildCloudCandidateModels(provider, currentModel);
+  const checkResult = await checkCloudModels(provider, trimmedApiKey, fallbackCandidates);
+  const fallbackNote =
+    checkResult.note || '모델 목록 API 조회에 실패하여 기본 후보 모델로 사용 가능 여부를 점검했습니다.';
+
+  return {
+    modelListForProvider: fallbackCandidates,
+    statuses: checkResult.statuses,
+    note: fallbackNote,
+    recommendedModel: pickFirstAvailableModel(fallbackCandidates, checkResult.statuses, currentModel),
+  };
+}
+
 function getModelStatusLabel(status: ModelStatus): string {
   if (status === 'available') return '사용 가능';
   if (status === 'unavailable') return '사용 불가';
@@ -431,89 +504,38 @@ export default function LLMSettings() {
     }
 
     let isCancelled = false;
-    let timer: number | undefined;
-
-    const checkModels = async () => {
+    const runCloudModelCheck = async () => {
       setIsLoadingModels(true);
-
-      const apiKey = (settings.llm.apiKey || '').trim();
-      if (!apiKey) {
-        const defaultCandidates = buildCloudCandidateModels(currentProvider, settings.llm.model);
-        if (!isCancelled) {
-          setCloudModels((prev) => ({ ...prev, [currentProvider]: defaultCandidates }));
-          setModelStatuses(
-            Object.fromEntries(defaultCandidates.map((model) => [model, 'unknown'])) as Record<string, ModelStatus>
-          );
-          setModelCheckNote('API Key를 입력하면 사용 가능한 모델을 자동 확인합니다.');
-          setIsLoadingModels(false);
-        }
-        return;
-      }
-
       try {
-        const listResult = await listCloudModels(currentProvider, apiKey);
+        const evaluation = await evaluateCloudProviderModels(
+          currentProvider,
+          settings.llm.apiKey || '',
+          settings.llm.model
+        );
         if (isCancelled) return;
 
-        if (listResult.models.length > 0) {
-          const nextModels = buildCloudCandidateModels(
-            currentProvider,
-            settings.llm.model,
-            listResult.models
-          );
-          const availableSet = new Set(listResult.models);
-          setCloudModels((prev) => ({ ...prev, [currentProvider]: listResult.models }));
-          setModelStatuses(
-            Object.fromEntries(
-              nextModels.map((model) => [model, availableSet.has(model) ? 'available' : 'unknown'])
-            ) as Record<string, ModelStatus>
-          );
-          setModelCheckNote(listResult.note || null);
-          setIsLoadingModels(false);
-
-          if (!availableSet.has(settings.llm.model)) {
-            const firstAvailable = nextModels.find((model) => availableSet.has(model));
-            if (firstAvailable) {
-              setLLMSettings({ model: firstAvailable });
-            }
-          }
-          return;
+        setCloudModels((prev) => ({ ...prev, [currentProvider]: evaluation.modelListForProvider }));
+        setModelStatuses(evaluation.statuses);
+        setModelCheckNote(evaluation.note);
+        if (evaluation.recommendedModel) {
+          setLLMSettings({ model: evaluation.recommendedModel });
         }
-      } catch {
-        // Fallback: static candidate probes (works even when list endpoints are blocked)
-      }
-
-      const fallbackCandidates = buildCloudCandidateModels(
-        currentProvider,
-        settings.llm.model
-      );
-      setCloudModels((prev) => ({ ...prev, [currentProvider]: fallbackCandidates }));
-
-      const result = await checkCloudModels(currentProvider, apiKey, fallbackCandidates);
-      if (isCancelled) return;
-
-      setModelStatuses(result.statuses);
-      setModelCheckNote(
-        result.note || '모델 목록 API 조회에 실패하여 기본 후보 모델로 사용 가능 여부를 점검했습니다.'
-      );
-      setIsLoadingModels(false);
-
-      const availableModels = fallbackCandidates.filter((model) => result.statuses[model] === 'available');
-      if (availableModels.length > 0 && result.statuses[settings.llm.model] !== 'available') {
-        setLLMSettings({ model: availableModels[0] });
+      } catch (error) {
+        if (isCancelled) return;
+        const fallbackCandidates = buildCloudCandidateModels(currentProvider, settings.llm.model);
+        setCloudModels((prev) => ({ ...prev, [currentProvider]: fallbackCandidates }));
+        setModelStatuses(createModelStatusMap(fallbackCandidates, 'unknown'));
+        setModelCheckNote(`모델 확인 중 오류가 발생했습니다: ${normalizeError(error)}`);
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingModels(false);
+        }
       }
     };
 
-    timer = window.setTimeout(() => {
-      checkModels().catch((error) => {
+    const timer = window.setTimeout(() => {
+      runCloudModelCheck().catch((error) => {
         if (isCancelled) return;
-        const fallbackCandidates = buildCloudCandidateModels(
-          currentProvider,
-          settings.llm.model
-        );
-        setCloudModels((prev) => ({ ...prev, [currentProvider]: fallbackCandidates }));
-        setModelStatuses(
-          Object.fromEntries(fallbackCandidates.map((model) => [model, 'unknown'])) as Record<string, ModelStatus>
-        );
         setModelCheckNote(`모델 확인 중 오류가 발생했습니다: ${normalizeError(error)}`);
         setIsLoadingModels(false);
       });
@@ -521,9 +543,7 @@ export default function LLMSettings() {
 
     return () => {
       isCancelled = true;
-      if (typeof timer === 'number') {
-        window.clearTimeout(timer);
-      }
+      window.clearTimeout(timer);
     };
   }, [isCloudProvider, currentProvider, settings.llm.apiKey, settings.llm.model, setLLMSettings]);
 
