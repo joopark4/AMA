@@ -3,6 +3,8 @@ import type { Message, LLMResponse, StreamCallbacks, ChatOptions, LLMClient } fr
 import { useSettingsStore } from '../../stores/settingsStore';
 
 export class ClaudeClient implements LLMClient {
+  private static readonly DEFAULT_MAX_TOKENS = 2048;
+
   private getClient(): Anthropic {
     const { settings } = useSettingsStore.getState();
     const apiKey = settings.llm.apiKey;
@@ -22,32 +24,78 @@ export class ClaudeClient implements LLMClient {
     return settings.llm.model || 'claude-sonnet-4-5';
   }
 
-  async chat(messages: Message[], options?: ChatOptions): Promise<LLMResponse> {
-    const client = this.getClient();
-    const model = this.getModel();
+  private getSystemMessage(messages: Message[], options?: ChatOptions): string | undefined {
+    return options?.systemPrompt || messages.find((m) => m.role === 'system')?.content;
+  }
 
-    const anthropicMessages = messages
+  private buildTextMessages(messages: Message[]): Anthropic.Messages.MessageParam[] {
+    return messages
       .filter((m) => m.role !== 'system')
       .map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }));
+  }
 
-    const systemMessage = options?.systemPrompt ||
-      messages.find((m) => m.role === 'system')?.content;
+  private buildVisionMessages(messages: Message[], imageBase64: string): Anthropic.Messages.MessageParam[] {
+    const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
+    if (!lastUserMessage) {
+      throw new Error('No user message found');
+    }
 
-    const response = await client.messages.create({
-      model,
-      max_tokens: options?.maxTokens ?? 2048,
-      system: systemMessage,
-      messages: anthropicMessages,
-    });
+    return [
+      ...messages.slice(0, -1).filter((m) => m.role !== 'system').map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+      {
+        role: 'user' as const,
+        content: [
+          {
+            type: 'image' as const,
+            source: {
+              type: 'base64' as const,
+              media_type: 'image/png' as const,
+              data: imageBase64,
+            },
+          },
+          {
+            type: 'text' as const,
+            text: lastUserMessage.content,
+          },
+        ],
+      },
+    ];
+  }
 
+  private toLLMResponse(response: Anthropic.Messages.Message): LLMResponse {
     const textContent = response.content.find((c) => c.type === 'text');
     return {
       content: textContent?.type === 'text' ? textContent.text : '',
       finishReason: response.stop_reason || undefined,
     };
+  }
+
+  private async createMessageResponse(
+    messages: Anthropic.Messages.MessageParam[],
+    systemMessage: string | undefined,
+    options?: ChatOptions
+  ): Promise<LLMResponse> {
+    const client = this.getClient();
+    const model = this.getModel();
+    const response = await client.messages.create({
+      model,
+      max_tokens: options?.maxTokens ?? ClaudeClient.DEFAULT_MAX_TOKENS,
+      system: systemMessage,
+      messages,
+    });
+    return this.toLLMResponse(response);
+  }
+
+  async chat(messages: Message[], options?: ChatOptions): Promise<LLMResponse> {
+    const anthropicMessages = this.buildTextMessages(messages);
+    const systemMessage = this.getSystemMessage(messages, options);
+    return this.createMessageResponse(anthropicMessages, systemMessage, options);
   }
 
   async chatStream(
@@ -58,20 +106,13 @@ export class ClaudeClient implements LLMClient {
     const client = this.getClient();
     const model = this.getModel();
 
-    const anthropicMessages = messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }));
-
-    const systemMessage = options?.systemPrompt ||
-      messages.find((m) => m.role === 'system')?.content;
+    const anthropicMessages = this.buildTextMessages(messages);
+    const systemMessage = this.getSystemMessage(messages, options);
 
     try {
       const stream = await client.messages.stream({
         model,
-        max_tokens: options?.maxTokens ?? 2048,
+        max_tokens: options?.maxTokens ?? ClaudeClient.DEFAULT_MAX_TOKENS,
         system: systemMessage,
         messages: anthropicMessages,
       });
@@ -106,52 +147,8 @@ export class ClaudeClient implements LLMClient {
     imageBase64: string,
     options?: ChatOptions
   ): Promise<LLMResponse> {
-    const client = this.getClient();
-    const model = this.getModel();
-
-    const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
-    if (!lastUserMessage) {
-      throw new Error('No user message found');
-    }
-
-    const anthropicMessages = [
-      ...messages.slice(0, -1).filter((m) => m.role !== 'system').map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-      {
-        role: 'user' as const,
-        content: [
-          {
-            type: 'image' as const,
-            source: {
-              type: 'base64' as const,
-              media_type: 'image/png' as const,
-              data: imageBase64,
-            },
-          },
-          {
-            type: 'text' as const,
-            text: lastUserMessage.content,
-          },
-        ],
-      },
-    ];
-
-    const systemMessage = options?.systemPrompt ||
-      messages.find((m) => m.role === 'system')?.content;
-
-    const response = await client.messages.create({
-      model,
-      max_tokens: options?.maxTokens ?? 2048,
-      system: systemMessage,
-      messages: anthropicMessages,
-    });
-
-    const textContent = response.content.find((c) => c.type === 'text');
-    return {
-      content: textContent?.type === 'text' ? textContent.text : '',
-      finishReason: response.stop_reason || undefined,
-    };
+    const anthropicMessages = this.buildVisionMessages(messages, imageBase64);
+    const systemMessage = this.getSystemMessage(messages, options);
+    return this.createMessageResponse(anthropicMessages, systemMessage, options);
   }
 }
