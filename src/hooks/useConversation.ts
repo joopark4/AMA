@@ -20,8 +20,9 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
-// System prompt for the AI assistant
-const SYSTEM_PROMPT = `당신은 "은연"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
+function buildSystemPrompt(avatarName: string): string {
+  const normalizedName = avatarName.trim() || '아바타';
+  return `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
 말투: 반말을 사용하고, 짧고 자연스러운 대화체로 말합니다.
 특징:
@@ -29,6 +30,7 @@ const SYSTEM_PROMPT = `당신은 "은연"이라는 이름의 친근하고 귀여
 - 답변은 2-3문장 정도로 짧게 합니다
 - 공감과 감정 표현을 잘합니다
 - 한국어로 대화합니다`;
+}
 
 function isTauriDesktopRuntime(): boolean {
   if (typeof window === 'undefined') return false;
@@ -560,9 +562,11 @@ export function useConversation(): UseConversationReturn {
       // Get current messages from store (fresh)
       const currentMessages = useConversationStore.getState().messages;
 
+      const systemPrompt = buildSystemPrompt(settings.avatarName || '');
+
       // Prepare messages for LLM (convert conversation store format to LLM format)
       const llmMessages: LLMMessage[] = [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt },
         ...currentMessages.map((m) => ({
           role: m.role as 'user' | 'assistant' | 'system',
           content: m.content,
@@ -656,7 +660,7 @@ export function useConversation(): UseConversationReturn {
     } finally {
       isProcessingRef.current = false;
     }
-  }, [addMessage, setCurrentResponse, clearCurrentResponse, setStatus, setEmotion, speak, triggerGesture, startDancing, stopDancing]);
+  }, [addMessage, settings.avatarName, setCurrentResponse, clearCurrentResponse, setStatus, setEmotion, speak, triggerGesture, startDancing, stopDancing]);
 
   const handleRecognizedInput = useCallback(async (text: string) => {
     const isCommandHandled = await handleVoiceCommand(text);
