@@ -29,7 +29,6 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
   const [error, setError] = useState<string | null>(null);
 
   const lipSyncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { setStatus, setIsSpeaking: setStoreSpeaking } = useConversationStore();
   const { setLipSyncValue } = useAvatarStore();
@@ -65,11 +64,7 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
     log('speak() called with text:', text?.substring(0, 30) + '...');
 
     // 진행 중인 음성 중지
-    if (audioRef.current) {
-      log('Stopping previous audio');
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    ttsRouter.stopPlayback();
     stopLipSync();
 
     setError(null);
@@ -94,10 +89,7 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
   }, [setStatus, setStoreSpeaking, startLipSync, stopLipSync, cleanup]);
 
   const stop = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    ttsRouter.stopPlayback();
     cleanup();
   }, [cleanup]);
 
