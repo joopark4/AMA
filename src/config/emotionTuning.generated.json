@@ -1,0 +1,73 @@
+{
+  "global": {
+    "responseClearMs": 5200,
+    "happyDanceMs": 3400,
+    "idleNeutralDelayMs": 3200
+  },
+  "emotions": {
+    "neutral": {
+      "movementSpeedMultiplier": 1,
+      "hopImpulse": 0,
+      "quickStepDistance": 120,
+      "expressionIntensity": 0.52,
+      "expressionHoldMs": 2200,
+      "autoMoveDelayMultiplier": 1
+    },
+    "happy": {
+      "movementSpeedMultiplier": 1.28,
+      "hopImpulse": 780,
+      "quickStepDistance": 150,
+      "expressionIntensity": 0.92,
+      "expressionHoldMs": 3000,
+      "autoMoveDelayMultiplier": 0.84
+    },
+    "sad": {
+      "movementSpeedMultiplier": 0.68,
+      "hopImpulse": 0,
+      "quickStepDistance": 90,
+      "expressionIntensity": 0.78,
+      "expressionHoldMs": 4300,
+      "autoMoveDelayMultiplier": 1.36
+    },
+    "angry": {
+      "movementSpeedMultiplier": 1.2,
+      "hopImpulse": 0,
+      "quickStepDistance": 240,
+      "expressionIntensity": 0.88,
+      "expressionHoldMs": 2600,
+      "autoMoveDelayMultiplier": 0.88
+    },
+    "surprised": {
+      "movementSpeedMultiplier": 1.397,
+      "hopImpulse": 920,
+      "quickStepDistance": 170,
+      "expressionIntensity": 1,
+      "expressionHoldMs": 2100,
+      "autoMoveDelayMultiplier": 0.76
+    },
+    "relaxed": {
+      "movementSpeedMultiplier": 0.87,
+      "hopImpulse": 0,
+      "quickStepDistance": 100,
+      "expressionIntensity": 0.62,
+      "expressionHoldMs": 3200,
+      "autoMoveDelayMultiplier": 1.2
+    },
+    "thinking": {
+      "movementSpeedMultiplier": 0.82,
+      "hopImpulse": 0,
+      "quickStepDistance": 110,
+      "expressionIntensity": 0.58,
+      "expressionHoldMs": 3600,
+      "autoMoveDelayMultiplier": 1.08
+    }
+  },
+  "meta": {
+    "generatedAt": "2026-02-15T13:52:35.164Z",
+    "optimizer": "simulated-annealing",
+    "hours": 5,
+    "iterations": 3600,
+    "seed": 1637029988,
+    "score": 0.102809
+  }
+}

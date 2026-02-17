@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ONNX Test</title>
+</head>
+<body>
+  <h1>ONNX Runtime Web Test</h1>
+  <div id="status">Loading...</div>
+  <pre id="log"></pre>
+
+  <script type="module">
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+
+    function log(msg) {
+      console.log(msg);
+      logEl.textContent += msg + '\n';
+    }
+
+    async function test() {
+      try {
+        log('Importing onnxruntime-web...');
+        const ort = await import('/node_modules/onnxruntime-web/dist/esm/ort.min.js');
+
+        log('ONNX Runtime imported');
+        log('Setting WASM paths...');
+        ort.env.wasm.wasmPaths = '/';
+
+        log('Creating session for duration_predictor.onnx...');
+        const session = await ort.InferenceSession.create(
+          '/models/supertonic/onnx/duration_predictor.onnx',
+          { executionProviders: ['wasm'] }
+        );
+
+        log('SUCCESS! Model loaded.');
+        log('Input names: ' + session.inputNames.join(', '));
+        log('Output names: ' + session.outputNames.join(', '));
+
+        statusEl.textContent = 'SUCCESS!';
+        statusEl.style.color = 'green';
+
+        await session.release();
+      } catch (error) {
+        log('ERROR: ' + error.message);
+        log('Stack: ' + error.stack);
+        statusEl.textContent = 'FAILED: ' + error.message;
+        statusEl.style.color = 'red';
+      }
+    }
+
+    test();
+  </script>
+</body>
+</html>
