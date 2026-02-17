@@ -51,12 +51,18 @@ export interface LightingSettings {
   showControl: boolean;
 }
 
+export interface ViewRotationSettings {
+  x: number;
+  y: number;
+}
+
 export interface AvatarSettings {
   scale: number;
   movementSpeed: number;
   physics: PhysicsSettings;
   animation: AnimationSettings;
   lighting: LightingSettings;
+  initialViewRotation: ViewRotationSettings;
 }
 
 export interface Settings {
@@ -64,6 +70,7 @@ export interface Settings {
   stt: STTSettings;
   tts: TTSSettings;
   language: Language;
+  avatarName: string;
   vrmModelPath: string;
   avatar: AvatarSettings;
 }
@@ -77,6 +84,7 @@ interface SettingsState {
   setTTSSettings: (tts: Partial<TTSSettings>) => void;
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
   setLanguage: (language: Language) => void;
+  setAvatarName: (name: string) => void;
   setVrmModelPath: (path: string) => void;
   toggleSettings: () => void;
   openSettings: () => void;
@@ -123,6 +131,27 @@ function normalizeSupertonicVoice(voice: unknown): string {
   return 'F1';
 }
 
+function normalizeInitialViewRotation(rotation: unknown): ViewRotationSettings {
+  if (!rotation || typeof rotation !== 'object') {
+    return { x: 0, y: 0 };
+  }
+
+  const source = rotation as { x?: unknown; y?: unknown };
+  const x = typeof source.x === 'number' && Number.isFinite(source.x)
+    ? Math.max(-0.5, Math.min(0.5, source.x))
+    : 0;
+  const y = typeof source.y === 'number' && Number.isFinite(source.y)
+    ? source.y
+    : 0;
+
+  return { x, y };
+}
+
+function normalizeAvatarName(name: unknown): string {
+  if (typeof name !== 'string') return '';
+  return name.trim().slice(0, 40);
+}
+
 const defaultSettings: Settings = {
   llm: {
     provider: 'ollama',
@@ -138,6 +167,7 @@ const defaultSettings: Settings = {
     voice: 'F1',
   },
   language: 'ko',
+  avatarName: '',
   vrmModelPath: '',
   avatar: {
     scale: 1.0,
@@ -158,6 +188,10 @@ const defaultSettings: Settings = {
       directionalIntensity: 1.0,
       directionalPosition: { x: 0, y: 1, z: 2 },
       showControl: true,
+    },
+    initialViewRotation: {
+      x: 0,
+      y: 0,
     },
   },
 };
@@ -220,6 +254,11 @@ export const useSettingsStore = create<SettingsState>()(
           settings: { ...state.settings, language },
         })),
 
+      setAvatarName: (name) =>
+        set((state) => ({
+          settings: { ...state.settings, avatarName: normalizeAvatarName(name) },
+        })),
+
       setVrmModelPath: (path) =>
         set((state) => ({
           settings: { ...state.settings, vrmModelPath: normalizeVrmModelPath(path) },
@@ -236,7 +275,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 3,
+      version: 5,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState;
@@ -245,8 +284,32 @@ export const useSettingsStore = create<SettingsState>()(
         const state = persistedState as { settings?: Partial<Settings> } & Record<string, unknown>;
         if (!state.settings) return persistedState;
 
+        const legacyAvatar = (state.settings.avatar || {}) as Partial<AvatarSettings>;
+        const normalizedAvatar: AvatarSettings = {
+          ...defaultSettings.avatar,
+          ...legacyAvatar,
+          physics: {
+            ...defaultSettings.avatar.physics,
+            ...(legacyAvatar.physics || {}),
+          },
+          animation: {
+            ...defaultSettings.avatar.animation,
+            ...(legacyAvatar.animation || {}),
+          },
+          lighting: {
+            ...defaultSettings.avatar.lighting,
+            ...(legacyAvatar.lighting || {}),
+            directionalPosition: {
+              ...defaultSettings.avatar.lighting.directionalPosition,
+              ...(legacyAvatar.lighting?.directionalPosition || {}),
+            },
+          },
+          initialViewRotation: normalizeInitialViewRotation(legacyAvatar.initialViewRotation),
+        };
+
         const normalizedSettings: Partial<Settings> = {
           ...state.settings,
+          avatarName: normalizeAvatarName(state.settings.avatarName),
           stt: {
             ...(state.settings.stt || defaultSettings.stt),
             engine: 'whisper',
@@ -255,8 +318,9 @@ export const useSettingsStore = create<SettingsState>()(
           tts: {
             ...(state.settings.tts || defaultSettings.tts),
             engine: 'supertonic',
-            voice: normalizeSupertonicVoice(state.settings.tts?.voice),
-          },
+              voice: normalizeSupertonicVoice(state.settings.tts?.voice),
+            },
+          avatar: normalizedAvatar,
         };
 
         return {

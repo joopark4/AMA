@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
@@ -13,9 +13,10 @@ import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
 
 function App() {
-  const { i18n } = useTranslation();
-  const { settings, isSettingsOpen, setLLMSettings } = useSettingsStore();
+  const { i18n, t } = useTranslation();
+  const { settings, isSettingsOpen, setLLMSettings, setAvatarName } = useSettingsStore();
   const { currentResponse, isProcessing } = useConversationStore();
+  const [initialAvatarName, setInitialAvatarName] = useState('');
 
   // Enable click-through for transparent window (except on interactive elements)
   useClickThrough();
@@ -23,6 +24,12 @@ function App() {
   useEffect(() => {
     i18n.changeLanguage(settings.language);
   }, [settings.language, i18n]);
+
+  useEffect(() => {
+    if (settings.avatarName && initialAvatarName === '') {
+      setInitialAvatarName(settings.avatarName);
+    }
+  }, [settings.avatarName, initialAvatarName]);
 
   // Auto-detect and set available Ollama model on startup
   useEffect(() => {
@@ -45,6 +52,10 @@ function App() {
     loadModels().catch(() => {});
   }, [settings.llm.provider, settings.llm.endpoint, settings.llm.model, setLLMSettings]);
 
+
+  const isDevBuild = Boolean((import.meta as any)?.env?.DEV);
+  const requiresAvatarNameSetup =
+    !isDevBuild && !(settings.avatarName || '').trim();
 
   return (
     <div className="w-full h-full relative">
@@ -75,6 +86,36 @@ function App() {
         <ErrorBoundary name="SettingsPanel">
           <SettingsPanel />
         </ErrorBoundary>
+      )}
+
+      {/* First-run avatar name setup for production builds */}
+      {requiresAvatarNameSetup && (
+        <div className="fixed inset-0 z-[220] flex items-center justify-center px-4" data-interactive="true">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800">
+              {t('onboarding.avatarNameTitle', '아바타 이름 설정')}
+            </h2>
+            <p className="text-sm text-gray-600">
+              {t('onboarding.avatarNameDescription', '첫 실행입니다. 사용할 아바타 이름을 입력해 주세요.')}
+            </p>
+            <input
+              type="text"
+              value={initialAvatarName}
+              onChange={(e) => setInitialAvatarName(e.target.value)}
+              maxLength={40}
+              placeholder={t('settings.avatar.namePlaceholder', '예: 은연')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button
+              onClick={() => setAvatarName(initialAvatarName)}
+              disabled={!initialAvatarName.trim()}
+              className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              {t('onboarding.confirmAvatarName', '이름 저장')}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
