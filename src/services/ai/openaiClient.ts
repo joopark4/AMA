@@ -19,7 +19,7 @@ export class OpenAIClient implements LLMClient {
 
   private getModel(): string {
     const { settings } = useSettingsStore.getState();
-    return settings.llm.model || 'gpt-4o';
+    return settings.llm.model || 'gpt-5.1';
   }
 
   async chat(messages: Message[], options?: ChatOptions): Promise<LLMResponse> {

@@ -20,8 +20,7 @@ function buildCursorCandidates(
   cursorY: number,
   windowLeft: number,
   windowTop: number,
-  dpr: number,
-  viewportHeight: number
+  dpr: number
 ): CursorPoint[] {
   const base: CursorPoint[] = [
     // Global -> local (logical)
@@ -33,15 +32,9 @@ function buildCursorCandidates(
     { x: cursorX / dpr, y: cursorY / dpr },
   ];
 
-  // Some APIs report Y with inverted origin; include flipped-Y candidates.
-  const expanded = base.flatMap((p) => [
-    p,
-    { x: p.x, y: viewportHeight - p.y },
-  ]);
-
   // Deduplicate near-identical candidates to keep checks lightweight.
   const unique: CursorPoint[] = [];
-  for (const p of expanded) {
+  for (const p of base) {
     const exists = unique.some(
       (u) => Math.abs(u.x - p.x) < 0.5 && Math.abs(u.y - p.y) < 0.5
     );
@@ -87,8 +80,7 @@ export function useClickThrough() {
         cursor.y,
         windowLeft,
         windowTop,
-        dpr,
-        viewportHeight
+        dpr
       );
 
       const anyCursorMatches = (predicate: (x: number, y: number) => boolean) =>
