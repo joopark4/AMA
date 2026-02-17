@@ -364,6 +364,7 @@ export default function VRMAvatar() {
   const lastJointDebugAtRef = useRef(0);
   const hingeProfileRef = useRef<HingeProfile | null>(null);
   const hingeProfileLoggedRef = useRef(false);
+  const hasAppliedInitialViewRef = useRef(false);
 
   const { gl, camera } = useThree();
 
@@ -397,8 +398,28 @@ export default function VRMAvatar() {
   const positionStartRef = useRef({ x: 0, y: 0 });
   const rotationStartRef = useRef({ x: 0, y: 0 });
 
-  const { settings } = useSettingsStore();
+  const { settings, setAvatarSettings } = useSettingsStore();
   const vrm = useAvatarStore((state) => state.vrm);
+
+  useEffect(() => {
+    hasAppliedInitialViewRef.current = false;
+  }, [settings.vrmModelPath]);
+
+  useEffect(() => {
+    if (!vrm || hasAppliedInitialViewRef.current) return;
+
+    const saved = settings.avatar?.initialViewRotation;
+    const nextX = clamp(saved?.x ?? 0, -0.5, 0.5);
+    const nextY = Number.isFinite(saved?.y) ? (saved?.y as number) : 0;
+
+    setManualRotation({ x: nextX, y: nextY });
+    hasAppliedInitialViewRef.current = true;
+  }, [
+    vrm,
+    settings.avatar?.initialViewRotation?.x,
+    settings.avatar?.initialViewRotation?.y,
+    setManualRotation,
+  ]);
 
   const screenToWorldAtZ = useCallback((screenX: number, screenY: number, targetZ = 0) => {
     const canvas = gl.domElement;
@@ -663,9 +684,20 @@ export default function VRMAvatar() {
 
   const handlePointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
     (e.target as HTMLElement)?.releasePointerCapture?.(e.pointerId);
+
+    if (isRotating) {
+      const currentRotation = useAvatarStore.getState().manualRotation;
+      setAvatarSettings({
+        initialViewRotation: {
+          x: clamp(currentRotation.x, -0.5, 0.5),
+          y: currentRotation.y,
+        },
+      });
+    }
+
     setIsDragging(false);
     setIsRotating(false);
-  }, [setIsDragging, setIsRotating]);
+  }, [isRotating, setIsDragging, setIsRotating, setAvatarSettings]);
 
   // Load VRM model
   useEffect(() => {

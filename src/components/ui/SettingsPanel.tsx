@@ -1,12 +1,25 @@
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAvatarStore } from '../../stores/avatarStore';
 import LLMSettings from '../settings/LLMSettings';
 import VoiceSettings from '../settings/VoiceSettings';
 import AvatarSettings from '../settings/AvatarSettings';
+import LicensesSettings from '../settings/LicensesSettings';
 
 export default function SettingsPanel() {
   const { t } = useTranslation();
-  const { closeSettings, setLanguage, settings, resetSettings } = useSettingsStore();
+  const { closeSettings, setLanguage, settings, resetSettings, setAvatarSettings } = useSettingsStore();
+  const { manualRotation } = useAvatarStore();
+
+  const handleSave = () => {
+    setAvatarSettings({
+      initialViewRotation: {
+        x: Math.max(-0.5, Math.min(0.5, manualRotation.x)),
+        y: manualRotation.y,
+      },
+    });
+    closeSettings();
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" data-interactive="true">
@@ -68,6 +81,9 @@ export default function SettingsPanel() {
 
           {/* Avatar Settings */}
           <AvatarSettings />
+
+          {/* License Settings */}
+          <LicensesSettings />
         </div>
 
         {/* Footer */}
@@ -79,7 +95,7 @@ export default function SettingsPanel() {
             {t('settings.reset')}
           </button>
           <button
-            onClick={closeSettings}
+            onClick={handleSave}
             className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             {t('settings.save')}

@@ -6,9 +6,15 @@ import { pickVrmFile } from '../../services/tauri/fileDialog';
 
 export default function AvatarSettings() {
   const { t } = useTranslation();
-  const { settings, setVrmModelPath, setAvatarSettings } = useSettingsStore();
-  const { setEmotion, emotion } = useAvatarStore();
+  const { settings, setVrmModelPath, setAvatarSettings, setAvatarName } = useSettingsStore();
+  const { setEmotion, emotion, manualRotation, setManualRotation } = useAvatarStore();
   const { speak, isSpeaking, stop, error: ttsError } = useSpeechSynthesis();
+
+  const savedInitialView = settings.avatar?.initialViewRotation || { x: 0, y: 0 };
+  const avatarName = settings.avatarName?.trim() || '아바타';
+  const ttsSample = `안녕 나는 ${avatarName}이라고 해`;
+
+  const formatDegrees = (radian: number) => `${(radian * 180 / Math.PI).toFixed(1)}°`;
 
   const handleSelectVRM = async () => {
     try {
@@ -49,6 +55,21 @@ export default function AvatarSettings() {
             {t('settings.avatar.select')}
           </button>
         </div>
+      </div>
+
+      {/* Avatar Name */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+          {t('settings.avatar.name', '아바타 이름')}
+        </label>
+        <input
+          type="text"
+          value={settings.avatarName}
+          onChange={(e) => setAvatarName(e.target.value)}
+          placeholder={t('settings.avatar.namePlaceholder', '예: 은연')}
+          maxLength={40}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
       </div>
 
       {/* Avatar Scale */}
@@ -94,6 +115,56 @@ export default function AvatarSettings() {
         </div>
       </div>
 
+      {/* Initial View Rotation */}
+      <div className="space-y-2 border-t pt-4 mt-4">
+        <h4 className="text-sm font-medium text-gray-700">Initial View</h4>
+        <p className="text-xs text-gray-500">
+          머리 드래그로 시선을 맞춘 뒤 저장하면, 앱 시작 시 동일한 시선을 적용합니다.
+        </p>
+
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={() => setAvatarSettings({
+              initialViewRotation: {
+                x: Math.max(-0.5, Math.min(0.5, manualRotation.x)),
+                y: manualRotation.y,
+              },
+            })}
+            className="px-3 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            현재 시선 저장
+          </button>
+          <button
+            onClick={() => setManualRotation({
+              x: savedInitialView.x,
+              y: savedInitialView.y,
+            })}
+            className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+          >
+            저장 시선 적용
+          </button>
+          <button
+            onClick={() => {
+              const resetRotation = { x: 0, y: 0 };
+              setAvatarSettings({ initialViewRotation: resetRotation });
+              setManualRotation(resetRotation);
+            }}
+            className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+          >
+            정면 초기화
+          </button>
+        </div>
+
+        <div className="text-xs text-gray-500 space-y-1">
+          <p>
+            저장된 초기 시선: 상하 {formatDegrees(savedInitialView.x)} / 좌우 {formatDegrees(savedInitialView.y)}
+          </p>
+          <p>
+            현재 시선: 상하 {formatDegrees(manualRotation.x)} / 좌우 {formatDegrees(manualRotation.y)}
+          </p>
+        </div>
+      </div>
+
       {/* TTS Test */}
       <div className="space-y-2 border-t pt-4 mt-4">
         <h4 className="text-sm font-medium text-gray-700">TTS Test</h4>
@@ -103,7 +174,7 @@ export default function AvatarSettings() {
             if (isSpeaking) {
               stop();
             } else {
-              speak('안녕 나는 은연이라고해');
+              speak(ttsSample);
             }
           }}
           disabled={false}
@@ -113,7 +184,7 @@ export default function AvatarSettings() {
               : 'bg-green-500 text-white hover:bg-green-600'
           }`}
         >
-          {isSpeaking ? 'Stop' : 'Speak: "안녕 나는 은연이라고해"'}
+          {isSpeaking ? 'Stop' : `Speak: "${ttsSample}"`}
         </button>
         {ttsError && (
           <p className="text-xs text-red-600 break-all">
