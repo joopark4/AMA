@@ -18,7 +18,9 @@
         "claude": "Claude (Anthropic)",
         "openai": "OpenAI",
         "gemini": "Google Gemini"
-      }
+      },
+      "expand": "Expand",
+      "collapse": "Collapse"
     },
     "voice": {
       "title": "Voice",
@@ -45,12 +47,29 @@
     },
     "avatar": {
       "title": "Avatar",
+      "name": "Avatar Name",
+      "namePlaceholder": "e.g. Eunyeon",
       "model": "VRM Model",
       "select": "Select Model"
     },
     "save": "Save",
     "cancel": "Cancel",
-    "reset": "Reset"
+    "reset": "Reset",
+    "licenses": {
+      "title": "Open Source / Model Licenses",
+      "description": "Licenses and reference links for open-source software, AI services, and models used by this app.",
+      "openSourceTitle": "Open Source",
+      "modelTitle": "AI Services / Models",
+      "columns": {
+        "name": "Item",
+        "usage": "Usage",
+        "license": "License / Terms",
+        "link": "Link"
+      },
+      "note": "This information is for reference. Always verify the latest LICENSE and terms before redistribution or production use.",
+      "expand": "Expand",
+      "collapse": "Collapse"
+    }
   },
   "status": {
     "idle": "Idle",
@@ -63,6 +82,11 @@
     "placeholder": "Enter your message...",
     "send": "Send",
     "voiceInput": "Voice Input"
+  },
+  "onboarding": {
+    "avatarNameTitle": "Set Avatar Name",
+    "avatarNameDescription": "This is your first launch. Please enter the avatar name you want to use.",
+    "confirmAvatarName": "Save Name"
   },
   "errors": {
     "llmConnection": "Cannot connect to AI server",

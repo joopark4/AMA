@@ -8,8 +8,24 @@ export default function LightingControl() {
 
   const [isDragging, setIsDragging] = useState(false);
   const [sunPosition, setSunPosition] = useState({ x: 0, y: 0 });
+  const [viewportSize, setViewportSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1280,
+    height: typeof window !== 'undefined' ? window.innerHeight : 720,
+  });
   const dragStartRef = useRef({ x: 0, y: 0 });
   const initialPosRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Calculate sun position based on light settings
   useEffect(() => {
@@ -74,6 +90,20 @@ export default function LightingControl() {
   const avatarCenterX = avatarPosition.x;
   const avatarCenterY = avatarPosition.y - 150;
 
+  // Keep icon visible inside viewport (old/outlier positions can place it off-screen).
+  const iconSize = 40;
+  const edgePadding = 8;
+  const rawLeft = avatarCenterX + sunPosition.x - iconSize / 2;
+  const rawTop = avatarCenterY + sunPosition.y - iconSize / 2;
+  const clampedLeft = Math.max(
+    edgePadding,
+    Math.min(viewportSize.width - iconSize - edgePadding, rawLeft)
+  );
+  const clampedTop = Math.max(
+    edgePadding,
+    Math.min(viewportSize.height - iconSize - edgePadding, rawTop)
+  );
+
   if (!showControl) {
     return null;
   }
@@ -81,9 +111,10 @@ export default function LightingControl() {
   return (
     <div
       className="fixed pointer-events-auto cursor-grab active:cursor-grabbing select-none z-50"
+      data-interactive="true"
       style={{
-        left: avatarCenterX + sunPosition.x - 20,
-        top: avatarCenterY + sunPosition.y - 20,
+        left: clampedLeft,
+        top: clampedTop,
         fontSize: '40px',
         filter: isDragging ? 'drop-shadow(0 0 10px rgba(255, 200, 0, 0.8))' : 'drop-shadow(0 0 5px rgba(255, 200, 0, 0.5))',
         transition: isDragging ? 'none' : 'filter 0.2s',
@@ -94,8 +125,27 @@ export default function LightingControl() {
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       title="드래그하여 조명 위치 조정"
+      aria-label="Light direction control"
     >
-      ☀️
+      <svg
+        width="40"
+        height="40"
+        viewBox="0 0 40 40"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="drop-shadow"
+        aria-hidden="true"
+      >
+        <circle cx="20" cy="20" r="8" fill="#FACC15" stroke="#F59E0B" strokeWidth="2" />
+        <line x1="20" y1="3" x2="20" y2="10" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="20" y1="30" x2="20" y2="37" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="3" y1="20" x2="10" y2="20" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="30" y1="20" x2="37" y2="20" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="8.2" y1="8.2" x2="13.1" y2="13.1" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="26.9" y1="26.9" x2="31.8" y2="31.8" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="8.2" y1="31.8" x2="13.1" y2="26.9" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="26.9" y1="13.1" x2="31.8" y2="8.2" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
+      </svg>
     </div>
   );
 }
