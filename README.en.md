@@ -189,6 +189,53 @@ Notes:
 - Confirm `.vrm` file validity
 - Re-select VRM in avatar settings
 
+## How to Get or Buy VRM Files
+
+### Recommended Sources
+
+| Site | Type | Notes |
+|------|------|------|
+| [VRoid Hub](https://hub.vroid.com/en/) | Mostly free shared models | Download is available only when the creator allows it |
+| [BOOTH (VRM search)](https://booth.pm/en/search/VRM) | Free + paid | Largest marketplace for creator-made VRM assets |
+| [VRoid Studio](https://vroid.com/en/studio/) | Create your own (free) | Build your own avatar and export as `.vrm` |
+
+### 1) Get Free VRM Files (VRoid Hub)
+
+1. Sign in to VRoid Hub
+2. Open a model page and check whether download/use is allowed
+3. Review usage terms (personal/commercial/edit/redistribution/credit)
+4. Download the `.vrm` file and select it in the app
+
+Notes:
+- Not every model is downloadable.
+- Usage permissions vary by creator/model.
+
+### 2) Buy VRM Files (BOOTH)
+
+1. Browse [BOOTH VRM search](https://booth.pm/en/search/VRM)
+2. Check price, previews, and update history
+3. Read license/usage terms carefully  
+   (commercial use, credit requirement, redistribution prohibition, etc.)
+4. Purchase and download (`.zip` / `.vrm`)
+5. Extract if needed, then select the `.vrm` file in the app
+
+### 3) Create Your Own (VRoid Studio)
+
+1. Install [VRoid Studio](https://vroid.com/en/studio/)
+2. Create or edit your character
+3. Export via `Export VRM`
+4. Select the exported `.vrm` in the app
+
+### VRM License Checklist
+
+- Commercial use allowed?
+- Streaming/video publishing allowed?
+- Modification/editing allowed?
+- Redistribution prohibited?
+- Credit attribution required?
+
+Note: This VRM get/buy guide is for reference only. Always verify the latest license and usage terms for each model before use.
+
 ## License
 
 BSD 2-Clause
