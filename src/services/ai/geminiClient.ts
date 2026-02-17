@@ -16,7 +16,7 @@ export class GeminiClient implements LLMClient {
 
   private getModel(): string {
     const { settings } = useSettingsStore.getState();
-    return settings.llm.model || 'gemini-2.5-flash-preview-05-20';
+    return settings.llm.model || 'gemini-2.5-flash';
   }
 
   async chat(messages: Message[], options?: ChatOptions): Promise<LLMResponse> {
