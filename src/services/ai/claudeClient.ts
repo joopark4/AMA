@@ -19,7 +19,7 @@ export class ClaudeClient implements LLMClient {
 
   private getModel(): string {
     const { settings } = useSettingsStore.getState();
-    return settings.llm.model || 'claude-sonnet-4-20250514';
+    return settings.llm.model || 'claude-sonnet-4-5';
   }
 
   async chat(messages: Message[], options?: ChatOptions): Promise<LLMResponse> {

@@ -27,9 +27,9 @@ const PROVIDER_LABELS: Record<LLMProvider, string> = {
 };
 
 const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string> = {
-  claude: 'claude-sonnet-4-20250514',
-  openai: 'gpt-4o-mini',
-  gemini: 'gemini-2.0-flash',
+  claude: 'claude-sonnet-4-5',
+  openai: 'gpt-5.1',
+  gemini: 'gemini-2.5-flash',
 };
 
 function buildModelUnsetIssue(provider: LLMProvider): DependencyIssue {
