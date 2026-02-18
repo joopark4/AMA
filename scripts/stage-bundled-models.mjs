@@ -1,6 +1,7 @@
-import { access, chmod, cp, mkdir, readdir, rm } from 'node:fs/promises';
+import { access, chmod, cp, mkdir, readdir, rm, readFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 async function ensureExists(path, description) {
   try {
@@ -31,7 +32,43 @@ async function findExistingPath(candidates, description) {
   throw new Error(`${description} not found. Checked: ${candidates.filter(Boolean).join(', ')}`);
 }
 
-async function stageWhisperRuntime(resourcesDir) {
+async function resolveCodesignIdentity(rootDir) {
+  const fromEnv = process.env.APPLE_CODESIGN_IDENTITY?.trim();
+  if (fromEnv) return fromEnv;
+
+  try {
+    const tauriConfigPath = resolve(rootDir, 'src-tauri/tauri.conf.json');
+    const raw = await readFile(tauriConfigPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    const fromConfig = parsed?.bundle?.macOS?.signingIdentity;
+    if (typeof fromConfig === 'string' && fromConfig.trim()) {
+      return fromConfig.trim();
+    }
+  } catch {
+    // ignore parse/read errors; signing remains optional in this step
+  }
+
+  return null;
+}
+
+function codesignFile(path, identity, { runtime = false } = {}) {
+  const args = ['--force', '--sign', identity, '--timestamp'];
+  if (runtime) {
+    args.push('--options', 'runtime');
+  }
+  args.push(path);
+
+  const result = spawnSync('codesign', args, { encoding: 'utf8' });
+  if (result.status !== 0) {
+    const stderr = (result.stderr || '').trim();
+    const stdout = (result.stdout || '').trim();
+    throw new Error(
+      `codesign failed for ${path}: ${stderr || stdout || `exit ${result.status ?? 'unknown'}`}`
+    );
+  }
+}
+
+async function stageWhisperRuntime(resourcesDir, signingIdentity) {
   const binDir = resolve(resourcesDir, 'bin');
   const libDir = resolve(resourcesDir, 'lib');
 
@@ -92,6 +129,16 @@ async function stageWhisperRuntime(resourcesDir) {
     await ensureExists(resolve(libDir, libName), `Bundled whisper runtime library (${libName})`);
   }
 
+  if (signingIdentity) {
+    for (const libName of whisperRuntimeLibs) {
+      codesignFile(resolve(libDir, libName), signingIdentity, { runtime: false });
+    }
+    codesignFile(whisperCliTarget, signingIdentity, { runtime: true });
+    console.log(`[stage-models] Codesigned bundled whisper runtime with identity: ${signingIdentity}`);
+  } else {
+    console.log('[stage-models] Skipping runtime codesign: no signing identity configured.');
+  }
+
   console.log(`[stage-models] Staged Whisper runtime binary: ${whisperCliSource} -> ${whisperCliTarget}`);
   console.log(`[stage-models] Staged Whisper runtime libraries from: ${whisperLibSourceDir}`);
 }
@@ -103,6 +150,7 @@ async function main() {
   }
 
   const rootDir = process.cwd();
+  const signingIdentity = await resolveCodesignIdentity(rootDir);
   const appBundlePath = resolve(
     rootDir,
     'src-tauri/target/release/bundle/macos/MyPartnerAI.app'
@@ -132,7 +180,7 @@ async function main() {
     resolve(modelsDir, 'supertonic/voice_styles'),
     'Supertonic voice styles'
   );
-  await stageWhisperRuntime(resourcesDir);
+  await stageWhisperRuntime(resourcesDir, signingIdentity);
 }
 
 main().catch((error) => {
