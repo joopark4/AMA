@@ -30,6 +30,7 @@ npm-debug.log*
 src-tauri/target/
 src-tauri/WixTools/
 src-tauri/WixTools64/
+src-tauri/resources/
 
 # Test
 coverage/
