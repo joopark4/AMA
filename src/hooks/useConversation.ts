@@ -377,6 +377,7 @@ export function useConversation(): UseConversationReturn {
         if (!cancelled) {
           setWhisperStatus(detail);
           setIsLocalWhisperAvailable(Boolean(detail.cliFound && detail.modelFound));
+          setHasCheckedLocalWhisper(true);
         }
         return;
       } catch (err) {
@@ -646,7 +647,21 @@ export function useConversation(): UseConversationReturn {
       }, responseHoldMs);
     } catch (err) {
       log('LLM error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get response';
+      const rawErrorMessage = err instanceof Error ? err.message : 'Failed to get response';
+      const isRateLimit = /\b429\b|rate.?limit|quota|resource_exhausted|too many requests/i.test(rawErrorMessage);
+      const providerLabel =
+        settings.llm.provider === 'gemini'
+          ? 'Gemini'
+          : settings.llm.provider === 'openai'
+            ? 'OpenAI'
+            : settings.llm.provider === 'claude'
+              ? 'Claude'
+              : settings.llm.provider === 'ollama'
+                ? 'Ollama'
+                : 'LocalAI';
+      const errorMessage = isRateLimit
+        ? `${providerLabel} API 요청 한도를 초과했습니다(429). 설정에서 사용 가능한 모델/Provider를 선택하거나 잠시 후 다시 시도해 주세요.`
+        : rawErrorMessage;
       setError(errorMessage);
       setStatus('error');
       setEmotion('sad');
