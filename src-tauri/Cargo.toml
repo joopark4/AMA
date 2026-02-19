@@ -1,6 +1,6 @@
 [package]
 name = "mypartnerai"
-version = "0.1.0"
+version = "0.1.1"
 description = "AI Avatar Desktop Companion"
 authors = ["MyPartnerAI"]
 license = "MIT"
