@@ -26,8 +26,9 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Tauri
+# Tauri / Cargo build output
 src-tauri/target/
+.build/
 src-tauri/WixTools/
 src-tauri/WixTools64/
 src-tauri/resources/

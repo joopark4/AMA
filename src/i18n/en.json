@@ -88,6 +88,12 @@
     "avatarNameDescription": "This is your first launch. Please enter the avatar name you want to use.",
     "confirmAvatarName": "Save Name"
   },
+  "history": {
+    "title": "Chat History",
+    "empty": "No conversation history.",
+    "clearButton": "Clear history",
+    "button": "Chat History"
+  },
   "errors": {
     "llmConnection": "Cannot connect to AI server",
     "microphoneAccess": "Microphone access required",
