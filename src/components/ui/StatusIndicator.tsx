@@ -181,7 +181,7 @@ function buildLocalModelIssue(provider: 'ollama' | 'localai', model: string): De
 export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) {
   const { t } = useTranslation();
   const { status, isListening, isSpeaking } = useConversationStore();
-  const { openSettings, settings } = useSettingsStore();
+  const { openSettings, settings, isHistoryOpen, toggleHistory } = useSettingsStore();
   const {
     isListening: isVoiceListening,
     isVoiceInputRuntimeBlocked,
@@ -572,6 +572,31 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
         )}
+      </button>
+
+      {/* History button */}
+      <button
+        onClick={toggleHistory}
+        className={`p-2 backdrop-blur-sm rounded-full shadow-lg border transition-colors ${
+          isHistoryOpen
+            ? 'bg-purple-500 border-purple-400 hover:bg-purple-600'
+            : 'bg-white/90 border-gray-200 hover:bg-gray-100'
+        }`}
+        title={t('history.button')}
+      >
+        <svg
+          className={`w-5 h-5 ${isHistoryOpen ? 'text-white' : 'text-gray-600'}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+          />
+        </svg>
       </button>
 
       {/* Settings button */}

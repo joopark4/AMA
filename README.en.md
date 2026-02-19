@@ -37,6 +37,60 @@ Korean version: [README.md](README.md)
 - Node.js 20+
 - Rust 1.75+ ([rustup](https://rustup.rs/))
 
+## Download Models (Required)
+
+Model files are too large to include in the repository. Place them manually before running the app.
+
+### TTS Model (Supertonic)
+
+Git LFS is required:
+
+```bash
+brew install git-lfs
+git lfs install
+```
+
+Download from HuggingFace:
+
+```bash
+git clone https://huggingface.co/Supertone/supertonic models/supertonic
+```
+
+> ~250 MB total. After cloning, `models/supertonic/onnx/` and `models/supertonic/voice_styles/` must exist.
+
+### STT Model (Whisper)
+
+Only one model is needed. Start with `base`:
+
+```bash
+mkdir -p models/whisper
+
+# base (~141 MB, fast, recommended starting point)
+curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin \
+  -o models/whisper/ggml-base.bin
+
+# small (~465 MB, improved accuracy)
+curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin \
+  -o models/whisper/ggml-small.bin
+
+# medium (~1.4 GB, highest accuracy)
+curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin \
+  -o models/whisper/ggml-medium.bin
+```
+
+### Expected Directory Structure
+
+```
+models/
+├── supertonic/
+│   ├── onnx/              ← duration_predictor.onnx, text_encoder.onnx, etc.
+│   └── voice_styles/      ← F1.json ~ F5.json, M1.json ~ M5.json
+└── whisper/
+    └── ggml-base.bin      ← (or small / medium)
+```
+
+---
+
 ## Development Run
 
 ```bash

@@ -38,6 +38,60 @@ English version: [README.en.md](README.en.md)
 - Node.js 20+
 - Rust 1.75+ ([rustup](https://rustup.rs/))
 
+## 모델 다운로드 (필수)
+
+AI 모델 파일은 용량이 크므로 저장소에 포함되지 않습니다. 실행 전 아래 경로에 직접 배치해야 합니다.
+
+### TTS 모델 (Supertonic)
+
+Git LFS가 설치되어 있어야 합니다:
+
+```bash
+brew install git-lfs
+git lfs install
+```
+
+HuggingFace에서 다운로드:
+
+```bash
+git clone https://huggingface.co/Supertone/supertonic models/supertonic
+```
+
+> 총 약 250MB. 다운로드 후 `models/supertonic/onnx/`와 `models/supertonic/voice_styles/`가 있어야 합니다.
+
+### STT 모델 (Whisper)
+
+모델 1개만 있어도 됩니다. base를 먼저 내려받기를 권장합니다:
+
+```bash
+mkdir -p models/whisper
+
+# base (~141 MB, 빠름, 권장 시작점)
+curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin \
+  -o models/whisper/ggml-base.bin
+
+# small (~465 MB, 정확도 향상)
+curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin \
+  -o models/whisper/ggml-small.bin
+
+# medium (~1.4 GB, 최고 정확도)
+curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin \
+  -o models/whisper/ggml-medium.bin
+```
+
+### 최종 디렉터리 구조
+
+```
+models/
+├── supertonic/
+│   ├── onnx/              ← duration_predictor.onnx, text_encoder.onnx 등
+│   └── voice_styles/      ← F1.json ~ F5.json, M1.json ~ M5.json
+└── whisper/
+    └── ggml-base.bin      ← (또는 small / medium)
+```
+
+---
+
 ## 개발 실행
 
 ```bash
