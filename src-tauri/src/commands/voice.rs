@@ -122,9 +122,7 @@ fn remote_detector_for_command(command: &str) -> Option<&'static str> {
 }
 
 fn is_loopback_endpoint(endpoint: &str) -> bool {
-    endpoint.contains("127.0.0.1")
-        || endpoint.contains("[::1]")
-        || endpoint.contains("localhost")
+    endpoint.contains("127.0.0.1") || endpoint.contains("[::1]") || endpoint.contains("localhost")
 }
 
 fn detect_remote_from_active_network_sessions() -> Option<RemoteEnvironmentResult> {
@@ -392,7 +390,7 @@ fn run_whisper_cli(
     language: &str,
     output_prefix: &Path,
 ) -> Result<(), String> {
-    let mut args = vec![
+    let args = vec![
         "-m".to_string(),
         model_path
             .to_str()
@@ -414,47 +412,66 @@ fn run_whisper_cli(
     ];
 
     let normalized_language = language.trim();
+    let mut base_args = args;
     if !normalized_language.is_empty() {
-        args.push("-l".to_string());
-        args.push(normalized_language.to_string());
+        base_args.push("-l".to_string());
+        base_args.push(normalized_language.to_string());
     }
 
-    let mut command = Command::new(whisper_cli);
-    command.args(args);
+    let execute_with_args = |args: &[String]| -> Result<std::process::Output, String> {
+        let mut command = Command::new(whisper_cli);
+        command.args(args);
 
-    // Ensure bundled runtime dylibs are discoverable when whisper-cli is staged in app resources.
-    if let Some(cli_dir) = whisper_cli.parent() {
-        let bundled_lib_dir = cli_dir.join("../lib");
-        if bundled_lib_dir.exists() {
-            let bundled_lib = bundled_lib_dir.to_string_lossy().to_string();
+        // Ensure bundled runtime dylibs are discoverable when whisper-cli is staged in app resources.
+        if let Some(cli_dir) = whisper_cli.parent() {
+            let bundled_lib_dir = cli_dir.join("../lib");
+            if bundled_lib_dir.exists() {
+                let bundled_lib = bundled_lib_dir.to_string_lossy().to_string();
 
-            if !bundled_lib.is_empty() {
-                let existing_fallback =
-                    env::var("DYLD_FALLBACK_LIBRARY_PATH").unwrap_or_default();
-                let fallback_value = if existing_fallback.is_empty() {
-                    bundled_lib.clone()
-                } else if existing_fallback.split(':').any(|entry| entry == bundled_lib) {
-                    existing_fallback
-                } else {
-                    format!("{bundled_lib}:{existing_fallback}")
-                };
+                if !bundled_lib.is_empty() {
+                    let existing_fallback =
+                        env::var("DYLD_FALLBACK_LIBRARY_PATH").unwrap_or_default();
+                    let fallback_value = if existing_fallback.is_empty() {
+                        bundled_lib.clone()
+                    } else if existing_fallback
+                        .split(':')
+                        .any(|entry| entry == bundled_lib)
+                    {
+                        existing_fallback
+                    } else {
+                        format!("{bundled_lib}:{existing_fallback}")
+                    };
 
-                command.env("DYLD_FALLBACK_LIBRARY_PATH", fallback_value);
-                command.env("DYLD_LIBRARY_PATH", bundled_lib);
+                    command.env("DYLD_FALLBACK_LIBRARY_PATH", fallback_value);
+                    command.env("DYLD_LIBRARY_PATH", bundled_lib);
+                }
             }
         }
-    }
 
-    let output = command
-        .output()
-        .map_err(|e| format!("Failed to run whisper-cli: {e}"))?;
+        command
+            .output()
+            .map_err(|e| format!("Failed to run whisper-cli: {e}"))
+    };
+
+    let output = execute_with_args(&base_args)?;
 
     if output.status.success() {
         return Ok(());
     }
 
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    Err(format!("whisper-cli failed: {stderr}"))
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let mut cpu_args = base_args.clone();
+    cpu_args.push("-ng".to_string());
+
+    let cpu_output = execute_with_args(&cpu_args)?;
+    if cpu_output.status.success() {
+        return Ok(());
+    }
+
+    let cpu_stderr = String::from_utf8_lossy(&cpu_output.stderr);
+    Err(format!(
+        "whisper-cli failed after CPU fallback. gpu_error: {stderr} | cpu_error: {cpu_stderr}"
+    ))
 }
 
 fn cleanup_dir(path: &Path) {

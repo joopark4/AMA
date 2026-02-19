@@ -1,14 +1,14 @@
 {
   "name": "mypartnerai",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "prepare:assets": "node scripts/prepare-assets.mjs",
     "tune:emotion": "node scripts/tune-emotions.mjs --hours 5 --iterations 3600 --write",
     "tune:emotion:quick": "node scripts/tune-emotions.mjs --hours 0.25 --iterations 180 --write",
-    "dev": "PREPARE_PUBLIC_MODELS=1 npm run prepare:assets && vite",
-    "build": "PREPARE_PUBLIC_MODELS=0 npm run prepare:assets && tsc && vite build",
+    "dev": "PREPARE_PUBLIC_MODELS=1 PREPARE_BUNDLE_RESOURCES=0 npm run prepare:assets && vite",
+    "build": "PREPARE_PUBLIC_MODELS=0 PREPARE_BUNDLE_RESOURCES=1 WHISPER_BUNDLE_MODELS=base,small,medium npm run prepare:assets && tsc && vite build",
     "build:mac-app": "WHISPER_BUNDLE_MODELS=base,small,medium PREPARE_DOWNLOAD_WHISPER=1 npm run tauri build -- --bundles app && node scripts/stage-bundled-models.mjs && node scripts/sign-macos-app.mjs",
     "build:mac-release": "npm run build:mac-app && node scripts/notarize-macos-app.mjs",
     "preview": "vite preview",
