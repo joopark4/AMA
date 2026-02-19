@@ -4,6 +4,7 @@ import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
 import StatusIndicator from './components/ui/StatusIndicator';
 import SettingsPanel from './components/ui/SettingsPanel';
+import HistoryPanel from './components/ui/HistoryPanel';
 import LightingControl from './components/avatar/LightingControl';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { useSettingsStore } from './stores/settingsStore';
@@ -14,7 +15,7 @@ import { localAiClient } from './services/ai/localAiClient';
 
 function App() {
   const { i18n, t } = useTranslation();
-  const { settings, isSettingsOpen, setLLMSettings, setAvatarName } = useSettingsStore();
+  const { settings, isSettingsOpen, isHistoryOpen, setLLMSettings, setAvatarName } = useSettingsStore();
   const { currentResponse, isProcessing } = useConversationStore();
   const [initialAvatarName, setInitialAvatarName] = useState('');
 
@@ -85,6 +86,13 @@ function App() {
       {isSettingsOpen && (
         <ErrorBoundary name="SettingsPanel">
           <SettingsPanel />
+        </ErrorBoundary>
+      )}
+
+      {/* History Panel - draggable chat history */}
+      {isHistoryOpen && (
+        <ErrorBoundary name="HistoryPanel">
+          <HistoryPanel />
         </ErrorBoundary>
       )}
 

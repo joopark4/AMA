@@ -591,7 +591,7 @@ export function useConversation(): UseConversationReturn {
       } else {
         const response = await llmRouter.chat(llmMessages, {
           temperature: 0.7,
-          maxTokens: 200,
+          maxTokens: 1024,
         });
         responseText = response.content;
         log('LLM response received:', response.content?.substring(0, 50) + '...');

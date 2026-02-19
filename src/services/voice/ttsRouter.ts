@@ -205,7 +205,7 @@ class TTSRouter {
     const audioBuffer = await audioContext.decodeAudioData(audioData.slice(0));
     const source = audioContext.createBufferSource();
     const gain = audioContext.createGain();
-    gain.gain.value = 1.2;
+    gain.gain.value = 1.0;
 
     source.buffer = audioBuffer;
     source.connect(gain);

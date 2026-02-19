@@ -23,19 +23,23 @@ export class GeminiClient implements LLMClient {
     const client = this.getClient();
     const model = this.getModel();
 
-    // Build conversation history for Gemini
-    const history = messages.slice(0, -1).map((m) => ({
+    // system 메시지를 systemInstruction으로 분리
+    const systemMessage = messages.find((m) => m.role === 'system');
+    const nonSystemMessages = messages.filter((m) => m.role !== 'system');
+
+    // Gemini history: user/model 교대 형식 (마지막 메시지 제외)
+    const history = nonSystemMessages.slice(0, -1).map((m) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
 
-    const lastMessage = messages[messages.length - 1];
+    const lastMessage = nonSystemMessages[nonSystemMessages.length - 1];
 
     const chat = client.chats.create({
       model,
       history,
       config: {
-        systemInstruction: options?.systemPrompt,
+        systemInstruction: systemMessage?.content || options?.systemPrompt,
         temperature: options?.temperature ?? 0.7,
         maxOutputTokens: options?.maxTokens ?? 2048,
       },
@@ -59,19 +63,22 @@ export class GeminiClient implements LLMClient {
     const client = this.getClient();
     const model = this.getModel();
 
-    const history = messages.slice(0, -1).map((m) => ({
+    const systemMessage = messages.find((m) => m.role === 'system');
+    const nonSystemMessages = messages.filter((m) => m.role !== 'system');
+
+    const history = nonSystemMessages.slice(0, -1).map((m) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
 
-    const lastMessage = messages[messages.length - 1];
+    const lastMessage = nonSystemMessages[nonSystemMessages.length - 1];
 
     try {
       const chat = client.chats.create({
         model,
         history,
         config: {
-          systemInstruction: options?.systemPrompt,
+          systemInstruction: systemMessage?.content || options?.systemPrompt,
           temperature: options?.temperature ?? 0.7,
           maxOutputTokens: options?.maxTokens ?? 2048,
         },

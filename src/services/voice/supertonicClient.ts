@@ -512,31 +512,74 @@ export class SupertonicClient implements TTSClient {
     const textList = chunkText(text, maxLen);
     log('Text chunks:', textList.length, 'chunks, first:', textList[0]?.substring(0, 30));
 
-    let wavCat: number[] = [];
+    const wavChunks: number[][] = [];
     let durCat = 0;
-    const silenceDuration = 0.3;
+    const silenceDuration = 0.15;
+    const silenceLen = Math.floor(silenceDuration * this.sampleRate);
+    // 청크 경계 클릭 방지: 20ms fade (중간 경계에만 적용)
+    const fadeSamples = Math.round(0.02 * this.sampleRate);
+    const isMultiChunk = textList.length > 1;
 
     for (let i = 0; i < textList.length; i++) {
+      const isLast = i === textList.length - 1;
       log(`Processing chunk ${i + 1}/${textList.length}:`, textList[i].substring(0, 30));
       const { wav, duration } = await this._infer([textList[i]], [language], style, totalStep, speed);
       log(`Chunk ${i + 1} result: wav length=${wav.length}, duration=${duration[0].toFixed(2)}s`);
 
-      if (wavCat.length === 0) {
-        wavCat = wav;
-        durCat = duration[0];
-      } else {
-        const silenceLen = Math.floor(silenceDuration * this.sampleRate);
-        const silence = new Array(silenceLen).fill(0);
-        wavCat = [...wavCat, ...silence, ...wav];
-        durCat += duration[0] + silenceDuration;
+      if (isMultiChunk) {
+        // 청크 끝 fade-out: silence 직전 경계에만 (마지막 청크 제외 → 말이 자연스럽게 끝남)
+        if (!isLast) {
+          const fadeOut = Math.min(fadeSamples, wav.length);
+          const denom = fadeOut - 1 || 1;
+          for (let j = 0; j < fadeOut; j++) {
+            wav[wav.length - fadeOut + j] *= (denom - j) / denom;
+          }
+        }
+        // 청크 시작 fade-in: silence 직후 경계에만 (첫 청크 제외)
+        if (wavChunks.length > 0) {
+          const fadeIn = Math.min(fadeSamples, wav.length);
+          const denom = fadeIn - 1 || 1;
+          for (let j = 0; j < fadeIn; j++) {
+            wav[j] *= j / denom;
+          }
+        }
+      }
+
+      if (wavChunks.length > 0) {
+        wavChunks.push(new Array(silenceLen).fill(0));
+        durCat += silenceDuration;
+      }
+      wavChunks.push(wav);
+      durCat += duration[0];
+    }
+
+    // 청크를 한 번에 합치기 (O(n) 복사)
+    const totalLen = wavChunks.reduce((s, c) => s + c.length, 0);
+    const wavCat = new Array(totalLen);
+    let offset = 0;
+    for (const chunk of wavChunks) {
+      for (let i = 0; i < chunk.length; i++) {
+        wavCat[offset++] = chunk[i];
       }
     }
 
-    // WAV 변환
+    // 피크 진폭 계산 후 정규화 (클리핑 방지, 목표 레벨 0.9)
+    let peak = 0;
+    for (const v of wavCat) {
+      const abs = Math.abs(v);
+      if (abs > peak) peak = abs;
+    }
+    const normalizeGain = peak > 0.9 ? 0.9 / peak : 1.0;
+    if (normalizeGain < 1.0) {
+      for (let i = 0; i < wavCat.length; i++) {
+        wavCat[i] *= normalizeGain;
+      }
+    }
+
     log('Audio data stats:', {
       length: wavCat.length,
-      min: Math.min(...wavCat),
-      max: Math.max(...wavCat),
+      peak: peak.toFixed(4),
+      normalizeGain: normalizeGain.toFixed(4),
       sampleRate: this.sampleRate,
       duration: durCat
     });
@@ -678,7 +721,11 @@ export class SupertonicClient implements TTSClient {
     log('Vocoder output length:', wav.length);
 
     // 오디오 통계 확인 (디버깅용)
-    const maxAbs = Math.max(...wav.map(v => Math.abs(v)));
+    let maxAbs = 0;
+    for (const v of wav) {
+      const abs = Math.abs(v);
+      if (abs > maxAbs) maxAbs = abs;
+    }
     log('Audio stats: maxAbs:', maxAbs.toFixed(4));
 
     return { wav, duration };
@@ -789,7 +836,7 @@ export class SupertonicClient implements TTSClient {
     const int16Data = new Int16Array(audioData.length);
     for (let i = 0; i < audioData.length; i++) {
       const clamped = Math.max(-1.0, Math.min(1.0, audioData[i]));
-      int16Data[i] = Math.floor(clamped * 32767);
+      int16Data[i] = Math.round(clamped * 32767);
     }
 
     const dataView = new Uint8Array(buffer, 44);
