@@ -117,14 +117,21 @@ export default function SpeechBubble({ message, duration = 10000 }: SpeechBubble
       className="speech-bubble fixed z-50 max-w-xs pointer-events-none"
       style={bubbleStyle}
     >
-      <div className="relative bg-white rounded-2xl shadow-lg px-4 py-3 border border-gray-200">
-        {/* Speech bubble tail */}
-        <div
-          className="absolute w-4 h-4 bg-white border-l border-b border-gray-200 transform rotate-45"
-          style={tailStyle}
-        />
+      {/* 꼬리: 버블 바깥에서 버블 뒤에 배치 (z-index 0) */}
+      <div
+        className="absolute w-4 h-4 bg-white border border-gray-200"
+        style={{
+          ...tailStyle,
+          zIndex: 0,
+          transform: 'rotate(45deg)',
+        }}
+      />
 
-        {/* Message content */}
+      {/* 버블 본체: 꼬리 위에 렌더링 (z-index 1), 꼬리 상단 반을 덮어 깔끔하게 처리 */}
+      <div
+        className="relative bg-white rounded-2xl px-4 py-3 border border-gray-200"
+        style={{ zIndex: 1 }}
+      >
         <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
           {message}
         </p>

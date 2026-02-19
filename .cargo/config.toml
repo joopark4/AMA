@@ -1,0 +1,4 @@
+[build]
+# Rust 빌드 출력을 프로젝트 내 .build/ 디렉터리로 지정
+# exFAT exFAT 볼륨에서 빌드 시 COPYFILE_DISABLE=1 환경 변수와 함께 사용합니다.
+target-dir = "/Users/cauca/Library/Caches/mypartnerai-build"
