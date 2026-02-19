@@ -32,8 +32,7 @@ export default function HistoryPanel() {
         },
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [position, setHistoryPanelSettings, size.width]);
 
   // 패널 마운트 시 기존 대화 기록 하단으로 즉시 스크롤
   useEffect(() => {
@@ -176,13 +175,12 @@ export default function HistoryPanel() {
                   className={`max-w-[85%] rounded-2xl px-3 py-2 leading-snug break-words ${
                     msg.role === 'user'
                       ? 'bg-blue-500 text-white rounded-br-sm'
-                      : 'rounded-bl-sm'
+                      : 'bg-[#E5E5B6] text-[#333333] rounded-bl-sm'
                   }`}
-                  style={msg.role === 'assistant' ? { backgroundColor: '#E5E5B6', color: '#333' } : undefined}
                 >
                   {msg.content}
                 </div>
-                <span className="text-gray-400 mt-0.5 select-none" style={{ fontSize: '10px' }}>
+                <span className="text-gray-400 mt-0.5 select-none text-[10px]">
                   {dateTimeStr}
                 </span>
               </div>
