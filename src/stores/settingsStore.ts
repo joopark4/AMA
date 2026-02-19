@@ -65,6 +65,12 @@ export interface AvatarSettings {
   initialViewRotation: ViewRotationSettings;
 }
 
+export interface HistoryPanelSettings {
+  position: { x: number; y: number } | null;
+  size: { width: number; height: number };
+  fontSize: number;
+}
+
 export interface Settings {
   llm: LLMSettings;
   stt: STTSettings;
@@ -73,11 +79,13 @@ export interface Settings {
   avatarName: string;
   vrmModelPath: string;
   avatar: AvatarSettings;
+  historyPanel: HistoryPanelSettings;
 }
 
 interface SettingsState {
   settings: Settings;
   isSettingsOpen: boolean;
+  isHistoryOpen: boolean;
   setSettings: (settings: Partial<Settings>) => void;
   setLLMSettings: (llm: Partial<LLMSettings>) => void;
   setSTTSettings: (stt: Partial<STTSettings>) => void;
@@ -90,6 +98,10 @@ interface SettingsState {
   openSettings: () => void;
   closeSettings: () => void;
   resetSettings: () => void;
+  toggleHistory: () => void;
+  openHistory: () => void;
+  closeHistory: () => void;
+  setHistoryPanelSettings: (panel: Partial<HistoryPanelSettings>) => void;
 }
 
 const LEGACY_BUNDLED_VRM_PATHS = new Set([
@@ -194,6 +206,11 @@ const defaultSettings: Settings = {
       y: 0,
     },
   },
+  historyPanel: {
+    position: null,
+    size: { width: 320, height: 480 },
+    fontSize: 14,
+  },
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -201,6 +218,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       settings: defaultSettings,
       isSettingsOpen: false,
+      isHistoryOpen: false,
 
       setSettings: (newSettings) =>
         set((state) => ({
@@ -272,10 +290,29 @@ export const useSettingsStore = create<SettingsState>()(
       closeSettings: () => set({ isSettingsOpen: false }),
 
       resetSettings: () => set({ settings: defaultSettings }),
+
+      toggleHistory: () =>
+        set((state) => ({ isHistoryOpen: !state.isHistoryOpen })),
+
+      openHistory: () => set({ isHistoryOpen: true }),
+
+      closeHistory: () => set({ isHistoryOpen: false }),
+
+      setHistoryPanelSettings: (panel) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            historyPanel: {
+              ...defaultSettings.historyPanel,
+              ...(state.settings.historyPanel ?? {}),
+              ...panel,
+            },
+          },
+        })),
     }),
     {
       name: 'mypartnerai-settings',
-      version: 5,
+      version: 6,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState;
@@ -318,9 +355,10 @@ export const useSettingsStore = create<SettingsState>()(
           tts: {
             ...(state.settings.tts || defaultSettings.tts),
             engine: 'supertonic',
-              voice: normalizeSupertonicVoice(state.settings.tts?.voice),
-            },
+            voice: normalizeSupertonicVoice(state.settings.tts?.voice),
+          },
           avatar: normalizedAvatar,
+          historyPanel: (state.settings as any).historyPanel ?? defaultSettings.historyPanel,
         };
 
         return {
