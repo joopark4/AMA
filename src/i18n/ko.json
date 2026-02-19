@@ -88,6 +88,12 @@
     "avatarNameDescription": "첫 실행입니다. 사용할 아바타 이름을 입력해 주세요.",
     "confirmAvatarName": "이름 저장"
   },
+  "history": {
+    "title": "대화 기록",
+    "empty": "대화 기록이 없습니다.",
+    "clearButton": "기록 지우기",
+    "button": "대화 기록"
+  },
   "errors": {
     "llmConnection": "AI 서버에 연결할 수 없습니다",
     "microphoneAccess": "마이크 접근 권한이 필요합니다",
