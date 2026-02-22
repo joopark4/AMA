@@ -113,5 +113,41 @@
     "llmConnection": "Cannot connect to AI server",
     "microphoneAccess": "Microphone access required",
     "vrmLoad": "Cannot load VRM model"
+  },
+  "auth": {
+    "title": "Welcome to MyPartnerAI",
+    "subtitle": "Sign in to continue",
+    "loginWith": "Continue with {{provider}}",
+    "loading": "Authenticating...",
+    "success": "Signed in successfully",
+    "logout": "Sign Out",
+    "logoutConfirm": "Are you sure you want to sign out?",
+    "termsNotice": "By signing in, you agree to our Terms of Service and Privacy Policy.",
+    "termsLink": "Terms of Service",
+    "privacyLink": "Privacy Policy",
+    "providers": {
+      "google": "Google",
+      "apple": "Apple",
+      "meta": "Meta (Facebook)"
+    },
+    "profile": {
+      "title": "Account",
+      "email": "Email",
+      "nickname": "Nickname",
+      "provider": "Sign-in method",
+      "joinedAt": "Joined"
+    },
+    "errors": {
+      "cancelled": "Sign-in was cancelled",
+      "failed": "Sign-in failed",
+      "networkError": "A network error occurred",
+      "tokenExpired": "Session expired. Please sign in again",
+      "stateMismatch": "Security verification failed. Please try again",
+      "providerError": "Error with {{provider}} authentication: {{error}}"
+    },
+    "callback": {
+      "processing": "Processing sign-in...",
+      "redirecting": "Redirecting automatically..."
+    }
   }
 }
