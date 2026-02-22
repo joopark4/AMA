@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/auth/authService';
-import { generatePKCE, generateState, buildOAuthUrl } from '../../services/auth/oauthClient';
+import { generatePKCE, generateState, buildOAuthUrl, isMockMode } from '../../services/auth/oauthClient';
 import { useAuthStore } from '../../stores/authStore';
 import type { OAuthProvider } from '../../services/auth/types';
 
@@ -21,8 +21,9 @@ const PROVIDER_ICONS: Record<OAuthProvider, string> = {
 export default function UserProfile() {
   const { t } = useTranslation();
   const {
-    user, tokens, isAuthenticated,
+    user, tokens, isAuthenticated, error,
     logout, setLoading, isLoading,
+    setUser, setTokens,
     setPendingProvider, setPkceVerifier, setOAuthState, setError,
   } = useAuthStore();
   const [expanded, setExpanded] = useState(false);
@@ -46,6 +47,15 @@ export default function UserProfile() {
     setLoading(true);
     setError(null);
     try {
+      // OAuth 클라이언트 ID 미설정 시 → MockAuthService로 직접 처리
+      if (isMockMode(provider)) {
+        const result = await authService.handleCallback('mock_code', 'mock_state', 'mock_verifier');
+        setUser(result.user);
+        setTokens(result.tokens);
+        setLoading(false);
+        return;
+      }
+
       const { verifier, challenge } = await generatePKCE();
       const state = generateState();
       setPendingProvider(provider);
@@ -53,6 +63,7 @@ export default function UserProfile() {
       setOAuthState(state);
       const authUrl = buildOAuthUrl(provider, challenge, state);
       await invoke('open_oauth_url', { url: authUrl });
+      // 이후 App.tsx의 딥링크 이벤트 리스너에서 처리
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(t('auth.errors.providerError', { provider, error: message }));
@@ -64,6 +75,7 @@ export default function UserProfile() {
   };
 
   const providers: OAuthProvider[] = ['google', 'apple', 'meta'];
+  const mockMode = providers.some(isMockMode);
 
   // ── 로그인 상태 ───────────────────────────────────────────────────────────
   if (isAuthenticated && user) {
@@ -120,7 +132,7 @@ export default function UserProfile() {
     <div className="rounded-xl border border-gray-200 overflow-hidden">
       {/* 헤더 (항상 표시) */}
       <button
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => { setExpanded((v) => !v); setError(null); }}
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
       >
         <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0">
@@ -144,6 +156,20 @@ export default function UserProfile() {
       {/* OAuth 버튼 (펼침) */}
       {expanded && (
         <div className="px-4 pb-4 space-y-2 border-t border-gray-100 bg-gray-50 pt-3">
+          {/* 에러 메시지 */}
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+              {error}
+            </div>
+          )}
+
+          {/* 개발/테스트 모드 안내 */}
+          {mockMode && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+              테스트 모드 — OAuth 키 미설정, 클릭 시 Mock 로그인 진행
+            </div>
+          )}
+
           {providers.map((provider) => (
             <button
               key={provider}
