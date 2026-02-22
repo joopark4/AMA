@@ -37,10 +37,20 @@ pub async fn open_oauth_url(app: tauri::AppHandle, url: String) -> Result<(), St
 pub fn parse_auth_callback(url: String) -> Result<AuthCallbackParams, String> {
     let parsed = url::Url::parse(&url).map_err(|e| format!("URL 파싱 실패: {e}"))?;
 
-    // mypartnerai://auth/callback 경로 확인
-    let path = parsed.path();
-    if path != "/callback" && path != "auth/callback" {
-        return Err(format!("알 수 없는 콜백 경로: {path}"));
+    // mypartnerai://auth/callback 형식 검증
+    // - standard URL: host="auth", path="/callback"
+    // - cannot-be-a-base URL: path="auth/callback"
+    let is_valid = match parsed.host_str() {
+        Some("auth") => parsed.path() == "/callback",
+        None => parsed.path() == "auth/callback",
+        _ => false,
+    };
+    if !is_valid {
+        return Err(format!(
+            "잘못된 콜백 URL (host={:?}, path={})",
+            parsed.host_str(),
+            parsed.path()
+        ));
     }
 
     let mut code = None;
