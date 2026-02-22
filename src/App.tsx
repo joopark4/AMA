@@ -16,12 +16,14 @@ import { useClickThrough } from './hooks/useClickThrough';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
 import { authService } from './services/auth/authService';
+import { isTokenExpired } from './services/auth/tokenManager';
 
 function App() {
   const { i18n, t } = useTranslation();
   const { settings, isSettingsOpen, isHistoryOpen, setLLMSettings, setAvatarName } = useSettingsStore();
   const { currentResponse, isProcessing } = useConversationStore();
   const {
+    tokens,
     pkceVerifier,
     oauthState,
     setUser,
@@ -31,6 +33,7 @@ function App() {
     setPendingProvider,
     setPkceVerifier,
     setOAuthState,
+    logout,
   } = useAuthStore();
   const [initialAvatarName, setInitialAvatarName] = useState('');
 
@@ -101,6 +104,21 @@ function App() {
     return () => { unlisten?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pkceVerifier, oauthState]);
+
+  // 앱 시작 시 토큰 만료 확인 → 자동 갱신
+  useEffect(() => {
+    if (!tokens) return;
+    if (!isTokenExpired(tokens)) return;
+    if (!tokens.refreshToken) {
+      logout();
+      return;
+    }
+
+    authService.refreshToken(tokens.refreshToken)
+      .then((newTokens) => setTokens(newTokens))
+      .catch(() => logout());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-detect and set available Ollama model on startup
   useEffect(() => {
