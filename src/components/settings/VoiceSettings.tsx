@@ -88,6 +88,10 @@ export default function VoiceSettings() {
   }, []);
 
   const handleShortcutKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Tab') {
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
 
