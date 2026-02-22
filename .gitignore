@@ -21,6 +21,8 @@ target/
 .DS_Store
 **/.DS_Store
 Thumbs.db
+._*
+**/._*
 
 # Logs
 *.log
