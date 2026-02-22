@@ -59,6 +59,9 @@ export default function SettingsPanel() {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)] custom-scrollbar space-y-6">
+          {/* Account */}
+          <UserProfile />
+
           {/* Language Setting */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
@@ -85,7 +88,6 @@ export default function SettingsPanel() {
 
           {/* License Settings */}
           <LicensesSettings />
-          <UserProfile />
         </div>
 
         {/* Footer */}
