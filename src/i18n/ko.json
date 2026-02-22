@@ -118,6 +118,7 @@
     "title": "MyPartnerAI에 오신 것을 환영합니다",
     "subtitle": "계속하려면 로그인하세요",
     "loginWith": "{{provider}}로 계속하기",
+    "mockModeNotice": "테스트 모드 — OAuth 키 미설정, 클릭 시 Mock 로그인 진행",
     "loading": "인증 중...",
     "success": "로그인 성공",
     "logout": "로그아웃",
@@ -143,7 +144,8 @@
       "networkError": "네트워크 오류가 발생했습니다",
       "tokenExpired": "세션이 만료되었습니다. 다시 로그인해 주세요",
       "stateMismatch": "보안 검증에 실패했습니다. 다시 시도해 주세요",
-      "providerError": "{{provider}} 인증 중 오류가 발생했습니다: {{error}}"
+      "providerError": "{{provider}} 인증 중 오류가 발생했습니다: {{error}}",
+      "timeout": "로그인 시간이 초과되었습니다. 다시 시도해 주세요"
     },
     "callback": {
       "processing": "로그인 처리 중...",

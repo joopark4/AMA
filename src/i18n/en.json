@@ -118,6 +118,7 @@
     "title": "Welcome to MyPartnerAI",
     "subtitle": "Sign in to continue",
     "loginWith": "Continue with {{provider}}",
+    "mockModeNotice": "Test mode — OAuth keys not set, click to proceed with mock login",
     "loading": "Authenticating...",
     "success": "Signed in successfully",
     "logout": "Sign Out",
@@ -143,7 +144,8 @@
       "networkError": "A network error occurred",
       "tokenExpired": "Session expired. Please sign in again",
       "stateMismatch": "Security verification failed. Please try again",
-      "providerError": "Error with {{provider}} authentication: {{error}}"
+      "providerError": "Error with {{provider}} authentication: {{error}}",
+      "timeout": "Sign-in timed out. Please try again"
     },
     "callback": {
       "processing": "Processing sign-in...",
