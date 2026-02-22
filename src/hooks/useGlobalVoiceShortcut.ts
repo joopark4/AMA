@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
+import i18n from '../i18n';
 import { normalizeGlobalShortcutAccelerator } from '../services/tauri/globalShortcutUtils';
-
-export const GLOBAL_SHORTCUT_REGISTER_ERROR_EVENT = 'mypartnerai:global-shortcut-register-error';
-
-let lastGlobalShortcutRegisterError: string | null = null;
+import { useAppStatusStore } from '../stores/appStatusStore';
 
 interface UseGlobalVoiceShortcutOptions {
   enabled: boolean;
@@ -14,16 +12,6 @@ interface UseGlobalVoiceShortcutOptions {
 
 interface UseGlobalVoiceShortcutResult {
   registerError: string | null;
-}
-
-function emitGlobalShortcutRegisterError(error: string | null): void {
-  lastGlobalShortcutRegisterError = error;
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(
-    new CustomEvent<string | null>(GLOBAL_SHORTCUT_REGISTER_ERROR_EVENT, {
-      detail: error,
-    })
-  );
 }
 
 function isTauriDesktopRuntime(): boolean {
@@ -37,11 +25,11 @@ function isTauriDesktopRuntime(): boolean {
 
 function normalizeRegisterError(error: unknown, accelerator: string): string {
   const detail = error instanceof Error ? error.message : String(error);
-  return `Failed to register global shortcut (${accelerator}). It may be in use by another app or blocked by system privacy settings. ${detail}`;
-}
-
-export function getLastGlobalShortcutRegisterError(): string | null {
-  return lastGlobalShortcutRegisterError;
+  return i18n.t('settings.voice.globalShortcut.registerErrorMessage', {
+    accelerator,
+    detail,
+    defaultValue: 'Failed to register global shortcut ({{accelerator}}). It may be in use by another app or blocked by system privacy settings. Details: {{detail}}',
+  });
 }
 
 export function useGlobalVoiceShortcut({
@@ -49,7 +37,10 @@ export function useGlobalVoiceShortcut({
   accelerator,
   onTrigger,
 }: UseGlobalVoiceShortcutOptions): UseGlobalVoiceShortcutResult {
-  const [registerError, setRegisterError] = useState<string | null>(null);
+  const registerError = useAppStatusStore((state) => state.globalShortcutRegisterError);
+  const setGlobalShortcutRegisterError = useAppStatusStore(
+    (state) => state.setGlobalShortcutRegisterError
+  );
   const registeredShortcutRef = useRef<string | null>(null);
   const onTriggerRef = useRef(onTrigger);
   const effectRunRef = useRef(0);
@@ -60,8 +51,7 @@ export function useGlobalVoiceShortcut({
 
   useEffect(() => {
     if (!isTauriDesktopRuntime()) {
-      setRegisterError(null);
-      emitGlobalShortcutRegisterError(null);
+      setGlobalShortcutRegisterError(null);
       return;
     }
 
@@ -87,8 +77,7 @@ export function useGlobalVoiceShortcut({
       if (runId !== effectRunRef.current) return;
 
       if (!enabled) {
-        setRegisterError(null);
-        emitGlobalShortcutRegisterError(null);
+        setGlobalShortcutRegisterError(null);
         return;
       }
 
@@ -101,13 +90,11 @@ export function useGlobalVoiceShortcut({
           return;
         }
         registeredShortcutRef.current = normalizedAccelerator;
-        setRegisterError(null);
-        emitGlobalShortcutRegisterError(null);
+        setGlobalShortcutRegisterError(null);
       } catch (error) {
         if (runId !== effectRunRef.current) return;
         const message = normalizeRegisterError(error, normalizedAccelerator);
-        setRegisterError(message);
-        emitGlobalShortcutRegisterError(message);
+        setGlobalShortcutRegisterError(message);
       }
     };
 
@@ -117,7 +104,7 @@ export function useGlobalVoiceShortcut({
       effectRunRef.current += 1;
       void unregisterShortcut(registeredShortcutRef.current);
     };
-  }, [accelerator, enabled]);
+  }, [accelerator, enabled, setGlobalShortcutRegisterError]);
 
   return { registerError };
 }
