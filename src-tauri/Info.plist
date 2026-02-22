@@ -8,5 +8,16 @@
     <string>MyPartnerAI may use camera for future features</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>MyPartnerAI uses speech recognition for voice commands</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.mypartnerai</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>mypartnerai</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

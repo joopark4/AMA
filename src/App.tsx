@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
+import { invoke } from '@tauri-apps/api/core';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
 import StatusIndicator from './components/ui/StatusIndicator';
@@ -7,16 +9,31 @@ import SettingsPanel from './components/ui/SettingsPanel';
 import HistoryPanel from './components/ui/HistoryPanel';
 import LightingControl from './components/avatar/LightingControl';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import AuthScreen from './components/auth/AuthScreen';
 import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
+import { useAuthStore } from './stores/authStore';
 import { useClickThrough } from './hooks/useClickThrough';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
+import { authService } from './services/auth/authService';
 
 function App() {
   const { i18n, t } = useTranslation();
   const { settings, isSettingsOpen, isHistoryOpen, setLLMSettings, setAvatarName } = useSettingsStore();
   const { currentResponse, isProcessing } = useConversationStore();
+  const {
+    isAuthenticated,
+    pkceVerifier,
+    oauthState,
+    setUser,
+    setTokens,
+    setLoading,
+    setError,
+    setPendingProvider,
+    setPkceVerifier,
+    setOAuthState,
+  } = useAuthStore();
   const [initialAvatarName, setInitialAvatarName] = useState('');
 
   // Enable click-through for transparent window (except on interactive elements)
@@ -31,6 +48,61 @@ function App() {
       setInitialAvatarName(settings.avatarName);
     }
   }, [settings.avatarName, initialAvatarName]);
+
+  // Deep-link OAuth 콜백 처리
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    onOpenUrl(async (urls) => {
+      const callbackUrl = urls.find((u) => u.includes('auth/callback'));
+      if (!callbackUrl) return;
+
+      try {
+        const params: { code?: string; state?: string; error?: string } =
+          await invoke('parse_auth_callback', { url: callbackUrl });
+
+        if (params.error) {
+          setError(t('auth.errors.cancelled'));
+          setLoading(false);
+          return;
+        }
+
+        if (!params.code || !params.state) {
+          setError(t('auth.errors.failed'));
+          setLoading(false);
+          return;
+        }
+
+        if (params.state !== oauthState) {
+          setError(t('auth.errors.stateMismatch'));
+          setLoading(false);
+          return;
+        }
+
+        const verifier = pkceVerifier ?? '';
+        const result = await authService.handleCallback(params.code, params.state, verifier);
+
+        setUser(result.user);
+        setTokens(result.tokens);
+
+        // OAuth 닉네임을 아바타 이름 초기값으로 연동
+        if (result.user.nickname && !(settings.avatarName || '').trim()) {
+          setAvatarName(result.user.nickname);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(t('auth.errors.networkError') + ': ' + message);
+      } finally {
+        setLoading(false);
+        setPendingProvider(null);
+        setPkceVerifier(null);
+        setOAuthState(null);
+      }
+    }).then((fn) => { unlisten = fn; });
+
+    return () => { unlisten?.(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pkceVerifier, oauthState]);
 
   // Auto-detect and set available Ollama model on startup
   useEffect(() => {
@@ -55,8 +127,9 @@ function App() {
 
 
   const isDevBuild = Boolean((import.meta as any)?.env?.DEV);
+  const requiresAuth = !isDevBuild && !isAuthenticated;
   const requiresAvatarNameSetup =
-    !isDevBuild && !(settings.avatarName || '').trim();
+    !isDevBuild && isAuthenticated && !(settings.avatarName || '').trim();
 
   return (
     <div className="w-full h-full relative">
@@ -95,6 +168,9 @@ function App() {
           <HistoryPanel />
         </ErrorBoundary>
       )}
+
+      {/* 인증 화면 - 미로그인 시 최상위 오버레이 */}
+      {requiresAuth && <AuthScreen />}
 
       {/* First-run avatar name setup for production builds */}
       {requiresAvatarNameSetup && (
