@@ -1,5 +1,14 @@
 import type { OAuthProvider } from './types';
 
+/** OAuth 클라이언트 ID가 없으면 Mock 모드로 동작 */
+export function isMockMode(provider: OAuthProvider): boolean {
+  switch (provider) {
+    case 'google': return !import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    case 'apple':  return !import.meta.env.VITE_APPLE_CLIENT_ID;
+    case 'meta':   return !import.meta.env.VITE_META_APP_ID;
+  }
+}
+
 /** PKCE code_verifier 및 code_challenge(S256) 생성 */
 export async function generatePKCE(): Promise<{ verifier: string; challenge: string }> {
   const verifier = generateRandomString(64);
