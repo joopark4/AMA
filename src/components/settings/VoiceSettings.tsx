@@ -9,10 +9,7 @@ import {
   DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
   formatGlobalShortcutForDisplay,
 } from '../../services/tauri/globalShortcutUtils';
-import {
-  GLOBAL_SHORTCUT_REGISTER_ERROR_EVENT,
-  getLastGlobalShortcutRegisterError,
-} from '../../hooks/useGlobalVoiceShortcut';
+import { useAppStatusStore } from '../../stores/appStatusStore';
 
 // Whisper 모델 목록 (배포 기본 포함 모델)
 const WHISPER_MODELS = [
@@ -46,8 +43,8 @@ export default function VoiceSettings() {
   } = useSettingsStore();
   const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
   const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
-  const [shortcutRegisterError, setShortcutRegisterError] = useState<string | null>(
-    getLastGlobalShortcutRegisterError()
+  const shortcutRegisterError = useAppStatusStore(
+    (state) => state.globalShortcutRegisterError
   );
   const shortcutDisplayValue = useMemo(
     () => formatGlobalShortcutForDisplay(settings.globalShortcut.accelerator),
@@ -66,25 +63,6 @@ export default function VoiceSettings() {
     ) {
       setTTSSettings({ engine: 'supertonic', voice: 'F1' });
     }
-  }, []);
-
-  useEffect(() => {
-    const onShortcutRegisterError = (event: Event) => {
-      const customEvent = event as CustomEvent<string | null>;
-      setShortcutRegisterError(customEvent.detail ?? null);
-    };
-
-    window.addEventListener(
-      GLOBAL_SHORTCUT_REGISTER_ERROR_EVENT,
-      onShortcutRegisterError as EventListener
-    );
-
-    return () => {
-      window.removeEventListener(
-        GLOBAL_SHORTCUT_REGISTER_ERROR_EVENT,
-        onShortcutRegisterError as EventListener
-      );
-    };
   }, []);
 
   const handleShortcutKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
