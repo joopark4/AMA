@@ -5,6 +5,7 @@ import LLMSettings from '../settings/LLMSettings';
 import VoiceSettings from '../settings/VoiceSettings';
 import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
+import UserProfile from '../auth/UserProfile';
 
 export default function SettingsPanel() {
   const { t } = useTranslation();
@@ -58,6 +59,9 @@ export default function SettingsPanel() {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)] custom-scrollbar space-y-6">
+          {/* Account */}
+          <UserProfile />
+
           {/* Language Setting */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
