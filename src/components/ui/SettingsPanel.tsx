@@ -5,6 +5,7 @@ import LLMSettings from '../settings/LLMSettings';
 import VoiceSettings from '../settings/VoiceSettings';
 import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
+import UserProfile from '../auth/UserProfile';
 
 export default function SettingsPanel() {
   const { t } = useTranslation();
@@ -84,6 +85,7 @@ export default function SettingsPanel() {
 
           {/* License Settings */}
           <LicensesSettings />
+          <UserProfile />
         </div>
 
         {/* Footer */}
