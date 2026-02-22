@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/auth/authService';
@@ -27,6 +27,14 @@ export default function UserProfile() {
     setPendingProvider, setPkceVerifier, setOAuthState, setError,
   } = useAuthStore();
   const [expanded, setExpanded] = useState(false);
+  const oauthTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearOAuthTimeout = () => {
+    if (oauthTimeoutRef.current) {
+      clearTimeout(oauthTimeoutRef.current);
+      oauthTimeoutRef.current = null;
+    }
+  };
 
   const handleLogout = async () => {
     if (!window.confirm(t('auth.logoutConfirm'))) return;
@@ -64,7 +72,17 @@ export default function UserProfile() {
       const authUrl = buildOAuthUrl(provider, challenge, state);
       await invoke('open_oauth_url', { url: authUrl });
       // 이후 App.tsx의 딥링크 이벤트 리스너에서 처리
+      // 5분 내 콜백이 없으면 로딩 상태 자동 복귀
+      const OAUTH_TIMEOUT_MS = 5 * 60 * 1000;
+      oauthTimeoutRef.current = setTimeout(() => {
+        setLoading(false);
+        setPendingProvider(null);
+        setPkceVerifier(null);
+        setOAuthState(null);
+        setError(t('auth.errors.timeout'));
+      }, OAUTH_TIMEOUT_MS);
     } catch (err) {
+      clearOAuthTimeout();
       const message = err instanceof Error ? err.message : String(err);
       setError(t('auth.errors.providerError', { provider, error: message }));
       setLoading(false);
@@ -166,7 +184,7 @@ export default function UserProfile() {
           {/* 개발/테스트 모드 안내 */}
           {mockMode && (
             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-              테스트 모드 — OAuth 키 미설정, 클릭 시 Mock 로그인 진행
+              {t('auth.mockModeNotice')}
             </div>
           )}
 
