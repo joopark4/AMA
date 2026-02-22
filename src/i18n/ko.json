@@ -43,6 +43,20 @@
           "kokoro": "Kokoro-82M",
           "melo": "MeloTTS-Korean"
         }
+      },
+      "globalShortcut": {
+        "title": "글로벌 음성 단축키",
+        "description": "다른 앱을 사용하는 중에도 음성 입력 토글을 실행합니다.",
+        "enabled": "글로벌 단축키 활성화",
+        "shortcutLabel": "단축키",
+        "shortcutHint": "입력창을 클릭한 뒤 원하는 키 조합을 누르세요.",
+        "captureHint": "조합 입력 중... (modifier + 키)",
+        "restoreDefault": "기본값 복원",
+        "validation": "유효한 조합을 입력하세요. (예: Cmd+Shift+Space)",
+        "registerErrorMessage": "글로벌 단축키({{accelerator}}) 등록에 실패했습니다. 다른 앱에서 사용 중이거나 시스템 개인정보 설정에 의해 차단되었을 수 있습니다. 상세 정보: {{detail}}",
+        "registerErrorInline": "현재 단축키 등록 실패: {{error}}",
+        "registerErrorToast": "글로벌 단축키를 등록하지 못했습니다.",
+        "openAccessibility": "접근성 설정 열기"
       }
     },
     "avatar": {
@@ -76,7 +90,8 @@
     "listening": "듣는 중...",
     "processing": "처리 중...",
     "speaking": "말하는 중...",
-    "error": "오류 발생"
+    "error": "오류 발생",
+    "voiceListeningOverlay": "음성 입력 중"
   },
   "chat": {
     "placeholder": "메시지를 입력하세요...",
