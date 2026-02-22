@@ -9,7 +9,6 @@ import SettingsPanel from './components/ui/SettingsPanel';
 import HistoryPanel from './components/ui/HistoryPanel';
 import LightingControl from './components/avatar/LightingControl';
 import ErrorBoundary from './components/ui/ErrorBoundary';
-import AuthScreen from './components/auth/AuthScreen';
 import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useAuthStore } from './stores/authStore';
@@ -23,7 +22,6 @@ function App() {
   const { settings, isSettingsOpen, isHistoryOpen, setLLMSettings, setAvatarName } = useSettingsStore();
   const { currentResponse, isProcessing } = useConversationStore();
   const {
-    isAuthenticated,
     pkceVerifier,
     oauthState,
     setUser,
@@ -127,9 +125,8 @@ function App() {
 
 
   const isDevBuild = Boolean((import.meta as any)?.env?.DEV);
-  const requiresAuth = !isDevBuild && !isAuthenticated;
   const requiresAvatarNameSetup =
-    !isDevBuild && isAuthenticated && !(settings.avatarName || '').trim();
+    !isDevBuild && !(settings.avatarName || '').trim();
 
   return (
     <div className="w-full h-full relative">
@@ -168,9 +165,6 @@ function App() {
           <HistoryPanel />
         </ErrorBoundary>
       )}
-
-      {/* 인증 화면 - 미로그인 시 최상위 오버레이 */}
-      {requiresAuth && <AuthScreen />}
 
       {/* First-run avatar name setup for production builds */}
       {requiresAvatarNameSetup && (
