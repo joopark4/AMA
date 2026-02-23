@@ -71,6 +71,14 @@ const LICENSE_BY_EMOTION = {
   bridge: 'mixamo-standard',
 };
 
+const DEFAULT_REDISTRIBUTION_NOTE =
+  'Verify upstream asset terms before redistributing generated deliverables.';
+
+const REDISTRIBUTION_NOTE_BY_LICENSE = {
+  'rokoko-user-generated':
+    'Captured from user-owned performance. Verify downstream rights before redistribution.',
+};
+
 const FALLBACK_GESTURE_BY_EMOTION = {
   neutral: 'nod',
   happy: 'celebrate',
@@ -1064,6 +1072,7 @@ async function main() {
 
       const sourceFile = `motions/clean/clips/${id}.json`;
       const clipPath = resolve(rootDir, sourceFile);
+      const licenseClass = LICENSE_BY_EMOTION[emotion];
 
       await writeFile(clipPath, `${JSON.stringify(clipData, null, 2)}\n`, 'utf8');
 
@@ -1078,9 +1087,9 @@ async function main() {
         priority,
         cooldown_ms: cooldownMs,
         source_url: SOURCE_BY_EMOTION[emotion],
-        license_class: LICENSE_BY_EMOTION[emotion],
+        license_class: licenseClass,
         attribution_required: false,
-        redistribution_note: 'Verify upstream asset terms before redistributing generated deliverables.',
+        redistribution_note: REDISTRIBUTION_NOTE_BY_LICENSE[licenseClass] ?? DEFAULT_REDISTRIBUTION_NOTE,
         fallback_gesture: FALLBACK_GESTURE_BY_EMOTION[emotion],
         variation_tag: profile.tag,
         slot_group: index < (LEGACY_COUNTS[emotion] ?? 0) ? 'core_v1' : 'expansion_v2',
@@ -1110,7 +1119,7 @@ async function main() {
     default_source_url: 'https://www.mixamo.com',
     default_license_class: 'mixamo-standard',
     default_attribution_required: false,
-    default_redistribution_note: 'Verify upstream asset terms before redistributing generated deliverables.',
+    default_redistribution_note: DEFAULT_REDISTRIBUTION_NOTE,
     clips: catalogClips,
   };
 
