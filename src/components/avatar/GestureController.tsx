@@ -45,6 +45,8 @@ export default function GestureController() {
   const vrm = useAvatarStore((state) => state.vrm);
   const {
     currentGesture,
+    currentMotionClip,
+    isMotionSequenceActive,
     emotion,
     animationState,
     isMoving,
@@ -64,6 +66,13 @@ export default function GestureController() {
 
   // Stop emotion-loop gestures when emotion/state no longer matches.
   useEffect(() => {
+    if (isMotionSequenceActive) {
+      if (currentGesture) {
+        resetGestures();
+      }
+      return;
+    }
+
     if (isMoving) {
       if (currentGesture) {
         resetGestures();
@@ -92,11 +101,21 @@ export default function GestureController() {
     ) {
       clearGesture();
     }
-  }, [currentGesture, emotion, animationState, isMoving, clearGesture, resetGestures]);
+  }, [
+    currentGesture,
+    emotion,
+    animationState,
+    isMoving,
+    isMotionSequenceActive,
+    clearGesture,
+    resetGestures,
+  ]);
 
   // Detect gestures from conversation
   useEffect(() => {
     if (!settings.avatar?.animation?.enableGestures) return;
+    if (isMotionSequenceActive) return;
+    if (currentMotionClip) return;
     if (isMoving) return;
     if (!currentResponse || currentResponse === lastResponseRef.current) return;
 
@@ -107,11 +126,21 @@ export default function GestureController() {
     if (textGesture && !currentGesture) {
       triggerGesture(textGesture);
     }
-  }, [currentResponse, currentGesture, triggerGesture, isMoving, settings.avatar?.animation?.enableGestures]);
+  }, [
+    currentResponse,
+    currentGesture,
+    currentMotionClip,
+    triggerGesture,
+    isMoving,
+    isMotionSequenceActive,
+    settings.avatar?.animation?.enableGestures,
+  ]);
 
   // Detect gestures from emotion (like thinking pose)
   useEffect(() => {
     if (!settings.avatar?.animation?.enableGestures) return;
+    if (isMotionSequenceActive) return;
+    if (currentMotionClip) return;
     if (isMoving) return;
 
     const emotionGesture = findGestureFromEmotion(emotion);
@@ -119,7 +148,16 @@ export default function GestureController() {
       // Only trigger emotion-based gestures when idle
       triggerGesture(emotionGesture);
     }
-  }, [emotion, currentGesture, animationState, isMoving, triggerGesture, settings.avatar?.animation?.enableGestures]);
+  }, [
+    emotion,
+    currentGesture,
+    currentMotionClip,
+    animationState,
+    isMoving,
+    isMotionSequenceActive,
+    triggerGesture,
+    settings.avatar?.animation?.enableGestures,
+  ]);
 
   // Initialize gesture timing when a new gesture starts
   useEffect(() => {
@@ -146,6 +184,8 @@ export default function GestureController() {
   // Animate gesture
   useFrame(() => {
     if (!vrm?.humanoid || !currentGesture) return;
+    if (isMotionSequenceActive) return;
+    if (currentMotionClip) return;
     if (!settings.avatar?.animation?.enableGestures) return;
 
     const definition = GESTURE_DEFINITIONS[currentGesture];
