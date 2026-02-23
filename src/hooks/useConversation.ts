@@ -750,6 +750,7 @@ export function useConversation(): UseConversationReturn {
   }, [
     addMessage,
     settings.avatarName,
+    settings.avatarPersonalityPrompt,
     setCurrentResponse,
     clearCurrentResponse,
     setStatus,

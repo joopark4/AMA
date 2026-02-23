@@ -54,4 +54,4 @@
 ## 참고
 - 로컬 타입체크(`tsc --noEmit`)는 기존 `import.meta.env` 타입 선언 이슈로 일부 파일에서 실패할 수 있음
 - 앱 실행 시 모델 루트는 필요 시 다음 환경변수로 지정
-  - `PREPARE_MODELS_DIR="/Volumes/Sandisk 2TB/Projects/MyPartnerAI/models"`
+  - `PREPARE_MODELS_DIR="/absolute/path/to/models"`
