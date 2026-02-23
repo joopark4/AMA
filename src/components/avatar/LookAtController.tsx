@@ -82,6 +82,19 @@ export default function LookAtController() {
     };
   }, [vrm]);
 
+  useEffect(() => {
+    if (!vrm?.lookAt) return;
+
+    if (!faceOnlyModeEnabled) {
+      vrm.lookAt.target = null;
+    }
+
+    return () => {
+      if (!vrm?.lookAt) return;
+      vrm.lookAt.target = null;
+    };
+  }, [faceOnlyModeEnabled, vrm]);
+
   useFrame((_, delta) => {
     if (!vrm?.lookAt || !faceOnlyModeEnabled) return;
 
