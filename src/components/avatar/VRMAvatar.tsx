@@ -5,7 +5,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import { convertFileSrc, invoke, isTauri } from '@tauri-apps/api/core';
 import { readFile } from '@tauri-apps/plugin-fs';
-import { useAvatarStore, type AvatarInteractionBounds } from '../../stores/avatarStore';
+import {
+  useAvatarStore,
+  type AvatarInteractionBounds,
+  type Emotion,
+} from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getEmotionTuning } from '../../config/emotionTuning';
 
@@ -46,6 +50,16 @@ const DIAGNOSTIC_BONES = [
   'leftFoot',
   'rightFoot',
 ] as const;
+
+const FACE_ONLY_HEAD_POSE: Record<Emotion, { x: number; y: number; z: number }> = {
+  neutral: { x: 0, y: 0, z: 0 },
+  happy: { x: -0.06, y: 0.08, z: 0.02 },
+  sad: { x: 0.1, y: -0.05, z: -0.03 },
+  angry: { x: -0.03, y: 0.12, z: 0 },
+  surprised: { x: -0.13, y: 0, z: 0.02 },
+  relaxed: { x: -0.01, y: 0.03, z: 0.03 },
+  thinking: { x: 0.07, y: 0.17, z: 0.08 },
+};
 
 const STYLE_GAIT = {
   stroll: { cadence: 0.95, leg: 0.9, arm: 0.85, bounce: 0.8, sway: 0.9 },
@@ -400,6 +414,8 @@ export default function VRMAvatar() {
 
   const { settings, setAvatarSettings } = useSettingsStore();
   const vrm = useAvatarStore((state) => state.vrm);
+  const faceOnlyModeEnabled =
+    settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
 
   useEffect(() => {
     hasAppliedInitialViewRef.current = false;
@@ -1060,6 +1076,143 @@ export default function VRMAvatar() {
     // Update animation mixer
     if (mixerRef.current) {
       mixerRef.current.update(delta);
+    }
+
+    if (faceOnlyModeEnabled) {
+      locomotionLatchRef.current = false;
+      locomotionBlendRef.current = 0;
+
+      if (vrm.humanoid) {
+        const humanoid = vrm.humanoid;
+        const spine = humanoid.getNormalizedBoneNode('spine');
+        const chest = humanoid.getNormalizedBoneNode('chest');
+        const upperChest = humanoid.getNormalizedBoneNode('upperChest');
+        const hips = humanoid.getNormalizedBoneNode('hips');
+        const neck = humanoid.getNormalizedBoneNode('neck');
+        const head = humanoid.getNormalizedBoneNode('head');
+        const leftShoulder = humanoid.getNormalizedBoneNode('leftShoulder');
+        const rightShoulder = humanoid.getNormalizedBoneNode('rightShoulder');
+        const leftUpperArm = humanoid.getNormalizedBoneNode('leftUpperArm');
+        const rightUpperArm = humanoid.getNormalizedBoneNode('rightUpperArm');
+        const leftLowerArm = humanoid.getNormalizedBoneNode('leftLowerArm');
+        const rightLowerArm = humanoid.getNormalizedBoneNode('rightLowerArm');
+        const leftHand = humanoid.getNormalizedBoneNode('leftHand');
+        const rightHand = humanoid.getNormalizedBoneNode('rightHand');
+        const leftUpperLeg = humanoid.getNormalizedBoneNode('leftUpperLeg');
+        const rightUpperLeg = humanoid.getNormalizedBoneNode('rightUpperLeg');
+        const leftLowerLeg = humanoid.getNormalizedBoneNode('leftLowerLeg');
+        const rightLowerLeg = humanoid.getNormalizedBoneNode('rightLowerLeg');
+        const leftFoot = humanoid.getNormalizedBoneNode('leftFoot');
+        const rightFoot = humanoid.getNormalizedBoneNode('rightFoot');
+        const leftToes = humanoid.getNormalizedBoneNode('leftToes');
+        const rightToes = humanoid.getNormalizedBoneNode('rightToes');
+
+        const humanoidAny = humanoid as any;
+        const getRawBone = typeof humanoidAny.getRawBoneNode === 'function'
+          ? (boneName: string) => humanoidAny.getRawBoneNode(boneName as any) as BoneNode
+          : () => null;
+        const rawLeftLowerArm = getRawBone('leftLowerArm');
+        const rawRightLowerArm = getRawBone('rightLowerArm');
+        const rawLeftLowerLeg = getRawBone('leftLowerLeg');
+        const rawRightLowerLeg = getRawBone('rightLowerLeg');
+        if (!hingeProfileRef.current) {
+          hingeProfileRef.current = {
+            leftElbow: computeHingeAxisWeights(rawLeftLowerArm || leftLowerArm, DEFAULT_ELBOW_WEIGHTS),
+            rightElbow: computeHingeAxisWeights(rawRightLowerArm || rightLowerArm, DEFAULT_ELBOW_WEIGHTS),
+            leftKnee: computeHingeAxisWeights(rawLeftLowerLeg || leftLowerLeg, DEFAULT_KNEE_WEIGHTS),
+            rightKnee: computeHingeAxisWeights(rawRightLowerLeg || rightLowerLeg, DEFAULT_KNEE_WEIGHTS),
+          };
+        }
+        const hingeProfile = hingeProfileRef.current;
+        const leftElbowWeights = hingeProfile?.leftElbow ?? DEFAULT_ELBOW_WEIGHTS;
+        const rightElbowWeights = hingeProfile?.rightElbow ?? DEFAULT_ELBOW_WEIGHTS;
+        const leftKneeWeights = hingeProfile?.leftKnee ?? DEFAULT_KNEE_WEIGHTS;
+        const rightKneeWeights = hingeProfile?.rightKnee ?? DEFAULT_KNEE_WEIGHTS;
+        const stanceStiffness = 14;
+
+        // Face-only mode baseline stance: 11-shape standing pose with relaxed arms.
+        dampBoneRotation(spine, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(chest, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(upperChest, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(hips, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness - 1);
+        dampBoneRotation(leftShoulder, { x: 0, y: 0, z: 0.08 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(rightShoulder, { x: 0, y: 0, z: -0.08 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(leftUpperArm, { x: 0.08, y: 0, z: 1.18 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(rightUpperArm, { x: 0.08, y: 0, z: -1.18 }, clampedDelta, stanceStiffness);
+        dampBoneRotationPair(
+          leftLowerArm,
+          rawLeftLowerArm,
+          hingeTarget(0.24, -1, leftElbowWeights, { y: -0.1, z: 0 }, 0),
+          clampedDelta,
+          stanceStiffness
+        );
+        dampBoneRotationPair(
+          rightLowerArm,
+          rawRightLowerArm,
+          hingeTarget(0.24, 1, rightElbowWeights, { y: 0.1, z: 0 }, 0),
+          clampedDelta,
+          stanceStiffness
+        );
+        dampBoneRotation(leftHand, { x: 0.02, y: -0.06, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(rightHand, { x: 0.02, y: 0.06, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(leftUpperLeg, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(rightUpperLeg, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotationPair(
+          leftLowerLeg,
+          rawLeftLowerLeg,
+          hingeTarget(0.05, 1, leftKneeWeights, { x: 0.01 }, 0),
+          clampedDelta,
+          stanceStiffness
+        );
+        dampBoneRotationPair(
+          rightLowerLeg,
+          rawRightLowerLeg,
+          hingeTarget(0.05, -1, rightKneeWeights, { x: 0.01 }, 0),
+          clampedDelta,
+          stanceStiffness
+        );
+        dampBoneRotation(leftFoot, { x: 0.01, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(rightFoot, { x: 0.01, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(leftToes, { x: 0.01, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+        dampBoneRotation(rightToes, { x: 0.01, y: 0, z: 0 }, clampedDelta, stanceStiffness);
+
+        const facePose = FACE_ONLY_HEAD_POSE[emotion] ?? FACE_ONLY_HEAD_POSE.neutral;
+        const microYaw = Math.sin(time * 0.9 + 0.8) * 0.02;
+        const microPitch = Math.sin(time * 1.2) * 0.012;
+
+        dampBoneRotation(
+          neck,
+          {
+            x: facePose.x * 0.45 + microPitch * 0.4,
+            y: facePose.y * 0.4 + microYaw * 0.6,
+            z: facePose.z * 0.4,
+          },
+          clampedDelta,
+          13
+        );
+        dampBoneRotation(
+          head,
+          {
+            x: facePose.x + microPitch,
+            y: facePose.y + microYaw,
+            z: facePose.z + Math.sin(time * 1.35 + 0.2) * 0.01,
+          },
+          clampedDelta,
+          15
+        );
+      }
+
+      smoothedYawRef.current = THREE.MathUtils.lerp(
+        smoothedYawRef.current,
+        IDLE_YAW,
+        Math.min(1, clampedDelta * 10)
+      );
+      if (groupRef.current) {
+        groupRef.current.rotation.x = manualRotation.x;
+        groupRef.current.rotation.y = smoothedYawRef.current + manualRotation.y;
+      }
+      publishInteractionBounds();
+      return;
     }
 
     // Skip base pose animation when gesture or dance is active
