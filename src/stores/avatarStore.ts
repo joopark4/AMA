@@ -4,6 +4,7 @@ import type { VRM } from '@pixiv/three-vrm';
 export type Emotion = 'neutral' | 'happy' | 'sad' | 'angry' | 'surprised' | 'relaxed' | 'thinking';
 export type AnimationState = 'idle' | 'walking' | 'talking' | 'waving' | 'thinking' | 'gesturing' | 'dancing';
 export type GestureType = 'wave' | 'nod' | 'shake' | 'shrug' | 'thinking' | 'celebrate' | null;
+export type MotionClipId = string;
 export type LocomotionStyle = 'stroll' | 'brisk' | 'sneak' | 'bouncy';
 
 export interface Position {
@@ -44,6 +45,16 @@ interface AvatarState {
   gestureProgress: number;
   gestureQueue: GestureType[];
 
+  // Motion clip state
+  currentMotionClip: MotionClipId | null;
+  motionProgress: number;
+  motionQueue: MotionClipId[];
+  recentMotionIds: MotionClipId[];
+  motionCooldownMap: Record<string, number>;
+  isMotionSequenceActive: boolean;
+  motionSequenceIndex: number;
+  motionSequenceTotal: number;
+
   // Dance state
   isDancing: boolean;
   danceEnergy: number;
@@ -83,6 +94,16 @@ interface AvatarState {
   setGestureProgress: (progress: number) => void;
   clearGesture: () => void;
   resetGestures: () => void;
+
+  // Motion clip actions
+  triggerMotionClip: (motionId: MotionClipId) => void;
+  setMotionProgress: (progress: number) => void;
+  clearMotionClip: () => void;
+  registerMotionSelection: (motionId: MotionClipId, cooldownMs: number) => void;
+  resetMotionState: () => void;
+  startMotionSequenceDemo: (total: number) => void;
+  setMotionSequenceIndex: (index: number) => void;
+  stopMotionSequenceDemo: () => void;
 
   // Dance actions
   startDancing: () => void;
@@ -152,6 +173,16 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
   gestureProgress: 0,
   gestureQueue: [],
 
+  // Motion clip state
+  currentMotionClip: null,
+  motionProgress: 0,
+  motionQueue: [],
+  recentMotionIds: [],
+  motionCooldownMap: {},
+  isMotionSequenceActive: false,
+  motionSequenceIndex: -1,
+  motionSequenceTotal: 0,
+
   // Dance state
   isDancing: false,
   danceEnergy: 0,
@@ -171,7 +202,21 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
   facingRight: true,
   manualRotation: { x: 0, y: 0 },
 
-  setVRM: (vrm) => set({ vrm, isLoaded: vrm !== null, loadError: null }),
+  setVRM: (vrm) =>
+    set({
+      vrm,
+      isLoaded: vrm !== null,
+      loadError: null,
+      currentGesture: null,
+      gestureProgress: 0,
+      gestureQueue: [],
+      currentMotionClip: null,
+      motionProgress: 0,
+      motionQueue: [],
+      isMotionSequenceActive: false,
+      motionSequenceIndex: -1,
+      motionSequenceTotal: 0,
+    }),
   setIsLoaded: (isLoaded) => set({ isLoaded }),
   setIsLoading: (isLoading) => set({ isLoading }),
   setLoadError: (error) => set({ loadError: error, isLoading: false }),
@@ -205,6 +250,74 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
     }
   },
   resetGestures: () => set({ currentGesture: null, gestureProgress: 0, gestureQueue: [] }),
+
+  // Motion clip actions
+  triggerMotionClip: (motionId) => {
+    if (!motionId) return;
+    const { currentMotionClip, motionQueue } = get();
+    if (currentMotionClip === null) {
+      set({ currentMotionClip: motionId, motionProgress: 0 });
+    } else {
+      set({ motionQueue: [...motionQueue, motionId] });
+    }
+  },
+  setMotionProgress: (progress) =>
+    set({ motionProgress: Math.max(0, Math.min(1, progress)) }),
+  clearMotionClip: () => {
+    const { motionQueue } = get();
+    if (motionQueue.length > 0) {
+      const [nextMotionId, ...rest] = motionQueue;
+      set({ currentMotionClip: nextMotionId, motionProgress: 0, motionQueue: rest });
+    } else {
+      set({ currentMotionClip: null, motionProgress: 0 });
+    }
+  },
+  registerMotionSelection: (motionId, cooldownMs) =>
+    set((state) => {
+      const nextRecent = [
+        motionId,
+        ...state.recentMotionIds.filter((id) => id !== motionId),
+      ].slice(0, 12);
+
+      const now = Date.now();
+      const nextCooldownMap = Object.fromEntries(
+        Object.entries(state.motionCooldownMap).filter(([, until]) => until > now)
+      ) as Record<string, number>;
+
+      nextCooldownMap[motionId] = now + Math.max(0, cooldownMs);
+
+      return {
+        recentMotionIds: nextRecent,
+        motionCooldownMap: nextCooldownMap,
+      };
+    }),
+  resetMotionState: () =>
+    set({
+      currentMotionClip: null,
+      motionProgress: 0,
+      motionQueue: [],
+      recentMotionIds: [],
+      motionCooldownMap: {},
+    }),
+  startMotionSequenceDemo: (total) =>
+    set({
+      isMotionSequenceActive: true,
+      motionSequenceIndex: 0,
+      motionSequenceTotal: Math.max(0, Math.floor(total)),
+    }),
+  setMotionSequenceIndex: (index) =>
+    set((state) => ({
+      motionSequenceIndex: Math.max(-1, Math.min(index, Math.max(0, state.motionSequenceTotal - 1))),
+    })),
+  stopMotionSequenceDemo: () =>
+    set({
+      isMotionSequenceActive: false,
+      motionSequenceIndex: -1,
+      motionSequenceTotal: 0,
+      currentMotionClip: null,
+      motionProgress: 0,
+      motionQueue: [],
+    }),
 
   // Dance actions
   startDancing: () => set({ isDancing: true, danceEnergy: 0.5 }),

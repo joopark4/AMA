@@ -46,9 +46,13 @@ export default function VoiceSettings() {
   const shortcutRegisterError = useAppStatusStore(
     (state) => state.globalShortcutRegisterError
   );
+  const globalShortcutSettings = settings.globalShortcut ?? {
+    enabled: true,
+    accelerator: DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
+  };
   const shortcutDisplayValue = useMemo(
-    () => formatGlobalShortcutForDisplay(settings.globalShortcut.accelerator),
-    [settings.globalShortcut.accelerator]
+    () => formatGlobalShortcutForDisplay(globalShortcutSettings.accelerator),
+    [globalShortcutSettings.accelerator]
   );
 
   // 항상 whisper 엔진 사용, 유효하지 않은 모델은 base로 리셋
@@ -187,7 +191,7 @@ export default function VoiceSettings() {
           </span>
           <input
             type="checkbox"
-            checked={settings.globalShortcut.enabled}
+            checked={globalShortcutSettings.enabled}
             onChange={(event) =>
               setGlobalShortcutSettings({ enabled: event.target.checked })
             }
@@ -236,7 +240,7 @@ export default function VoiceSettings() {
         {shortcutInputError && (
           <p className="text-xs text-red-600">{shortcutInputError}</p>
         )}
-        {!shortcutInputError && settings.globalShortcut.enabled && shortcutRegisterError && (
+        {!shortcutInputError && globalShortcutSettings.enabled && shortcutRegisterError && (
           <p className="text-xs text-amber-700">
             {t('settings.voice.globalShortcut.registerErrorInline', {
               error: shortcutRegisterError,
