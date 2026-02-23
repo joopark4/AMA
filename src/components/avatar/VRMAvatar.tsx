@@ -392,6 +392,7 @@ export default function VRMAvatar() {
   const hingeProfileRef = useRef<HingeProfile | null>(null);
   const hingeProfileLoggedRef = useRef(false);
   const hasAppliedInitialViewRef = useRef(false);
+  const restHipsPositionRef = useRef<{ x: number; y: number; z: number } | null>(null);
 
   const { gl, camera } = useThree();
 
@@ -1006,6 +1007,20 @@ export default function VRMAvatar() {
   useEffect(() => {
     hingeProfileRef.current = null;
     hingeProfileLoggedRef.current = false;
+    restHipsPositionRef.current = null;
+  }, [vrm]);
+
+  useEffect(() => {
+    if (!vrm?.humanoid) return;
+
+    const hips = vrm.humanoid.getNormalizedBoneNode('hips');
+    if (!hips) return;
+
+    restHipsPositionRef.current = {
+      x: hips.position.x,
+      y: hips.position.y,
+      z: hips.position.z,
+    };
   }, [vrm]);
 
   useEffect(() => {
@@ -1142,13 +1157,23 @@ export default function VRMAvatar() {
         const leftKneeWeights = hingeProfile?.leftKnee ?? DEFAULT_KNEE_WEIGHTS;
         const rightKneeWeights = hingeProfile?.rightKnee ?? DEFAULT_KNEE_WEIGHTS;
         const stanceStiffness = 14;
+        if (!restHipsPositionRef.current && hips) {
+          restHipsPositionRef.current = {
+            x: hips.position.x,
+            y: hips.position.y,
+            z: hips.position.z,
+          };
+        }
+        const hipsRestPosition = restHipsPositionRef.current;
 
         // Face-only mode baseline stance: 11-shape standing pose with relaxed arms.
         dampBoneRotation(spine, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
         dampBoneRotation(chest, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
         dampBoneRotation(upperChest, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
         dampBoneRotation(hips, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness - 1);
-        dampBonePosition(hips, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness - 1);
+        if (hipsRestPosition) {
+          dampBonePosition(hips, hipsRestPosition, clampedDelta, stanceStiffness - 1);
+        }
         dampBoneRotation(leftShoulder, { x: 0, y: 0, z: 0.08 }, clampedDelta, stanceStiffness);
         dampBoneRotation(rightShoulder, { x: 0, y: 0, z: -0.08 }, clampedDelta, stanceStiffness);
         dampBoneRotation(leftUpperArm, { x: 0.08, y: 0, z: 1.18 }, clampedDelta, stanceStiffness);
