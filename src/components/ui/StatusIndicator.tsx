@@ -4,6 +4,7 @@ import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore, type LLMProvider } from '../../stores/settingsStore';
 import { useConversation } from '../../hooks/useConversation';
 import { useGlobalVoiceShortcut } from '../../hooks/useGlobalVoiceShortcut';
+import { DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR } from '../../services/tauri/globalShortcutUtils';
 import { llmRouter } from '../../services/ai/llmRouter';
 import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
@@ -395,9 +396,14 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
     }
   }, [isVoiceListening, startListening, stopListening]);
 
+  const globalShortcutSettings = settings.globalShortcut ?? {
+    enabled: true,
+    accelerator: DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
+  };
+
   const { registerError: globalShortcutRegisterError } = useGlobalVoiceShortcut({
-    enabled: settings.globalShortcut.enabled,
-    accelerator: settings.globalShortcut.accelerator,
+    enabled: globalShortcutSettings.enabled,
+    accelerator: globalShortcutSettings.accelerator,
     onTrigger: handleVoiceToggle,
   });
 
