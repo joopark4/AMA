@@ -6,16 +6,14 @@ interface AuthState {
   // ── 퍼시스트 대상 ──────────────────────────────
   user: AuthUser | null;
   tokens: AuthTokens | null;
+  /** 약관 동의 완료 여부 (로컬 persist, 재로그인 시 유지) */
+  hasAgreedToTerms: boolean;
 
   // ── 런타임 상태 (퍼시스트 제외) ──────────────────
   isLoading: boolean;
   error: string | null;
   /** OAuth flow 진행 중인 제공자 */
   pendingProvider: OAuthProvider | null;
-  /** PKCE verifier (OAuth flow 중 임시 저장) */
-  pkceVerifier: string | null;
-  /** CSRF 방지 state (OAuth flow 중 임시 저장) */
-  oauthState: string | null;
 
   // ── 파생 상태 ─────────────────────────────────
   isAuthenticated: boolean;
@@ -26,8 +24,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setPendingProvider: (provider: OAuthProvider | null) => void;
-  setPkceVerifier: (verifier: string | null) => void;
-  setOAuthState: (state: string | null) => void;
+  setHasAgreedToTerms: (agreed: boolean) => void;
   logout: () => void;
 }
 
@@ -37,11 +34,10 @@ export const useAuthStore = create<AuthState>()(
       // 초기값
       user: null,
       tokens: null,
+      hasAgreedToTerms: false,
       isLoading: false,
       error: null,
       pendingProvider: null,
-      pkceVerifier: null,
-      oauthState: null,
       isAuthenticated: false,
 
       // 액션
@@ -60,11 +56,8 @@ export const useAuthStore = create<AuthState>()(
       setPendingProvider: (pendingProvider) =>
         set({ pendingProvider }),
 
-      setPkceVerifier: (pkceVerifier) =>
-        set({ pkceVerifier }),
-
-      setOAuthState: (oauthState) =>
-        set({ oauthState }),
+      setHasAgreedToTerms: (hasAgreedToTerms) =>
+        set({ hasAgreedToTerms }),
 
       logout: () =>
         set({
@@ -72,18 +65,18 @@ export const useAuthStore = create<AuthState>()(
           tokens: null,
           isAuthenticated: false,
           pendingProvider: null,
-          pkceVerifier: null,
-          oauthState: null,
           error: null,
+          // hasAgreedToTerms 유지: 재로그인 시 약관 동의 불필요
         }),
     }),
     {
       name: 'mypartnerai-auth',
-      // user와 tokens만 localStorage에 저장, 런타임 상태 제외
+      // user, tokens, hasAgreedToTerms를 localStorage에 저장, 런타임 상태 제외
       partialize: (state) => ({
         user: state.user,
         tokens: state.tokens,
         isAuthenticated: state.isAuthenticated,
+        hasAgreedToTerms: state.hasAgreedToTerms,
       }),
     }
   )

@@ -129,7 +129,8 @@
     "providers": {
       "google": "Google",
       "apple": "Apple",
-      "meta": "Meta (Facebook)"
+      "meta": "Meta (Facebook)",
+      "x": "X (Twitter)"
     },
     "profile": {
       "title": "Account",
@@ -138,6 +139,18 @@
       "provider": "Sign-in method",
       "joinedAt": "Joined"
     },
+    "deleteAccount": "Delete Account",
+    "deleteAccountWarning": "Deleting your account will permanently remove all cloud data.",
+    "deleteAccountConfirm": "Are you sure you want to delete your account?",
+    "deleteAccountFinal": "Delete Permanently",
+    "deleteAccountCancel": "Cancel",
+    "termsAgreement": "Terms Agreement",
+    "agreeToTerms": "I agree to the Terms of Service",
+    "agreeToPrivacy": "I agree to the Privacy Policy",
+    "viewTerms": "View",
+    "termsModalTitle": "Terms of Service",
+    "privacyModalTitle": "Privacy Policy",
+    "termsVersion": "Version {{version}}",
     "errors": {
       "cancelled": "Sign-in was cancelled",
       "failed": "Sign-in failed",
@@ -145,11 +158,75 @@
       "tokenExpired": "Session expired. Please sign in again",
       "stateMismatch": "Security verification failed. Please try again",
       "providerError": "Error with {{provider}} authentication: {{error}}",
-      "timeout": "Sign-in timed out. Please try again"
+      "timeout": "Sign-in timed out. Please try again",
+      "deleteAccountFailed": "Failed to delete account. Please try again."
     },
     "callback": {
       "processing": "Processing sign-in...",
       "redirecting": "Redirecting automatically..."
+    }
+  },
+  "terms": {
+    "version": "2026.02",
+    "service": {
+      "title": "Terms of Service",
+      "lastUpdated": "Last updated: February 2026",
+      "sections": [
+        {
+          "heading": "1. Purpose",
+          "body": "These terms define the conditions and procedures for using MyPartnerAI (the 'Service')."
+        },
+        {
+          "heading": "2. Service Description",
+          "body": "MyPartnerAI is an AI avatar desktop app that runs locally. Conversation history is stored only on your device and is never sent to our servers."
+        },
+        {
+          "heading": "3. Data Collection",
+          "body": "Upon signing in via OAuth, we collect your email address, display name, and profile picture URL. API keys and conversation content are never collected."
+        },
+        {
+          "heading": "4. Prohibited Use",
+          "body": "You may not use the Service for illegal purposes, impersonate others, or interfere with service operations."
+        },
+        {
+          "heading": "5. Disclaimer",
+          "body": "We do not guarantee the accuracy of AI responses. We are not liable for any damages arising from your use of the Service."
+        },
+        {
+          "heading": "6. Account Deletion",
+          "body": "You may delete your account at any time from the app settings. All server-side data is permanently deleted immediately upon account deletion."
+        }
+      ]
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "lastUpdated": "Last updated: February 2026",
+      "sections": [
+        {
+          "heading": "Data Collected",
+          "body": "Email address, display name, OAuth provider (Google, Apple, Meta, X), profile picture URL, and terms agreement timestamp."
+        },
+        {
+          "heading": "Data NOT Collected",
+          "body": "Conversation history (stored locally on device), LLM API keys (stored locally on device), and voice data."
+        },
+        {
+          "heading": "Storage Location",
+          "body": "Supabase (servers located in the United States, supabase.com). See Supabase's Privacy Policy for details."
+        },
+        {
+          "heading": "Retention Period",
+          "body": "All data is permanently deleted immediately upon account deletion."
+        },
+        {
+          "heading": "Third-Party Sharing",
+          "body": "We do not share your personal information with third parties."
+        },
+        {
+          "heading": "Contact",
+          "body": "For privacy-related inquiries, please open an issue on GitHub."
+        }
+      ]
     }
   }
 }
