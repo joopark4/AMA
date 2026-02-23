@@ -91,13 +91,23 @@ UNIQUE 제약: `(user_id, terms_type, terms_ver)`
 
 ---
 
-## 마이그레이션 적용 방법
+## 마이그레이션 적용 상태
+
+> **현재 원격 DB 상태 (2026-02-23 기준): 모두 적용 완료 ✅**
+> - `profiles`, `user_settings`, `user_consents` 테이블 존재 확인
+> - `on_auth_user_created` 트리거 존재 확인
+> - RLS 정책 4개 적용 확인
+
+### 신규 환경 적용 방법
 
 ```bash
-# Supabase CLI (외장 드라이브 Docker 마운트 필요)
-supabase link --project-ref <project-ref>
+# Supabase CLI 사용
+export SUPABASE_ACCESS_TOKEN=<personal-access-token>  # supabase.com/dashboard/account/tokens
+supabase link --project-ref opbiegtmhqqlxgkamwml
 supabase db push
 
 # 또는 Supabase SQL Editor에서 직접 실행
 # supabase/migrations/001_initial_schema.sql
 ```
+
+> 로컬 Docker 없이도 `SUPABASE_ACCESS_TOKEN`으로 원격 DB에 직접 push 가능.

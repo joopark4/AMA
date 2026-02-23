@@ -34,7 +34,7 @@ mypartnerai://auth/callback?code=...
 
 ## 환경변수 설정
 
-`.env.local` 파일에 추가 (Project Settings → API):
+`.env` 파일에 추가 (Project Settings → API):
 
 ```env
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
@@ -43,15 +43,19 @@ VITE_SUPABASE_ANON_KEY=<anon-public-key>
 
 두 값 모두 없으면 MockAuthService가 동작합니다 (테스트 모드).
 
+> **현재 프로젝트:** `opbiegtmhqqlxgkamwml` (AMA - AI My Avatar, Singapore)
+> `.env` 파일은 `.gitignore`에 포함되어 있어 커밋되지 않음.
+
 ---
 
 ## Supabase 대시보드 설정 체크리스트
 
 1. [supabase.com](https://supabase.com) → 프로젝트 생성
 2. **Authentication → URL Configuration**:
-   - Site URL: `mypartnerai://auth`
-   - Redirect URLs: `mypartnerai://auth/callback`
+   - Redirect URLs(허용 목록): `mypartnerai://auth/callback` ✅ 등록 완료
+   - (Management API로 적용: `PATCH /v1/projects/{ref}/config/auth` → `uri_allow_list`)
 3. **Authentication → Providers** — 각 provider 활성화 후 Client ID/Secret 입력
+   - Google: ✅ 활성화 완료
 
 ---
 
@@ -91,8 +95,9 @@ VITE_SUPABASE_ANON_KEY=<anon-public-key>
 - Supabase URL이 `.supabase.co` 도메인인지 확인 (커스텀 도메인 사용 시 `auth.rs`의 `is_allowed_oauth_host` 함수에 추가 필요)
 
 ### Mock 모드가 해제되지 않는 경우
-- `.env.local`의 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_ANON_KEY` 양쪽 모두 설정되어 있는지 확인
+- `.env`의 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_ANON_KEY` 양쪽 모두 설정되어 있는지 확인
 - `npm run tauri dev` 재시작 필요 (환경변수 변경 후)
+- 시작 로그에 `[AuthService] VITE_SUPABASE_URL 미설정 → MockAuthService 사용` 문구가 없으면 정상 연결
 
 ### Free 플랜 프로젝트 정지
 - Supabase 대시보드에서 수동으로 프로젝트 재개 가능
