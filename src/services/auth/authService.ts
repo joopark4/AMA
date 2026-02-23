@@ -5,76 +5,115 @@ import type {
   OAuthInitResult,
   OAuthProvider,
 } from './types';
+import { supabase } from './supabaseClient';
 import { toExpiresAt } from './tokenManager';
 
-// ─── 실제 백엔드 구현 ─────────────────────────────────────────────────────────
+// ─── Supabase 구현 ────────────────────────────────────────────────────────────
 
-class BackendAuthService implements IAuthService {
-  private baseUrl: string;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl.replace(/\/$/, '');
-  }
-
+class SupabaseAuthService implements IAuthService {
   async initiateOAuth(
     provider: OAuthProvider,
-    pkceChallenge: string,
-    state: string
+    _pkceChallenge: string,
+    _state: string
   ): Promise<OAuthInitResult> {
-    const res = await fetch(`${this.baseUrl}/auth/oauth/initiate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, pkceChallenge, state }),
+    if (!supabase) throw new Error('Supabase 클라이언트가 초기화되지 않았습니다');
+
+    const supabaseProvider = provider === 'meta' ? 'facebook'
+                           : provider === 'x'    ? 'twitter'
+                           : provider;
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: supabaseProvider as Parameters<typeof supabase.auth.signInWithOAuth>[0]['provider'],
+      options: {
+        redirectTo: 'mypartnerai://auth/callback',
+        skipBrowserRedirect: true,
+      },
     });
-    if (!res.ok) throw new Error(`OAuth 초기화 실패: ${res.status}`);
-    return res.json();
+
+    if (error) throw new Error(`OAuth 초기화 실패: ${error.message}`);
+    if (!data.url) throw new Error('OAuth URL을 받지 못했습니다');
+
+    return {
+      authUrl: data.url,
+      state: '',
+    };
   }
 
   async handleCallback(
     code: string,
-    state: string,
-    pkceVerifier: string
+    _state: string,
+    _pkceVerifier: string
   ): Promise<AuthResult> {
-    const res = await fetch(`${this.baseUrl}/auth/oauth/callback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, state, pkceVerifier }),
-    });
-    if (!res.ok) throw new Error(`OAuth 콜백 처리 실패: ${res.status}`);
-    const data = await res.json();
+    if (!supabase) throw new Error('Supabase 클라이언트가 초기화되지 않았습니다');
+
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) throw new Error(`OAuth 콜백 처리 실패: ${error.message}`);
+    if (!data.user || !data.session) throw new Error('세션 정보를 받지 못했습니다');
+
+    const { user, session } = data;
+
+    const rawProvider = (user.app_metadata?.provider as string | undefined) ?? 'google';
+    const mappedProvider: OAuthProvider =
+      rawProvider === 'facebook' ? 'meta' :
+      rawProvider === 'twitter'  ? 'x'   :
+      rawProvider as OAuthProvider;
+
+    const authUser = {
+      id: user.id,
+      email: user.email ?? '',
+      nickname: (user.user_metadata?.full_name as string | undefined)
+             ?? (user.user_metadata?.user_name as string | undefined)
+             ?? user.email
+             ?? '사용자',
+      provider: mappedProvider,
+      avatarUrl: user.user_metadata?.avatar_url as string | undefined,
+      createdAt: new Date(user.created_at).getTime(),
+    };
+
     return {
-      user: data.user,
+      user: authUser,
       tokens: {
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-        expiresAt: toExpiresAt(data.expiresIn ?? 3600),
+        accessToken: session.access_token,
+        refreshToken: session.refresh_token,
+        expiresAt: toExpiresAt(session.expires_in ?? 3600),
       },
     };
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
-    const res = await fetch(`${this.baseUrl}/auth/token/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
-    if (!res.ok) throw new Error(`토큰 갱신 실패: ${res.status}`);
-    const data = await res.json();
+    if (!supabase) throw new Error('Supabase 클라이언트가 초기화되지 않았습니다');
+
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+
+    if (error) throw new Error(`토큰 갱신 실패: ${error.message}`);
+    if (!data.session) throw new Error('갱신된 세션 정보를 받지 못했습니다');
+
+    const { session } = data;
     return {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      expiresAt: toExpiresAt(data.expiresIn ?? 3600),
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      expiresAt: toExpiresAt(session.expires_in ?? 3600),
     };
   }
 
-  async logout(accessToken: string): Promise<void> {
-    await fetch(`${this.baseUrl}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+  async logout(_accessToken: string): Promise<void> {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  }
+
+  async deleteAccount(accessToken: string): Promise<void> {
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error ?? `계정 삭제 실패: ${res.status}`);
+    }
   }
 }
 
@@ -86,7 +125,6 @@ class MockAuthService implements IAuthService {
     _pkceChallenge: string,
     _state: string
   ): Promise<OAuthInitResult> {
-    // 실제 OAuth 없이 즉시 성공 시뮬레이션
     return {
       authUrl: 'mypartnerai://auth/callback?code=mock_code&state=mock_state',
       state: 'mock_state',
@@ -127,16 +165,19 @@ class MockAuthService implements IAuthService {
   async logout(_accessToken: string): Promise<void> {
     await delay(200);
   }
+
+  async deleteAccount(_accessToken: string): Promise<void> {
+    await delay(500);
+  }
 }
 
 // ─── 서비스 인스턴스 팩토리 ───────────────────────────────────────────────────
 
 function createAuthService(): IAuthService {
-  const backendUrl = import.meta.env.VITE_AUTH_BACKEND_URL;
-  if (backendUrl) {
-    return new BackendAuthService(backendUrl);
+  if (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    return new SupabaseAuthService();
   }
-  console.warn('[AuthService] VITE_AUTH_BACKEND_URL 미설정 → MockAuthService 사용');
+  console.warn('[AuthService] VITE_SUPABASE_URL 미설정 → MockAuthService 사용');
   return new MockAuthService();
 }
 
