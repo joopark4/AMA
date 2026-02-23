@@ -7,7 +7,7 @@
     "prepare:assets": "node scripts/prepare-assets.mjs",
     "motion:generate": "node scripts/generate-motion-placeholders.mjs && npm run motion:import",
     "motion:sync:clean": "node scripts/sync-motion-clean.mjs",
-    "motion:sync:external": "MOTION_CLEAN_SOURCE=\"/Volumes/Sandisk 2TB/Projects/MyPartnerAI/motions/clean/clips\" npm run motion:sync:clean",
+    "motion:sync:external": "npm run motion:sync:clean",
     "motion:collect:index": "node scripts/index-motion-raw-sources.mjs",
     "motion:collect:metadata": "node scripts/generate-raw-metadata.mjs",
     "motion:catalog:triads": "node scripts/normalize-motion-intensity-sets.mjs",
