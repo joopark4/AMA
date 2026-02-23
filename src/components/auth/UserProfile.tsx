@@ -15,13 +15,24 @@ export default function UserProfile() {
     logout, setLoading, isLoading,
     setUser, setTokens,
     setPendingProvider, setError,
+    hasAgreedToTerms, setHasAgreedToTerms,
   } = useAuthStore();
   const { clearMessages } = useConversationStore();
   const [expanded, setExpanded] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [termsModal, setTermsModal] = useState<'terms' | 'privacy' | null>(null);
+  const [agreedTerms, setAgreedTerms] = useState(hasAgreedToTerms);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(hasAgreedToTerms);
   const oauthTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAgreementChange = (type: 'terms' | 'privacy', checked: boolean) => {
+    if (type === 'terms') setAgreedTerms(checked);
+    else setAgreedPrivacy(checked);
+    const termsOk = type === 'terms' ? checked : agreedTerms;
+    const privacyOk = type === 'privacy' ? checked : agreedPrivacy;
+    setHasAgreedToTerms(termsOk && privacyOk);
+  };
 
   const clearOAuthTimeout = () => {
     if (oauthTimeoutRef.current) {
@@ -253,11 +264,38 @@ export default function UserProfile() {
               </div>
             )}
 
+            {/* 약관 동의 (이미 동의한 경우 건너뜀) */}
+            {!hasAgreedToTerms && (
+              <div className="space-y-1.5 pb-1">
+                <p className="text-xs font-medium text-gray-600">{t('auth.termsAgreement')}</p>
+                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedTerms}
+                    onChange={(e) => handleAgreementChange('terms', e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="flex-1">{t('auth.agreeToTerms')}</span>
+                  <button type="button" onClick={() => setTermsModal('terms')} className="text-blue-500 hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
+                </label>
+                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedPrivacy}
+                    onChange={(e) => handleAgreementChange('privacy', e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="flex-1">{t('auth.agreeToPrivacy')}</span>
+                  <button type="button" onClick={() => setTermsModal('privacy')} className="text-blue-500 hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
+                </label>
+              </div>
+            )}
+
             {ENABLED_PROVIDERS.map((provider) => (
               <button
                 key={provider}
                 onClick={() => handleOAuthLogin(provider)}
-                disabled={isLoading}
+                disabled={isLoading || (!hasAgreedToTerms && !(agreedTerms && agreedPrivacy))}
                 className={`
                   w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
                   text-sm font-medium transition-colors
