@@ -77,6 +77,32 @@ export class AudioProcessor {
     return { volume, frequency, isSpeaking };
   }
 
+  getWaveformData(sampleCount: number = 64): Float32Array {
+    const normalizedSampleCount = Number.isFinite(sampleCount) && sampleCount > 0
+      ? Math.floor(sampleCount)
+      : 64;
+    const waveform = new Float32Array(normalizedSampleCount);
+
+    if (!this.analyser) {
+      return waveform;
+    }
+
+    const timeDomainData = new Uint8Array(this.analyser.fftSize);
+    this.analyser.getByteTimeDomainData(timeDomainData);
+
+    const step = timeDomainData.length / normalizedSampleCount;
+    for (let i = 0; i < normalizedSampleCount; i++) {
+      const sourceIndex = Math.min(
+        timeDomainData.length - 1,
+        Math.floor(i * step)
+      );
+      const value = (timeDomainData[sourceIndex] - 128) / 128;
+      waveform[i] = Math.max(-1, Math.min(1, value));
+    }
+
+    return waveform;
+  }
+
   // Get lip sync value from audio analysis
   getLipSyncValue(): number {
     const analysis = this.analyze();
