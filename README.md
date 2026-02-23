@@ -170,9 +170,10 @@ MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:clean
 npm run motion:refresh
 ```
 
-외부 정제 경로 프리셋 사용:
+외부 정제 경로 alias 사용(`MOTION_CLEAN_SOURCE` 필요):
 
 ```bash
+MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips \
 npm run motion:refresh:external
 ```
 

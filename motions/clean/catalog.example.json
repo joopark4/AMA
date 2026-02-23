@@ -7,8 +7,8 @@
   "default_redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
   "clips": [
     {
-      "id": "motion_happy_01",
-      "source_file": "motions/clean/clips/motion_happy_01.json",
+      "id": "motion_happy_03",
+      "source_file": "motions/clean/clips/motion_happy_03.json",
       "emotion_tags": ["happy"],
       "intensity": "mid",
       "loopable": false,
@@ -22,8 +22,8 @@
       "fallback_gesture": "celebrate"
     },
     {
-      "id": "motion_thinking_01",
-      "source_file": "motions/clean/clips/motion_thinking_01.json",
+      "id": "motion_thinking_04",
+      "source_file": "motions/clean/clips/motion_thinking_04.json",
       "emotion_tags": ["thinking"],
       "intensity": "low",
       "loopable": true,
