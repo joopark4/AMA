@@ -2,24 +2,10 @@ import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/auth/authService';
-import { isMockMode, ENABLED_PROVIDERS } from '../../services/auth/oauthClient';
+import { isMockMode, ENABLED_PROVIDERS, PROVIDER_ICONS, PROVIDER_COLORS } from '../../services/auth/oauthClient';
 import { useAuthStore } from '../../stores/authStore';
 import TermsModal from './TermsModal';
 import type { OAuthProvider } from '../../services/auth/types';
-
-const PROVIDER_ICONS: Record<OAuthProvider, string> = {
-  google: 'G',
-  apple: '',
-  meta: 'f',
-  x: 'X',
-};
-
-const PROVIDER_COLORS: Record<OAuthProvider, string> = {
-  google: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
-  apple: 'bg-black text-white hover:bg-gray-900',
-  meta: 'bg-[#1877F2] text-white hover:bg-[#166FE5]',
-  x: 'bg-black text-white hover:bg-gray-900',
-};
 
 export default function AuthScreen() {
   const { t } = useTranslation();
@@ -145,11 +131,11 @@ export default function AuthScreen() {
                 w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl
                 text-sm font-medium transition-colors
                 disabled:opacity-50 disabled:cursor-not-allowed
-                ${PROVIDER_COLORS[provider]}
+                ${PROVIDER_COLORS[provider] ?? 'bg-gray-100 text-gray-600'}
               `}
             >
               <span className="text-base font-bold w-5 text-center">
-                {PROVIDER_ICONS[provider]}
+                {PROVIDER_ICONS[provider] ?? provider[0].toUpperCase()}
               </span>
               {isLoading
                 ? t('auth.loading')
