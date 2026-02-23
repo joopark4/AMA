@@ -4,6 +4,10 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
+  normalizeGlobalShortcutAccelerator,
+} from '../services/tauri/globalShortcutUtils';
 
 export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini';
 
@@ -29,6 +33,11 @@ export interface STTSettings {
 export interface TTSSettings {
   engine: TTSEngine;
   voice?: string;
+}
+
+export interface GlobalShortcutSettings {
+  enabled: boolean;
+  accelerator: string;
 }
 
 export interface PhysicsSettings {
@@ -80,6 +89,7 @@ export interface Settings {
   llm: LLMSettings;
   stt: STTSettings;
   tts: TTSSettings;
+  globalShortcut: GlobalShortcutSettings;
   language: Language;
   avatarName: string;
   avatarPersonalityPrompt: string;
@@ -96,6 +106,7 @@ interface SettingsState {
   setLLMSettings: (llm: Partial<LLMSettings>) => void;
   setSTTSettings: (stt: Partial<STTSettings>) => void;
   setTTSSettings: (tts: Partial<TTSSettings>) => void;
+  setGlobalShortcutSettings: (shortcut: Partial<GlobalShortcutSettings>) => void;
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
   setLanguage: (language: Language) => void;
   setAvatarName: (name: string) => void;
@@ -148,6 +159,19 @@ function normalizeSupertonicVoice(voice: unknown): string {
   const normalized = voice.trim().toUpperCase();
   if (SUPPORTED_SUPERTONIC_VOICES.has(normalized)) return normalized;
   return 'F1';
+}
+
+function normalizeGlobalShortcutEnabled(enabled: unknown): boolean {
+  return typeof enabled === 'boolean' ? enabled : true;
+}
+
+function normalizeGlobalShortcutSettings(
+  shortcut: Partial<GlobalShortcutSettings> | undefined
+): GlobalShortcutSettings {
+  return {
+    enabled: normalizeGlobalShortcutEnabled(shortcut?.enabled),
+    accelerator: normalizeGlobalShortcutAccelerator(shortcut?.accelerator),
+  };
 }
 
 function normalizeInitialViewRotation(rotation: unknown): ViewRotationSettings {
@@ -203,6 +227,10 @@ const defaultSettings: Settings = {
   tts: {
     engine: 'supertonic',
     voice: 'F1',
+  },
+  globalShortcut: {
+    enabled: true,
+    accelerator: DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
   },
   language: 'ko',
   avatarName: '',
@@ -288,6 +316,17 @@ export const useSettingsStore = create<SettingsState>()(
               engine: 'supertonic',
               voice: normalizeSupertonicVoice(tts.voice ?? state.settings.tts.voice),
             },
+          },
+        })),
+
+      setGlobalShortcutSettings: (shortcut) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            globalShortcut: normalizeGlobalShortcutSettings({
+              ...state.settings.globalShortcut,
+              ...shortcut,
+            }),
           },
         })),
 
@@ -414,6 +453,9 @@ export const useSettingsStore = create<SettingsState>()(
             voice: normalizeSupertonicVoice(state.settings.tts?.voice),
           },
           avatar: normalizedAvatar,
+          globalShortcut: normalizeGlobalShortcutSettings(
+            state.settings.globalShortcut as Partial<GlobalShortcutSettings> | undefined
+          ),
           historyPanel: (state.settings as any).historyPanel ?? defaultSettings.historyPanel,
         };
 
