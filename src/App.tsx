@@ -16,24 +16,18 @@ import { useClickThrough } from './hooks/useClickThrough';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
 import { authService } from './services/auth/authService';
-import { isTokenExpired } from './services/auth/tokenManager';
 
 function App() {
   const { i18n, t } = useTranslation();
   const { settings, isSettingsOpen, isHistoryOpen, setLLMSettings, setAvatarName } = useSettingsStore();
   const { currentResponse, isProcessing } = useConversationStore();
   const {
-    tokens,
-    pkceVerifier,
-    oauthState,
+    pendingProvider,
     setUser,
     setTokens,
     setLoading,
     setError,
     setPendingProvider,
-    setPkceVerifier,
-    setOAuthState,
-    logout,
   } = useAuthStore();
   const [initialAvatarName, setInitialAvatarName] = useState('');
 
@@ -68,20 +62,18 @@ function App() {
           return;
         }
 
-        if (!params.code || !params.state) {
+        if (!params.code) {
           setError(t('auth.errors.failed'));
           setLoading(false);
           return;
         }
 
-        if (params.state !== oauthState) {
-          setError(t('auth.errors.stateMismatch'));
+        if (!pendingProvider) {
           setLoading(false);
           return;
         }
 
-        const verifier = pkceVerifier ?? '';
-        const result = await authService.handleCallback(params.code, params.state, verifier);
+        const result = await authService.handleCallback(params.code, params.state ?? '', '');
 
         setUser(result.user);
         setTokens(result.tokens);
@@ -96,29 +88,12 @@ function App() {
       } finally {
         setLoading(false);
         setPendingProvider(null);
-        setPkceVerifier(null);
-        setOAuthState(null);
       }
     }).then((fn) => { unlisten = fn; });
 
     return () => { unlisten?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pkceVerifier, oauthState]);
-
-  // 앱 시작 시 토큰 만료 확인 → 자동 갱신
-  useEffect(() => {
-    if (!tokens) return;
-    if (!isTokenExpired(tokens)) return;
-    if (!tokens.refreshToken) {
-      logout();
-      return;
-    }
-
-    authService.refreshToken(tokens.refreshToken)
-      .then((newTokens) => setTokens(newTokens))
-      .catch(() => logout());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pendingProvider]);
 
   // Auto-detect and set available Ollama model on startup
   useEffect(() => {
