@@ -34,7 +34,7 @@
     "build:mac-release": "npm run build:mac-app && node scripts/notarize-macos-app.mjs",
     "preview": "vite preview",
     "clean:dotfiles": "find . -name '._*' -not -path './.git/*' -not -path './node_modules/*' -not -path './.build/*' -delete",
-    "tauri": "COPYFILE_DISABLE=1 tauri",
+    "tauri": "COPYFILE_DISABLE=1 CARGO_TARGET_DIR=$HOME/Library/Caches/mypartnerai-build tauri",
     "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest"
   },
