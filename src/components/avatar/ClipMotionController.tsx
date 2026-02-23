@@ -330,6 +330,7 @@ export default function ClipMotionController() {
 
   useEffect(() => {
     if (!currentMotionClip) {
+      loadTokenRef.current += 1;
       activeMetaRef.current = null;
       activeDataRef.current = null;
       return;
