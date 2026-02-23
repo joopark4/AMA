@@ -22,6 +22,7 @@ English version: [README.en.md](README.en.md)
 - 음성:
   - STT: Whisper(로컬, `base/small/medium`)
   - TTS: Supertonic(`F1~F5`, `M1~M5`)
+  - 글로벌 단축키: 기본 `Cmd+Shift+Space` (앱 포커스와 무관)
 - 원격 세션 감지 시:
   - 음성 인식(STT)은 차단
   - 텍스트 대화는 계속 사용 가능
@@ -127,7 +128,18 @@ npm run tauri build
    - LLM Provider/Model 설정
    - Whisper 모델(`base/small/medium`) 선택
    - Supertonic 보이스 선택
+   - 글로벌 음성 단축키 ON/OFF 및 키 조합 설정
 4. 마이크 버튼 또는 텍스트 입력으로 대화 시작
+
+## 글로벌 음성 단축키
+
+- 기본값: `Cmd+Shift+Space`
+- 동작: 단축키 1회 입력 시 음성 입력 시작, 다시 입력 시 종료
+- 설정 위치: `설정 > 음성 > 글로벌 음성 단축키`
+- 입력 방식: 단축키 입력창을 클릭한 상태에서 키 조합을 직접 누르면 저장
+- 등록 실패 시:
+  - 앱 내 경고 토스트에서 접근성 설정 열기 버튼 사용
+  - 다른 앱/시스템 단축키와 충돌 시 다른 조합으로 변경
 
 ## 모델/런타임
 
@@ -281,6 +293,7 @@ VITE_GOOGLE_API_KEY=발급받은_키
 - 원격 접속 상태인지 확인
 - 마이크 권한 허용 여부 확인
 - Whisper 모델/런타임 파일 경로가 올바른지 확인
+- 글로벌 단축키 사용 중이면 접근성 권한/단축키 충돌 여부 확인
 
 ### 2) TTS 소리가 안 남
 

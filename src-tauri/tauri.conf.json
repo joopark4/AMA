@@ -70,5 +70,14 @@
       }
     }
   },
-  "plugins": {}
+  "plugins": {
+    "deep-link": {
+      "mobile": [],
+      "desktop": [
+        {
+          "schemes": ["mypartnerai"]
+        }
+      ]
+    }
+  }
 }
