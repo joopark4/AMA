@@ -1,45 +1,56 @@
+import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
-import { generatePKCE, generateState, buildOAuthUrl } from '../../services/auth/oauthClient';
+import { authService } from '../../services/auth/authService';
+import { isMockMode, ENABLED_PROVIDERS, PROVIDER_ICONS, PROVIDER_COLORS } from '../../services/auth/oauthClient';
 import { useAuthStore } from '../../stores/authStore';
+import TermsModal from './TermsModal';
 import type { OAuthProvider } from '../../services/auth/types';
-
-const PROVIDER_ICONS: Record<OAuthProvider, string> = {
-  google: 'G',
-  apple: '',
-  meta: 'f',
-};
-
-const PROVIDER_COLORS: Record<OAuthProvider, string> = {
-  google: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
-  apple: 'bg-black text-white hover:bg-gray-900',
-  meta: 'bg-[#1877F2] text-white hover:bg-[#166FE5]',
-};
 
 export default function AuthScreen() {
   const { t } = useTranslation();
   const {
     isLoading,
     error,
+    hasAgreedToTerms,
     setPendingProvider,
-    setPkceVerifier,
-    setOAuthState,
     setLoading,
     setError,
+    setUser,
+    setTokens,
+    setHasAgreedToTerms,
   } = useAuthStore();
+
+  const [agreedTerms, setAgreedTerms] = useState(hasAgreedToTerms);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(hasAgreedToTerms);
+  const [termsModal, setTermsModal] = useState<'terms' | 'privacy' | null>(null);
+
+  const allAgreed = agreedTerms && agreedPrivacy;
+
+  const handleAgreementChange = (type: 'terms' | 'privacy', checked: boolean) => {
+    if (type === 'terms') setAgreedTerms(checked);
+    else setAgreedPrivacy(checked);
+    const termsOk = type === 'terms' ? checked : agreedTerms;
+    const privacyOk = type === 'privacy' ? checked : agreedPrivacy;
+    // 둘 다 동의 → true, 하나라도 해제 → false (버그 수정: 해제 시 스토어 반영)
+    setHasAgreedToTerms(termsOk && privacyOk);
+  };
 
   const handleOAuthLogin = async (provider: OAuthProvider) => {
     setLoading(true);
     setError(null);
     try {
-      const { verifier, challenge } = await generatePKCE();
-      const state = generateState();
+      // Supabase env 미설정 시 → MockAuthService로 직접 처리
+      if (isMockMode()) {
+        const result = await authService.handleCallback('mock_code', 'mock_state', 'mock_verifier');
+        setUser(result.user);
+        setTokens(result.tokens);
+        setLoading(false);
+        return;
+      }
 
+      const { authUrl } = await authService.initiateOAuth(provider, '', '');
       setPendingProvider(provider);
-      setPkceVerifier(verifier);
-      setOAuthState(state);
-
-      const authUrl = buildOAuthUrl(provider, challenge, state);
       await invoke('open_oauth_url', { url: authUrl });
       // 이후 처리는 App.tsx의 딥링크 이벤트 리스너에서 수행
     } catch (err) {
@@ -47,12 +58,8 @@ export default function AuthScreen() {
       setError(t('auth.errors.providerError', { provider, error: message }));
       setLoading(false);
       setPendingProvider(null);
-      setPkceVerifier(null);
-      setOAuthState(null);
     }
   };
-
-  const providers: OAuthProvider[] = ['google', 'apple', 'meta'];
 
   return (
     <div
@@ -75,21 +82,60 @@ export default function AuthScreen() {
           </div>
         )}
 
+        {/* 약관 동의 (이미 동의한 경우 건너뜀) */}
+        {!hasAgreedToTerms && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-gray-600">{t('auth.termsAgreement')}</p>
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedTerms}
+                onChange={(e) => handleAgreementChange('terms', e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="flex-1">{t('auth.agreeToTerms')}</span>
+              <button
+                type="button"
+                onClick={() => setTermsModal('terms')}
+                className="text-xs text-blue-500 hover:underline flex-shrink-0"
+              >
+                {t('auth.viewTerms')}
+              </button>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedPrivacy}
+                onChange={(e) => handleAgreementChange('privacy', e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="flex-1">{t('auth.agreeToPrivacy')}</span>
+              <button
+                type="button"
+                onClick={() => setTermsModal('privacy')}
+                className="text-xs text-blue-500 hover:underline flex-shrink-0"
+              >
+                {t('auth.viewTerms')}
+              </button>
+            </label>
+          </div>
+        )}
+
         <div className="space-y-3">
-          {providers.map((provider) => (
+          {ENABLED_PROVIDERS.map((provider) => (
             <button
               key={provider}
               onClick={() => handleOAuthLogin(provider)}
-              disabled={isLoading}
+              disabled={isLoading || (!hasAgreedToTerms && !allAgreed)}
               className={`
                 w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl
                 text-sm font-medium transition-colors
                 disabled:opacity-50 disabled:cursor-not-allowed
-                ${PROVIDER_COLORS[provider]}
+                ${PROVIDER_COLORS[provider] ?? 'bg-gray-100 text-gray-600'}
               `}
             >
               <span className="text-base font-bold w-5 text-center">
-                {PROVIDER_ICONS[provider]}
+                {PROVIDER_ICONS[provider] ?? provider[0].toUpperCase()}
               </span>
               {isLoading
                 ? t('auth.loading')
@@ -102,6 +148,11 @@ export default function AuthScreen() {
           {t('auth.termsNotice')}
         </p>
       </div>
+
+      {/* 약관 모달 */}
+      {termsModal && (
+        <TermsModal type={termsModal} onClose={() => setTermsModal(null)} />
+      )}
     </div>
   );
 }
