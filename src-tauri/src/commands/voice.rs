@@ -14,12 +14,6 @@ pub struct TranscriptionResult {
 }
 
 #[derive(Serialize)]
-pub struct SynthesisResult {
-    pub audio_base64: String,
-    pub duration: f32,
-}
-
-#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteEnvironmentResult {
     pub is_remote: bool,
@@ -550,26 +544,6 @@ pub async fn transcribe_audio(
     result
 }
 
-/// Synthesize speech using local TTS model
-/// Note: This is a placeholder. Actual implementation would use a TTS library
-#[tauri::command]
-pub async fn synthesize_speech(
-    _text: String,
-    _voice: String,
-    _speed: f32,
-) -> Result<SynthesisResult, String> {
-    // TODO: Implement actual TTS synthesis
-    // Options:
-    // 1. Kokoro-82M via Python subprocess
-    // 2. ONNX-based TTS
-    // 3. espeak-ng as fallback
-
-    Err(
-        "Local TTS synthesis not yet implemented. Using Supertonic/Web Speech fallback."
-            .to_string(),
-    )
-}
-
 /// Check if Whisper model is available locally
 #[tauri::command]
 pub async fn check_whisper_available() -> bool {
@@ -594,10 +568,3 @@ pub async fn get_whisper_availability(model: Option<String>) -> WhisperAvailabil
     }
 }
 
-/// Check if TTS model is available locally
-#[tauri::command]
-pub async fn check_tts_available() -> bool {
-    // TODO: Check if TTS model files exist
-    // For now, return false to use fallback
-    false
-}
