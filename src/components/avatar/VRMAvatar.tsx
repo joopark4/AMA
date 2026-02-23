@@ -293,6 +293,19 @@ function dampBoneRotation(
   bone.rotation.z += ((target.z ?? bone.rotation.z) - bone.rotation.z) * t;
 }
 
+function dampBonePosition(
+  bone: BoneNode,
+  target: { x: number; y?: number; z?: number },
+  delta: number,
+  stiffness = 13
+): void {
+  if (!bone) return;
+  const t = 1 - Math.exp(-stiffness * Math.max(delta, 0.001));
+  bone.position.x += ((target.x ?? bone.position.x) - bone.position.x) * t;
+  bone.position.y += ((target.y ?? bone.position.y) - bone.position.y) * t;
+  bone.position.z += ((target.z ?? bone.position.z) - bone.position.z) * t;
+}
+
 function dampBoneRotationPair(
   normalizedBone: BoneNode,
   rawBone: BoneNode,
@@ -1135,6 +1148,7 @@ export default function VRMAvatar() {
         dampBoneRotation(chest, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
         dampBoneRotation(upperChest, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness);
         dampBoneRotation(hips, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness - 1);
+        dampBonePosition(hips, { x: 0, y: 0, z: 0 }, clampedDelta, stanceStiffness - 1);
         dampBoneRotation(leftShoulder, { x: 0, y: 0, z: 0.08 }, clampedDelta, stanceStiffness);
         dampBoneRotation(rightShoulder, { x: 0, y: 0, z: -0.08 }, clampedDelta, stanceStiffness);
         dampBoneRotation(leftUpperArm, { x: 0.08, y: 0, z: 1.18 }, clampedDelta, stanceStiffness);
