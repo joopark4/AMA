@@ -12,6 +12,7 @@ import { permissions } from '../services/tauri/permissions';
 import type { Message as LLMMessage } from '../services/ai/types';
 import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
+import { selectMotionClip } from '../services/avatar/motionSelector';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -20,9 +21,9 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
-function buildSystemPrompt(avatarName: string): string {
+function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
   const normalizedName = avatarName.trim() || '아바타';
-  return `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
+  const basePrompt = `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
 말투: 반말을 사용하고, 짧고 자연스러운 대화체로 말합니다.
 특징:
@@ -30,6 +31,18 @@ function buildSystemPrompt(avatarName: string): string {
 - 답변은 2-3문장 정도로 짧게 합니다
 - 공감과 감정 표현을 잘합니다
 - 한국어로 대화합니다`;
+
+  const normalizedPersonalityPrompt = personalityPrompt.trim();
+  if (!normalizedPersonalityPrompt) {
+    return basePrompt;
+  }
+
+  return `${basePrompt}
+
+추가 성격 가이드(사용자 지정):
+${normalizedPersonalityPrompt}
+
+위 사용자 지정 가이드를 기본 성격과 함께 우선 반영하세요.`;
 }
 
 function isTauriDesktopRuntime(): boolean {
@@ -259,7 +272,14 @@ export function useConversation(): UseConversationReturn {
     isSpeaking,
   } = useConversationStore();
 
-  const { setEmotion, triggerGesture, startDancing, stopDancing } = useAvatarStore();
+  const {
+    setEmotion,
+    triggerGesture,
+    triggerMotionClip,
+    registerMotionSelection,
+    startDancing,
+    stopDancing,
+  } = useAvatarStore();
   const { speak, stop: stopSpeaking } = useSpeechSynthesis();
   const runtimeVoiceInputBlockReason = getRuntimeVoiceInputBlockReason(
     isRemoteSession
@@ -313,6 +333,54 @@ export function useConversation(): UseConversationReturn {
       clearCurrentResponse();
     }, responseHoldMs);
   }, [addMessage, setCurrentResponse, setEmotion, setStatus, speak, clearCurrentResponse]);
+
+  const triggerEmotionMotion = useCallback(
+    (emotion: Emotion, score: number, text: string, preferSpeakingContext = false) => {
+      const settingsState = useSettingsStore.getState().settings;
+      const avatarState = useAvatarStore.getState();
+      const conversationState = useConversationStore.getState();
+      const faceOnlyModeEnabled =
+        settingsState.avatar?.animation?.faceExpressionOnlyMode ?? false;
+      const clipsEnabled = settingsState.avatar?.animation?.enableMotionClips ?? true;
+      const gesturesEnabled = settingsState.avatar?.animation?.enableGestures ?? true;
+      const diversityStrength = settingsState.avatar?.animation?.motionDiversity ?? 1;
+      const dynamicMotionEnabled =
+        settingsState.avatar?.animation?.dynamicMotionEnabled ?? false;
+      const dynamicMotionBoost = dynamicMotionEnabled
+        ? settingsState.avatar?.animation?.dynamicMotionBoost ?? 1.0
+        : 0;
+
+      if (faceOnlyModeEnabled) {
+        return;
+      }
+
+      if (clipsEnabled) {
+        const selection = selectMotionClip({
+          emotion,
+          emotionScore: score,
+          isSpeaking: preferSpeakingContext || conversationState.status === 'speaking',
+          isMoving: avatarState.isMoving,
+          diversityStrength,
+          dynamicBoost: dynamicMotionBoost,
+          recentMotionIds: avatarState.recentMotionIds,
+          cooldownMap: avatarState.motionCooldownMap,
+          now: Date.now(),
+        });
+
+        if (selection.selected) {
+          registerMotionSelection(selection.selected.id, selection.selected.cooldown_ms);
+          triggerMotionClip(selection.selected.id);
+          return;
+        }
+      }
+
+      const fallbackGesture = pickGesture(emotion, text);
+      if (gesturesEnabled && fallbackGesture) {
+        triggerGesture(fallbackGesture);
+      }
+    },
+    [registerMotionSelection, triggerGesture, triggerMotionClip]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -543,10 +611,7 @@ export function useConversation(): UseConversationReturn {
     const userEmotionMatch = analyzeEmotion(text);
     if (userEmotionMatch.score > 0) {
       setEmotion(userEmotionMatch.emotion);
-      const userGesture = pickGesture(userEmotionMatch.emotion, text);
-      if (userGesture) {
-        triggerGesture(userGesture);
-      }
+      triggerEmotionMotion(userEmotionMatch.emotion, userEmotionMatch.score, text);
     }
 
     isProcessingRef.current = true;
@@ -563,7 +628,10 @@ export function useConversation(): UseConversationReturn {
       // Get current messages from store (fresh)
       const currentMessages = useConversationStore.getState().messages;
 
-      const systemPrompt = buildSystemPrompt(settings.avatarName || '');
+      const systemPrompt = buildSystemPrompt(
+        settings.avatarName || '',
+        settings.avatarPersonalityPrompt || ''
+      );
 
       // Prepare messages for LLM (convert conversation store format to LLM format)
       const llmMessages: LLMMessage[] = [
@@ -602,14 +670,18 @@ export function useConversation(): UseConversationReturn {
       const responseEmotionMatch = analyzeEmotion(responseText);
       const responseEmotion =
         responseEmotionMatch.score > 0 ? responseEmotionMatch.emotion : 'neutral';
+      const faceOnlyModeEnabled =
+        useSettingsStore.getState().settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
 
       if (responseEmotionMatch.score > 0) {
         setEmotion(responseEmotionMatch.emotion);
-        const responseGesture = pickGesture(responseEmotionMatch.emotion, responseText);
-        if (responseGesture) {
-          triggerGesture(responseGesture);
-        }
-        if (responseEmotionMatch.emotion === 'happy') {
+        triggerEmotionMotion(
+          responseEmotionMatch.emotion,
+          responseEmotionMatch.score,
+          responseText,
+          true
+        );
+        if (!faceOnlyModeEnabled && responseEmotionMatch.emotion === 'happy') {
           startDancing();
           setTimeout(() => stopDancing(), emotionTuningGlobal.happyDanceMs);
         }
@@ -675,7 +747,18 @@ export function useConversation(): UseConversationReturn {
     } finally {
       isProcessingRef.current = false;
     }
-  }, [addMessage, settings.avatarName, setCurrentResponse, clearCurrentResponse, setStatus, setEmotion, speak, triggerGesture, startDancing, stopDancing]);
+  }, [
+    addMessage,
+    settings.avatarName,
+    setCurrentResponse,
+    clearCurrentResponse,
+    setStatus,
+    setEmotion,
+    speak,
+    triggerEmotionMotion,
+    startDancing,
+    stopDancing,
+  ]);
 
   const handleRecognizedInput = useCallback(async (text: string) => {
     const isCommandHandled = await handleVoiceCommand(text);

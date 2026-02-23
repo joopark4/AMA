@@ -1,0 +1,569 @@
+{
+  "generated_at": "2026-02-22T23:30:28.082Z",
+  "metrics": {
+    "total_clips": 96,
+    "global_lower_body_ratio": 0.71875,
+    "by_emotion": {
+      "neutral": {
+        "total": 12,
+        "with_lower_body": 9,
+        "lower_body_ratio": 0.75,
+        "avg_nearest_distance": 0.026197970445663386,
+        "min_nearest_distance": 0.015459190983314292,
+        "max_nearest_distance": 0.0532510099491649,
+        "nearest_by_clip": [
+          {
+            "id": "motion_neutral_01",
+            "nearest_id": "motion_neutral_09",
+            "nearest_distance": 0.019406159596968956
+          },
+          {
+            "id": "motion_neutral_02",
+            "nearest_id": "motion_neutral_10",
+            "nearest_distance": 0.015459190983314292
+          },
+          {
+            "id": "motion_neutral_03",
+            "nearest_id": "motion_neutral_11",
+            "nearest_distance": 0.024324184249300933
+          },
+          {
+            "id": "motion_neutral_04",
+            "nearest_id": "motion_neutral_12",
+            "nearest_distance": 0.018651166724953695
+          },
+          {
+            "id": "motion_neutral_05",
+            "nearest_id": "motion_neutral_10",
+            "nearest_distance": 0.03824530604327066
+          },
+          {
+            "id": "motion_neutral_06",
+            "nearest_id": "motion_neutral_10",
+            "nearest_distance": 0.033508508191385074
+          },
+          {
+            "id": "motion_neutral_07",
+            "nearest_id": "motion_neutral_03",
+            "nearest_distance": 0.0532510099491649
+          },
+          {
+            "id": "motion_neutral_08",
+            "nearest_id": "motion_neutral_04",
+            "nearest_distance": 0.03368941805506425
+          },
+          {
+            "id": "motion_neutral_09",
+            "nearest_id": "motion_neutral_01",
+            "nearest_distance": 0.019406159596968956
+          },
+          {
+            "id": "motion_neutral_10",
+            "nearest_id": "motion_neutral_02",
+            "nearest_distance": 0.015459190983314292
+          },
+          {
+            "id": "motion_neutral_11",
+            "nearest_id": "motion_neutral_03",
+            "nearest_distance": 0.024324184249300933
+          },
+          {
+            "id": "motion_neutral_12",
+            "nearest_id": "motion_neutral_04",
+            "nearest_distance": 0.018651166724953695
+          }
+        ]
+      },
+      "happy": {
+        "total": 15,
+        "with_lower_body": 12,
+        "lower_body_ratio": 0.8,
+        "avg_nearest_distance": 0.048730986834761666,
+        "min_nearest_distance": 0.026305605655237978,
+        "max_nearest_distance": 0.08819678410958491,
+        "nearest_by_clip": [
+          {
+            "id": "motion_happy_01",
+            "nearest_id": "motion_happy_15",
+            "nearest_distance": 0.026305605655237978
+          },
+          {
+            "id": "motion_happy_02",
+            "nearest_id": "motion_happy_10",
+            "nearest_distance": 0.0397012734192634
+          },
+          {
+            "id": "motion_happy_03",
+            "nearest_id": "motion_happy_08",
+            "nearest_distance": 0.08819678410958491
+          },
+          {
+            "id": "motion_happy_04",
+            "nearest_id": "motion_happy_09",
+            "nearest_distance": 0.041230499645409355
+          },
+          {
+            "id": "motion_happy_05",
+            "nearest_id": "motion_happy_09",
+            "nearest_distance": 0.0450917090186458
+          },
+          {
+            "id": "motion_happy_06",
+            "nearest_id": "motion_happy_12",
+            "nearest_distance": 0.03217917640244063
+          },
+          {
+            "id": "motion_happy_07",
+            "nearest_id": "motion_happy_05",
+            "nearest_distance": 0.0672228688841089
+          },
+          {
+            "id": "motion_happy_08",
+            "nearest_id": "motion_happy_03",
+            "nearest_distance": 0.08819678410958491
+          },
+          {
+            "id": "motion_happy_09",
+            "nearest_id": "motion_happy_04",
+            "nearest_distance": 0.041230499645409355
+          },
+          {
+            "id": "motion_happy_10",
+            "nearest_id": "motion_happy_02",
+            "nearest_distance": 0.0397012734192634
+          },
+          {
+            "id": "motion_happy_11",
+            "nearest_id": "motion_happy_05",
+            "nearest_distance": 0.0542484080667606
+          },
+          {
+            "id": "motion_happy_12",
+            "nearest_id": "motion_happy_06",
+            "nearest_distance": 0.03217917640244063
+          },
+          {
+            "id": "motion_happy_13",
+            "nearest_id": "motion_happy_05",
+            "nearest_distance": 0.06023055099139697
+          },
+          {
+            "id": "motion_happy_14",
+            "nearest_id": "motion_happy_04",
+            "nearest_distance": 0.04894458709664025
+          },
+          {
+            "id": "motion_happy_15",
+            "nearest_id": "motion_happy_01",
+            "nearest_distance": 0.026305605655237978
+          }
+        ]
+      },
+      "sad": {
+        "total": 12,
+        "with_lower_body": 9,
+        "lower_body_ratio": 0.75,
+        "avg_nearest_distance": 0.023055292090703977,
+        "min_nearest_distance": 0.011671597226523106,
+        "max_nearest_distance": 0.04552982461302622,
+        "nearest_by_clip": [
+          {
+            "id": "motion_sad_01",
+            "nearest_id": "motion_sad_09",
+            "nearest_distance": 0.011671597226523106
+          },
+          {
+            "id": "motion_sad_02",
+            "nearest_id": "motion_sad_10",
+            "nearest_distance": 0.014248524290060514
+          },
+          {
+            "id": "motion_sad_03",
+            "nearest_id": "motion_sad_11",
+            "nearest_distance": 0.015720541795480027
+          },
+          {
+            "id": "motion_sad_04",
+            "nearest_id": "motion_sad_12",
+            "nearest_distance": 0.01861673625227764
+          },
+          {
+            "id": "motion_sad_05",
+            "nearest_id": "motion_sad_09",
+            "nearest_distance": 0.04180747407927067
+          },
+          {
+            "id": "motion_sad_06",
+            "nearest_id": "motion_sad_02",
+            "nearest_distance": 0.03440432084679617
+          },
+          {
+            "id": "motion_sad_07",
+            "nearest_id": "motion_sad_11",
+            "nearest_distance": 0.03440708642067205
+          },
+          {
+            "id": "motion_sad_08",
+            "nearest_id": "motion_sad_04",
+            "nearest_distance": 0.04552982461302622
+          },
+          {
+            "id": "motion_sad_09",
+            "nearest_id": "motion_sad_01",
+            "nearest_distance": 0.011671597226523106
+          },
+          {
+            "id": "motion_sad_10",
+            "nearest_id": "motion_sad_02",
+            "nearest_distance": 0.014248524290060514
+          },
+          {
+            "id": "motion_sad_11",
+            "nearest_id": "motion_sad_03",
+            "nearest_distance": 0.015720541795480027
+          },
+          {
+            "id": "motion_sad_12",
+            "nearest_id": "motion_sad_04",
+            "nearest_distance": 0.01861673625227764
+          }
+        ]
+      },
+      "angry": {
+        "total": 12,
+        "with_lower_body": 9,
+        "lower_body_ratio": 0.75,
+        "avg_nearest_distance": 0.044557907255238664,
+        "min_nearest_distance": 0.01996072304918999,
+        "max_nearest_distance": 0.09991238383926408,
+        "nearest_by_clip": [
+          {
+            "id": "motion_angry_01",
+            "nearest_id": "motion_angry_09",
+            "nearest_distance": 0.01996072304918999
+          },
+          {
+            "id": "motion_angry_02",
+            "nearest_id": "motion_angry_10",
+            "nearest_distance": 0.024723010179248633
+          },
+          {
+            "id": "motion_angry_03",
+            "nearest_id": "motion_angry_11",
+            "nearest_distance": 0.05184417211045212
+          },
+          {
+            "id": "motion_angry_04",
+            "nearest_id": "motion_angry_08",
+            "nearest_distance": 0.03504366453786511
+          },
+          {
+            "id": "motion_angry_05",
+            "nearest_id": "motion_angry_08",
+            "nearest_distance": 0.06407225214513296
+          },
+          {
+            "id": "motion_angry_06",
+            "nearest_id": "motion_angry_10",
+            "nearest_distance": 0.07203720643605711
+          },
+          {
+            "id": "motion_angry_07",
+            "nearest_id": "motion_angry_10",
+            "nearest_distance": 0.09991238383926408
+          },
+          {
+            "id": "motion_angry_08",
+            "nearest_id": "motion_angry_04",
+            "nearest_distance": 0.03504366453786511
+          },
+          {
+            "id": "motion_angry_09",
+            "nearest_id": "motion_angry_01",
+            "nearest_distance": 0.01996072304918999
+          },
+          {
+            "id": "motion_angry_10",
+            "nearest_id": "motion_angry_02",
+            "nearest_distance": 0.024723010179248633
+          },
+          {
+            "id": "motion_angry_11",
+            "nearest_id": "motion_angry_03",
+            "nearest_distance": 0.05184417211045212
+          },
+          {
+            "id": "motion_angry_12",
+            "nearest_id": "motion_angry_04",
+            "nearest_distance": 0.03552990488889806
+          }
+        ]
+      },
+      "surprised": {
+        "total": 12,
+        "with_lower_body": 9,
+        "lower_body_ratio": 0.75,
+        "avg_nearest_distance": 0.04809892931897785,
+        "min_nearest_distance": 0.017014762455413283,
+        "max_nearest_distance": 0.1248898342823414,
+        "nearest_by_clip": [
+          {
+            "id": "motion_surprised_01",
+            "nearest_id": "motion_surprised_09",
+            "nearest_distance": 0.03465379714498336
+          },
+          {
+            "id": "motion_surprised_02",
+            "nearest_id": "motion_surprised_10",
+            "nearest_distance": 0.041390253085781585
+          },
+          {
+            "id": "motion_surprised_03",
+            "nearest_id": "motion_surprised_11",
+            "nearest_distance": 0.054627184559789405
+          },
+          {
+            "id": "motion_surprised_04",
+            "nearest_id": "motion_surprised_12",
+            "nearest_distance": 0.017014762455413283
+          },
+          {
+            "id": "motion_surprised_05",
+            "nearest_id": "motion_surprised_04",
+            "nearest_distance": 0.0625580457727788
+          },
+          {
+            "id": "motion_surprised_06",
+            "nearest_id": "motion_surprised_12",
+            "nearest_distance": 0.04919241790965329
+          },
+          {
+            "id": "motion_surprised_07",
+            "nearest_id": "motion_surprised_11",
+            "nearest_distance": 0.1248898342823414
+          },
+          {
+            "id": "motion_surprised_08",
+            "nearest_id": "motion_surprised_04",
+            "nearest_distance": 0.045174859371025375
+          },
+          {
+            "id": "motion_surprised_09",
+            "nearest_id": "motion_surprised_01",
+            "nearest_distance": 0.03465379714498336
+          },
+          {
+            "id": "motion_surprised_10",
+            "nearest_id": "motion_surprised_02",
+            "nearest_distance": 0.041390253085781585
+          },
+          {
+            "id": "motion_surprised_11",
+            "nearest_id": "motion_surprised_03",
+            "nearest_distance": 0.054627184559789405
+          },
+          {
+            "id": "motion_surprised_12",
+            "nearest_id": "motion_surprised_04",
+            "nearest_distance": 0.017014762455413283
+          }
+        ]
+      },
+      "thinking": {
+        "total": 12,
+        "with_lower_body": 6,
+        "lower_body_ratio": 0.5,
+        "avg_nearest_distance": 0.02581938165063344,
+        "min_nearest_distance": 0.009396982107425383,
+        "max_nearest_distance": 0.059585134747085065,
+        "nearest_by_clip": [
+          {
+            "id": "motion_thinking_01",
+            "nearest_id": "motion_thinking_09",
+            "nearest_distance": 0.025328425361895897
+          },
+          {
+            "id": "motion_thinking_02",
+            "nearest_id": "motion_thinking_10",
+            "nearest_distance": 0.009396982107425383
+          },
+          {
+            "id": "motion_thinking_03",
+            "nearest_id": "motion_thinking_11",
+            "nearest_distance": 0.01657357760857548
+          },
+          {
+            "id": "motion_thinking_04",
+            "nearest_id": "motion_thinking_12",
+            "nearest_distance": 0.02526765169583874
+          },
+          {
+            "id": "motion_thinking_05",
+            "nearest_id": "motion_thinking_09",
+            "nearest_distance": 0.059585134747085065
+          },
+          {
+            "id": "motion_thinking_06",
+            "nearest_id": "motion_thinking_10",
+            "nearest_distance": 0.027924860217766852
+          },
+          {
+            "id": "motion_thinking_07",
+            "nearest_id": "motion_thinking_11",
+            "nearest_distance": 0.033816219884438996
+          },
+          {
+            "id": "motion_thinking_08",
+            "nearest_id": "motion_thinking_04",
+            "nearest_distance": 0.035373091410839344
+          },
+          {
+            "id": "motion_thinking_09",
+            "nearest_id": "motion_thinking_01",
+            "nearest_distance": 0.025328425361895897
+          },
+          {
+            "id": "motion_thinking_10",
+            "nearest_id": "motion_thinking_02",
+            "nearest_distance": 0.009396982107425383
+          },
+          {
+            "id": "motion_thinking_11",
+            "nearest_id": "motion_thinking_03",
+            "nearest_distance": 0.01657357760857548
+          },
+          {
+            "id": "motion_thinking_12",
+            "nearest_id": "motion_thinking_04",
+            "nearest_distance": 0.02526765169583874
+          }
+        ]
+      },
+      "relaxed": {
+        "total": 12,
+        "with_lower_body": 9,
+        "lower_body_ratio": 0.75,
+        "avg_nearest_distance": 0.021130737221481583,
+        "min_nearest_distance": 0.008455028985847135,
+        "max_nearest_distance": 0.04898323275273989,
+        "nearest_by_clip": [
+          {
+            "id": "motion_relaxed_01",
+            "nearest_id": "motion_relaxed_09",
+            "nearest_distance": 0.008455028985847135
+          },
+          {
+            "id": "motion_relaxed_02",
+            "nearest_id": "motion_relaxed_10",
+            "nearest_distance": 0.016386187827409755
+          },
+          {
+            "id": "motion_relaxed_03",
+            "nearest_id": "motion_relaxed_11",
+            "nearest_distance": 0.0089890887842827
+          },
+          {
+            "id": "motion_relaxed_04",
+            "nearest_id": "motion_relaxed_12",
+            "nearest_distance": 0.017798513160010607
+          },
+          {
+            "id": "motion_relaxed_05",
+            "nearest_id": "motion_relaxed_09",
+            "nearest_distance": 0.025296967518984668
+          },
+          {
+            "id": "motion_relaxed_06",
+            "nearest_id": "motion_relaxed_01",
+            "nearest_distance": 0.04898323275273989
+          },
+          {
+            "id": "motion_relaxed_07",
+            "nearest_id": "motion_relaxed_11",
+            "nearest_distance": 0.027254481977810312
+          },
+          {
+            "id": "motion_relaxed_08",
+            "nearest_id": "motion_relaxed_07",
+            "nearest_distance": 0.04877652689314375
+          },
+          {
+            "id": "motion_relaxed_09",
+            "nearest_id": "motion_relaxed_01",
+            "nearest_distance": 0.008455028985847135
+          },
+          {
+            "id": "motion_relaxed_10",
+            "nearest_id": "motion_relaxed_02",
+            "nearest_distance": 0.016386187827409755
+          },
+          {
+            "id": "motion_relaxed_11",
+            "nearest_id": "motion_relaxed_03",
+            "nearest_distance": 0.0089890887842827
+          },
+          {
+            "id": "motion_relaxed_12",
+            "nearest_id": "motion_relaxed_04",
+            "nearest_distance": 0.017798513160010607
+          }
+        ]
+      },
+      "bridge": {
+        "total": 9,
+        "with_lower_body": 6,
+        "lower_body_ratio": 0.6666666666666666,
+        "avg_nearest_distance": 0.01760542521090289,
+        "min_nearest_distance": 0.009988280000767766,
+        "max_nearest_distance": 0.03902857487233751,
+        "nearest_by_clip": [
+          {
+            "id": "motion_bridge_01",
+            "nearest_id": "motion_bridge_03",
+            "nearest_distance": 0.01399131621016869
+          },
+          {
+            "id": "motion_bridge_02",
+            "nearest_id": "motion_bridge_08",
+            "nearest_distance": 0.009988280000767766
+          },
+          {
+            "id": "motion_bridge_03",
+            "nearest_id": "motion_bridge_09",
+            "nearest_distance": 0.012005974943478529
+          },
+          {
+            "id": "motion_bridge_04",
+            "nearest_id": "motion_bridge_06",
+            "nearest_distance": 0.02022544851608408
+          },
+          {
+            "id": "motion_bridge_05",
+            "nearest_id": "motion_bridge_03",
+            "nearest_distance": 0.03902857487233751
+          },
+          {
+            "id": "motion_bridge_06",
+            "nearest_id": "motion_bridge_04",
+            "nearest_distance": 0.02022544851608408
+          },
+          {
+            "id": "motion_bridge_07",
+            "nearest_id": "motion_bridge_03",
+            "nearest_distance": 0.02098952889495909
+          },
+          {
+            "id": "motion_bridge_08",
+            "nearest_id": "motion_bridge_02",
+            "nearest_distance": 0.009988280000767766
+          },
+          {
+            "id": "motion_bridge_09",
+            "nearest_id": "motion_bridge_03",
+            "nearest_distance": 0.012005974943478529
+          }
+        ]
+      }
+    }
+  }
+}

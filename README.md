@@ -42,6 +42,12 @@ English version: [README.en.md](README.en.md)
 
 AI 모델 파일은 용량이 크므로 저장소에 포함되지 않습니다. 실행 전 아래 경로에 직접 배치해야 합니다.
 
+외부 모델 경로를 사용할 경우:
+
+```bash
+PREPARE_MODELS_DIR="/absolute/path/to/models" npm run build
+```
+
 ### TTS 모델 (Supertonic)
 
 Git LFS가 설치되어 있어야 합니다:
@@ -128,6 +134,48 @@ npm run tauri build
 - Whisper 모델: `base`, `small`, `medium`
 - Supertonic 모델: `onnx`, `voice_styles`
 - VRM 파일은 기본 포함하지 않으며, 첫 실행 시 사용자가 직접 선택합니다.
+
+## 모션 데이터 파이프라인
+
+- `motions/raw/` : 원본 모션 소스(수집/캡처)
+- `motions/clean/` : 리타게팅/정제 중간 산출물
+- `public/motions/` : 런타임에서 사용하는 최종 클립
+- `src/config/motionManifest.json` : 모션 메타데이터 단일 소스
+
+실데이터 교체:
+
+```bash
+# catalog 파일 준비 (motions/clean/catalog.example.json 참고)
+npm run motion:catalog:auto
+npm run motion:import:dry
+npm run motion:import
+```
+
+외부 정제 클립 동기화:
+
+```bash
+MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:clean
+npm run motion:refresh
+```
+
+고정 외부 경로(`/Volumes/Sandisk 2TB/Projects/MyPartnerAI/motions/clean/clips`) 사용:
+
+```bash
+npm run motion:refresh:external
+```
+
+커스텀 catalog 경로:
+
+```bash
+MOTION_CATALOG=motions/clean/my-catalog.json npm run motion:import
+```
+
+검증:
+
+```bash
+npm run motion:validate
+npm run motion:qa:team10
+```
 
 ## 환경 변수 (선택)
 
