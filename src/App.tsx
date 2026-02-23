@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
 import StatusIndicator from './components/ui/StatusIndicator';
@@ -94,6 +95,19 @@ function App() {
     return () => { unlisten?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingProvider]);
+
+  // Dev mode: F12 to open devtools
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'F12') {
+        const win = getCurrentWebviewWindow() as any;
+        win.openDevtools?.();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // Auto-detect and set available Ollama model on startup
   useEffect(() => {
