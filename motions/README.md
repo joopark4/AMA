@@ -34,9 +34,10 @@ npm run motion:collect:metadata -- --source "<path/to/your/motions/raw>" --check
 MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:clean
 ```
 
-   - Fixed external path sync:
+   - External sync alias (`MOTION_CLEAN_SOURCE` env required):
 
 ```bash
+MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips \
 npm run motion:sync:external
 ```
 
@@ -74,9 +75,10 @@ One-shot refresh from `motions/clean/clips`:
 npm run motion:refresh
 ```
 
-One-shot refresh from fixed external path:
+One-shot refresh from external path (`MOTION_CLEAN_SOURCE` required):
 
 ```bash
+MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips \
 npm run motion:refresh:external
 ```
 
