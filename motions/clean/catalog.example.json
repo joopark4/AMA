@@ -9,10 +9,12 @@
     {
       "id": "motion_happy_03",
       "source_file": "motions/clean/clips/motion_happy_03.json",
-      "emotion_tags": ["happy"],
-      "intensity": "mid",
+      "emotion_tags": [
+        "happy"
+      ],
+      "intensity": "high",
       "loopable": false,
-      "speaking_compatible": true,
+      "speaking_compatible": false,
       "priority": 4,
       "cooldown_ms": 1500,
       "source_url": "https://www.mixamo.com",
@@ -24,7 +26,9 @@
     {
       "id": "motion_thinking_04",
       "source_file": "motions/clean/clips/motion_thinking_04.json",
-      "emotion_tags": ["thinking"],
+      "emotion_tags": [
+        "thinking"
+      ],
       "intensity": "low",
       "loopable": true,
       "speaking_compatible": true,

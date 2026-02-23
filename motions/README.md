@@ -96,7 +96,7 @@ Run:
 npm run motion:validate
 npm run motion:qa:team10
 npm run motion:collect:index -- --source "<path/to/your/motions/raw>"
-npm run motion:collect:metadata -- --source "<path/to/your/motions/raw>"
+npm run motion:collect:metadata -- --source "<path/to/your/motions/raw>" --checklist "motions/raw/raw-intake-checklist.json"
 ```
 
 Validation checks:

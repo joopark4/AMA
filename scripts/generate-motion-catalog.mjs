@@ -71,6 +71,14 @@ const LICENSE_BY_EMOTION = {
   bridge: 'mixamo-standard',
 };
 
+const DEFAULT_REDISTRIBUTION_NOTE =
+  'Verify upstream asset terms before redistributing generated deliverables.';
+
+const REDISTRIBUTION_NOTE_BY_LICENSE = {
+  'rokoko-user-generated':
+    'Captured from user-owned performance. Verify downstream rights before redistribution.',
+};
+
 function getArgValue(flag, fallback) {
   const index = process.argv.indexOf(flag);
   if (index === -1) return fallback;
@@ -175,6 +183,7 @@ function createDefaultMeta(id) {
   const emotion = inferEmotion(id);
   const intensity = inferIntensity(id, emotion);
   const loopable = inferLoopable(emotion, intensity);
+  const licenseClass = LICENSE_BY_EMOTION[emotion] ?? 'mixamo-standard';
 
   return {
     emotion_tags: [emotion],
@@ -184,9 +193,9 @@ function createDefaultMeta(id) {
     priority: PRIORITY_BY_EMOTION[emotion] ?? 2,
     cooldown_ms: inferCooldownMs(id),
     source_url: SOURCE_BY_EMOTION[emotion] ?? 'https://www.mixamo.com',
-    license_class: LICENSE_BY_EMOTION[emotion] ?? 'mixamo-standard',
+    license_class: licenseClass,
     attribution_required: false,
-    redistribution_note: 'Verify upstream asset terms before redistributing generated deliverables.',
+    redistribution_note: REDISTRIBUTION_NOTE_BY_LICENSE[licenseClass] ?? DEFAULT_REDISTRIBUTION_NOTE,
     fallback_gesture: FALLBACK_GESTURE_BY_EMOTION[emotion] ?? 'shrug',
   };
 }
@@ -307,7 +316,7 @@ async function main() {
     default_license_class: 'mixamo-standard',
     default_attribution_required: false,
     default_redistribution_note:
-      'Verify upstream asset terms before redistributing generated deliverables.',
+      DEFAULT_REDISTRIBUTION_NOTE,
     clips: entries,
   };
 
