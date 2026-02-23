@@ -30,10 +30,10 @@ export default function AuthScreen() {
   const handleAgreementChange = (type: 'terms' | 'privacy', checked: boolean) => {
     if (type === 'terms') setAgreedTerms(checked);
     else setAgreedPrivacy(checked);
-    // 둘 다 체크 시 스토어에 저장
     const termsOk = type === 'terms' ? checked : agreedTerms;
     const privacyOk = type === 'privacy' ? checked : agreedPrivacy;
-    if (termsOk && privacyOk) setHasAgreedToTerms(true);
+    // 둘 다 동의 → true, 하나라도 해제 → false (버그 수정: 해제 시 스토어 반영)
+    setHasAgreedToTerms(termsOk && privacyOk);
   };
 
   const handleOAuthLogin = async (provider: OAuthProvider) => {
