@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getMotionManifest } from './motionLibrary';
 import { selectMotionClip } from './motionSelector';
 import type { Emotion } from '../../stores/avatarStore';
+import type { MotionClipMeta } from '../../types/motion';
 
 const EMOTIONS: Emotion[] = [
   'neutral',
@@ -84,7 +85,7 @@ describe('motionSelector', () => {
   });
 
   it('allows recent clips when diversityStrength is disabled', () => {
-    const source = [
+    const source: MotionClipMeta[] = [
       {
         id: 'motion_happy_recent',
         emotion_tags: ['happy'],
@@ -115,7 +116,7 @@ describe('motionSelector', () => {
         attribution_required: false,
         redistribution_note: 'n/a',
       },
-    ] as const;
+    ];
 
     const result = selectMotionClip(
       {
