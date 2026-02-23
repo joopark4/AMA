@@ -7,71 +7,8 @@
   "default_redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
   "clips": [
     {
-      "id": "motion_neutral_01",
-      "source_file": "motions/clean/clips/motion_neutral_01.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "low",
-      "duration_ms": 2305,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 1470,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_weight_shift",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_neutral_02",
-      "source_file": "motions/clean/clips/motion_neutral_02.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2125,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 1830,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_attentive_nod",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_neutral_03",
-      "source_file": "motions/clean/clips/motion_neutral_03.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "low",
-      "duration_ms": 2285,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 2030,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_open_posture",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_neutral_04",
-      "source_file": "motions/clean/clips/motion_neutral_04.json",
+      "source_file": "public/motions/clips/motion_neutral_04.json",
       "emotion_tags": [
         "neutral"
       ],
@@ -91,71 +28,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_neutral_05",
-      "source_file": "motions/clean/clips/motion_neutral_05.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "low",
-      "duration_ms": 2305,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 1470,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_weight_shift",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_neutral_06",
-      "source_file": "motions/clean/clips/motion_neutral_06.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2125,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 1830,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_attentive_nod",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_neutral_07",
-      "source_file": "motions/clean/clips/motion_neutral_07.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "high",
-      "duration_ms": 1855,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 3,
-      "cooldown_ms": 2680,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_open_posture",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_neutral_08",
-      "source_file": "motions/clean/clips/motion_neutral_08.json",
+      "source_file": "public/motions/clips/motion_neutral_08.json",
       "emotion_tags": [
         "neutral"
       ],
@@ -175,71 +49,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_neutral_09",
-      "source_file": "motions/clean/clips/motion_neutral_09.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2085,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 1770,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_weight_shift",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_neutral_10",
-      "source_file": "motions/clean/clips/motion_neutral_10.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "low",
-      "duration_ms": 2345,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 1530,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_attentive_nod",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_neutral_11",
-      "source_file": "motions/clean/clips/motion_neutral_11.json",
-      "emotion_tags": [
-        "neutral"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2065,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 2330,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "neutral_open_posture",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_neutral_12",
-      "source_file": "motions/clean/clips/motion_neutral_12.json",
+      "source_file": "public/motions/clips/motion_neutral_12.json",
       "emotion_tags": [
         "neutral"
       ],
@@ -259,54 +70,12 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_happy_01",
-      "source_file": "motions/clean/clips/motion_happy_01.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1335,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 6,
-      "cooldown_ms": 1770,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_bounce_step",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_happy_02",
-      "source_file": "motions/clean/clips/motion_happy_02.json",
+      "id": "motion_happy_03",
+      "source_file": "public/motions/clips/motion_happy_03.json",
       "emotion_tags": [
         "happy"
       ],
       "intensity": "high",
-      "duration_ms": 1255,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2400,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_open_arms",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_happy_03",
-      "source_file": "motions/clean/clips/motion_happy_03.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "mid",
       "duration_ms": 1355,
       "loopable": false,
       "speaking_compatible": true,
@@ -322,92 +91,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_happy_04",
-      "source_file": "motions/clean/clips/motion_happy_04.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "high",
-      "duration_ms": 1455,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 5,
-      "cooldown_ms": 2740,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_talk_beats",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_happy_05",
-      "source_file": "motions/clean/clips/motion_happy_05.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "low",
-      "duration_ms": 1645,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 5,
-      "cooldown_ms": 1470,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_side_sway",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_happy_06",
-      "source_file": "motions/clean/clips/motion_happy_06.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1405,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 6,
-      "cooldown_ms": 2050,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_bounce_step",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_happy_07",
-      "source_file": "motions/clean/clips/motion_happy_07.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "high",
-      "duration_ms": 1325,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2680,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_open_arms",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_happy_08",
-      "source_file": "motions/clean/clips/motion_happy_08.json",
+      "source_file": "public/motions/clips/motion_happy_08.json",
       "emotion_tags": [
         "happy"
       ],
@@ -427,92 +112,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_happy_09",
-      "source_file": "motions/clean/clips/motion_happy_09.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "low",
-      "duration_ms": 1675,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 1250,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_talk_beats",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_happy_10",
-      "source_file": "motions/clean/clips/motion_happy_10.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "high",
-      "duration_ms": 1285,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2400,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_side_sway",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_happy_11",
-      "source_file": "motions/clean/clips/motion_happy_11.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1475,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 6,
-      "cooldown_ms": 2330,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_bounce_step",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_happy_12",
-      "source_file": "motions/clean/clips/motion_happy_12.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "high",
-      "duration_ms": 1395,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2960,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_open_arms",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_happy_13",
-      "source_file": "motions/clean/clips/motion_happy_13.json",
+      "source_file": "public/motions/clips/motion_happy_13.json",
       "emotion_tags": [
         "happy"
       ],
@@ -532,92 +133,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_happy_14",
-      "source_file": "motions/clean/clips/motion_happy_14.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1525,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 5,
-      "cooldown_ms": 1830,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_talk_beats",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_happy_15",
-      "source_file": "motions/clean/clips/motion_happy_15.json",
-      "emotion_tags": [
-        "happy"
-      ],
-      "intensity": "high",
-      "duration_ms": 1355,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2680,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "celebrate",
-      "variation_tag": "happy_side_sway",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_sad_01",
-      "source_file": "motions/clean/clips/motion_sad_01.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "low",
-      "duration_ms": 2745,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 1470,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_slumped_shift",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_sad_02",
-      "source_file": "motions/clean/clips/motion_sad_02.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "low",
-      "duration_ms": 2855,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 1530,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_self_hold",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_sad_03",
-      "source_file": "motions/clean/clips/motion_sad_03.json",
+      "source_file": "public/motions/clips/motion_sad_03.json",
       "emotion_tags": [
         "sad"
       ],
@@ -635,77 +152,14 @@
       "variation_tag": "sad_slow_step_back",
       "slot_group": "core_v1",
       "body_zone": "full"
-    },
-    {
-      "id": "motion_sad_04",
-      "source_file": "motions/clean/clips/motion_sad_04.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "low",
-      "duration_ms": 2735,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 2310,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_head_drop_recover",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_sad_05",
-      "source_file": "motions/clean/clips/motion_sad_05.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2525,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 1770,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_slumped_shift",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_sad_06",
-      "source_file": "motions/clean/clips/motion_sad_06.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "low",
-      "duration_ms": 2855,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 1530,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_self_hold",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
     },
     {
       "id": "motion_sad_07",
-      "source_file": "motions/clean/clips/motion_sad_07.json",
+      "source_file": "public/motions/clips/motion_sad_07.json",
       "emotion_tags": [
         "sad"
       ],
-      "intensity": "mid",
+      "intensity": "high",
       "duration_ms": 2605,
       "loopable": false,
       "speaking_compatible": true,
@@ -721,71 +175,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_sad_08",
-      "source_file": "motions/clean/clips/motion_sad_08.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "high",
-      "duration_ms": 2305,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 5,
-      "cooldown_ms": 2960,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_head_drop_recover",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_sad_09",
-      "source_file": "motions/clean/clips/motion_sad_09.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "low",
-      "duration_ms": 2745,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 1470,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_slumped_shift",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_sad_10",
-      "source_file": "motions/clean/clips/motion_sad_10.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2635,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 1830,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_self_hold",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_sad_11",
-      "source_file": "motions/clean/clips/motion_sad_11.json",
+      "source_file": "public/motions/clips/motion_sad_11.json",
       "emotion_tags": [
         "sad"
       ],
@@ -805,29 +196,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_sad_12",
-      "source_file": "motions/clean/clips/motion_sad_12.json",
-      "emotion_tags": [
-        "sad"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2515,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 5,
-      "cooldown_ms": 2610,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "sad_head_drop_recover",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_angry_01",
-      "source_file": "motions/clean/clips/motion_angry_01.json",
+      "source_file": "public/motions/clips/motion_angry_01.json",
       "emotion_tags": [
         "angry"
       ],
@@ -847,71 +217,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_angry_02",
-      "source_file": "motions/clean/clips/motion_angry_02.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "high",
-      "duration_ms": 1235,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2400,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_point_stance",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_angry_03",
-      "source_file": "motions/clean/clips/motion_angry_03.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1325,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 7,
-      "cooldown_ms": 2330,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_stomp",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_angry_04",
-      "source_file": "motions/clean/clips/motion_angry_04.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "high",
-      "duration_ms": 1585,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 5,
-      "cooldown_ms": 2740,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_controlled_breath",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_angry_05",
-      "source_file": "motions/clean/clips/motion_angry_05.json",
+      "source_file": "public/motions/clips/motion_angry_05.json",
       "emotion_tags": [
         "angry"
       ],
@@ -931,75 +238,12 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_angry_06",
-      "source_file": "motions/clean/clips/motion_angry_06.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "high",
-      "duration_ms": 1235,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2400,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_point_stance",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_angry_07",
-      "source_file": "motions/clean/clips/motion_angry_07.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1325,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 7,
-      "cooldown_ms": 2330,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_stomp",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_angry_08",
-      "source_file": "motions/clean/clips/motion_angry_08.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "high",
-      "duration_ms": 1585,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 5,
-      "cooldown_ms": 2740,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_controlled_breath",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_angry_09",
-      "source_file": "motions/clean/clips/motion_angry_09.json",
+      "source_file": "public/motions/clips/motion_angry_09.json",
       "emotion_tags": [
         "angry"
       ],
-      "intensity": "mid",
+      "intensity": "high",
       "duration_ms": 1335,
       "loopable": false,
       "speaking_compatible": true,
@@ -1015,71 +259,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_angry_10",
-      "source_file": "motions/clean/clips/motion_angry_10.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "high",
-      "duration_ms": 1235,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2400,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_point_stance",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_angry_11",
-      "source_file": "motions/clean/clips/motion_angry_11.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "low",
-      "duration_ms": 1545,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 6,
-      "cooldown_ms": 2030,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_stomp",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_angry_12",
-      "source_file": "motions/clean/clips/motion_angry_12.json",
-      "emotion_tags": [
-        "angry"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1795,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 5,
-      "cooldown_ms": 2390,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shake",
-      "variation_tag": "angry_controlled_breath",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_surprised_01",
-      "source_file": "motions/clean/clips/motion_surprised_01.json",
+      "source_file": "public/motions/clips/motion_surprised_01.json",
       "emotion_tags": [
         "surprised"
       ],
@@ -1099,71 +280,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_surprised_02",
-      "source_file": "motions/clean/clips/motion_surprised_02.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "high",
-      "duration_ms": 1005,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 6,
-      "cooldown_ms": 2400,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_hands_up",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_surprised_03",
-      "source_file": "motions/clean/clips/motion_surprised_03.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1135,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 7,
-      "cooldown_ms": 2330,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_quick_pivot",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_surprised_04",
-      "source_file": "motions/clean/clips/motion_surprised_04.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "high",
-      "duration_ms": 1255,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 5,
-      "cooldown_ms": 2740,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_settle",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_surprised_05",
-      "source_file": "motions/clean/clips/motion_surprised_05.json",
+      "source_file": "public/motions/clips/motion_surprised_05.json",
       "emotion_tags": [
         "surprised"
       ],
@@ -1183,71 +301,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_surprised_06",
-      "source_file": "motions/clean/clips/motion_surprised_06.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1215,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 6,
-      "cooldown_ms": 2050,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_hands_up",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_surprised_07",
-      "source_file": "motions/clean/clips/motion_surprised_07.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "high",
-      "duration_ms": 925,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 7,
-      "cooldown_ms": 2680,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_quick_pivot",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_surprised_08",
-      "source_file": "motions/clean/clips/motion_surprised_08.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1465,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 5,
-      "cooldown_ms": 2390,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_settle",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_surprised_09",
-      "source_file": "motions/clean/clips/motion_surprised_09.json",
+      "source_file": "public/motions/clips/motion_surprised_09.json",
       "emotion_tags": [
         "surprised"
       ],
@@ -1267,134 +322,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_surprised_10",
-      "source_file": "motions/clean/clips/motion_surprised_10.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1215,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 6,
-      "cooldown_ms": 2050,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_hands_up",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_surprised_11",
-      "source_file": "motions/clean/clips/motion_surprised_11.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "low",
-      "duration_ms": 1355,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 6,
-      "cooldown_ms": 2030,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_quick_pivot",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_surprised_12",
-      "source_file": "motions/clean/clips/motion_surprised_12.json",
-      "emotion_tags": [
-        "surprised"
-      ],
-      "intensity": "high",
-      "duration_ms": 1255,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 5,
-      "cooldown_ms": 2740,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "surprised_settle",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_thinking_01",
-      "source_file": "motions/clean/clips/motion_thinking_01.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "low",
-      "duration_ms": 3025,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 1250,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_chin_touch",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_thinking_02",
-      "source_file": "motions/clean/clips/motion_thinking_02.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "low",
-      "duration_ms": 3015,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 1750,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_pacing_shift",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_thinking_03",
-      "source_file": "motions/clean/clips/motion_thinking_03.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2825,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 2110,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_micro_gesture",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_thinking_04",
-      "source_file": "motions/clean/clips/motion_thinking_04.json",
+      "source_file": "public/motions/clips/motion_thinking_04.json",
       "emotion_tags": [
         "thinking"
       ],
@@ -1412,77 +341,14 @@
       "variation_tag": "thinking_decision_step",
       "slot_group": "core_v1",
       "body_zone": "full"
-    },
-    {
-      "id": "motion_thinking_05",
-      "source_file": "motions/clean/clips/motion_thinking_05.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2805,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 1550,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_chin_touch",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_thinking_06",
-      "source_file": "motions/clean/clips/motion_thinking_06.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "low",
-      "duration_ms": 3015,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 1750,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_pacing_shift",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_thinking_07",
-      "source_file": "motions/clean/clips/motion_thinking_07.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2825,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 2110,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_micro_gesture",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
     },
     {
       "id": "motion_thinking_08",
-      "source_file": "motions/clean/clips/motion_thinking_08.json",
+      "source_file": "public/motions/clips/motion_thinking_08.json",
       "emotion_tags": [
         "thinking"
       ],
-      "intensity": "low",
+      "intensity": "mid",
       "duration_ms": 2975,
       "loopable": false,
       "speaking_compatible": true,
@@ -1498,71 +364,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_thinking_09",
-      "source_file": "motions/clean/clips/motion_thinking_09.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2805,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 1550,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_chin_touch",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_thinking_10",
-      "source_file": "motions/clean/clips/motion_thinking_10.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "low",
-      "duration_ms": 3015,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 1750,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_pacing_shift",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_thinking_11",
-      "source_file": "motions/clean/clips/motion_thinking_11.json",
-      "emotion_tags": [
-        "thinking"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2825,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 4,
-      "cooldown_ms": 2110,
-      "source_url": "https://www.rokoko.com/products/vision",
-      "license_class": "rokoko-user-generated",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "thinking",
-      "variation_tag": "thinking_micro_gesture",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
-    },
-    {
       "id": "motion_thinking_12",
-      "source_file": "motions/clean/clips/motion_thinking_12.json",
+      "source_file": "public/motions/clips/motion_thinking_12.json",
       "emotion_tags": [
         "thinking"
       ],
@@ -1582,50 +385,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_relaxed_01",
-      "source_file": "motions/clean/clips/motion_relaxed_01.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "low",
-      "duration_ms": 2845,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 1250,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_breath",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_relaxed_02",
-      "source_file": "motions/clean/clips/motion_relaxed_02.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2655,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 2050,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_sway",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_relaxed_03",
-      "source_file": "motions/clean/clips/motion_relaxed_03.json",
+      "source_file": "public/motions/clips/motion_relaxed_03.json",
       "emotion_tags": [
         "relaxed"
       ],
@@ -1641,79 +402,16 @@
       "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
       "fallback_gesture": "nod",
       "variation_tag": "relaxed_stretch",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_relaxed_04",
-      "source_file": "motions/clean/clips/motion_relaxed_04.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2615,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 2610,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_grounded_shift",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_relaxed_05",
-      "source_file": "motions/clean/clips/motion_relaxed_05.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "low",
-      "duration_ms": 2845,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 1250,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_breath",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_relaxed_06",
-      "source_file": "motions/clean/clips/motion_relaxed_06.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2655,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 2050,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_sway",
       "slot_group": "core_v1",
       "body_zone": "full"
     },
     {
       "id": "motion_relaxed_07",
-      "source_file": "motions/clean/clips/motion_relaxed_07.json",
+      "source_file": "public/motions/clips/motion_relaxed_07.json",
       "emotion_tags": [
         "relaxed"
       ],
-      "intensity": "low",
+      "intensity": "mid",
       "duration_ms": 2885,
       "loopable": false,
       "speaking_compatible": true,
@@ -1726,78 +424,15 @@
       "fallback_gesture": "nod",
       "variation_tag": "relaxed_stretch",
       "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_relaxed_08",
-      "source_file": "motions/clean/clips/motion_relaxed_08.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "high",
-      "duration_ms": 2405,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 3,
-      "cooldown_ms": 2960,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_grounded_shift",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_relaxed_09",
-      "source_file": "motions/clean/clips/motion_relaxed_09.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "low",
-      "duration_ms": 2845,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 1250,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_breath",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_relaxed_10",
-      "source_file": "motions/clean/clips/motion_relaxed_10.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2655,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 2050,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_sway",
-      "slot_group": "expansion_v2",
       "body_zone": "full"
     },
     {
       "id": "motion_relaxed_11",
-      "source_file": "motions/clean/clips/motion_relaxed_11.json",
+      "source_file": "public/motions/clips/motion_relaxed_11.json",
       "emotion_tags": [
         "relaxed"
       ],
-      "intensity": "low",
+      "intensity": "high",
       "duration_ms": 2885,
       "loopable": false,
       "speaking_compatible": true,
@@ -1813,54 +448,12 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_relaxed_12",
-      "source_file": "motions/clean/clips/motion_relaxed_12.json",
-      "emotion_tags": [
-        "relaxed"
-      ],
-      "intensity": "mid",
-      "duration_ms": 2615,
-      "loopable": true,
-      "speaking_compatible": true,
-      "priority": 3,
-      "cooldown_ms": 2610,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "nod",
-      "variation_tag": "relaxed_grounded_shift",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_bridge_01",
-      "source_file": "motions/clean/clips/motion_bridge_01.json",
+      "id": "motion_bridge_02",
+      "source_file": "public/motions/clips/motion_bridge_02.json",
       "emotion_tags": [
         "bridge"
       ],
       "intensity": "low",
-      "duration_ms": 1255,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 1,
-      "cooldown_ms": 1470,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shrug",
-      "variation_tag": "bridge_settle_in",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
-      "id": "motion_bridge_02",
-      "source_file": "motions/clean/clips/motion_bridge_02.json",
-      "emotion_tags": [
-        "bridge"
-      ],
-      "intensity": "mid",
       "duration_ms": 945,
       "loopable": false,
       "speaking_compatible": true,
@@ -1876,50 +469,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_bridge_03",
-      "source_file": "motions/clean/clips/motion_bridge_03.json",
-      "emotion_tags": [
-        "bridge"
-      ],
-      "intensity": "low",
-      "duration_ms": 1385,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 1,
-      "cooldown_ms": 1810,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shrug",
-      "variation_tag": "bridge_release",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_bridge_04",
-      "source_file": "motions/clean/clips/motion_bridge_04.json",
-      "emotion_tags": [
-        "bridge"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1245,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 2610,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shrug",
-      "variation_tag": "bridge_settle_in",
-      "slot_group": "core_v1",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_bridge_05",
-      "source_file": "motions/clean/clips/motion_bridge_05.json",
+      "source_file": "public/motions/clips/motion_bridge_05.json",
       "emotion_tags": [
         "bridge"
       ],
@@ -1939,50 +490,8 @@
       "body_zone": "full"
     },
     {
-      "id": "motion_bridge_06",
-      "source_file": "motions/clean/clips/motion_bridge_06.json",
-      "emotion_tags": [
-        "bridge"
-      ],
-      "intensity": "mid",
-      "duration_ms": 1095,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 2,
-      "cooldown_ms": 1830,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shrug",
-      "variation_tag": "bridge_release",
-      "slot_group": "core_v1",
-      "body_zone": "upper"
-    },
-    {
-      "id": "motion_bridge_07",
-      "source_file": "motions/clean/clips/motion_bridge_07.json",
-      "emotion_tags": [
-        "bridge"
-      ],
-      "intensity": "low",
-      "duration_ms": 1395,
-      "loopable": false,
-      "speaking_compatible": true,
-      "priority": 1,
-      "cooldown_ms": 2030,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shrug",
-      "variation_tag": "bridge_settle_in",
-      "slot_group": "expansion_v2",
-      "body_zone": "full"
-    },
-    {
       "id": "motion_bridge_08",
-      "source_file": "motions/clean/clips/motion_bridge_08.json",
+      "source_file": "public/motions/clips/motion_bridge_08.json",
       "emotion_tags": [
         "bridge"
       ],
@@ -2000,27 +509,6 @@
       "variation_tag": "bridge_turn_reset",
       "slot_group": "expansion_v2",
       "body_zone": "full"
-    },
-    {
-      "id": "motion_bridge_09",
-      "source_file": "motions/clean/clips/motion_bridge_09.json",
-      "emotion_tags": [
-        "bridge"
-      ],
-      "intensity": "high",
-      "duration_ms": 815,
-      "loopable": false,
-      "speaking_compatible": false,
-      "priority": 2,
-      "cooldown_ms": 1900,
-      "source_url": "https://www.mixamo.com",
-      "license_class": "mixamo-standard",
-      "attribution_required": false,
-      "redistribution_note": "Verify upstream asset terms before redistributing generated deliverables.",
-      "fallback_gesture": "shrug",
-      "variation_tag": "bridge_release",
-      "slot_group": "expansion_v2",
-      "body_zone": "upper"
     }
   ]
 }
