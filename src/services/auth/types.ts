@@ -1,4 +1,4 @@
-export type OAuthProvider = 'google' | 'apple' | 'meta';
+export type OAuthProvider = 'google' | 'apple' | 'meta' | 'x';
 
 export interface AuthUser {
   id: string;
@@ -33,4 +33,5 @@ export interface IAuthService {
   handleCallback(code: string, state: string, pkceVerifier: string): Promise<AuthResult>;
   refreshToken(refreshToken: string): Promise<AuthTokens>;
   logout(accessToken: string): Promise<void>;
+  deleteAccount(accessToken: string): Promise<void>;
 }
