@@ -1,20 +1,35 @@
 import { useRef, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
+import { Object3D, Vector3 } from 'three';
 import { invoke } from '@tauri-apps/api/core';
-import { useAvatarStore } from '../../stores/avatarStore';
+import { useAvatarStore, type Emotion } from '../../stores/avatarStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 // Helper function to log to terminal
 const logToTerminal = (message: string) => {
   invoke('log_to_terminal', { message }).catch(console.error);
 };
 
+const LOOK_AT_OFFSETS: Record<Emotion, { x: number; y: number; z: number }> = {
+  neutral: { x: 0, y: 0, z: 0 },
+  happy: { x: 0.1, y: 0.05, z: 0 },
+  sad: { x: -0.08, y: -0.04, z: 0 },
+  angry: { x: 0.12, y: 0.02, z: 0 },
+  surprised: { x: 0, y: 0.12, z: 0 },
+  relaxed: { x: 0.04, y: -0.01, z: 0 },
+  thinking: { x: -0.14, y: 0.04, z: 0 },
+};
+
 export default function LookAtController() {
   const vrm = useAvatarStore((state) => state.vrm);
+  const emotion = useAvatarStore((state) => state.emotion);
+  const faceOnlyModeEnabled = useSettingsStore(
+    (state) => state.settings.avatar?.animation?.faceExpressionOnlyMode ?? false
+  );
   const hasLoggedRef = useRef(false);
-
-  // Note: Camera and target are commented out while debugging eye issues
-  // const { camera } = useThree();
-  // const targetRef = useRef(new THREE.Vector3());
+  const targetRef = useRef(new Object3D());
+  const desiredRef = useRef(new Vector3());
+  const { camera } = useThree();
 
   // Log VRM lookAt info once when VRM is loaded
   useEffect(() => {
@@ -67,15 +82,33 @@ export default function LookAtController() {
     };
   }, [vrm]);
 
-  useFrame(() => {
-    // DISABLED: VRMLookAtBoneApplier might be causing eye rendering issues
-    // The bone rotation could be making the eye texture point in wrong direction
-    // Test with lookAt disabled first to see if eyes render correctly
+  useEffect(() => {
+    if (!vrm?.lookAt) return;
 
-    // Uncomment below to enable lookAt:
-    // if (!vrm?.lookAt) return;
-    // targetRef.current.copy(camera.position);
-    // vrm.lookAt.target = targetRef.current;
+    if (!faceOnlyModeEnabled) {
+      vrm.lookAt.target = null;
+    }
+
+    return () => {
+      if (!vrm?.lookAt) return;
+      vrm.lookAt.target = null;
+    };
+  }, [faceOnlyModeEnabled, vrm]);
+
+  useFrame((_, delta) => {
+    if (!vrm?.lookAt || !faceOnlyModeEnabled) return;
+
+    const baseOffset = LOOK_AT_OFFSETS[emotion] ?? LOOK_AT_OFFSETS.neutral;
+    const t = performance.now() * 0.001;
+    desiredRef.current.set(
+      camera.position.x + baseOffset.x + Math.sin(t * 0.7) * 0.06,
+      camera.position.y + baseOffset.y + Math.sin(t * 1.1 + 0.4) * 0.035,
+      camera.position.z + baseOffset.z
+    );
+
+    const blend = 1 - Math.exp(-Math.max(0.001, delta) * 6);
+    targetRef.current.position.lerp(desiredRef.current, blend);
+    vrm.lookAt.target = targetRef.current;
   });
 
   return null;
