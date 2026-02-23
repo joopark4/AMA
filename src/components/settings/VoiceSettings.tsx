@@ -1,9 +1,15 @@
 /**
  * VoiceSettings - STT/TTS 엔진 및 모델 설정 컴포넌트
  */
-import { useEffect } from 'react';
+import { type KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
+import {
+  buildGlobalShortcutFromKeyboardEvent,
+  DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
+  formatGlobalShortcutForDisplay,
+} from '../../services/tauri/globalShortcutUtils';
+import { useAppStatusStore } from '../../stores/appStatusStore';
 
 // Whisper 모델 목록 (배포 기본 포함 모델)
 const WHISPER_MODELS = [
@@ -29,7 +35,21 @@ const SUPERTONIC_VOICE_KEYS = Object.keys(SUPERTONIC_VOICES);
 
 export default function VoiceSettings() {
   const { t } = useTranslation();
-  const { settings, setSTTSettings, setTTSSettings } = useSettingsStore();
+  const {
+    settings,
+    setSTTSettings,
+    setTTSSettings,
+    setGlobalShortcutSettings,
+  } = useSettingsStore();
+  const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
+  const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
+  const shortcutRegisterError = useAppStatusStore(
+    (state) => state.globalShortcutRegisterError
+  );
+  const shortcutDisplayValue = useMemo(
+    () => formatGlobalShortcutForDisplay(settings.globalShortcut.accelerator),
+    [settings.globalShortcut.accelerator]
+  );
 
   // 항상 whisper 엔진 사용, 유효하지 않은 모델은 base로 리셋
   useEffect(() => {
@@ -44,6 +64,27 @@ export default function VoiceSettings() {
       setTTSSettings({ engine: 'supertonic', voice: 'F1' });
     }
   }, []);
+
+  const handleShortcutKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Tab') {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const shortcut = buildGlobalShortcutFromKeyboardEvent(event);
+    if (!shortcut) {
+      setShortcutInputError(t('settings.voice.globalShortcut.validation'));
+      return;
+    }
+
+    setShortcutInputError(null);
+    setGlobalShortcutSettings({
+      enabled: true,
+      accelerator: shortcut,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -128,6 +169,80 @@ export default function VoiceSettings() {
             </optgroup>
           </select>
         </div>
+      </div>
+
+      {/* Global Shortcut */}
+      <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('settings.voice.globalShortcut.title')}
+        </h4>
+
+        <p className="text-xs text-gray-500">
+          {t('settings.voice.globalShortcut.description')}
+        </p>
+
+        <label className="flex items-center justify-between gap-3">
+          <span className="text-xs font-medium text-gray-600">
+            {t('settings.voice.globalShortcut.enabled')}
+          </span>
+          <input
+            type="checkbox"
+            checked={settings.globalShortcut.enabled}
+            onChange={(event) =>
+              setGlobalShortcutSettings({ enabled: event.target.checked })
+            }
+            className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-gray-600">
+            {t('settings.voice.globalShortcut.shortcutLabel')}
+          </label>
+          <input
+            type="text"
+            readOnly
+            value={shortcutDisplayValue}
+            onFocus={() => setIsCapturingShortcut(true)}
+            onBlur={() => setIsCapturingShortcut(false)}
+            onKeyDown={handleShortcutKeyDown}
+            className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+              isCapturingShortcut ? 'border-blue-500' : 'border-gray-300'
+            }`}
+            aria-label={t('settings.voice.globalShortcut.shortcutLabel')}
+          />
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">
+              {isCapturingShortcut
+                ? t('settings.voice.globalShortcut.captureHint')
+                : t('settings.voice.globalShortcut.shortcutHint')}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShortcutInputError(null);
+                setGlobalShortcutSettings({
+                  enabled: true,
+                  accelerator: DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
+                });
+              }}
+              className="text-xs text-blue-600 hover:text-blue-700"
+            >
+              {t('settings.voice.globalShortcut.restoreDefault')}
+            </button>
+          </div>
+        </div>
+
+        {shortcutInputError && (
+          <p className="text-xs text-red-600">{shortcutInputError}</p>
+        )}
+        {!shortcutInputError && settings.globalShortcut.enabled && shortcutRegisterError && (
+          <p className="text-xs text-amber-700">
+            {t('settings.voice.globalShortcut.registerErrorInline', {
+              error: shortcutRegisterError,
+            })}
+          </p>
+        )}
       </div>
     </div>
   );

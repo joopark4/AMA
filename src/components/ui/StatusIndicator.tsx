@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore, type LLMProvider } from '../../stores/settingsStore';
 import { useConversation } from '../../hooks/useConversation';
+import { useGlobalVoiceShortcut } from '../../hooks/useGlobalVoiceShortcut';
 import { llmRouter } from '../../services/ai/llmRouter';
 import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
+import { permissions } from '../../services/tauri/permissions';
+import VoiceWaveform from './VoiceWaveform';
 
 interface StatusIndicatorProps {
   isProcessing: boolean;
@@ -203,6 +206,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
   const [hasTriedVoiceInput, setHasTriedVoiceInput] = useState(false);
   const [hasAutoShownConfigGuide, setHasAutoShownConfigGuide] = useState(false);
   const [llmDependencyIssue, setLlmDependencyIssue] = useState<DependencyIssue | null>(null);
+  const [globalShortcutToast, setGlobalShortcutToast] = useState<string | null>(null);
   const isVoiceButtonDisabled = false;
 
   useEffect(() => {
@@ -382,14 +386,36 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
     }
   };
 
-  const handleVoiceToggle = () => {
+  const handleVoiceToggle = useCallback(() => {
     if (isVoiceListening) {
       stopListening();
     } else {
       setHasTriedVoiceInput(true);
       void startListening();
     }
-  };
+  }, [isVoiceListening, startListening, stopListening]);
+
+  const { registerError: globalShortcutRegisterError } = useGlobalVoiceShortcut({
+    enabled: settings.globalShortcut.enabled,
+    accelerator: settings.globalShortcut.accelerator,
+    onTrigger: handleVoiceToggle,
+  });
+
+  useEffect(() => {
+    if (!globalShortcutRegisterError) {
+      setGlobalShortcutToast(null);
+      return;
+    }
+    setGlobalShortcutToast(globalShortcutRegisterError);
+  }, [globalShortcutRegisterError]);
+
+  const handleOpenAccessibilitySettings = useCallback(async () => {
+    try {
+      await permissions.openAccessibilitySettings();
+    } catch (error) {
+      console.error('Failed to open accessibility settings:', error);
+    }
+  }, []);
 
   const getStatusText = () => {
     if (isVoiceListening && transcript) {
@@ -443,6 +469,29 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
           >
             설치 안내 보기
           </button>
+        </div>
+      )}
+
+      {globalShortcutToast && (
+        <div className="bg-amber-100 border border-amber-400 text-amber-800 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
+          <div>{t('settings.voice.globalShortcut.registerErrorToast')}</div>
+          <div className="mt-1 text-[11px] break-words">{globalShortcutToast}</div>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleOpenAccessibilitySettings()}
+              className="px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors text-[11px]"
+            >
+              {t('settings.voice.globalShortcut.openAccessibility')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setGlobalShortcutToast(null)}
+              className="px-2 py-1 bg-white/80 text-amber-900 rounded hover:bg-white transition-colors text-[11px]"
+            >
+              {t('settings.cancel')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -544,35 +593,40 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       </button>
 
       {/* Voice input button */}
-      <button
-        onClick={handleVoiceToggle}
-        disabled={isVoiceButtonDisabled}
-        className={`p-2 backdrop-blur-sm rounded-full shadow-lg border transition-colors ${
-          isVoiceButtonDisabled
-            ? 'bg-gray-400 border-gray-300 cursor-not-allowed'
-            : isVoiceListening
-            ? 'bg-red-500 border-red-400 hover:bg-red-600 animate-pulse'
-            : 'bg-blue-500 border-blue-400 hover:bg-blue-600'
-        }`}
-        title={
-          isVoiceButtonDisabled
-            ? voiceInputUnavailableReason || 'Voice input unavailable'
-            : isVoiceListening
-              ? 'Stop listening'
-              : 'Start voice input'
-        }
-      >
-        {isVoiceListening ? (
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-          </svg>
-        ) : (
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
+      <div className="relative">
+        {isVoiceListening && (
+          <VoiceWaveform label={t('status.voiceListeningOverlay')} />
         )}
-      </button>
+        <button
+          onClick={handleVoiceToggle}
+          disabled={isVoiceButtonDisabled}
+          className={`p-2 backdrop-blur-sm rounded-full shadow-lg border transition-colors ${
+            isVoiceButtonDisabled
+              ? 'bg-gray-400 border-gray-300 cursor-not-allowed'
+              : isVoiceListening
+              ? 'bg-red-500 border-red-400 hover:bg-red-600 animate-pulse'
+              : 'bg-blue-500 border-blue-400 hover:bg-blue-600'
+          }`}
+          title={
+            isVoiceButtonDisabled
+              ? voiceInputUnavailableReason || 'Voice input unavailable'
+              : isVoiceListening
+                ? 'Stop listening'
+                : 'Start voice input'
+          }
+        >
+          {isVoiceListening ? (
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+          )}
+        </button>
+      </div>
 
       {/* History button */}
       <button
