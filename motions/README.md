@@ -9,7 +9,7 @@ This repository uses a three-stage motion pipeline:
 - Generate source sidecar metadata with:
 
 ```bash
-npm run motion:collect:metadata -- --source "/Volumes/Sandisk 2TB/Projects/MyPartnerAI/motions/raw" --checklist "motions/raw/raw-intake-checklist.json"
+npm run motion:collect:metadata -- --source "<path/to/your/motions/raw>" --checklist "motions/raw/raw-intake-checklist.json"
 ```
 
 2. `motions/clean/`
@@ -93,8 +93,8 @@ Run:
 ```bash
 npm run motion:validate
 npm run motion:qa:team10
-npm run motion:collect:index -- --source "/Volumes/Sandisk 2TB/Projects/MyPartnerAI/motions/raw"
-npm run motion:collect:metadata -- --source "/Volumes/Sandisk 2TB/Projects/MyPartnerAI/motions/raw"
+npm run motion:collect:index -- --source "<path/to/your/motions/raw>"
+npm run motion:collect:metadata -- --source "<path/to/your/motions/raw>"
 ```
 
 Validation checks:
