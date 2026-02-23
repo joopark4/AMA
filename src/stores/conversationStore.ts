@@ -30,8 +30,6 @@ interface ConversationState {
   clearCurrentResponse: () => void;
 }
 
-const MAX_PERSISTED_MESSAGES = 500;
-
 export const useConversationStore = create<ConversationState>()(
   persist(
     (set) => ({
@@ -44,22 +42,16 @@ export const useConversationStore = create<ConversationState>()(
       error: null,
 
       addMessage: (message) =>
-        set((state) => {
-          const next = [
+        set((state) => ({
+          messages: [
             ...state.messages,
             {
               ...message,
               id: crypto.randomUUID(),
               timestamp: Date.now(),
             },
-          ];
-          // 최대 메시지 수 초과 시 오래된 것부터 제거
-          return {
-            messages: next.length > MAX_PERSISTED_MESSAGES
-              ? next.slice(next.length - MAX_PERSISTED_MESSAGES)
-              : next,
-          };
-        }),
+          ],
+        })),
 
       setCurrentResponse: (response) =>
         set({ currentResponse: response }),

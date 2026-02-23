@@ -1,12 +1,17 @@
 use tauri_plugin_shell::ShellExt;
 
-/// 허용된 OAuth 제공자 호스트 목록
-const ALLOWED_OAUTH_HOSTS: &[&str] = &[
-    "accounts.google.com",
-    "appleid.apple.com",
-    "www.facebook.com",
-    "facebook.com",
-];
+/// 허용된 OAuth 제공자 호스트 확인
+fn is_allowed_oauth_host(host: &str) -> bool {
+    const ALLOWED_HOSTS: &[&str] = &[
+        "accounts.google.com",
+        "appleid.apple.com",
+        "www.facebook.com",
+        "facebook.com",
+        "twitter.com",
+        "x.com",
+    ];
+    ALLOWED_HOSTS.contains(&host) || host.ends_with(".supabase.co")
+}
 
 /// OAuth URL을 기본 브라우저에서 열기
 /// 허용된 OAuth 제공자 호스트만 허용하여 보안 강화
@@ -22,7 +27,7 @@ pub async fn open_oauth_url(app: tauri::AppHandle, url: String) -> Result<(), St
         .host_str()
         .ok_or_else(|| "호스트를 파싱할 수 없습니다".to_string())?;
 
-    if !ALLOWED_OAUTH_HOSTS.contains(&host) {
+    if !is_allowed_oauth_host(host) {
         return Err(format!("허용되지 않은 OAuth 호스트: {host}"));
     }
 
