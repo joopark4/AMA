@@ -210,7 +210,7 @@ function buildMetadata(file, defaults, overrides) {
 async function main() {
   const sourceArg = getArgValue(
     '--source',
-    process.env.MOTION_RAW_SOURCE || '/Volumes/Sandisk 2TB/Projects/MyPartnerAI/motions/raw'
+    process.env.MOTION_RAW_SOURCE || 'motions/raw'
   );
   const checklistArg = getArgValue('--checklist', 'motions/raw/raw-intake-checklist.json');
   const reportArg = getArgValue('--report', 'motions/reports/raw-motion-metadata-report.json');
