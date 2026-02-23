@@ -167,6 +167,7 @@ npm run motion:import
 
 ```bash
 MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:clean
+MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:external
 npm run motion:refresh
 ```
 
@@ -188,6 +189,8 @@ MOTION_CATALOG=motions/clean/my-catalog.json npm run motion:import
 ```bash
 npm run motion:validate
 npm run motion:qa:team10
+npm run motion:collect:index -- --source "<path/to/your/motions/raw>"
+npm run motion:collect:metadata -- --source "<path/to/your/motions/raw>" --checklist "motions/raw/raw-intake-checklist.json"
 ```
 
 ## 환경 변수 (선택)
