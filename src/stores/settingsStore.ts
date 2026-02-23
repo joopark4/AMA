@@ -40,8 +40,13 @@ export interface PhysicsSettings {
 export interface AnimationSettings {
   expressionBlendSpeed: number;
   enableGestures: boolean;
+  enableMotionClips: boolean;
+  faceExpressionOnlyMode: boolean;
+  dynamicMotionEnabled: boolean;
+  dynamicMotionBoost: number;
   enableDancing: boolean;
   danceIntensity: number;
+  motionDiversity: number;
 }
 
 export interface LightingSettings {
@@ -77,6 +82,7 @@ export interface Settings {
   tts: TTSSettings;
   language: Language;
   avatarName: string;
+  avatarPersonalityPrompt: string;
   vrmModelPath: string;
   avatar: AvatarSettings;
   historyPanel: HistoryPanelSettings;
@@ -93,6 +99,7 @@ interface SettingsState {
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
   setLanguage: (language: Language) => void;
   setAvatarName: (name: string) => void;
+  setAvatarPersonalityPrompt: (prompt: string) => void;
   setVrmModelPath: (path: string) => void;
   toggleSettings: () => void;
   openSettings: () => void;
@@ -159,9 +166,28 @@ function normalizeInitialViewRotation(rotation: unknown): ViewRotationSettings {
   return { x, y };
 }
 
+function normalizeMotionDiversity(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1.0;
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeDynamicMotionBoost(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1.0;
+  return Math.max(0, Math.min(1.5, value));
+}
+
+function normalizeFaceExpressionOnlyMode(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : false;
+}
+
 function normalizeAvatarName(name: unknown): string {
   if (typeof name !== 'string') return '';
   return name.trim().slice(0, 40);
+}
+
+function normalizeAvatarPersonalityPrompt(prompt: unknown): string {
+  if (typeof prompt !== 'string') return '';
+  return prompt.slice(0, 800);
 }
 
 const defaultSettings: Settings = {
@@ -180,6 +206,7 @@ const defaultSettings: Settings = {
   },
   language: 'ko',
   avatarName: '',
+  avatarPersonalityPrompt: '',
   vrmModelPath: '',
   avatar: {
     scale: 1.0,
@@ -192,8 +219,13 @@ const defaultSettings: Settings = {
     animation: {
       expressionBlendSpeed: 0.1,
       enableGestures: true,
+      enableMotionClips: true,
+      faceExpressionOnlyMode: false,
+      dynamicMotionEnabled: true,
+      dynamicMotionBoost: 1.0,
       enableDancing: true,
       danceIntensity: 0.7,
+      motionDiversity: 1.0,
     },
     lighting: {
       ambientIntensity: 1.0,
@@ -277,6 +309,14 @@ export const useSettingsStore = create<SettingsState>()(
           settings: { ...state.settings, avatarName: normalizeAvatarName(name) },
         })),
 
+      setAvatarPersonalityPrompt: (prompt) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            avatarPersonalityPrompt: normalizeAvatarPersonalityPrompt(prompt),
+          },
+        })),
+
       setVrmModelPath: (path) =>
         set((state) => ({
           settings: { ...state.settings, vrmModelPath: normalizeVrmModelPath(path) },
@@ -312,7 +352,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 6,
+      version: 10,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState;
@@ -332,6 +372,19 @@ export const useSettingsStore = create<SettingsState>()(
           animation: {
             ...defaultSettings.avatar.animation,
             ...(legacyAvatar.animation || {}),
+            motionDiversity: normalizeMotionDiversity(
+              legacyAvatar.animation?.motionDiversity
+            ),
+            dynamicMotionBoost: normalizeDynamicMotionBoost(
+              legacyAvatar.animation?.dynamicMotionBoost
+            ),
+            dynamicMotionEnabled:
+              typeof legacyAvatar.animation?.dynamicMotionEnabled === 'boolean'
+                ? legacyAvatar.animation.dynamicMotionEnabled
+                : defaultSettings.avatar.animation.dynamicMotionEnabled,
+            faceExpressionOnlyMode: normalizeFaceExpressionOnlyMode(
+              legacyAvatar.animation?.faceExpressionOnlyMode
+            ),
           },
           lighting: {
             ...defaultSettings.avatar.lighting,
@@ -347,6 +400,9 @@ export const useSettingsStore = create<SettingsState>()(
         const normalizedSettings: Partial<Settings> = {
           ...state.settings,
           avatarName: normalizeAvatarName(state.settings.avatarName),
+          avatarPersonalityPrompt: normalizeAvatarPersonalityPrompt(
+            state.settings.avatarPersonalityPrompt
+          ),
           stt: {
             ...(state.settings.stt || defaultSettings.stt),
             engine: 'whisper',
