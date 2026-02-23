@@ -2,25 +2,11 @@ import { useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/auth/authService';
-import { isMockMode, ENABLED_PROVIDERS } from '../../services/auth/oauthClient';
+import { isMockMode, ENABLED_PROVIDERS, PROVIDER_ICONS, PROVIDER_COLORS } from '../../services/auth/oauthClient';
 import { useAuthStore } from '../../stores/authStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import TermsModal from './TermsModal';
 import type { OAuthProvider } from '../../services/auth/types';
-
-const PROVIDER_COLORS: Record<OAuthProvider, string> = {
-  google: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
-  apple: 'bg-black text-white hover:bg-gray-900',
-  meta: 'bg-[#1877F2] text-white hover:bg-[#166FE5]',
-  x: 'bg-black text-white hover:bg-gray-900',
-};
-
-const PROVIDER_ICONS: Record<OAuthProvider, string> = {
-  google: 'G',
-  apple: '',
-  meta: 'f',
-  x: 'X',
-};
 
 export default function UserProfile() {
   const { t } = useTranslation();
@@ -276,10 +262,10 @@ export default function UserProfile() {
                   w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
                   text-sm font-medium transition-colors
                   disabled:opacity-50 disabled:cursor-not-allowed
-                  ${PROVIDER_COLORS[provider]}
+                  ${PROVIDER_COLORS[provider] ?? 'bg-gray-100 text-gray-600'}
                 `}
               >
-                <span className="w-4 text-center font-bold">{PROVIDER_ICONS[provider]}</span>
+                <span className="w-4 text-center font-bold">{PROVIDER_ICONS[provider] ?? provider[0].toUpperCase()}</span>
                 {isLoading
                   ? t('auth.loading')
                   : t('auth.loginWith', { provider: t(`auth.providers.${provider}`) })}
