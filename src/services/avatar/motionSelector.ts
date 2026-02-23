@@ -133,6 +133,12 @@ function buildCandidates(
 
   if (baseCandidates.length === 0) return [];
 
+  const clampedDiversity = Math.max(0, Math.min(1, input.diversityStrength));
+  // Low diversity mode should allow intentional repetition and rely on weighted penalties only.
+  if (clampedDiversity < 0.75) {
+    return baseCandidates;
+  }
+
   const withoutRecent = baseCandidates.filter(
     (clip) => !isRecentClip(clip.id, input.recentMotionIds)
   );
