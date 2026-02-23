@@ -56,6 +56,13 @@ export default function AnimationManager() {
     stopDancing,
   ]);
 
+  useEffect(() => {
+    if (clipMotionEnabled) return;
+
+    resetMotionState();
+    stopMotionSequenceDemo();
+  }, [clipMotionEnabled, resetMotionState, stopMotionSequenceDemo]);
+
   // Don't render anything if VRM isn't loaded
   if (!vrm) return null;
 

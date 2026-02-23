@@ -170,7 +170,7 @@ MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:clean
 npm run motion:refresh
 ```
 
-고정 외부 경로(`/Volumes/Sandisk 2TB/Projects/MyPartnerAI/motions/clean/clips`) 사용:
+외부 정제 경로 프리셋 사용:
 
 ```bash
 npm run motion:refresh:external
