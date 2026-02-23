@@ -6,6 +6,10 @@ import { pipeline } from 'node:stream/promises';
 import { spawnSync } from 'node:child_process';
 
 const rootDir = process.cwd();
+const modelsSourceRoot = resolve(
+  rootDir,
+  process.env.PREPARE_MODELS_DIR?.trim() || 'models'
+);
 const forceCopy = process.env.FORCE_PREPARE_ASSETS === '1';
 const includeDefaultVrm = process.env.PREPARE_VRM === '1';
 const preparePublicModels = process.env.PREPARE_PUBLIC_MODELS !== '0';
@@ -358,10 +362,10 @@ async function stageBundleModelResources({
 async function main() {
   const publicModelsRoot = resolve(rootDir, 'public/models');
   const bundleResourcesRoot = resolve(rootDir, 'src-tauri/resources');
-  const supertonicSource = resolve(rootDir, 'models/supertonic');
+  const supertonicSource = resolve(modelsSourceRoot, 'supertonic');
   const supertonicOnnxSource = resolve(supertonicSource, 'onnx');
   const supertonicVoicesSource = resolve(supertonicSource, 'voice_styles');
-  const whisperSource = resolve(rootDir, 'models/whisper');
+  const whisperSource = resolve(modelsSourceRoot, 'whisper');
 
   const supertonicTarget = resolve(rootDir, 'public/models/supertonic');
   const supertonicOnnxTarget = resolve(supertonicTarget, 'onnx');
@@ -370,6 +374,8 @@ async function main() {
 
   const vrmSource = resolve(rootDir, 'vrm/eunyeon_ps.vrm');
   const vrmTarget = resolve(rootDir, 'public/vrm/eunyeon_ps.vrm');
+
+  console.log(`[prepare-assets] Model source root: ${modelsSourceRoot}`);
 
   await ensureExists(supertonicOnnxSource, 'Supertonic ONNX directory');
   await ensureExists(supertonicVoicesSource, 'Supertonic voice style directory');
