@@ -83,6 +83,59 @@ describe('motionSelector', () => {
     expect(maxStreak).toBeLessThanOrEqual(2);
   });
 
+  it('allows recent clips when diversityStrength is disabled', () => {
+    const source = [
+      {
+        id: 'motion_happy_recent',
+        emotion_tags: ['happy'],
+        intensity: 'mid',
+        duration_ms: 1200,
+        loopable: false,
+        speaking_compatible: true,
+        priority: 5,
+        cooldown_ms: 1000,
+        file: 'motions/clips/motion_happy_recent.json',
+        license_class: 'mixamo-standard',
+        source_url: 'https://www.mixamo.com',
+        attribution_required: false,
+        redistribution_note: 'n/a',
+      },
+      {
+        id: 'motion_happy_other',
+        emotion_tags: ['happy'],
+        intensity: 'mid',
+        duration_ms: 1200,
+        loopable: false,
+        speaking_compatible: true,
+        priority: 1,
+        cooldown_ms: 1000,
+        file: 'motions/clips/motion_happy_other.json',
+        license_class: 'mixamo-standard',
+        source_url: 'https://www.mixamo.com',
+        attribution_required: false,
+        redistribution_note: 'n/a',
+      },
+    ] as const;
+
+    const result = selectMotionClip(
+      {
+        emotion: 'happy',
+        emotionScore: 2,
+        isSpeaking: false,
+        isMoving: false,
+        diversityStrength: 0,
+        recentMotionIds: ['motion_happy_recent'],
+        cooldownMap: {},
+        now: 0,
+      },
+      [...source],
+      () => 0.01
+    );
+
+    expect(result.selected).not.toBeNull();
+    expect(result.selected!.id).toBe('motion_happy_recent');
+  });
+
   it('keeps same-input 20-turn streak>=3 frequency under 5%', () => {
     const clips = getMotionManifest();
 
