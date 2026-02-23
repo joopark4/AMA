@@ -150,6 +150,10 @@ async function main() {
   }
 
   const rootDir = process.cwd();
+  const modelsSourceRoot = resolve(
+    rootDir,
+    process.env.PREPARE_MODELS_DIR?.trim() || 'models'
+  );
   const signingIdentity = await resolveCodesignIdentity(rootDir);
   const appBundlePath = resolve(
     rootDir,
@@ -166,17 +170,17 @@ async function main() {
   await rm(modelsDir, { recursive: true, force: true });
 
   await syncDirectory(
-    resolve(rootDir, 'models/whisper'),
+    resolve(modelsSourceRoot, 'whisper'),
     resolve(modelsDir, 'whisper'),
     'Whisper models'
   );
   await syncDirectory(
-    resolve(rootDir, 'models/supertonic/onnx'),
+    resolve(modelsSourceRoot, 'supertonic/onnx'),
     resolve(modelsDir, 'supertonic/onnx'),
     'Supertonic ONNX models'
   );
   await syncDirectory(
-    resolve(rootDir, 'models/supertonic/voice_styles'),
+    resolve(modelsSourceRoot, 'supertonic/voice_styles'),
     resolve(modelsDir, 'supertonic/voice_styles'),
     'Supertonic voice styles'
   );
