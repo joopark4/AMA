@@ -44,6 +44,8 @@ async function walkFiles(baseDir) {
 
       if (!entry.isFile()) continue;
       if (entry.name.startsWith('._') || entry.name === '.DS_Store') continue;
+      if (entry.name.endsWith('.meta.json')) continue;
+      if (entry.name === 'raw-intake-checklist.json') continue;
 
       const extension = extname(entry.name).toLowerCase();
       if (!RECOGNIZED_EXTENSIONS.has(extension)) continue;
@@ -75,7 +77,7 @@ function classifyExtension(extension) {
 async function main() {
   const sourceArg = getArgValue(
     '--source',
-    process.env.MOTION_RAW_SOURCE || '/Volumes/Sandisk 2TB/Projects/MyPartnerAI/motions/raw'
+    process.env.MOTION_RAW_SOURCE || 'motions/raw'
   );
   const sourceDir = toAbsolute(sourceArg);
   const reportPath = resolve(rootDir, 'motions/reports/raw-motion-source-index.json');
