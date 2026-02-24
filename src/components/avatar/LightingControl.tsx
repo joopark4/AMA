@@ -116,8 +116,6 @@ export default function LightingControl() {
         left: clampedLeft,
         top: clampedTop,
         fontSize: '40px',
-        filter: isDragging ? 'drop-shadow(0 0 10px rgba(255, 200, 0, 0.8))' : 'drop-shadow(0 0 5px rgba(255, 200, 0, 0.5))',
-        transition: isDragging ? 'none' : 'filter 0.2s',
         opacity: isDragging ? 1 : 0.7,
       }}
       onPointerDown={handlePointerDown}
@@ -133,7 +131,6 @@ export default function LightingControl() {
         viewBox="0 0 40 40"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="drop-shadow"
         aria-hidden="true"
       >
         <circle cx="20" cy="20" r="8" fill="#FACC15" stroke="#F59E0B" strokeWidth="2" />
