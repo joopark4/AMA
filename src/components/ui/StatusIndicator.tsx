@@ -566,7 +566,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
 
       <div className="flex items-center gap-2">
       {/* Status badge */}
-      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-gray-200">
+      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-200">
         {/* Status dot */}
         <div className={`w-2 h-2 rounded-full ${getStatusColor()} ${
           (isListening || isProcessing || isSpeaking) ? 'animate-pulse' : ''
@@ -586,7 +586,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       {/* Text input toggle button */}
       <button
         onClick={() => setShowTextInput(!showTextInput)}
-        className={`p-2 backdrop-blur-sm rounded-full shadow-lg border transition-colors ${
+        className={`p-2 backdrop-blur-sm rounded-full border transition-colors ${
           showTextInput
             ? 'bg-green-500 border-green-400 hover:bg-green-600'
             : 'bg-gray-500 border-gray-400 hover:bg-gray-600'
@@ -606,7 +606,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
         <button
           onClick={handleVoiceToggle}
           disabled={isVoiceButtonDisabled}
-          className={`p-2 backdrop-blur-sm rounded-full shadow-lg border transition-colors ${
+          className={`p-2 backdrop-blur-sm rounded-full border transition-colors ${
             isVoiceButtonDisabled
               ? 'bg-gray-400 border-gray-300 cursor-not-allowed'
               : isVoiceListening
@@ -637,7 +637,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       {/* History button */}
       <button
         onClick={toggleHistory}
-        className={`p-2 backdrop-blur-sm rounded-full shadow-lg border transition-colors ${
+        className={`p-2 backdrop-blur-sm rounded-full border transition-colors ${
           isHistoryOpen
             ? 'bg-purple-500 border-purple-400 hover:bg-purple-600'
             : 'bg-white/90 border-gray-200 hover:bg-gray-100'
@@ -662,7 +662,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       {/* Settings button */}
       <button
         onClick={openSettings}
-        className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+        className="p-2 bg-white/90 backdrop-blur-sm rounded-full border border-gray-200 hover:bg-gray-100 transition-colors"
         title={t('settings.title')}
       >
         <svg
