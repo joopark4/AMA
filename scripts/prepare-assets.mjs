@@ -1,4 +1,4 @@
-import { access, chmod, cp, lstat, mkdir, readdir, rename, rm } from 'node:fs/promises';
+import { access, chmod, cp, lstat, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { constants, createWriteStream, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { Readable } from 'node:stream';
@@ -131,6 +131,39 @@ async function ensureRealDirectory(path, description) {
   await mkdir(path, { recursive: true });
 }
 
+async function ensureDirectoryPreservingSymlink(path, description) {
+  try {
+    const entry = await lstat(path);
+
+    if (entry.isSymbolicLink()) {
+      let targetStats;
+      try {
+        targetStats = await stat(path);
+      } catch {
+        throw new Error(`${description} symlink target is not available: ${path}`);
+      }
+      if (!targetStats.isDirectory()) {
+        throw new Error(`${description} symlink target is not a directory: ${path}`);
+      }
+      return;
+    }
+
+    if (!entry.isDirectory()) {
+      throw new Error(`${description} exists but is not a directory: ${path}`);
+    }
+    return;
+  } catch (error) {
+    const errno = error && typeof error === 'object' && 'code' in error
+      ? error.code
+      : null;
+    if (errno === 'ENOENT') {
+      await mkdir(path, { recursive: true });
+      return;
+    }
+    throw error;
+  }
+}
+
 async function removeIfExists(path, description) {
   try {
     await access(path, constants.F_OK);
@@ -207,21 +240,24 @@ function buildModelDownloadUrl(baseUrl, relativePath) {
 }
 
 async function ensureSupertonicBundleModels(supertonicSource) {
-  await ensureRealDirectory(supertonicSource, 'Supertonic model directory');
-  const missingAssets = [];
-
-  for (const relativePath of supertonicRequiredAssets) {
-    const assetPath = resolve(supertonicSource, relativePath);
-    try {
-      await access(assetPath, constants.F_OK);
-    } catch {
-      missingAssets.push({
-        relativePath,
-        assetPath,
-        downloadUrl: buildModelDownloadUrl(supertonicModelBaseUrl, relativePath),
-      });
-    }
-  }
+  await ensureDirectoryPreservingSymlink(supertonicSource, 'Supertonic model directory');
+  const missingAssets = (
+    await Promise.all(
+      supertonicRequiredAssets.map(async (relativePath) => {
+        const assetPath = resolve(supertonicSource, relativePath);
+        try {
+          await access(assetPath, constants.F_OK);
+          return null;
+        } catch {
+          return {
+            relativePath,
+            assetPath,
+            downloadUrl: buildModelDownloadUrl(supertonicModelBaseUrl, relativePath),
+          };
+        }
+      })
+    )
+  ).filter((asset) => asset !== null);
 
   if (missingAssets.length === 0) {
     console.log(`[prepare-assets] Supertonic assets ready (${supertonicRequiredAssets.length} files): ${supertonicSource}`);
