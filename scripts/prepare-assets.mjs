@@ -1,4 +1,4 @@
-import { access, chmod, cp, lstat, mkdir, readdir, rename, rm } from 'node:fs/promises';
+import { access, chmod, cp, lstat, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { constants, createWriteStream, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { Readable } from 'node:stream';
@@ -30,11 +30,26 @@ const whisperModelSpecs = {
     downloadUrl: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin',
   },
 };
+const supertonicVoiceStyles = ['F1', 'F2', 'F3', 'F4', 'F5', 'M1', 'M2', 'M3', 'M4', 'M5'];
+const supertonicRequiredAssets = [
+  'onnx/tts.json',
+  'onnx/unicode_indexer.json',
+  'onnx/duration_predictor.onnx',
+  'onnx/text_encoder.onnx',
+  'onnx/vector_estimator.onnx',
+  'onnx/vocoder.onnx',
+  ...supertonicVoiceStyles.map((voice) => `voice_styles/${voice}.json`),
+];
+const supertonicModelBaseUrl = (
+  process.env.SUPERTONIC_MODEL_BASE_URL?.trim() ||
+  'https://huggingface.co/Supertone/supertonic/resolve/main'
+).replace(/\/+$/, '');
 const requestedWhisperModels = (process.env.WHISPER_BUNDLE_MODELS || 'base')
   .split(',')
   .map((name) => name.trim().toLowerCase())
   .filter(Boolean);
-const autoDownloadWhisperModels = process.env.PREPARE_DOWNLOAD_WHISPER === '1';
+const autoDownloadWhisperModels = process.env.PREPARE_DOWNLOAD_WHISPER !== '0';
+const autoDownloadSupertonicModels = process.env.PREPARE_DOWNLOAD_SUPERTONIC !== '0';
 
 async function ensureExists(path, description) {
   try {
@@ -116,6 +131,39 @@ async function ensureRealDirectory(path, description) {
   await mkdir(path, { recursive: true });
 }
 
+async function ensureDirectoryPreservingSymlink(path, description) {
+  try {
+    const entry = await lstat(path);
+
+    if (entry.isSymbolicLink()) {
+      let targetStats;
+      try {
+        targetStats = await stat(path);
+      } catch {
+        throw new Error(`${description} symlink target is not available: ${path}`);
+      }
+      if (!targetStats.isDirectory()) {
+        throw new Error(`${description} symlink target is not a directory: ${path}`);
+      }
+      return;
+    }
+
+    if (!entry.isDirectory()) {
+      throw new Error(`${description} exists but is not a directory: ${path}`);
+    }
+    return;
+  } catch (error) {
+    const errno = error && typeof error === 'object' && 'code' in error
+      ? error.code
+      : null;
+    if (errno === 'ENOENT') {
+      await mkdir(path, { recursive: true });
+      return;
+    }
+    throw error;
+  }
+}
+
 async function removeIfExists(path, description) {
   try {
     await access(path, constants.F_OK);
@@ -184,6 +232,52 @@ async function downloadFile(downloadUrl, targetPath, description) {
   } catch (error) {
     await rm(tempPath, { force: true }).catch(() => {});
     throw new Error(`Failed to download ${description}: ${error.message}`);
+  }
+}
+
+function buildModelDownloadUrl(baseUrl, relativePath) {
+  return `${baseUrl}/${relativePath}`;
+}
+
+async function ensureSupertonicBundleModels(supertonicSource) {
+  await ensureDirectoryPreservingSymlink(supertonicSource, 'Supertonic model directory');
+  const missingAssets = (
+    await Promise.all(
+      supertonicRequiredAssets.map(async (relativePath) => {
+        const assetPath = resolve(supertonicSource, relativePath);
+        try {
+          await access(assetPath, constants.F_OK);
+          return null;
+        } catch {
+          return {
+            relativePath,
+            assetPath,
+            downloadUrl: buildModelDownloadUrl(supertonicModelBaseUrl, relativePath),
+          };
+        }
+      })
+    )
+  ).filter((asset) => asset !== null);
+
+  if (missingAssets.length === 0) {
+    console.log(`[prepare-assets] Supertonic assets ready (${supertonicRequiredAssets.length} files): ${supertonicSource}`);
+    return;
+  }
+
+  if (!autoDownloadSupertonicModels) {
+    const missingList = missingAssets.map((asset) => asset.relativePath).join(', ');
+    throw new Error(
+      `Supertonic model files are missing: ${missingList}. ` +
+      `Place them under ${supertonicSource} or re-run with PREPARE_DOWNLOAD_SUPERTONIC=1.`
+    );
+  }
+
+  for (const asset of missingAssets) {
+    await downloadFile(
+      asset.downloadUrl,
+      asset.assetPath,
+      `Supertonic asset (${asset.relativePath})`
+    );
   }
 }
 
@@ -321,17 +415,7 @@ async function stageBundleModelResources({
   await copyIfMissing(supertonicVoicesSource, supertonicVoicesTarget, 'Bundled Supertonic voice styles');
   await ensureRealDirectory(whisperTarget, 'bundled Whisper model directory');
 
-  const requiredSupertonicAssets = [
-    'onnx/tts.json',
-    'onnx/unicode_indexer.json',
-    'onnx/duration_predictor.onnx',
-    'onnx/text_encoder.onnx',
-    'onnx/vector_estimator.onnx',
-    'onnx/vocoder.onnx',
-    'voice_styles/F1.json',
-  ];
-
-  for (const relativePath of requiredSupertonicAssets) {
+  for (const relativePath of supertonicRequiredAssets) {
     await copyFileIfMissing(
       resolve(supertonicSource, relativePath),
       resolve(modelsRoot, `supertonic/${relativePath}`),
@@ -377,9 +461,7 @@ async function main() {
 
   console.log(`[prepare-assets] Model source root: ${modelsSourceRoot}`);
 
-  await ensureExists(supertonicOnnxSource, 'Supertonic ONNX directory');
-  await ensureExists(supertonicVoicesSource, 'Supertonic voice style directory');
-
+  await ensureSupertonicBundleModels(supertonicSource);
   await ensureWhisperBundleModels(whisperSource);
 
   if (preparePublicModels) {
