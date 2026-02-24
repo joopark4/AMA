@@ -121,7 +121,7 @@ export default function UserProfile() {
             onClick={() => { setExpanded((v) => !v); setDeleteConfirm(false); setDeleteError(null); }}
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm flex-shrink-0">
+            <div className="w-8 h-8 bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm flex-shrink-0">
               {user.nickname.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 text-left min-w-0">
@@ -229,7 +229,7 @@ export default function UserProfile() {
           onClick={() => { setExpanded((v) => !v); setError(null); }}
           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
         >
-          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0">
+          <div className="w-8 h-8 bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
