@@ -110,6 +110,7 @@ export default function AvatarController() {
   const previousDistanceRef = useRef<number | null>(null);
   const stuckTimeRef = useRef(0);
   const hasInitializedBottomRightRef = useRef(false);
+  const prevViewportRef = useRef({ width: window.innerWidth, height: window.innerHeight });
 
   const {
     position,
@@ -197,16 +198,34 @@ export default function AvatarController() {
       if (!hasInitializedBottomRightRef.current) {
         state.setPosition({ x: newBounds.maxX, y: newBounds.maxY });
         hasInitializedBottomRightRef.current = true;
+        prevViewportRef.current = { width: window.innerWidth, height: window.innerHeight };
         return;
       }
 
-      // On subsequent resizes, preserve current position while clamping to new bounds.
+      // Skip proportional repositioning while user is dragging to avoid interference.
+      if (state.isDragging) {
+        prevViewportRef.current = { width: window.innerWidth, height: window.innerHeight };
+        return;
+      }
+
+      // On subsequent resizes, use proportional repositioning for horizontal axis.
       const currentPos = state.position;
-      const clampedX = Math.max(newBounds.minX, Math.min(newBounds.maxX, currentPos.x));
+      const prevWidth = prevViewportRef.current.width;
+      const newWidth = window.innerWidth;
+
+      let newX: number;
+      if (prevWidth > 0 && prevWidth !== newWidth) {
+        const ratio = currentPos.x / prevWidth;
+        newX = Math.max(newBounds.minX, Math.min(newBounds.maxX, ratio * newWidth));
+      } else {
+        newX = Math.max(newBounds.minX, Math.min(newBounds.maxX, currentPos.x));
+      }
       const clampedY = newBounds.maxY;
 
-      if (clampedX !== currentPos.x || clampedY !== currentPos.y) {
-        state.setPosition({ x: clampedX, y: clampedY });
+      prevViewportRef.current = { width: newWidth, height: window.innerHeight };
+
+      if (newX !== currentPos.x || clampedY !== currentPos.y) {
+        state.setPosition({ x: newX, y: clampedY });
       }
     };
 

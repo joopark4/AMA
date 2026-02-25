@@ -10,6 +10,15 @@ export interface CursorPosition {
   y: number;
 }
 
+export interface MonitorInfo {
+  name: string;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  scale_factor: number;
+}
+
 export class WindowManager {
   private isClickThroughEnabled = false;
 
@@ -45,6 +54,18 @@ export class WindowManager {
 
   async getCursorPosition(): Promise<CursorPosition> {
     return await invoke<CursorPosition>('get_cursor_position');
+  }
+
+  async getAvailableMonitors(): Promise<MonitorInfo[]> {
+    return await invoke<MonitorInfo[]>('get_available_monitors');
+  }
+
+  async moveToMonitor(monitorIndex: number): Promise<MonitorInfo> {
+    return await invoke<MonitorInfo>('move_to_monitor', { monitorIndex });
+  }
+
+  async getCurrentMonitor(): Promise<MonitorInfo> {
+    return await invoke<MonitorInfo>('get_current_monitor');
   }
 }
 

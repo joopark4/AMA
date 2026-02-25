@@ -6,6 +6,7 @@ import VoiceSettings from '../settings/VoiceSettings';
 import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
+import MonitorSettings from '../settings/MonitorSettings';
 import UserProfile from '../auth/UserProfile';
 
 export default function SettingsPanel() {
@@ -77,6 +78,9 @@ export default function SettingsPanel() {
               <option value="en">English</option>
             </select>
           </div>
+
+          {/* Monitor Settings (hidden when single monitor) */}
+          <MonitorSettings />
 
           {/* LLM Settings */}
           <LLMSettings />
