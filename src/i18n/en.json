@@ -109,6 +109,37 @@
     "clearButton": "Clear history",
     "button": "Chat History"
   },
+  "modelDownload": {
+    "title": "Model Download",
+    "description": "Downloading AI models required to run the app. This is only needed once.",
+    "startDownload": "Start Download",
+    "downloading": "Downloading...",
+    "fileProgress": "{{fileName}} ({{current}}/{{total}})",
+    "complete": "Download Complete",
+    "error": "Download failed: {{error}}",
+    "retry": "Retry",
+    "supertonic": "TTS Voice Model (Supertonic)",
+    "whisperBase": "STT Base Model (Whisper base)",
+    "whisperSmall": "STT Medium Model (Whisper small)",
+    "whisperMedium": "STT Large Model (Whisper medium)",
+    "required": "Required",
+    "optional": "Optional",
+    "totalSize": "Approx. {{size}} total",
+    "ready": "Ready",
+    "notDownloaded": "Download needed",
+    "downloadButton": "Download",
+    "overallProgress": "Overall Progress",
+    "modelUpdateNeeded": "Model update required"
+  },
+  "update": {
+    "available": "New version v{{version}} available",
+    "downloading": "Downloading update...",
+    "readyToInstall": "Update ready to install",
+    "install": "Update",
+    "later": "Later",
+    "restart": "Restart",
+    "progress": "{{percent}}% complete"
+  },
   "errors": {
     "llmConnection": "Cannot connect to AI server",
     "microphoneAccess": "Microphone access required",
