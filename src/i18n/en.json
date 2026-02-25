@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "MyPartnerAI",
+    "title": "AMA",
     "loading": "Loading..."
   },
   "settings": {
@@ -28,6 +28,7 @@
         "title": "Speech Recognition (STT)",
         "engine": "Engine",
         "model": "Model",
+        "whisperInfo": "Local whisper-cli speech recognition",
         "engines": {
           "whisper": "Whisper",
           "moonshine": "Moonshine",
@@ -38,6 +39,7 @@
         "title": "Text-to-Speech (TTS)",
         "engine": "Engine",
         "voice": "Voice",
+        "supertonicInfo": "High-quality local TTS - Korean/English support",
         "engines": {
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",
@@ -64,11 +66,83 @@
       "name": "Avatar Name",
       "namePlaceholder": "e.g. Eunyeon",
       "model": "VRM Model",
-      "select": "Select Model"
+      "select": "Select Model",
+      "vrmPlaceholder": "No VRM file selected",
+      "personalityPrompt": "Personality Guide Prompt",
+      "personalityPromptPlaceholder": "e.g. Bright and playful, but replies are concise and empathetic",
+      "scale": "Avatar Size",
+      "defaultName": "Avatar",
+      "expression": "Expression",
+      "emotions": {
+        "neutral": "Neutral",
+        "happy": "Happy",
+        "sad": "Sad",
+        "angry": "Angry",
+        "surprised": "Surprised",
+        "relaxed": "Relaxed",
+        "thinking": "Thinking"
+      },
+      "initialView": {
+        "title": "Initial View",
+        "description": "Drag the head to adjust the gaze, then save. The same gaze will be applied on app start.",
+        "saveCurrent": "Save Current Gaze",
+        "applySaved": "Apply Saved Gaze",
+        "resetFront": "Reset to Front",
+        "savedInfo": "Saved initial gaze: V {{vertical}} / H {{horizontal}}",
+        "currentInfo": "Current gaze: V {{vertical}} / H {{horizontal}}"
+      },
+      "ttsTest": {
+        "title": "TTS Test",
+        "description": "Test text-to-speech with lip sync",
+        "stop": "Stop",
+        "speak": "Speak: \"{{text}}\"",
+        "error": "TTS Error: {{error}}",
+        "sample": "Hi, I'm {{name}}"
+      },
+      "animation": {
+        "title": "Animation",
+        "motionSequenceDemo": "Motion Sequence Demo",
+        "sequenceStop": "Stop",
+        "sequenceStart": "Run Sequence",
+        "sequenceDevOnly": "Dev build only: Announces each motion via speech bubble before sequential playback.",
+        "sequenceProgress": "Running: {{current}}/{{total}}",
+        "sequenceWaiting": "Waiting: {{count}} motions total",
+        "motionClipsWarning": "Cannot start demo while Motion Clips is disabled.",
+        "faceOnlyWarning": "Cannot run demo in Face/Expression Only mode.",
+        "faceOnlyMode": "Face/Expression Only Mode",
+        "faceOnlyDescription": "Disables full-body motions (clips/gestures/dance) and keeps only facial expressions, head direction, and gaze.",
+        "enableMotionClips": "Enable Motion Clips",
+        "dynamicMotionBoost": "Dynamic Motion Boost",
+        "dynamicBoostStrength": "Boost Strength: {{value}}%",
+        "motionDiversity": "Motion Diversity: {{value}}%",
+        "enableGestureFallback": "Enable Gesture Fallback"
+      },
+      "physics": {
+        "title": "Physics",
+        "enable": "Enable Physics",
+        "gravity": "Gravity: {{value}}x",
+        "stiffness": "Stiffness: {{value}}x"
+      },
+      "lighting": {
+        "title": "Lighting",
+        "ambient": "Ambient: {{value}}",
+        "directional": "Directional: {{value}}",
+        "showIcon": "Show Light Icon",
+        "dragHint": "Drag the sun icon near the avatar to adjust light direction."
+      },
+      "info": "Supported format: VRM 0.x and 1.0 models. Recommended file size: under 30MB for smooth performance."
     },
     "save": "Save",
     "cancel": "Cancel",
     "reset": "Reset",
+    "update": {
+      "title": "App Update",
+      "currentVersion": "Current Version",
+      "checkButton": "Check for Updates",
+      "checking": "Checking...",
+      "upToDate": "Up to date",
+      "error": "Update check failed"
+    },
     "licenses": {
       "title": "Open Source / Model Licenses",
       "description": "Licenses and reference links for open-source software, AI services, and models used by this app.",
@@ -91,12 +165,18 @@
     "processing": "Processing...",
     "speaking": "Speaking...",
     "error": "Error",
-    "voiceListeningOverlay": "Voice input active"
+    "voiceListeningOverlay": "Voice input active",
+    "recognizing": "Recognizing: {{transcript}}",
+    "llmProcessing": "LLM Processing..."
   },
   "chat": {
     "placeholder": "Enter your message...",
     "send": "Send",
-    "voiceInput": "Voice Input"
+    "voiceInput": "Voice Input",
+    "textInputToggle": "Text input",
+    "stopListening": "Stop listening",
+    "startVoiceInput": "Start voice input",
+    "voiceUnavailable": "Voice input unavailable"
   },
   "onboarding": {
     "avatarNameTitle": "Set Avatar Name",
@@ -107,7 +187,64 @@
     "title": "Chat History",
     "empty": "No conversation history.",
     "clearButton": "Clear history",
-    "button": "Chat History"
+    "button": "Chat History",
+    "decreaseFontSize": "Decrease font size",
+    "increaseFontSize": "Increase font size",
+    "close": "Close"
+  },
+  "avatar": {
+    "selectVrm": {
+      "title": "Please Select a VRM Model",
+      "description": "The production build does not include a default avatar. Select your own .vrm file to apply it immediately.",
+      "changeHint": "After selection, you can change to a different VRM anytime in the Avatar settings panel.",
+      "opening": "Opening file picker...",
+      "button": "Select VRM File",
+      "error": "Unable to open file picker. Please restart the app or try again from the settings panel."
+    },
+    "loading": "Loading avatar...",
+    "changeVrm": "Change VRM File"
+  },
+  "dependency": {
+    "requiredCheck": "Required components need attention ({{count}})",
+    "showGuide": "View Setup Guide",
+    "guideTitle": "Setup Guide",
+    "openSettings": "Open Settings",
+    "openSystemSettings": "Open System Settings",
+    "close": "Close"
+  },
+  "lightingControl": {
+    "dragHint": "Drag to adjust light position"
+  },
+  "modelDownload": {
+    "title": "Model Download",
+    "description": "Downloading AI models required to run the app. This is only needed once.",
+    "startDownload": "Start Download",
+    "downloading": "Downloading...",
+    "fileProgress": "{{fileName}} ({{current}}/{{total}})",
+    "complete": "Download Complete",
+    "error": "Download failed: {{error}}",
+    "retry": "Retry",
+    "supertonic": "TTS Voice Model (Supertonic)",
+    "whisperBase": "STT Base Model (Whisper base)",
+    "whisperSmall": "STT Medium Model (Whisper small)",
+    "whisperMedium": "STT Large Model (Whisper medium)",
+    "required": "Required",
+    "optional": "Optional",
+    "totalSize": "Approx. {{size}} total",
+    "ready": "Ready",
+    "notDownloaded": "Download needed",
+    "downloadButton": "Download",
+    "overallProgress": "Overall Progress",
+    "modelUpdateNeeded": "Model update required"
+  },
+  "update": {
+    "available": "New version v{{version}} available",
+    "downloading": "Downloading update...",
+    "readyToInstall": "Update ready to install",
+    "install": "Update",
+    "later": "Later",
+    "restart": "Restart",
+    "progress": "{{percent}}% complete"
   },
   "errors": {
     "llmConnection": "Cannot connect to AI server",
@@ -115,7 +252,7 @@
     "vrmLoad": "Cannot load VRM model"
   },
   "auth": {
-    "title": "Welcome to MyPartnerAI",
+    "title": "Welcome to AMA",
     "subtitle": "Sign in to continue",
     "loginWith": "Continue with {{provider}}",
     "mockModeNotice": "Test mode — OAuth keys not set, click to proceed with mock login",
@@ -174,11 +311,11 @@
       "sections": [
         {
           "heading": "1. Purpose",
-          "body": "These terms define the conditions and procedures for using MyPartnerAI (the 'Service')."
+          "body": "These terms define the conditions and procedures for using AMA (the 'Service')."
         },
         {
           "heading": "2. Service Description",
-          "body": "MyPartnerAI is an AI avatar desktop app that runs locally. Conversation history is stored only on your device and is never sent to our servers."
+          "body": "AMA is an AI avatar desktop app that runs locally. Conversation history is stored only on your device and is never sent to our servers."
         },
         {
           "heading": "3. Data Collection",

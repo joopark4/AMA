@@ -1,7 +1,7 @@
 {
   "name": "mypartnerai",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "scripts": {
     "prepare:assets": "node scripts/prepare-assets.mjs",
@@ -29,8 +29,8 @@
     "tune:emotion": "node scripts/tune-emotions.mjs --hours 5 --iterations 3600 --write",
     "tune:emotion:quick": "node scripts/tune-emotions.mjs --hours 0.25 --iterations 180 --write",
     "dev": "npm run motion:validate && npm run clean:dotfiles && PREPARE_PUBLIC_MODELS=1 PREPARE_BUNDLE_RESOURCES=0 npm run prepare:assets && vite",
-    "build": "npm run motion:validate && npm run clean:dotfiles && PREPARE_PUBLIC_MODELS=0 PREPARE_BUNDLE_RESOURCES=1 WHISPER_BUNDLE_MODELS=base,small,medium npm run prepare:assets && tsc && vite build",
-    "build:mac-app": "npm run motion:validate && WHISPER_BUNDLE_MODELS=base,small,medium PREPARE_DOWNLOAD_WHISPER=1 npm run tauri build -- --bundles app && node scripts/stage-bundled-models.mjs && node scripts/sign-macos-app.mjs",
+    "build": "npm run motion:validate && npm run clean:dotfiles && PREPARE_PUBLIC_MODELS=0 PREPARE_BUNDLE_RESOURCES=1 npm run prepare:assets && tsc && vite build",
+    "build:mac-app": "npm run motion:validate && npm run tauri build -- --bundles app && node scripts/stage-bundled-models.mjs && node scripts/sign-macos-app.mjs",
     "build:mac-release": "npm run build:mac-app && node scripts/notarize-macos-app.mjs",
     "preview": "vite preview",
     "clean:dotfiles": "find . -name '._*' -not -path './.git/*' -not -path './node_modules/*' -not -path './.build/*' -delete",
@@ -51,6 +51,8 @@
     "@tauri-apps/plugin-dialog": "^2.2.0",
     "@tauri-apps/plugin-fs": "^2.2.0",
     "@tauri-apps/plugin-global-shortcut": "^2.2.0",
+    "@tauri-apps/plugin-process": "^2.2.0",
+    "@tauri-apps/plugin-updater": "^2.5.0",
     "i18next": "^24.2.0",
     "onnxruntime-web": "^1.17.3",
     "openai": "^4.77.0",
