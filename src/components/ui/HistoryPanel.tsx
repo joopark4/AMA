@@ -125,21 +125,21 @@ export default function HistoryPanel() {
           <button
             onClick={decreaseFontSize}
             className="px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-600 transition-colors"
-            title="글자 크기 줄이기"
+            title={t('history.decreaseFontSize')}
           >
             A-
           </button>
           <button
             onClick={increaseFontSize}
             className="px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-600 transition-colors"
-            title="글자 크기 늘리기"
+            title={t('history.increaseFontSize')}
           >
             A+
           </button>
           <button
             onClick={closeHistory}
             className="ml-1 px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-500 transition-colors"
-            title="닫기"
+            title={t('history.close')}
           >
             ×
           </button>

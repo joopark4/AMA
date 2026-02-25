@@ -10,6 +10,7 @@ import {
   formatGlobalShortcutForDisplay,
 } from '../../services/tauri/globalShortcutUtils';
 import { useAppStatusStore } from '../../stores/appStatusStore';
+import { useModelDownloadStore } from '../../stores/modelDownloadStore';
 
 // Whisper 모델 목록 (배포 기본 포함 모델)
 const WHISPER_MODELS = [
@@ -17,6 +18,13 @@ const WHISPER_MODELS = [
   'small',
   'medium',
 ];
+
+// 모델별 크기 정보
+const WHISPER_MODEL_SIZE: Record<string, string> = {
+  base: '~75 MB',
+  small: '~500 MB',
+  medium: '~1.5 GB',
+};
 
 // Supertonic 음성 목록
 const SUPERTONIC_VOICES = {
@@ -41,6 +49,14 @@ export default function VoiceSettings() {
     setTTSSettings,
     setGlobalShortcutSettings,
   } = useSettingsStore();
+  const {
+    status: modelStatus,
+    isDownloading,
+    currentModel,
+    progress: downloadProgress,
+    downloadModel,
+    checkModelStatus,
+  } = useModelDownloadStore();
   const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
   const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
   const shortcutRegisterError = useAppStatusStore(
@@ -54,6 +70,14 @@ export default function VoiceSettings() {
     () => formatGlobalShortcutForDisplay(globalShortcutSettings.accelerator),
     [globalShortcutSettings.accelerator]
   );
+
+  // 모델 상태 미확인 시 마운트 시점에 체크
+  useEffect(() => {
+    if (!modelStatus) {
+      checkModelStatus().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 항상 whisper 엔진 사용, 유효하지 않은 모델은 base로 리셋
   useEffect(() => {
@@ -107,25 +131,88 @@ export default function VoiceSettings() {
           <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
             Whisper
           </span>
-          <span className="text-gray-500">로컬 whisper-cli 음성 인식 사용</span>
+          <span className="text-gray-500">{t('settings.voice.stt.whisperInfo')}</span>
         </div>
 
         {/* Whisper Model */}
         <div className="space-y-2">
           <label className="block text-xs font-medium text-gray-600">
-            모델 선택
+            {t('settings.voice.stt.model')}
           </label>
-          <select
-            value={settings.stt.model}
-            onChange={(e) => setSTTSettings({ model: e.target.value })}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {WHISPER_MODELS.map((model) => (
-              <option key={model} value={model}>
-                {model}
-              </option>
-            ))}
-          </select>
+          <div className="space-y-2">
+            {WHISPER_MODELS.map((model) => {
+              const statusKey = `whisper${model.charAt(0).toUpperCase() + model.slice(1)}Ready` as keyof typeof modelStatus;
+              const isReady = modelStatus?.[statusKey] ?? true;
+              const isThisDownloading = isDownloading && currentModel === `whisper-${model}`;
+              const isSelected = settings.stt.model === model;
+              const modelSize = WHISPER_MODEL_SIZE[model] ?? '';
+
+              // 다운로드 진행률 계산
+              const thisProgress =
+                isThisDownloading && downloadProgress && downloadProgress.totalBytes > 0
+                  ? Math.round((downloadProgress.downloadedBytes / downloadProgress.totalBytes) * 100)
+                  : 0;
+
+              const handleSelectModel = () => {
+                setSTTSettings({ model });
+                if (!isReady && !isDownloading) {
+                  downloadModel(`whisper-${model}`);
+                }
+              };
+
+              return (
+                <button
+                  key={model}
+                  type="button"
+                  onClick={handleSelectModel}
+                  disabled={isThisDownloading}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    isSelected
+                      ? 'border-blue-400 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  } ${isThisDownloading ? 'cursor-wait' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-medium ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                        {model}
+                      </span>
+                      <span className="text-xs text-gray-400">{modelSize}</span>
+                      {isSelected && isReady && (
+                        <span className="text-xs text-blue-600">&#10003;</span>
+                      )}
+                    </div>
+                    <div>
+                      {isReady && (
+                        <span className="text-xs text-green-600">
+                          {t('modelDownload.ready')}
+                        </span>
+                      )}
+                      {!isReady && !isThisDownloading && (
+                        <span className="text-xs text-gray-400">
+                          {t('modelDownload.notDownloaded')}
+                        </span>
+                      )}
+                      {isThisDownloading && (
+                        <span className="text-xs text-blue-600">
+                          {thisProgress > 0 ? `${thisProgress}%` : t('modelDownload.downloading')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Download progress bar */}
+                  {isThisDownloading && (
+                    <div className="mt-2 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                        style={{ width: `${thisProgress}%` }}
+                      />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -140,7 +227,7 @@ export default function VoiceSettings() {
           <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">
             Supertonic
           </span>
-          <span className="text-gray-500">고품질 로컬 TTS - 한국어/영어 지원</span>
+          <span className="text-gray-500">{t('settings.voice.tts.supertonicInfo')}</span>
         </div>
 
         {/* Supertonic Voice Selection */}

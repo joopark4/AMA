@@ -12,7 +12,7 @@
 import type { TTSResult, TTSClient, TTSOptions } from './types';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
-import { BaseDirectory, readFile } from '@tauri-apps/plugin-fs';
+import { BaseDirectory, readFile, exists } from '@tauri-apps/plugin-fs';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -261,6 +261,7 @@ export class SupertonicClient implements TTSClient {
   private initPromise: Promise<void> | null = null;
   private resolvedBasePath: string | null = null;
   private resolvedResourcePrefix: string | null = null;
+  private resolvedUserModelDir = false;
 
   // ONNX 세션들 (동적 로드로 인해 any 사용)
   private dpOrt: any = null;
@@ -300,6 +301,13 @@ export class SupertonicClient implements TTSClient {
 
   private async readBundledAsset(relativePath: string): Promise<Uint8Array> {
     const sanitizedRelativePath = relativePath.replace(/^\//, '');
+
+    // User model directory (highest priority)
+    if (this.resolvedUserModelDir) {
+      const fullPath = `.mypartnerai/models/supertonic/${sanitizedRelativePath}`;
+      return readFile(fullPath, { baseDir: BaseDirectory.Home });
+    }
+
     const tryRead = async (prefix: string): Promise<Uint8Array> => {
       const fullPath = `${prefix.replace(/\/$/, '')}/${sanitizedRelativePath}`;
       return readFile(fullPath, { baseDir: BaseDirectory.Resource });
@@ -324,7 +332,7 @@ export class SupertonicClient implements TTSClient {
   }
 
   private async readJsonAsset(relativePath: string): Promise<any> {
-    if (this.resolvedResourcePrefix) {
+    if (this.resolvedUserModelDir || this.resolvedResourcePrefix) {
       const bytes = await this.readBundledAsset(relativePath);
       const text = new TextDecoder().decode(bytes);
       return JSON.parse(text);
@@ -339,7 +347,7 @@ export class SupertonicClient implements TTSClient {
   }
 
   private async getModelSource(relativePath: string): Promise<string | Uint8Array> {
-    if (this.resolvedResourcePrefix) {
+    if (this.resolvedUserModelDir || this.resolvedResourcePrefix) {
       return this.readBundledAsset(relativePath);
     }
 
@@ -355,13 +363,34 @@ export class SupertonicClient implements TTSClient {
     const fallbackPath = this.config.basePath;
     if (!isTauriDesktopRuntime()) {
       this.resolvedResourcePrefix = null;
+      this.resolvedUserModelDir = false;
       this.resolvedBasePath = fallbackPath;
       return fallbackPath;
     }
 
     const requiredVoice = this.config.defaultVoice;
-    const resourceCandidates = this.getBundledResourceCandidates();
 
+    // 1. User model directory (~/.mypartnerai/models/supertonic/)
+    try {
+      const userModelBase = '.mypartnerai/models/supertonic';
+      const [hasTtsJson, hasVoice] = await Promise.all([
+        exists(`${userModelBase}/onnx/tts.json`, { baseDir: BaseDirectory.Home }),
+        exists(`${userModelBase}/voice_styles/${requiredVoice}.json`, { baseDir: BaseDirectory.Home }),
+      ]);
+
+      if (hasTtsJson && hasVoice) {
+        this.resolvedUserModelDir = true;
+        this.resolvedResourcePrefix = null;
+        this.resolvedBasePath = `home://${userModelBase}`;
+        log('Using user model directory for Supertonic assets');
+        return this.resolvedBasePath;
+      }
+    } catch (error) {
+      log('User model directory check failed:', error);
+    }
+
+    // 2. Tauri Resource bundle
+    const resourceCandidates = this.getBundledResourceCandidates();
     for (const resourceCandidate of resourceCandidates) {
       try {
         await Promise.all([
@@ -370,6 +399,7 @@ export class SupertonicClient implements TTSClient {
         ]);
 
         this.resolvedResourcePrefix = resourceCandidate;
+        this.resolvedUserModelDir = false;
         this.resolvedBasePath = `resource://${resourceCandidate}`;
         log('Using bundled Supertonic assets from resource:', resourceCandidate);
         return this.resolvedBasePath;
@@ -378,7 +408,9 @@ export class SupertonicClient implements TTSClient {
       }
     }
 
+    // 3. Web path fallback (dev mode)
     this.resolvedResourcePrefix = null;
+    this.resolvedUserModelDir = false;
     this.resolvedBasePath = fallbackPath;
     log('Using web Supertonic asset path fallback:', fallbackPath);
     return fallbackPath;
@@ -890,7 +922,7 @@ export class SupertonicClient implements TTSClient {
       const voice = normalizeVoice(selectedVoice, this.config.defaultVoice);
       await this.resolveBasePath();
 
-      if (this.resolvedResourcePrefix) {
+      if (this.resolvedUserModelDir || this.resolvedResourcePrefix) {
         await Promise.all([
           this.readBundledAsset('onnx/tts.json'),
           this.readBundledAsset(`voice_styles/${voice}.json`),
@@ -937,6 +969,7 @@ export class SupertonicClient implements TTSClient {
     this.voiceStyles.clear();
     this.isInitialized = false;
     this.initPromise = null;
+    this.resolvedUserModelDir = false;
   }
 }
 
