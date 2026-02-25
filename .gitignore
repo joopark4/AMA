@@ -48,7 +48,7 @@ vrm/
 public/vrm/
 
 # AI Models (downloaded separately)
-#models/
+models/
 public/models/
 
 # Claude
