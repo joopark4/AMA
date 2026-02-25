@@ -3,14 +3,14 @@ import { useAutoUpdate } from '../../hooks/useAutoUpdate';
 
 export default function UpdateNotification() {
   const { t } = useTranslation();
-  const { info, downloading, progress, ready, startUpdate, restartApp, skipUpdate } =
+  const { info, downloading, progress, ready, error, startUpdate, restartApp, skipUpdate } =
     useAutoUpdate();
 
   if (!info?.available) return null;
 
   return (
     <div
-      className="fixed top-4 right-4 z-[210] w-80 rounded-xl bg-white/95 backdrop-blur-md shadow-lg border border-gray-200 p-4 space-y-3"
+      className="fixed top-16 right-4 z-[210] w-80 rounded-xl bg-white/95 backdrop-blur-md shadow-lg border border-gray-200 p-4 space-y-3"
       data-interactive="true"
     >
       <p className="text-sm font-medium text-gray-800">
@@ -34,6 +34,12 @@ export default function UpdateNotification() {
       {ready && (
         <p className="text-xs text-green-600">
           {t('update.readyToInstall')}
+        </p>
+      )}
+
+      {error && (
+        <p className="text-xs text-red-500">
+          {t('update.error')}: {error}
         </p>
       )}
 

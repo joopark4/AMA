@@ -44,13 +44,15 @@ export const useModelDownloadStore = create<ModelDownloadState>()((set, get) => 
   error: null,
 
   checkModelStatus: async () => {
-    set({ isChecking: true });
+    set({ isChecking: true, error: null });
     try {
       const status = await invoke<ModelStatus>('check_model_status');
       set({ status, isChecking: false });
       return status;
     } catch (err) {
-      set({ isChecking: false });
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[ModelDownload] checkModelStatus failed:', message);
+      set({ isChecking: false, error: message });
       throw err;
     }
   },

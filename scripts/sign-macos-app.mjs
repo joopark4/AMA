@@ -17,7 +17,7 @@ function main() {
 
   const appPath = resolve(
     process.cwd(),
-    'src-tauri/target/release/bundle/macos/MyPartnerAI.app'
+    'src-tauri/target/release/bundle/macos/AMA.app'
   );
   const entitlementsPath = resolve(process.cwd(), 'src-tauri/entitlements.plist');
   const signingIdentity = process.env.APPLE_CODESIGN_IDENTITY || '-';

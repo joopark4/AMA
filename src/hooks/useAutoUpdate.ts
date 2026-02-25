@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect } from 'react';
+import { create } from 'zustand';
 
 interface UpdateInfo {
   available: boolean;
@@ -6,101 +7,114 @@ interface UpdateInfo {
   body: string;
 }
 
-interface UpdateState {
+interface AutoUpdateState {
   info: UpdateInfo | null;
   downloading: boolean;
   progress: number;
   ready: boolean;
   error: string | null;
+  checking: boolean;
+  checkForUpdate: () => Promise<void>;
+  startUpdate: () => Promise<void>;
+  restartApp: () => Promise<void>;
+  skipUpdate: () => void;
 }
 
-export function useAutoUpdate() {
-  const [state, setState] = useState<UpdateState>({
-    info: null,
-    downloading: false,
-    progress: 0,
-    ready: false,
-    error: null,
-  });
-  const [updateRef, setUpdateRef] = useState<any>(null);
+let _updateRef: any = null;
 
-  useEffect(() => {
-    let cancelled = false;
+export const useAutoUpdateStore = create<AutoUpdateState>()((set) => ({
+  info: null,
+  downloading: false,
+  progress: 0,
+  ready: false,
+  error: null,
+  checking: false,
 
-    async function checkForUpdate() {
-      try {
-        const { check } = await import('@tauri-apps/plugin-updater');
-        const update = await check();
+  checkForUpdate: async () => {
+    set({ checking: true, error: null });
+    try {
+      console.log('[AutoUpdate] Checking for updates...');
+      const { check } = await import('@tauri-apps/plugin-updater');
+      const update = await check();
 
-        if (cancelled) return;
-
-        if (update) {
-          setState((prev) => ({
-            ...prev,
-            info: {
-              available: true,
-              version: update.version,
-              body: update.body ?? '',
-            },
-          }));
-          setUpdateRef(update);
-        }
-      } catch {
-        // Updater not configured or network unavailable - silently ignore
+      if (update) {
+        console.log('[AutoUpdate] Update available:', update.version);
+        set({
+          checking: false,
+          info: {
+            available: true,
+            version: update.version,
+            body: update.body ?? '',
+          },
+        });
+        _updateRef = update;
+      } else {
+        console.log('[AutoUpdate] No update available (already latest)');
+        set({
+          checking: false,
+          info: { available: false, version: '', body: '' },
+        });
+        _updateRef = null;
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[AutoUpdate] Check failed:', message);
+      set({ checking: false, error: message });
     }
+  },
 
-    checkForUpdate();
+  startUpdate: async () => {
+    if (!_updateRef) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const startUpdate = useCallback(async () => {
-    if (!updateRef) return;
-
-    setState((prev) => ({ ...prev, downloading: true, error: null }));
+    set({ downloading: true, error: null });
 
     try {
-      await updateRef.downloadAndInstall((event: any) => {
+      await _updateRef.downloadAndInstall((event: any) => {
         if (event.event === 'Progress') {
           const { contentLength, chunkLength } = event.data;
           if (contentLength && contentLength > 0) {
-            setState((prev) => ({
-              ...prev,
-              progress: Math.round((chunkLength / contentLength) * 100),
-            }));
+            set({ progress: Math.round((chunkLength / contentLength) * 100) });
           }
         }
       });
 
-      setState((prev) => ({ ...prev, downloading: false, ready: true }));
+      set({ downloading: false, ready: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setState((prev) => ({ ...prev, downloading: false, error: message }));
+      set({ downloading: false, error: message });
     }
-  }, [updateRef]);
+  },
 
-  const restartApp = useCallback(async () => {
+  restartApp: async () => {
     try {
       const { relaunch } = await import('@tauri-apps/plugin-process');
       await relaunch();
     } catch {
       // Process plugin not available
     }
-  }, []);
+  },
 
-  const skipUpdate = useCallback(() => {
-    setState({
+  skipUpdate: () => {
+    set({
       info: null,
       downloading: false,
       progress: 0,
       ready: false,
       error: null,
+      checking: false,
     });
-    setUpdateRef(null);
+    _updateRef = null;
+  },
+}));
+
+/** Backwards-compatible hook - auto-checks for updates on mount */
+export function useAutoUpdate() {
+  const store = useAutoUpdateStore();
+
+  useEffect(() => {
+    store.checkForUpdate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { ...state, startUpdate, restartApp, skipUpdate };
+  return store;
 }

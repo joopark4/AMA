@@ -19,6 +19,13 @@ const WHISPER_MODELS = [
   'medium',
 ];
 
+// 모델별 크기 정보
+const WHISPER_MODEL_SIZE: Record<string, string> = {
+  base: '~75 MB',
+  small: '~500 MB',
+  medium: '~1.5 GB',
+};
+
 // Supertonic 음성 목록
 const SUPERTONIC_VOICES = {
   F1: '여성 1',
@@ -46,7 +53,9 @@ export default function VoiceSettings() {
     status: modelStatus,
     isDownloading,
     currentModel,
+    progress: downloadProgress,
     downloadModel,
+    checkModelStatus,
   } = useModelDownloadStore();
   const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
   const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
@@ -61,6 +70,14 @@ export default function VoiceSettings() {
     () => formatGlobalShortcutForDisplay(globalShortcutSettings.accelerator),
     [globalShortcutSettings.accelerator]
   );
+
+  // 모델 상태 미확인 시 마운트 시점에 체크
+  useEffect(() => {
+    if (!modelStatus) {
+      checkModelStatus().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 항상 whisper 엔진 사용, 유효하지 않은 모델은 base로 리셋
   useEffect(() => {
@@ -114,63 +131,85 @@ export default function VoiceSettings() {
           <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
             Whisper
           </span>
-          <span className="text-gray-500">로컬 whisper-cli 음성 인식 사용</span>
+          <span className="text-gray-500">{t('settings.voice.stt.whisperInfo')}</span>
         </div>
 
         {/* Whisper Model */}
         <div className="space-y-2">
           <label className="block text-xs font-medium text-gray-600">
-            모델 선택
+            {t('settings.voice.stt.model')}
           </label>
           <div className="space-y-2">
             {WHISPER_MODELS.map((model) => {
               const statusKey = `whisper${model.charAt(0).toUpperCase() + model.slice(1)}Ready` as keyof typeof modelStatus;
               const isReady = modelStatus?.[statusKey] ?? true;
               const isThisDownloading = isDownloading && currentModel === `whisper-${model}`;
+              const isSelected = settings.stt.model === model;
+              const modelSize = WHISPER_MODEL_SIZE[model] ?? '';
+
+              // 다운로드 진행률 계산
+              const thisProgress =
+                isThisDownloading && downloadProgress && downloadProgress.totalBytes > 0
+                  ? Math.round((downloadProgress.downloadedBytes / downloadProgress.totalBytes) * 100)
+                  : 0;
+
+              const handleSelectModel = () => {
+                setSTTSettings({ model });
+                if (!isReady && !isDownloading) {
+                  downloadModel(`whisper-${model}`);
+                }
+              };
 
               return (
-                <div
+                <button
                   key={model}
-                  className={`flex items-center justify-between p-2 rounded-lg border ${
-                    settings.stt.model === model
+                  type="button"
+                  onClick={handleSelectModel}
+                  disabled={isThisDownloading}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    isSelected
                       ? 'border-blue-400 bg-blue-50'
-                      : 'border-gray-200'
-                  }`}
+                      : 'border-gray-200 hover:border-gray-300'
+                  } ${isThisDownloading ? 'cursor-wait' : ''}`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => isReady && setSTTSettings({ model })}
-                    disabled={!isReady}
-                    className={`text-sm font-medium ${
-                      isReady ? 'text-gray-700' : 'text-gray-400'
-                    }`}
-                  >
-                    {model}
-                    {settings.stt.model === model && isReady && (
-                      <span className="ml-2 text-xs text-blue-600">&#10003;</span>
-                    )}
-                  </button>
-                  {!isReady && !isThisDownloading && (
-                    <button
-                      type="button"
-                      onClick={() => downloadModel(`whisper-${model}`)}
-                      disabled={isDownloading}
-                      className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {t('modelDownload.downloadButton')}
-                    </button>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-medium ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                        {model}
+                      </span>
+                      <span className="text-xs text-gray-400">{modelSize}</span>
+                      {isSelected && isReady && (
+                        <span className="text-xs text-blue-600">&#10003;</span>
+                      )}
+                    </div>
+                    <div>
+                      {isReady && (
+                        <span className="text-xs text-green-600">
+                          {t('modelDownload.ready')}
+                        </span>
+                      )}
+                      {!isReady && !isThisDownloading && (
+                        <span className="text-xs text-gray-400">
+                          {t('modelDownload.notDownloaded')}
+                        </span>
+                      )}
+                      {isThisDownloading && (
+                        <span className="text-xs text-blue-600">
+                          {thisProgress > 0 ? `${thisProgress}%` : t('modelDownload.downloading')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Download progress bar */}
                   {isThisDownloading && (
-                    <span className="text-xs text-blue-600">
-                      {t('modelDownload.downloading')}
-                    </span>
+                    <div className="mt-2 w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                        style={{ width: `${thisProgress}%` }}
+                      />
+                    </div>
                   )}
-                  {isReady && (
-                    <span className="text-xs text-green-600">
-                      {t('modelDownload.ready')}
-                    </span>
-                  )}
-                </div>
+                </button>
               );
             })}
           </div>
@@ -188,7 +227,7 @@ export default function VoiceSettings() {
           <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">
             Supertonic
           </span>
-          <span className="text-gray-500">고품질 로컬 TTS - 한국어/영어 지원</span>
+          <span className="text-gray-500">{t('settings.voice.tts.supertonicInfo')}</span>
         </div>
 
         {/* Supertonic Voice Selection */}

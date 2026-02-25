@@ -18,7 +18,7 @@ function main() {
 
   const appPath = resolve(
     process.cwd(),
-    'src-tauri/target/release/bundle/macos/MyPartnerAI.app'
+    'src-tauri/target/release/bundle/macos/AMA.app'
   );
 
   if (!existsSync(appPath)) {
@@ -40,7 +40,7 @@ function main() {
   }
 
   const tmpRoot = mkdtempSync(join(tmpdir(), 'mypartnerai-notary-'));
-  const zipPath = join(tmpRoot, 'MyPartnerAI.app.zip');
+  const zipPath = join(tmpRoot, 'AMA.app.zip');
 
   try {
     console.log('[notarize-macos-app] Creating zip for notarization...');
