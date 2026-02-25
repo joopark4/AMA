@@ -6,7 +6,7 @@
 
 - 파일: `src/stores/settingsStore.ts`
 - persist key: `mypartnerai-settings`
-- persist version: `5`
+- persist version: `10`
 
 ## 설정 스키마 (요약)
 
@@ -90,10 +90,20 @@ interface Settings {
 | UI 컴포넌트 | 연결 설정 |
 |-------------|-----------|
 | `LLMSettings` | `settings.llm.*` |
-| `VoiceSettings` | `settings.stt`, `settings.tts` |
+| `VoiceSettings` | `settings.stt`, `settings.tts`, `modelDownloadStore` |
 | `AvatarSettings` | `vrmModelPath`, `avatarName`, `avatar.*` |
+| `UpdateSettings` | `useAutoUpdateStore` (앱 버전/업데이트 확인) |
 | `LicensesSettings` | 설정값 저장 없음 (라이선스 안내 전용) |
 | `SettingsPanel` | 설정 저장/리셋/언어 |
+
+## 모델 다운로드 스토어 (`modelDownloadStore`)
+
+- 파일: `src/stores/modelDownloadStore.ts`
+- Whisper/Supertonic 모델의 다운로드 상태와 진행률 관리
+- `checkModelStatus()` → Rust `check_model_status` 커맨드로 각 모델 설치 여부 확인
+- `downloadModel(modelType)` → Rust `download_model` 커맨드로 개별 모델 다운로드
+- 다운로드 진행률은 Tauri `model-download-progress` 이벤트로 수신
+- 에러 발생 시 `error` 상태에 메시지 저장 + 콘솔 로그
 
 ## 온보딩 규칙
 

@@ -490,15 +490,9 @@ async function main() {
     return;
   }
 
+  // Models are now downloaded on-demand at runtime; only stage Whisper runtime (bin/lib)
   await ensureRealDirectory(bundleResourcesRoot, 'Tauri bundle resource root');
   const signingIdentity = resolveCodesignIdentity();
-  await stageBundleModelResources({
-    bundleResourcesRoot,
-    supertonicSource,
-    supertonicOnnxSource,
-    supertonicVoicesSource,
-    whisperSource,
-  });
   await stageWhisperRuntimeResources(bundleResourcesRoot, signingIdentity);
 }
 

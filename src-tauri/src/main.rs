@@ -5,10 +5,11 @@
 )]
 
 mod commands;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use tauri::menu::{MenuBuilder, MenuItem, SubmenuBuilder};
 
 fn main() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -21,6 +22,8 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             commands::window::set_ignore_cursor_events,
             commands::window::set_window_position,
@@ -38,8 +41,77 @@ fn main() {
             commands::settings::pick_vrm_file,
             commands::auth::open_oauth_url,
             commands::auth::parse_auth_callback,
+            commands::models::check_model_status,
+            commands::models::download_model,
+            commands::models::get_models_dir,
         ])
+        .on_menu_event(|app, event| {
+            if let Some(window) = app.get_webview_window("main") {
+                match event.id().as_ref() {
+                    "check_update" => {
+                        let _ = window.emit("menu-check-update", ());
+                    }
+                    "open_settings" => {
+                        let _ = window.emit("menu-open-settings", ());
+                    }
+                    _ => {}
+                }
+            }
+        })
         .setup(|app| {
+            // macOS native menu bar
+            let check_update = MenuItem::with_id(
+                app,
+                "check_update",
+                "Check for Updates...",
+                true,
+                None::<&str>,
+            )?;
+            let open_settings = MenuItem::with_id(
+                app,
+                "open_settings",
+                "Settings...",
+                true,
+                Some("CmdOrCtrl+,"),
+            )?;
+
+            let app_submenu = SubmenuBuilder::new(app, "AMA")
+                .about(None)
+                .separator()
+                .item(&check_update)
+                .separator()
+                .item(&open_settings)
+                .separator()
+                .hide()
+                .hide_others()
+                .show_all()
+                .separator()
+                .quit()
+                .build()?;
+
+            let edit_submenu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+
+            let window_submenu = SubmenuBuilder::new(app, "Window")
+                .minimize()
+                .build()?;
+
+            let menu = MenuBuilder::new(app)
+                .item(&app_submenu)
+                .item(&edit_submenu)
+                .item(&window_submenu)
+                .build()?;
+
+            app.set_menu(menu)?;
+
+            // Window setup: full-screen overlay
             if let Some(window) = app.get_webview_window("main") {
                 let monitor = window
                     .current_monitor()
@@ -65,6 +137,8 @@ fn main() {
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|_, _| {});
 }

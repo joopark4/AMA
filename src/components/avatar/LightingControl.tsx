@@ -1,8 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 
 export default function LightingControl() {
+  const { t } = useTranslation();
   const { settings, setAvatarSettings } = useSettingsStore();
   const { position: avatarPosition } = useAvatarStore();
 
@@ -122,7 +124,7 @@ export default function LightingControl() {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      title="드래그하여 조명 위치 조정"
+      title={t('lightingControl.dragHint')}
       aria-label="Light direction control"
     >
       <svg

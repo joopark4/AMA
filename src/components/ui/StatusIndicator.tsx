@@ -467,13 +467,13 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
     >
       {dependencyIssues.length > 0 && (
         <div className="bg-slate-900/85 border border-slate-600 text-slate-100 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
-          <div>필수 구성 요소 확인 필요 ({dependencyIssues.length})</div>
+          <div>{t('dependency.requiredCheck', { count: dependencyIssues.length })}</div>
           <button
             type="button"
             onClick={() => setShowDependencyGuide(true)}
             className="mt-2 w-full px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
           >
-            설치 안내 보기
+            {t('dependency.showGuide')}
           </button>
         </div>
       )}
@@ -511,7 +511,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
               data-interactive="true"
               className="mt-2 w-full px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-xs font-medium cursor-pointer"
             >
-              시스템 설정 열기
+              {t('dependency.openSystemSettings')}
             </button>
           )}
         </div>
@@ -532,14 +532,14 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       {/* Debug info - shows transcript when listening */}
       {isVoiceListening && transcript && (
         <div className="bg-blue-100 border border-blue-400 text-blue-700 px-3 py-1 rounded-lg text-xs max-w-xs">
-          인식중: {transcript}
+          {t('status.recognizing', { transcript })}
         </div>
       )}
 
       {/* Processing indicator */}
       {status === 'processing' && (
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-1 rounded-lg text-xs">
-          LLM 처리중...
+          {t('status.llmProcessing')}
         </div>
       )}
 
@@ -550,7 +550,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
-            placeholder="메시지 입력..."
+            placeholder={t('chat.placeholder')}
             className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-48"
             autoFocus
           />
@@ -559,7 +559,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
             disabled={!textInput.trim() || status === 'processing'}
             className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
           >
-            전송
+            {t('chat.send')}
           </button>
         </form>
       )}
@@ -591,7 +591,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
             ? 'bg-green-500 border-green-400 hover:bg-green-600'
             : 'bg-gray-500 border-gray-400 hover:bg-gray-600'
         }`}
-        title="텍스트 입력"
+        title={t('chat.textInputToggle')}
       >
         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -615,10 +615,10 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
           }`}
           title={
             isVoiceButtonDisabled
-              ? voiceInputUnavailableReason || 'Voice input unavailable'
+              ? voiceInputUnavailableReason || t('chat.voiceUnavailable')
               : isVoiceListening
-                ? 'Stop listening'
-                : 'Start voice input'
+                ? t('chat.stopListening')
+                : t('chat.startVoiceInput')
           }
         >
           {isVoiceListening ? (
@@ -691,21 +691,21 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
         <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4" data-interactive="true">
           <div className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-slate-800">설치 안내</h3>
+              <h3 className="text-base font-semibold text-slate-800">{t('dependency.guideTitle')}</h3>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={openSettings}
                   className="px-3 py-1 text-xs rounded-md bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  설정 열기
+                  {t('dependency.openSettings')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowDependencyGuide(false)}
                   className="px-3 py-1 text-xs rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700"
                 >
-                  닫기
+                  {t('dependency.close')}
                 </button>
               </div>
             </div>
