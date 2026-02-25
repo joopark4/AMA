@@ -96,6 +96,7 @@ export interface Settings {
   vrmModelPath: string;
   avatar: AvatarSettings;
   historyPanel: HistoryPanelSettings;
+  preferredMonitorName: string;
 }
 
 interface SettingsState {
@@ -276,6 +277,7 @@ const defaultSettings: Settings = {
     size: { width: 320, height: 480 },
     fontSize: 14,
   },
+  preferredMonitorName: '',
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -359,6 +361,10 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
           ? source.historyPanel.fontSize
           : defaultSettings.historyPanel.fontSize,
     },
+    preferredMonitorName:
+      typeof source.preferredMonitorName === 'string'
+        ? source.preferredMonitorName
+        : defaultSettings.preferredMonitorName,
   };
 }
 
@@ -480,7 +486,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 10,
+      version: 11,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
