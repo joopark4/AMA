@@ -35,9 +35,25 @@ let ort: any = null;
 
 async function getOrt() {
   if (!ort) {
-    // @ts-ignore - ESM 직접 import
+    // @ts-ignore - ESM 직접 import (ORT 1.17.x는 dist/esm/ 구조 사용)
     ort = await import('/node_modules/onnxruntime-web/dist/esm/ort.min.js');
+
+    if (isTauriDesktopRuntime()) {
+      // WKWebView: 싱글스레드 모드 + WASM 바이너리 pre-load
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.proxy = false;
+
+      try {
+        const response = await fetch('/ort-wasm-simd.wasm');
+        ort.env.wasm.wasmBinary = await response.arrayBuffer();
+        log('WASM binary (simd) pre-loaded:', ort.env.wasm.wasmBinary.byteLength, 'bytes');
+      } catch (e) {
+        log('WASM binary pre-load failed, will use default loading:', e);
+      }
+    }
+
     ort.env.wasm.wasmPaths = '/';
+    log('ORT initialized, numThreads:', ort.env.wasm.numThreads);
   }
   return ort;
 }
@@ -413,39 +429,55 @@ export class SupertonicClient implements TTSClient {
         modelNames.map((name) => this.getModelSource(`onnx/${name}.onnx`))
       );
 
-      // WebGPU 시도
-      let sessionOptions: any = {
-        executionProviders: ['webgpu'],
-        graphOptimizationLevel: 'all',
-      };
+      const isTauri = isTauriDesktopRuntime();
 
-      try {
-        console.log('[Supertonic] Trying WebGPU...');
-        const sessions: any[] = [];
-        for (let i = 0; i < modelSources.length; i++) {
-          console.log(`[Supertonic] Loading ${modelNames[i]} (${i + 1}/${modelSources.length})...`);
-          const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
-          sessions.push(session);
-        }
-        [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
-        console.log('[Supertonic] WebGPU loaded successfully');
-      } catch (webgpuError) {
-        console.log('[Supertonic] WebGPU failed, trying WASM...', webgpuError);
-
-        // WASM 폴백
-        sessionOptions = {
+      // Tauri/WKWebView에서는 WebGPU 미지원, WASM 직접 사용
+      if (isTauri) {
+        const sessionOptions = {
           executionProviders: ['wasm'],
           graphOptimizationLevel: 'all',
         };
 
+        log('Loading models with WASM (Tauri)...');
         const sessions: any[] = [];
         for (let i = 0; i < modelSources.length; i++) {
-          console.log(`[Supertonic] Loading ${modelNames[i]} with WASM (${i + 1}/${modelSources.length})...`);
+          log(`Loading ${modelNames[i]} (${i + 1}/${modelSources.length})...`);
           const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
           sessions.push(session);
         }
         [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
-        console.log('[Supertonic] WASM loaded successfully');
+        log('WASM loaded successfully');
+      } else {
+        // 일반 브라우저: WebGPU 시도 후 WASM 폴백
+        let sessionOptions: any = {
+          executionProviders: ['webgpu'],
+          graphOptimizationLevel: 'all',
+        };
+
+        try {
+          console.log('[Supertonic] Trying WebGPU...');
+          const sessions: any[] = [];
+          for (let i = 0; i < modelSources.length; i++) {
+            const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
+            sessions.push(session);
+          }
+          [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
+          console.log('[Supertonic] WebGPU loaded successfully');
+        } catch (webgpuError) {
+          console.log('[Supertonic] WebGPU failed, trying WASM...', webgpuError);
+          sessionOptions = {
+            executionProviders: ['wasm'],
+            graphOptimizationLevel: 'all',
+          };
+
+          const sessions: any[] = [];
+          for (let i = 0; i < modelSources.length; i++) {
+            const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
+            sessions.push(session);
+          }
+          [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
+          console.log('[Supertonic] WASM loaded successfully');
+        }
       }
 
       // 기본 음성 스타일 로드
@@ -455,6 +487,10 @@ export class SupertonicClient implements TTSClient {
       this.isInitialized = true;
       console.log('[Supertonic] Initialization complete');
     } catch (error) {
+      const errMsg = error instanceof Error
+        ? `${error.name}: ${error.message}\n${error.stack}`
+        : String(error);
+      log('Initialization failed:', errMsg);
       console.error('[Supertonic] Initialization failed:', error);
       this.initPromise = null;
       throw error;
