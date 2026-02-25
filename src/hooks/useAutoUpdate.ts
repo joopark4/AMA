@@ -67,13 +67,15 @@ export const useAutoUpdateStore = create<AutoUpdateState>()((set) => ({
     if (!_updateRef) return;
 
     set({ downloading: true, error: null });
+    let downloadedBytes = 0;
 
     try {
       await _updateRef.downloadAndInstall((event: { event: string; data: { chunkLength: number; contentLength?: number } }) => {
         if (event.event === 'Progress') {
           const { contentLength, chunkLength } = event.data;
+          downloadedBytes += chunkLength;
           if (contentLength && contentLength > 0) {
-            set({ progress: Math.round((chunkLength / contentLength) * 100) });
+            set({ progress: Math.round((downloadedBytes / contentLength) * 100) });
           }
         }
       });
