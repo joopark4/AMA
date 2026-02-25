@@ -46,18 +46,16 @@ fn main() {
             commands::models::get_models_dir,
         ])
         .on_menu_event(|app, event| {
-            match event.id().as_ref() {
-                "check_update" => {
-                    if let Some(window) = app.get_webview_window("main") {
+            if let Some(window) = app.get_webview_window("main") {
+                match event.id().as_ref() {
+                    "check_update" => {
                         let _ = window.emit("menu-check-update", ());
                     }
-                }
-                "open_settings" => {
-                    if let Some(window) = app.get_webview_window("main") {
+                    "open_settings" => {
                         let _ = window.emit("menu-open-settings", ());
                     }
+                    _ => {}
                 }
-                _ => {}
             }
         })
         .setup(|app| {
