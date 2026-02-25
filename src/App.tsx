@@ -19,6 +19,7 @@ import { useAuthStore } from './stores/authStore';
 import { useModelDownloadStore } from './stores/modelDownloadStore';
 import { useAutoUpdateStore } from './hooks/useAutoUpdate';
 import { useClickThrough } from './hooks/useClickThrough';
+import { useMonitorStore } from './stores/monitorStore';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
 import { authService } from './services/auth/authService';
@@ -130,11 +131,30 @@ function App() {
     const unlistenSettings = listen('menu-open-settings', () => {
       useSettingsStore.getState().openSettings();
     });
+    const unlistenMonitor = listen('menu-move-monitor-next', () => {
+      useMonitorStore.getState().moveToNextMonitor();
+    });
 
     return () => {
       unlistenUpdate.then((fn) => fn());
       unlistenSettings.then((fn) => fn());
+      unlistenMonitor.then((fn) => fn());
     };
+  }, []);
+
+  // Restore preferred monitor on startup
+  useEffect(() => {
+    const restore = async () => {
+      const store = useMonitorStore.getState();
+      await store.fetchMonitors();
+      const preferred = settings.preferredMonitorName;
+      if (!preferred) return;
+      const { monitors } = useMonitorStore.getState();
+      const idx = monitors.findIndex((m) => m.name === preferred);
+      if (idx >= 0) await store.moveToMonitor(idx);
+    };
+    restore();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-detect and set available Ollama model on startup
