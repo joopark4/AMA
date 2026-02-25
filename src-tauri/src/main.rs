@@ -21,6 +21,8 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             commands::window::set_ignore_cursor_events,
             commands::window::set_window_position,
@@ -38,6 +40,9 @@ fn main() {
             commands::settings::pick_vrm_file,
             commands::auth::open_oauth_url,
             commands::auth::parse_auth_callback,
+            commands::models::check_model_status,
+            commands::models::download_model,
+            commands::models::get_models_dir,
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
