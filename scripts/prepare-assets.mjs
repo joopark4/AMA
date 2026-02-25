@@ -42,7 +42,7 @@ const supertonicRequiredAssets = [
 ];
 const supertonicModelBaseUrl = (
   process.env.SUPERTONIC_MODEL_BASE_URL?.trim() ||
-  'https://huggingface.co/Supertone/supertonic/resolve/main'
+  'https://huggingface.co/Supertone/supertonic-2/resolve/main'
 ).replace(/\/+$/, '');
 const requestedWhisperModels = (process.env.WHISPER_BUNDLE_MODELS || 'base')
   .split(',')
