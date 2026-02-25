@@ -69,7 +69,7 @@ export const useAutoUpdateStore = create<AutoUpdateState>()((set) => ({
     set({ downloading: true, error: null });
 
     try {
-      await _updateRef.downloadAndInstall((event: any) => {
+      await _updateRef.downloadAndInstall((event: { event: string; data: { chunkLength: number; contentLength?: number } }) => {
         if (event.event === 'Progress') {
           const { contentLength, chunkLength } = event.data;
           if (contentLength && contentLength > 0) {
