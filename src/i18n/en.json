@@ -6,6 +6,14 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
+    "monitor": {
+      "title": "Monitor",
+      "description": "Select a monitor to display the avatar on.",
+      "current": "Current",
+      "unnamed": "Unknown Monitor",
+      "shortcutHint": "Press Cmd+Shift+M to quickly switch to the next monitor.",
+      "physicalOnly": "Only physically connected monitors are supported. macOS virtual desktops (Spaces) are not included."
+    },
     "llm": {
       "title": "AI Model",
       "provider": "Provider",

@@ -110,11 +110,16 @@ export function useClickThrough() {
       const avatarPos = avatarState.position;
       const interactionBounds = avatarState.interactionBounds;
 
-      // Fallback hitbox uses a simple fixed rectangle centered on the avatar feet anchor.
-      const avatarLeft = avatarPos.x - AVATAR_FALLBACK_HALF_WIDTH;
-      const avatarRight = avatarPos.x + AVATAR_FALLBACK_HALF_WIDTH;
-      const avatarTop = avatarPos.y - AVATAR_FALLBACK_HEIGHT_ABOVE_FEET;
-      const avatarBottom = avatarPos.y + AVATAR_FALLBACK_HEIGHT_BELOW_FEET;
+      // Fallback hitbox scaled by avatar size setting.
+      const avatarScale = settingsState.settings.avatar?.scale || 1.0;
+      const fallbackHalfWidth = AVATAR_FALLBACK_HALF_WIDTH * avatarScale;
+      const fallbackHeightAbove = AVATAR_FALLBACK_HEIGHT_ABOVE_FEET * avatarScale;
+      const fallbackHeightBelow = AVATAR_FALLBACK_HEIGHT_BELOW_FEET * avatarScale;
+
+      const avatarLeft = avatarPos.x - fallbackHalfWidth;
+      const avatarRight = avatarPos.x + fallbackHalfWidth;
+      const avatarTop = avatarPos.y - fallbackHeightAbove;
+      const avatarBottom = avatarPos.y + fallbackHeightBelow;
 
       const isOverAvatar = interactionBounds
         ? anyCursorMatches(
