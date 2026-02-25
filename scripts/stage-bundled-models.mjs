@@ -157,7 +157,7 @@ async function main() {
   const signingIdentity = await resolveCodesignIdentity(rootDir);
   const appBundlePath = resolve(
     rootDir,
-    'src-tauri/target/release/bundle/macos/MyPartnerAI.app'
+    'src-tauri/target/release/bundle/macos/AMA.app'
   );
   const resourcesDir = resolve(appBundlePath, 'Contents/Resources');
   const modelsDir = resolve(resourcesDir, 'models');

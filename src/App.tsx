@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
@@ -16,6 +17,7 @@ import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useAuthStore } from './stores/authStore';
 import { useModelDownloadStore } from './stores/modelDownloadStore';
+import { useAutoUpdateStore } from './hooks/useAutoUpdate';
 import { useClickThrough } from './hooks/useClickThrough';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
@@ -120,6 +122,21 @@ function App() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Listen for native menu events
+  useEffect(() => {
+    const unlistenUpdate = listen('menu-check-update', () => {
+      useAutoUpdateStore.getState().checkForUpdate();
+    });
+    const unlistenSettings = listen('menu-open-settings', () => {
+      useSettingsStore.getState().openSettings();
+    });
+
+    return () => {
+      unlistenUpdate.then((fn) => fn());
+      unlistenSettings.then((fn) => fn());
+    };
+  }, []);
+
   // Auto-detect and set available Ollama model on startup
   useEffect(() => {
     if (settings.llm.provider !== 'ollama' && settings.llm.provider !== 'localai') {
@@ -190,11 +207,9 @@ function App() {
       )}
 
       {/* Auto-update notification */}
-      {!isDevBuild && (
-        <ErrorBoundary name="UpdateNotification">
-          <UpdateNotification />
-        </ErrorBoundary>
-      )}
+      <ErrorBoundary name="UpdateNotification">
+        <UpdateNotification />
+      </ErrorBoundary>
 
       {/* Model download modal (shown before onboarding) */}
       {requiresModelDownload && (
