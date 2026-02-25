@@ -82,6 +82,27 @@
   - STT: `whisper`
   - TTS: `supertonic`
 
+### Whisper 모델 온디맨드 다운로드
+
+모델 선택 UI에서 미다운로드 모델도 선택할 수 있으며, 선택 시 자동으로 다운로드가 시작됩니다.
+
+| 모델 | 크기 | 배포 포함 |
+|------|------|-----------|
+| `base` | ~75 MB | O (기본) |
+| `small` | ~500 MB | X |
+| `medium` | ~1.5 GB | X |
+
+**동작 흐름:**
+1. 모델 클릭 → `setSTTSettings({ model })` 로 즉시 선택 반영
+2. 미다운로드 시 → `modelDownloadStore.downloadModel('whisper-{model}')` 자동 호출
+3. 다운로드 중 → 바이트 기반 프로그레스 바 표시
+4. 다운로드 완료 → `checkModelStatus()` 자동 갱신, 모델 상태 "준비 완료"로 변경
+5. 다운로드 실패 시 → 모델은 선택 상태 유지, 에러 메시지 표시
+
+**modelDownloadStore 초기화:**
+- `VoiceSettings` 마운트 시 `modelStatus`가 null이면 `checkModelStatus()` 자동 호출
+- `App.tsx`에서도 프로덕션 빌드 시 앱 시작 단계에서 호출
+
 ## 사용자 안내/오류 처리
 
 - `StatusIndicator`가 의존성 누락 시 설치 안내 모달 제공

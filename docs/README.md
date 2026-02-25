@@ -11,6 +11,16 @@
 
 ## 작업 이력
 
+### 2026.02.25 — 설정 패널 개선 + 모델 온디맨드 다운로드
+
+- Whisper 모델 선택 UI 개선: 모델별 크기 표시, 미다운로드 모델 선택 시 자동 다운로드
+- 다운로드 프로그레스 바 추가 (바이트 기반 퍼센트)
+- `modelDownloadStore` 에러 처리 보강 (`checkModelStatus` 실패 시 error 상태 저장)
+- `VoiceSettings` 마운트 시 모델 상태 자동 체크 추가
+- `useAutoUpdate` 훅 → Zustand 스토어 전환 (여러 컴포넌트 간 상태 공유)
+- `UpdateSettings` 컴포넌트 신규 생성 (설정 패널 내 앱 업데이트 확인/설치)
+- i18n 키 추가: `settings.update.*` (ko/en 각 6개)
+
 ### 2026.02.23 — Supabase 실제 연동 완료
 
 - `.env` 파일 생성 (VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY)

@@ -53,8 +53,9 @@ src/components/ui/
 ```text
 src/components/settings/
 ├── LLMSettings.tsx              # LLM provider/model/apiKey/endpoint (+접기/펼치기)
-├── VoiceSettings.tsx            # Whisper 모델 + Supertonic 보이스
+├── VoiceSettings.tsx            # Whisper 모델 선택/다운로드 + Supertonic 보이스
 ├── AvatarSettings.tsx           # VRM 선택, 아바타 이름, 스케일, 초기 시선, TTS Test
+├── UpdateSettings.tsx           # 앱 버전 표시, 업데이트 확인/설치
 └── LicensesSettings.tsx         # 오픈소스/모델 라이선스 표 (+접기/펼치기)
 ```
 
@@ -64,6 +65,7 @@ src/components/settings/
 src/hooks/
 ├── useConversation.ts           # STT→LLM→TTS 오케스트레이션
 ├── useSpeechSynthesis.ts        # TTS 재생 + 립싱크 연동
+├── useAutoUpdate.ts             # 앱 업데이트 Zustand 스토어 + 훅
 └── useClickThrough.ts           # 투명창 click-through 제어
 ```
 
@@ -94,9 +96,10 @@ src/services/
 
 ```text
 src/stores/
-├── settingsStore.ts             # persist 설정 (version 5)
+├── settingsStore.ts             # persist 설정 (version 10)
 ├── avatarStore.ts               # 아바타 런타임 상태
-└── conversationStore.ts         # 대화/상태
+├── conversationStore.ts         # 대화/상태
+└── modelDownloadStore.ts        # Whisper/Supertonic 모델 다운로드 상태
 ```
 
 ## 백엔드 (`src-tauri`)
