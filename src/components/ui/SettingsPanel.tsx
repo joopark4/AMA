@@ -5,6 +5,7 @@ import LLMSettings from '../settings/LLMSettings';
 import VoiceSettings from '../settings/VoiceSettings';
 import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
+import UpdateSettings from '../settings/UpdateSettings';
 import UserProfile from '../auth/UserProfile';
 
 export default function SettingsPanel() {
@@ -85,6 +86,9 @@ export default function SettingsPanel() {
 
           {/* Avatar Settings */}
           <AvatarSettings />
+
+          {/* Update Settings */}
+          <UpdateSettings />
 
           {/* License Settings */}
           <LicensesSettings />
