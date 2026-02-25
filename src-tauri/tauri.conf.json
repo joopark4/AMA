@@ -34,8 +34,8 @@
   "bundle": {
     "active": true,
     "targets": ["dmg"],
+    "createUpdaterArtifacts": true,
     "resources": {
-      "resources/models/": "models/",
       "resources/bin/": "bin/",
       "resources/lib/": "lib/"
     },
@@ -78,6 +78,13 @@
           "schemes": ["mypartnerai"]
         }
       ]
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/joopark4/MyPartnerAI/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE4MzY5NThGOTZBOTNDODEKUldTQlBLbVdqNVUyR0w0eTdEcXMvTktNMW84cGdoK202ZTJSeXpsU2FkZkhUbjZoU1hIM1hkdHQK",
+      "dialog": false
     }
   }
 }

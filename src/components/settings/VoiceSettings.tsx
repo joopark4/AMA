@@ -10,6 +10,7 @@ import {
   formatGlobalShortcutForDisplay,
 } from '../../services/tauri/globalShortcutUtils';
 import { useAppStatusStore } from '../../stores/appStatusStore';
+import { useModelDownloadStore } from '../../stores/modelDownloadStore';
 
 // Whisper 모델 목록 (배포 기본 포함 모델)
 const WHISPER_MODELS = [
@@ -41,6 +42,12 @@ export default function VoiceSettings() {
     setTTSSettings,
     setGlobalShortcutSettings,
   } = useSettingsStore();
+  const {
+    status: modelStatus,
+    isDownloading,
+    currentModel,
+    downloadModel,
+  } = useModelDownloadStore();
   const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
   const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
   const shortcutRegisterError = useAppStatusStore(
@@ -115,17 +122,58 @@ export default function VoiceSettings() {
           <label className="block text-xs font-medium text-gray-600">
             모델 선택
           </label>
-          <select
-            value={settings.stt.model}
-            onChange={(e) => setSTTSettings({ model: e.target.value })}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {WHISPER_MODELS.map((model) => (
-              <option key={model} value={model}>
-                {model}
-              </option>
-            ))}
-          </select>
+          <div className="space-y-2">
+            {WHISPER_MODELS.map((model) => {
+              const statusKey = `whisper${model.charAt(0).toUpperCase() + model.slice(1)}Ready` as keyof typeof modelStatus;
+              const isReady = modelStatus?.[statusKey] ?? true;
+              const isThisDownloading = isDownloading && currentModel === `whisper-${model}`;
+
+              return (
+                <div
+                  key={model}
+                  className={`flex items-center justify-between p-2 rounded-lg border ${
+                    settings.stt.model === model
+                      ? 'border-blue-400 bg-blue-50'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => isReady && setSTTSettings({ model })}
+                    disabled={!isReady}
+                    className={`text-sm font-medium ${
+                      isReady ? 'text-gray-700' : 'text-gray-400'
+                    }`}
+                  >
+                    {model}
+                    {settings.stt.model === model && isReady && (
+                      <span className="ml-2 text-xs text-blue-600">&#10003;</span>
+                    )}
+                  </button>
+                  {!isReady && !isThisDownloading && (
+                    <button
+                      type="button"
+                      onClick={() => downloadModel(`whisper-${model}`)}
+                      disabled={isDownloading}
+                      className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {t('modelDownload.downloadButton')}
+                    </button>
+                  )}
+                  {isThisDownloading && (
+                    <span className="text-xs text-blue-600">
+                      {t('modelDownload.downloading')}
+                    </span>
+                  )}
+                  {isReady && (
+                    <span className="text-xs text-green-600">
+                      {t('modelDownload.ready')}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
