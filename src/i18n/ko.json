@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "MyPartnerAI",
+    "title": "AMA",
     "loading": "로딩 중..."
   },
   "settings": {
@@ -28,6 +28,7 @@
         "title": "음성 인식 (STT)",
         "engine": "엔진",
         "model": "모델",
+        "whisperInfo": "로컬 whisper-cli 음성 인식 사용",
         "engines": {
           "whisper": "Whisper",
           "moonshine": "Moonshine",
@@ -38,6 +39,7 @@
         "title": "음성 합성 (TTS)",
         "engine": "엔진",
         "voice": "음성",
+        "supertonicInfo": "고품질 로컬 TTS - 한국어/영어 지원",
         "engines": {
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",
@@ -64,11 +66,83 @@
       "name": "아바타 이름",
       "namePlaceholder": "예: 은연",
       "model": "VRM 모델",
-      "select": "모델 선택"
+      "select": "모델 선택",
+      "vrmPlaceholder": "선택된 VRM 파일 없음",
+      "personalityPrompt": "성격 가이드 프롬프트",
+      "personalityPromptPlaceholder": "예: 밝고 장난기 있지만, 답변은 간결하고 공감 먼저 표현해줘",
+      "scale": "아바타 크기",
+      "defaultName": "아바타",
+      "expression": "표정",
+      "emotions": {
+        "neutral": "무표정",
+        "happy": "기쁨",
+        "sad": "슬픔",
+        "angry": "화남",
+        "surprised": "놀람",
+        "relaxed": "편안",
+        "thinking": "생각"
+      },
+      "initialView": {
+        "title": "초기 시선",
+        "description": "머리 드래그로 시선을 맞춘 뒤 저장하면, 앱 시작 시 동일한 시선을 적용합니다.",
+        "saveCurrent": "현재 시선 저장",
+        "applySaved": "저장 시선 적용",
+        "resetFront": "정면 초기화",
+        "savedInfo": "저장된 초기 시선: 상하 {{vertical}} / 좌우 {{horizontal}}",
+        "currentInfo": "현재 시선: 상하 {{vertical}} / 좌우 {{horizontal}}"
+      },
+      "ttsTest": {
+        "title": "TTS 테스트",
+        "description": "립싱크 포함 음성 합성 테스트",
+        "stop": "중지",
+        "speak": "재생: \"{{text}}\"",
+        "error": "TTS 오류: {{error}}",
+        "sample": "안녕 나는 {{name}}이라고 해"
+      },
+      "animation": {
+        "title": "애니메이션",
+        "motionSequenceDemo": "모션 시퀀스 데모",
+        "sequenceStop": "중지",
+        "sequenceStart": "시퀀스 실행",
+        "sequenceDevOnly": "개발빌드 전용 기능: 각 모션 실행 전에 말풍선/음성 안내 후 순차 실행합니다.",
+        "sequenceProgress": "진행중: {{current}}/{{total}}",
+        "sequenceWaiting": "대기중: 총 {{count}}개 모션",
+        "motionClipsWarning": "Motion Clips가 꺼져 있으면 데모를 시작할 수 없습니다.",
+        "faceOnlyWarning": "표정 전용 모드에서는 데모를 실행할 수 없습니다.",
+        "faceOnlyMode": "표정 전용 모드",
+        "faceOnlyDescription": "전신 모션(클립/제스처/댄스)을 비활성화하고 표정, 얼굴 방향, 시선만 유지합니다.",
+        "enableMotionClips": "모션 클립 사용",
+        "dynamicMotionBoost": "동적 모션 부스트",
+        "dynamicBoostStrength": "부스트 강도: {{value}}%",
+        "motionDiversity": "모션 다양성: {{value}}%",
+        "enableGestureFallback": "제스처 폴백 사용"
+      },
+      "physics": {
+        "title": "물리 엔진",
+        "enable": "물리 엔진 사용",
+        "gravity": "중력: {{value}}x",
+        "stiffness": "강성: {{value}}x"
+      },
+      "lighting": {
+        "title": "조명",
+        "ambient": "환경광: {{value}}",
+        "directional": "직사광: {{value}}",
+        "showIcon": "조명 아이콘 표시",
+        "dragHint": "아바타 근처에서 태양 아이콘을 드래그하여 조명 방향을 조절하세요."
+      },
+      "info": "지원 형식: VRM 0.x 및 1.0 모델. 원활한 성능을 위해 30MB 이하의 파일을 권장합니다."
     },
     "save": "저장",
     "cancel": "취소",
     "reset": "초기화",
+    "update": {
+      "title": "앱 업데이트",
+      "currentVersion": "현재 버전",
+      "checkButton": "업데이트 확인",
+      "checking": "확인 중...",
+      "upToDate": "최신 버전입니다",
+      "error": "업데이트 확인 실패"
+    },
     "licenses": {
       "title": "오픈소스/모델 라이선스",
       "description": "앱에서 사용하는 오픈소스, AI 서비스, 모델의 라이선스 및 참고 링크입니다.",
@@ -91,12 +165,18 @@
     "processing": "처리 중...",
     "speaking": "말하는 중...",
     "error": "오류 발생",
-    "voiceListeningOverlay": "음성 입력 중"
+    "voiceListeningOverlay": "음성 입력 중",
+    "recognizing": "인식중: {{transcript}}",
+    "llmProcessing": "LLM 처리중..."
   },
   "chat": {
     "placeholder": "메시지를 입력하세요...",
     "send": "전송",
-    "voiceInput": "음성 입력"
+    "voiceInput": "음성 입력",
+    "textInputToggle": "텍스트 입력",
+    "stopListening": "음성 인식 중지",
+    "startVoiceInput": "음성 입력 시작",
+    "voiceUnavailable": "음성 입력 사용 불가"
   },
   "onboarding": {
     "avatarNameTitle": "아바타 이름 설정",
@@ -107,7 +187,64 @@
     "title": "대화 기록",
     "empty": "대화 기록이 없습니다.",
     "clearButton": "기록 지우기",
-    "button": "대화 기록"
+    "button": "대화 기록",
+    "decreaseFontSize": "글자 크기 줄이기",
+    "increaseFontSize": "글자 크기 늘리기",
+    "close": "닫기"
+  },
+  "avatar": {
+    "selectVrm": {
+      "title": "VRM 모델을 선택해주세요",
+      "description": "배포 버전에는 기본 아바타가 포함되지 않습니다. 보유한 .vrm 파일을 선택하면 바로 적용됩니다.",
+      "changeHint": "선택 후에는 옵션 패널의 아바타 설정에서 언제든지 다른 VRM으로 변경할 수 있습니다.",
+      "opening": "선택 창 여는 중...",
+      "button": "VRM 파일 선택",
+      "error": "파일 선택 창을 열 수 없습니다. 앱을 다시 실행하거나 설정 버튼에서 다시 시도해 주세요."
+    },
+    "loading": "아바타 로딩 중...",
+    "changeVrm": "다른 VRM 파일 선택"
+  },
+  "dependency": {
+    "requiredCheck": "필수 구성 요소 확인 필요 ({{count}})",
+    "showGuide": "설치 안내 보기",
+    "guideTitle": "설치 안내",
+    "openSettings": "설정 열기",
+    "openSystemSettings": "시스템 설정 열기",
+    "close": "닫기"
+  },
+  "lightingControl": {
+    "dragHint": "드래그하여 조명 위치 조정"
+  },
+  "modelDownload": {
+    "title": "모델 다운로드",
+    "description": "앱 실행에 필요한 AI 모델을 다운로드합니다. 최초 1회만 필요합니다.",
+    "startDownload": "다운로드 시작",
+    "downloading": "다운로드 중...",
+    "fileProgress": "{{fileName}} ({{current}}/{{total}})",
+    "complete": "다운로드 완료",
+    "error": "다운로드 실패: {{error}}",
+    "retry": "재시도",
+    "supertonic": "TTS 음성 모델 (Supertonic)",
+    "whisperBase": "STT 기본 모델 (Whisper base)",
+    "whisperSmall": "STT 중간 모델 (Whisper small)",
+    "whisperMedium": "STT 고급 모델 (Whisper medium)",
+    "required": "필수",
+    "optional": "선택",
+    "totalSize": "총 약 {{size}}",
+    "ready": "준비 완료",
+    "notDownloaded": "다운로드 필요",
+    "downloadButton": "다운로드",
+    "overallProgress": "전체 진행률",
+    "modelUpdateNeeded": "모델 업데이트가 필요합니다"
+  },
+  "update": {
+    "available": "새 버전 v{{version}} 사용 가능",
+    "downloading": "업데이트 다운로드 중...",
+    "readyToInstall": "업데이트 설치 준비 완료",
+    "install": "업데이트",
+    "later": "나중에",
+    "restart": "재시작",
+    "progress": "{{percent}}% 완료"
   },
   "errors": {
     "llmConnection": "AI 서버에 연결할 수 없습니다",
@@ -115,7 +252,7 @@
     "vrmLoad": "VRM 모델을 불러올 수 없습니다"
   },
   "auth": {
-    "title": "MyPartnerAI에 오신 것을 환영합니다",
+    "title": "AMA에 오신 것을 환영합니다",
     "subtitle": "계속하려면 로그인하세요",
     "loginWith": "{{provider}}로 계속하기",
     "mockModeNotice": "테스트 모드 — OAuth 키 미설정, 클릭 시 Mock 로그인 진행",
@@ -174,11 +311,11 @@
       "sections": [
         {
           "heading": "제1조 (목적)",
-          "body": "본 약관은 MyPartnerAI(이하 '서비스')의 이용 조건 및 절차를 정함을 목적으로 합니다."
+          "body": "본 약관은 AMA(이하 '서비스')의 이용 조건 및 절차를 정함을 목적으로 합니다."
         },
         {
           "heading": "제2조 (서비스 설명)",
-          "body": "MyPartnerAI는 로컬 환경에서 실행되는 AI 아바타 데스크톱 앱입니다. 대화 내용은 사용자 기기에만 저장되며 서버로 전송되지 않습니다."
+          "body": "AMA는 로컬 환경에서 실행되는 AI 아바타 데스크톱 앱입니다. 대화 내용은 사용자 기기에만 저장되며 서버로 전송되지 않습니다."
         },
         {
           "heading": "제3조 (수집 정보)",
