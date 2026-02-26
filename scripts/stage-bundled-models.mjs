@@ -155,10 +155,14 @@ async function main() {
     process.env.PREPARE_MODELS_DIR?.trim() || 'models'
   );
   const signingIdentity = await resolveCodesignIdentity(rootDir);
-  const appBundlePath = resolve(
-    rootDir,
-    'src-tauri/target/release/bundle/macos/AMA.app'
-  );
+  const candidatePaths = [
+    process.env.CARGO_TARGET_DIR && resolve(process.env.CARGO_TARGET_DIR, 'release/bundle/macos/AMA.app'),
+    resolve(process.env.HOME || '', 'Library/Caches/mypartnerai-build/release/bundle/macos/AMA.app'),
+    resolve(rootDir, 'src-tauri/target/release/bundle/macos/AMA.app'),
+    '/tmp/ama-build/release/bundle/macos/AMA.app',
+    resolve(rootDir, '.build/release/bundle/macos/AMA.app'),
+  ];
+  const appBundlePath = await findExistingPath(candidatePaths, 'Built app bundle');
   const resourcesDir = resolve(appBundlePath, 'Contents/Resources');
   const modelsDir = resolve(resourcesDir, 'models');
 

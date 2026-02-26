@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { getSupertonicClient } from '../services/voice/supertonicClient';
 
 export interface ModelStatus {
   supertonicReady: boolean;
@@ -69,6 +70,15 @@ export const useModelDownloadStore = create<ModelDownloadState>()((set, get) => 
 
     try {
       await invoke('download_model', { modelType });
+
+      // Reset SupertonicClient cache so it re-initializes with new model paths
+      if (modelType === 'supertonic') {
+        try {
+          await getSupertonicClient().dispose();
+        } catch {
+          // ignore dispose errors
+        }
+      }
 
       // Refresh status after download
       const status = await invoke<ModelStatus>('check_model_status');
