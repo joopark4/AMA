@@ -176,6 +176,7 @@ export default function AvatarController() {
   useEffect(() => {
     const handleResize = () => {
       const avatarScale = settings.avatar?.scale || 1.0;
+      const freeMovement = settings.avatar?.freeMovement ?? false;
       const floorY = getFloorY(avatarScale, useAvatarStore.getState().groundY);
       // Horizontal margin target: 8% of viewport width.
       const marginX = Math.max(
@@ -184,10 +185,10 @@ export default function AvatarController() {
       );
 
       const newBounds = {
-        minX: marginX,
-        maxX: window.innerWidth - marginX,
-        minY: floorY,
-        maxY: floorY,
+        minX: freeMovement ? -Infinity : marginX,
+        maxX: freeMovement ? Infinity : (window.innerWidth - marginX),
+        minY: freeMovement ? -Infinity : floorY,
+        maxY: freeMovement ? Infinity : floorY,
       };
 
       useAvatarStore.getState().setBounds(newBounds);
@@ -196,7 +197,7 @@ export default function AvatarController() {
 
       // On launch, place avatar at bottom-right based on the actual window resolution.
       if (!hasInitializedBottomRightRef.current) {
-        state.setPosition({ x: newBounds.maxX, y: newBounds.maxY });
+        state.setPosition({ x: window.innerWidth - marginX, y: floorY });
         hasInitializedBottomRightRef.current = true;
         prevViewportRef.current = { width: window.innerWidth, height: window.innerHeight };
         return;
@@ -214,13 +215,16 @@ export default function AvatarController() {
       const newWidth = window.innerWidth;
 
       let newX: number;
-      if (prevWidth > 0 && prevWidth !== newWidth) {
+      if (freeMovement) {
+        // Free movement: keep current position as-is
+        newX = currentPos.x;
+      } else if (prevWidth > 0 && prevWidth !== newWidth) {
         const ratio = currentPos.x / prevWidth;
         newX = Math.max(newBounds.minX, Math.min(newBounds.maxX, ratio * newWidth));
       } else {
         newX = Math.max(newBounds.minX, Math.min(newBounds.maxX, currentPos.x));
       }
-      const clampedY = newBounds.maxY;
+      const clampedY = freeMovement ? currentPos.y : floorY;
 
       prevViewportRef.current = { width: newWidth, height: window.innerHeight };
 
@@ -232,7 +236,7 @@ export default function AvatarController() {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [settings.avatar?.scale, groundY]);
+  }, [settings.avatar?.scale, settings.avatar?.freeMovement, groundY]);
 
   // Autonomous movement loop
   useEffect(() => {
@@ -298,11 +302,18 @@ export default function AvatarController() {
   // Movement logic
   useFrame((_, delta) => {
     if (FORCE_IDLE_NO_AUTOMOVE) {
-      const clampedX = clamp(position.x, bounds.minX, bounds.maxX);
-      const floorY = bounds.maxY;
-      if (Math.abs(position.x - clampedX) > 0.05 || Math.abs(position.y - floorY) > 0.05) {
-        setPosition({ x: clampedX, y: floorY });
+      const freeMovement = useSettingsStore.getState().settings.avatar?.freeMovement ?? false;
+
+      if (!freeMovement) {
+        // Normal mode: clamp to bounds + force Y to floorY
+        const clampedX = clamp(position.x, bounds.minX, bounds.maxX);
+        const floorY = bounds.maxY;
+        if (Math.abs(position.x - clampedX) > 0.05 || Math.abs(position.y - floorY) > 0.05) {
+          setPosition({ x: clampedX, y: floorY });
+        }
       }
+      // Free movement: keep current position as-is (no clamp)
+
       if (targetPosition) {
         setTargetPosition(null);
       }

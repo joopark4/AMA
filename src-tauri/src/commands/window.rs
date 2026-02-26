@@ -78,24 +78,65 @@ pub fn log_to_terminal(message: String) {
     println!("[Frontend] {}", message);
 }
 
-/// Get global mouse cursor position
+/// Get mouse cursor position relative to the main window (local coordinates).
+/// Returns (x, y) in logical pixels where (0,0) is the window's top-left corner.
+/// Must run Cocoa/AppKit calls on the main thread — Tauri dispatches
+/// sync commands on a background thread where NSEvent hangs.
 #[tauri::command]
-pub fn get_cursor_position() -> Result<MousePosition, String> {
+pub async fn get_cursor_position(app: AppHandle) -> Result<MousePosition, String> {
+    // Get the Tauri window position (reliable, unlike window.screenX/Y in WKWebView)
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Window not found".to_string())?;
+
+    let win_pos = window.outer_position().map_err(|e| e.to_string())?;
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+
+    // Tauri reports position in physical pixels; convert to logical (points)
+    let win_logical_x = win_pos.x as f64 / scale;
+    let win_logical_y = win_pos.y as f64 / scale;
+
     #[cfg(target_os = "macos")]
     {
-        use core_graphics::event::CGEvent;
-        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+        let (tx, rx) = tokio::sync::oneshot::channel::<Result<MousePosition, String>>();
 
-        let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
-            .map_err(|_| "Failed to create event source".to_string())?;
-        let event = CGEvent::new(source)
-            .map_err(|_| "Failed to create event".to_string())?;
-        let location = event.location();
+        app.run_on_main_thread(move || {
+            use cocoa::appkit::{NSEvent, NSScreen};
+            use cocoa::base::{id, nil};
+            use cocoa::foundation::{NSArray, NSRect};
 
-        Ok(MousePosition {
-            x: location.x,
-            y: location.y,
+            unsafe {
+                let point = NSEvent::mouseLocation(nil);
+
+                // NSEvent.mouseLocation uses Cocoa bottom-left origin where (0,0)
+                // is at the bottom-left of the PRIMARY screen (menu bar screen).
+                // Convert to top-left origin for web compatibility.
+                //
+                // Use screens()[0] which is always the primary/menu bar screen,
+                // NOT mainScreen (returns screen with keyboard focus, can change).
+                let screens: id = NSScreen::screens(nil);
+                let screen_height = if screens != nil && screens.count() > 0 {
+                    let primary_screen: id = screens.objectAtIndex(0);
+                    let frame: NSRect = NSScreen::frame(primary_screen);
+                    frame.size.height
+                } else {
+                    1080.0
+                };
+
+                // Global cursor in top-left coordinate system (points)
+                let global_x = point.x;
+                let global_y = screen_height - point.y;
+
+                // Convert to window-local coordinates
+                let _ = tx.send(Ok(MousePosition {
+                    x: global_x - win_logical_x,
+                    y: global_y - win_logical_y,
+                }));
+            }
         })
+        .map_err(|e| e.to_string())?;
+
+        rx.await.map_err(|e| e.to_string())?
     }
 
     #[cfg(target_os = "windows")]
@@ -109,14 +150,13 @@ pub fn get_cursor_position() -> Result<MousePosition, String> {
         }
 
         Ok(MousePosition {
-            x: point.x as f64,
-            y: point.y as f64,
+            x: point.x as f64 - win_logical_x,
+            y: point.y as f64 - win_logical_y,
         })
     }
 
     #[cfg(target_os = "linux")]
     {
-        // Linux implementation would need X11 or Wayland specific code
         Err("Not implemented for Linux".to_string())
     }
 }
