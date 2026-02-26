@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAutoUpdateStore } from '../../hooks/useAutoUpdate';
 import { invoke } from '@tauri-apps/api/core';
-import { homeDir } from '@tauri-apps/api/path';
 
 export default function UpdateSettings() {
   const { t } = useTranslation();
@@ -86,8 +85,7 @@ export default function UpdateSettings() {
         <button
           onClick={async () => {
             try {
-              const home = await homeDir();
-              const modelPath = `${home}.mypartnerai/models`;
+              const modelPath = await invoke<string>('get_models_dir');
               await invoke('plugin:shell|open', { path: modelPath });
             } catch (e) {
               console.error('Failed to open model folder:', e);
