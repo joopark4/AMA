@@ -149,9 +149,10 @@ pub async fn get_cursor_position(app: AppHandle) -> Result<MousePosition, String
             GetCursorPos(&mut point).map_err(|e| e.to_string())?;
         }
 
+        // GetCursorPos returns physical pixels; convert to logical before subtracting
         Ok(MousePosition {
-            x: point.x as f64 - win_logical_x,
-            y: point.y as f64 - win_logical_y,
+            x: point.x as f64 / scale - win_logical_x,
+            y: point.y as f64 / scale - win_logical_y,
         })
     }
 
