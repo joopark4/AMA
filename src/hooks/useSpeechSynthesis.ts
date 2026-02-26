@@ -82,7 +82,7 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
       log('Audio playback completed');
       cleanup();
     } catch (err) {
-      log('TTS Error:', err);
+      log('TTS Error:', err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : String(err));
       setError((err as Error).message);
       cleanup();
     }

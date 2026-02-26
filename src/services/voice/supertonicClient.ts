@@ -12,7 +12,7 @@
 import type { TTSResult, TTSClient, TTSOptions } from './types';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
-import { BaseDirectory, readFile } from '@tauri-apps/plugin-fs';
+import { BaseDirectory, readFile, exists } from '@tauri-apps/plugin-fs';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -35,9 +35,25 @@ let ort: any = null;
 
 async function getOrt() {
   if (!ort) {
-    // @ts-ignore - ESM 직접 import
+    // @ts-ignore - ESM 직접 import (ORT 1.17.x는 dist/esm/ 구조 사용)
     ort = await import('/node_modules/onnxruntime-web/dist/esm/ort.min.js');
+
+    if (isTauriDesktopRuntime()) {
+      // WKWebView: 싱글스레드 모드 + WASM 바이너리 pre-load
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.proxy = false;
+
+      try {
+        const response = await fetch('/ort-wasm-simd.wasm');
+        ort.env.wasm.wasmBinary = await response.arrayBuffer();
+        log('WASM binary (simd) pre-loaded:', ort.env.wasm.wasmBinary.byteLength, 'bytes');
+      } catch (e) {
+        log('WASM binary pre-load failed, will use default loading:', e);
+      }
+    }
+
     ort.env.wasm.wasmPaths = '/';
+    log('ORT initialized, numThreads:', ort.env.wasm.numThreads);
   }
   return ort;
 }
@@ -245,6 +261,7 @@ export class SupertonicClient implements TTSClient {
   private initPromise: Promise<void> | null = null;
   private resolvedBasePath: string | null = null;
   private resolvedResourcePrefix: string | null = null;
+  private resolvedUserModelDir = false;
 
   // ONNX 세션들 (동적 로드로 인해 any 사용)
   private dpOrt: any = null;
@@ -284,6 +301,13 @@ export class SupertonicClient implements TTSClient {
 
   private async readBundledAsset(relativePath: string): Promise<Uint8Array> {
     const sanitizedRelativePath = relativePath.replace(/^\//, '');
+
+    // User model directory (highest priority)
+    if (this.resolvedUserModelDir) {
+      const fullPath = `.mypartnerai/models/supertonic/${sanitizedRelativePath}`;
+      return readFile(fullPath, { baseDir: BaseDirectory.Home });
+    }
+
     const tryRead = async (prefix: string): Promise<Uint8Array> => {
       const fullPath = `${prefix.replace(/\/$/, '')}/${sanitizedRelativePath}`;
       return readFile(fullPath, { baseDir: BaseDirectory.Resource });
@@ -308,7 +332,7 @@ export class SupertonicClient implements TTSClient {
   }
 
   private async readJsonAsset(relativePath: string): Promise<any> {
-    if (this.resolvedResourcePrefix) {
+    if (this.resolvedUserModelDir || this.resolvedResourcePrefix) {
       const bytes = await this.readBundledAsset(relativePath);
       const text = new TextDecoder().decode(bytes);
       return JSON.parse(text);
@@ -323,7 +347,7 @@ export class SupertonicClient implements TTSClient {
   }
 
   private async getModelSource(relativePath: string): Promise<string | Uint8Array> {
-    if (this.resolvedResourcePrefix) {
+    if (this.resolvedUserModelDir || this.resolvedResourcePrefix) {
       return this.readBundledAsset(relativePath);
     }
 
@@ -339,13 +363,34 @@ export class SupertonicClient implements TTSClient {
     const fallbackPath = this.config.basePath;
     if (!isTauriDesktopRuntime()) {
       this.resolvedResourcePrefix = null;
+      this.resolvedUserModelDir = false;
       this.resolvedBasePath = fallbackPath;
       return fallbackPath;
     }
 
     const requiredVoice = this.config.defaultVoice;
-    const resourceCandidates = this.getBundledResourceCandidates();
 
+    // 1. User model directory (~/.mypartnerai/models/supertonic/)
+    try {
+      const userModelBase = '.mypartnerai/models/supertonic';
+      const [hasTtsJson, hasVoice] = await Promise.all([
+        exists(`${userModelBase}/onnx/tts.json`, { baseDir: BaseDirectory.Home }),
+        exists(`${userModelBase}/voice_styles/${requiredVoice}.json`, { baseDir: BaseDirectory.Home }),
+      ]);
+
+      if (hasTtsJson && hasVoice) {
+        this.resolvedUserModelDir = true;
+        this.resolvedResourcePrefix = null;
+        this.resolvedBasePath = `home://${userModelBase}`;
+        log('Using user model directory for Supertonic assets');
+        return this.resolvedBasePath;
+      }
+    } catch (error) {
+      log('User model directory check failed:', error);
+    }
+
+    // 2. Tauri Resource bundle
+    const resourceCandidates = this.getBundledResourceCandidates();
     for (const resourceCandidate of resourceCandidates) {
       try {
         await Promise.all([
@@ -354,6 +399,7 @@ export class SupertonicClient implements TTSClient {
         ]);
 
         this.resolvedResourcePrefix = resourceCandidate;
+        this.resolvedUserModelDir = false;
         this.resolvedBasePath = `resource://${resourceCandidate}`;
         log('Using bundled Supertonic assets from resource:', resourceCandidate);
         return this.resolvedBasePath;
@@ -362,7 +408,9 @@ export class SupertonicClient implements TTSClient {
       }
     }
 
+    // 3. Web path fallback (dev mode)
     this.resolvedResourcePrefix = null;
+    this.resolvedUserModelDir = false;
     this.resolvedBasePath = fallbackPath;
     log('Using web Supertonic asset path fallback:', fallbackPath);
     return fallbackPath;
@@ -413,39 +461,55 @@ export class SupertonicClient implements TTSClient {
         modelNames.map((name) => this.getModelSource(`onnx/${name}.onnx`))
       );
 
-      // WebGPU 시도
-      let sessionOptions: any = {
-        executionProviders: ['webgpu'],
-        graphOptimizationLevel: 'all',
-      };
+      const isTauri = isTauriDesktopRuntime();
 
-      try {
-        console.log('[Supertonic] Trying WebGPU...');
-        const sessions: any[] = [];
-        for (let i = 0; i < modelSources.length; i++) {
-          console.log(`[Supertonic] Loading ${modelNames[i]} (${i + 1}/${modelSources.length})...`);
-          const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
-          sessions.push(session);
-        }
-        [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
-        console.log('[Supertonic] WebGPU loaded successfully');
-      } catch (webgpuError) {
-        console.log('[Supertonic] WebGPU failed, trying WASM...', webgpuError);
-
-        // WASM 폴백
-        sessionOptions = {
+      // Tauri/WKWebView에서는 WebGPU 미지원, WASM 직접 사용
+      if (isTauri) {
+        const sessionOptions = {
           executionProviders: ['wasm'],
           graphOptimizationLevel: 'all',
         };
 
+        log('Loading models with WASM (Tauri)...');
         const sessions: any[] = [];
         for (let i = 0; i < modelSources.length; i++) {
-          console.log(`[Supertonic] Loading ${modelNames[i]} with WASM (${i + 1}/${modelSources.length})...`);
+          log(`Loading ${modelNames[i]} (${i + 1}/${modelSources.length})...`);
           const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
           sessions.push(session);
         }
         [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
-        console.log('[Supertonic] WASM loaded successfully');
+        log('WASM loaded successfully');
+      } else {
+        // 일반 브라우저: WebGPU 시도 후 WASM 폴백
+        let sessionOptions: any = {
+          executionProviders: ['webgpu'],
+          graphOptimizationLevel: 'all',
+        };
+
+        try {
+          console.log('[Supertonic] Trying WebGPU...');
+          const sessions: any[] = [];
+          for (let i = 0; i < modelSources.length; i++) {
+            const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
+            sessions.push(session);
+          }
+          [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
+          console.log('[Supertonic] WebGPU loaded successfully');
+        } catch (webgpuError) {
+          console.log('[Supertonic] WebGPU failed, trying WASM...', webgpuError);
+          sessionOptions = {
+            executionProviders: ['wasm'],
+            graphOptimizationLevel: 'all',
+          };
+
+          const sessions: any[] = [];
+          for (let i = 0; i < modelSources.length; i++) {
+            const session = await loadOnnx(modelNames[i], modelSources[i], sessionOptions);
+            sessions.push(session);
+          }
+          [this.dpOrt, this.textEncOrt, this.vectorEstOrt, this.vocoderOrt] = sessions;
+          console.log('[Supertonic] WASM loaded successfully');
+        }
       }
 
       // 기본 음성 스타일 로드
@@ -455,6 +519,10 @@ export class SupertonicClient implements TTSClient {
       this.isInitialized = true;
       console.log('[Supertonic] Initialization complete');
     } catch (error) {
+      const errMsg = error instanceof Error
+        ? `${error.name}: ${error.message}\n${error.stack}`
+        : String(error);
+      log('Initialization failed:', errMsg);
       console.error('[Supertonic] Initialization failed:', error);
       this.initPromise = null;
       throw error;
@@ -854,7 +922,7 @@ export class SupertonicClient implements TTSClient {
       const voice = normalizeVoice(selectedVoice, this.config.defaultVoice);
       await this.resolveBasePath();
 
-      if (this.resolvedResourcePrefix) {
+      if (this.resolvedUserModelDir || this.resolvedResourcePrefix) {
         await Promise.all([
           this.readBundledAsset('onnx/tts.json'),
           this.readBundledAsset(`voice_styles/${voice}.json`),
@@ -901,6 +969,7 @@ export class SupertonicClient implements TTSClient {
     this.voiceStyles.clear();
     this.isInitialized = false;
     this.initPromise = null;
+    this.resolvedUserModelDir = false;
   }
 }
 

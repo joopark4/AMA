@@ -22,6 +22,7 @@ English version: [README.en.md](README.en.md)
 - 음성:
   - STT: Whisper(로컬, `base/small/medium`)
   - TTS: Supertonic(`F1~F5`, `M1~M5`)
+  - 글로벌 단축키: 기본 `Cmd+Shift+Space` (앱 포커스와 무관)
 - 원격 세션 감지 시:
   - 음성 인식(STT)은 차단
   - 텍스트 대화는 계속 사용 가능
@@ -41,6 +42,12 @@ English version: [README.en.md](README.en.md)
 ## 모델 다운로드 (필수)
 
 AI 모델 파일은 용량이 크므로 저장소에 포함되지 않습니다. 실행 전 아래 경로에 직접 배치해야 합니다.
+
+외부 모델 경로를 사용할 경우:
+
+```bash
+PREPARE_MODELS_DIR="/absolute/path/to/models" npm run build
+```
 
 ### TTS 모델 (Supertonic)
 
@@ -121,13 +128,70 @@ npm run tauri build
    - LLM Provider/Model 설정
    - Whisper 모델(`base/small/medium`) 선택
    - Supertonic 보이스 선택
+   - 글로벌 음성 단축키 ON/OFF 및 키 조합 설정
 4. 마이크 버튼 또는 텍스트 입력으로 대화 시작
+
+## 글로벌 음성 단축키
+
+- 기본값: `Cmd+Shift+Space`
+- 동작: 단축키 1회 입력 시 음성 입력 시작, 다시 입력 시 종료
+- 설정 위치: `설정 > 음성 > 글로벌 음성 단축키`
+- 입력 방식: 단축키 입력창을 클릭한 상태에서 키 조합을 직접 누르면 저장
+- 등록 실패 시:
+  - 앱 내 경고 토스트에서 접근성 설정 열기 버튼 사용
+  - 다른 앱/시스템 단축키와 충돌 시 다른 조합으로 변경
 
 ## 모델/런타임
 
 - Whisper 모델: `base`, `small`, `medium`
 - Supertonic 모델: `onnx`, `voice_styles`
 - VRM 파일은 기본 포함하지 않으며, 첫 실행 시 사용자가 직접 선택합니다.
+
+## 모션 데이터 파이프라인
+
+- `motions/raw/` : 원본 모션 소스(수집/캡처)
+- `motions/clean/` : 리타게팅/정제 중간 산출물
+- `public/motions/` : 런타임에서 사용하는 최종 클립
+- `src/config/motionManifest.json` : 모션 메타데이터 단일 소스
+
+실데이터 교체:
+
+```bash
+# catalog 파일 준비 (motions/clean/catalog.example.json 참고)
+npm run motion:catalog:auto
+npm run motion:import:dry
+npm run motion:import
+```
+
+외부 정제 클립 동기화:
+
+```bash
+MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:clean
+MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:external
+npm run motion:refresh
+```
+
+외부 정제 경로 alias 사용(`MOTION_CLEAN_SOURCE` 필요):
+
+```bash
+MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips \
+npm run motion:refresh:external
+```
+
+커스텀 catalog 경로:
+
+```bash
+MOTION_CATALOG=motions/clean/my-catalog.json npm run motion:import
+```
+
+검증:
+
+```bash
+npm run motion:validate
+npm run motion:qa:team10
+npm run motion:collect:index -- --source "<path/to/your/motions/raw>"
+npm run motion:collect:metadata -- --source "<path/to/your/motions/raw>" --checklist "motions/raw/raw-intake-checklist.json"
+```
 
 ## 환경 변수 (선택)
 
@@ -233,6 +297,7 @@ VITE_GOOGLE_API_KEY=발급받은_키
 - 원격 접속 상태인지 확인
 - 마이크 권한 허용 여부 확인
 - Whisper 모델/런타임 파일 경로가 올바른지 확인
+- 글로벌 단축키 사용 중이면 접근성 권한/단축키 충돌 여부 확인
 
 ### 2) TTS 소리가 안 남
 

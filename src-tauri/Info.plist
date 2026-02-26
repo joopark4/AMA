@@ -2,11 +2,24 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleExecutable</key>
+    <string>AMA</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>MyPartnerAI needs microphone access for voice input</string>
+    <string>AMA needs microphone access for voice input</string>
     <key>NSCameraUsageDescription</key>
-    <string>MyPartnerAI may use camera for future features</string>
+    <string>AMA may use camera for future features</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>MyPartnerAI uses speech recognition for voice commands</string>
+    <string>AMA uses speech recognition for voice commands</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.mypartnerai</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>mypartnerai</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

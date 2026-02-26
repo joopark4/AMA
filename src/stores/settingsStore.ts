@@ -4,6 +4,10 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
+  normalizeGlobalShortcutAccelerator,
+} from '../services/tauri/globalShortcutUtils';
 
 export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini';
 
@@ -31,6 +35,11 @@ export interface TTSSettings {
   voice?: string;
 }
 
+export interface GlobalShortcutSettings {
+  enabled: boolean;
+  accelerator: string;
+}
+
 export interface PhysicsSettings {
   enabled: boolean;
   gravityMultiplier: number;
@@ -40,8 +49,13 @@ export interface PhysicsSettings {
 export interface AnimationSettings {
   expressionBlendSpeed: number;
   enableGestures: boolean;
+  enableMotionClips: boolean;
+  faceExpressionOnlyMode: boolean;
+  dynamicMotionEnabled: boolean;
+  dynamicMotionBoost: number;
   enableDancing: boolean;
   danceIntensity: number;
+  motionDiversity: number;
 }
 
 export interface LightingSettings {
@@ -59,6 +73,8 @@ export interface ViewRotationSettings {
 export interface AvatarSettings {
   scale: number;
   movementSpeed: number;
+  freeMovement: boolean;
+  showSpeechBubble: boolean;
   physics: PhysicsSettings;
   animation: AnimationSettings;
   lighting: LightingSettings;
@@ -75,11 +91,14 @@ export interface Settings {
   llm: LLMSettings;
   stt: STTSettings;
   tts: TTSSettings;
+  globalShortcut: GlobalShortcutSettings;
   language: Language;
   avatarName: string;
+  avatarPersonalityPrompt: string;
   vrmModelPath: string;
   avatar: AvatarSettings;
   historyPanel: HistoryPanelSettings;
+  preferredMonitorName: string;
 }
 
 interface SettingsState {
@@ -90,9 +109,11 @@ interface SettingsState {
   setLLMSettings: (llm: Partial<LLMSettings>) => void;
   setSTTSettings: (stt: Partial<STTSettings>) => void;
   setTTSSettings: (tts: Partial<TTSSettings>) => void;
+  setGlobalShortcutSettings: (shortcut: Partial<GlobalShortcutSettings>) => void;
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
   setLanguage: (language: Language) => void;
   setAvatarName: (name: string) => void;
+  setAvatarPersonalityPrompt: (prompt: string) => void;
   setVrmModelPath: (path: string) => void;
   toggleSettings: () => void;
   openSettings: () => void;
@@ -143,6 +164,19 @@ function normalizeSupertonicVoice(voice: unknown): string {
   return 'F1';
 }
 
+function normalizeGlobalShortcutEnabled(enabled: unknown): boolean {
+  return typeof enabled === 'boolean' ? enabled : true;
+}
+
+function normalizeGlobalShortcutSettings(
+  shortcut: Partial<GlobalShortcutSettings> | undefined
+): GlobalShortcutSettings {
+  return {
+    enabled: normalizeGlobalShortcutEnabled(shortcut?.enabled),
+    accelerator: normalizeGlobalShortcutAccelerator(shortcut?.accelerator),
+  };
+}
+
 function normalizeInitialViewRotation(rotation: unknown): ViewRotationSettings {
   if (!rotation || typeof rotation !== 'object') {
     return { x: 0, y: 0 };
@@ -159,9 +193,33 @@ function normalizeInitialViewRotation(rotation: unknown): ViewRotationSettings {
   return { x, y };
 }
 
+function normalizeMotionDiversity(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1.0;
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeDynamicMotionBoost(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1.0;
+  return Math.max(0, Math.min(1.5, value));
+}
+
+function normalizeFaceExpressionOnlyMode(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : false;
+}
+
+function normalizeLanguage(language: unknown): Language {
+  if (language === 'ko' || language === 'en') return language;
+  return 'ko';
+}
+
 function normalizeAvatarName(name: unknown): string {
   if (typeof name !== 'string') return '';
   return name.trim().slice(0, 40);
+}
+
+function normalizeAvatarPersonalityPrompt(prompt: unknown): string {
+  if (typeof prompt !== 'string') return '';
+  return prompt.slice(0, 800);
 }
 
 const defaultSettings: Settings = {
@@ -178,12 +236,19 @@ const defaultSettings: Settings = {
     engine: 'supertonic',
     voice: 'F1',
   },
+  globalShortcut: {
+    enabled: true,
+    accelerator: DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
+  },
   language: 'ko',
   avatarName: '',
+  avatarPersonalityPrompt: '',
   vrmModelPath: '',
   avatar: {
     scale: 1.0,
     movementSpeed: 50,
+    freeMovement: false,
+    showSpeechBubble: true,
     physics: {
       enabled: true,
       gravityMultiplier: 1.0,
@@ -192,8 +257,13 @@ const defaultSettings: Settings = {
     animation: {
       expressionBlendSpeed: 0.1,
       enableGestures: true,
+      enableMotionClips: true,
+      faceExpressionOnlyMode: false,
+      dynamicMotionEnabled: true,
+      dynamicMotionBoost: 1.0,
       enableDancing: true,
       danceIntensity: 0.7,
+      motionDiversity: 1.0,
     },
     lighting: {
       ambientIntensity: 1.0,
@@ -211,7 +281,102 @@ const defaultSettings: Settings = {
     size: { width: 320, height: 480 },
     fontSize: 14,
   },
+  preferredMonitorName: '',
 };
+
+function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
+  const legacyAvatar = (avatar || {}) as Partial<AvatarSettings>;
+
+  return {
+    ...defaultSettings.avatar,
+    ...legacyAvatar,
+    freeMovement: typeof legacyAvatar.freeMovement === 'boolean'
+      ? legacyAvatar.freeMovement
+      : defaultSettings.avatar.freeMovement,
+    showSpeechBubble: typeof legacyAvatar.showSpeechBubble === 'boolean'
+      ? legacyAvatar.showSpeechBubble
+      : defaultSettings.avatar.showSpeechBubble,
+    physics: {
+      ...defaultSettings.avatar.physics,
+      ...(legacyAvatar.physics || {}),
+    },
+    animation: {
+      ...defaultSettings.avatar.animation,
+      ...(legacyAvatar.animation || {}),
+      motionDiversity: normalizeMotionDiversity(
+        legacyAvatar.animation?.motionDiversity
+      ),
+      dynamicMotionBoost: normalizeDynamicMotionBoost(
+        legacyAvatar.animation?.dynamicMotionBoost
+      ),
+      dynamicMotionEnabled:
+        typeof legacyAvatar.animation?.dynamicMotionEnabled === 'boolean'
+          ? legacyAvatar.animation.dynamicMotionEnabled
+          : defaultSettings.avatar.animation.dynamicMotionEnabled,
+      faceExpressionOnlyMode: normalizeFaceExpressionOnlyMode(
+        legacyAvatar.animation?.faceExpressionOnlyMode
+      ),
+    },
+    lighting: {
+      ...defaultSettings.avatar.lighting,
+      ...(legacyAvatar.lighting || {}),
+      directionalPosition: {
+        ...defaultSettings.avatar.lighting.directionalPosition,
+        ...(legacyAvatar.lighting?.directionalPosition || {}),
+      },
+    },
+    initialViewRotation: normalizeInitialViewRotation(legacyAvatar.initialViewRotation),
+  };
+}
+
+function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
+  const source = settings || {};
+
+  return {
+    ...defaultSettings,
+    ...source,
+    language: normalizeLanguage(source.language),
+    avatarName: normalizeAvatarName(source.avatarName),
+    avatarPersonalityPrompt: normalizeAvatarPersonalityPrompt(
+      source.avatarPersonalityPrompt
+    ),
+    vrmModelPath: normalizeVrmModelPath(source.vrmModelPath),
+    stt: {
+      ...(source.stt || defaultSettings.stt),
+      engine: 'whisper',
+      model: normalizeWhisperModel(source.stt?.model),
+    },
+    tts: {
+      ...(source.tts || defaultSettings.tts),
+      engine: 'supertonic',
+      voice: normalizeSupertonicVoice(source.tts?.voice),
+    },
+    globalShortcut: normalizeGlobalShortcutSettings(
+      source.globalShortcut as Partial<GlobalShortcutSettings> | undefined
+    ),
+    avatar: normalizeAvatarSettings(source.avatar),
+    historyPanel: {
+      ...defaultSettings.historyPanel,
+      ...(source.historyPanel || {}),
+      size: {
+        ...defaultSettings.historyPanel.size,
+        ...(source.historyPanel?.size || {}),
+      },
+      position:
+        source.historyPanel?.position === null || source.historyPanel?.position
+          ? source.historyPanel.position
+          : defaultSettings.historyPanel.position,
+      fontSize:
+        typeof source.historyPanel?.fontSize === 'number' && Number.isFinite(source.historyPanel.fontSize)
+          ? source.historyPanel.fontSize
+          : defaultSettings.historyPanel.fontSize,
+    },
+    preferredMonitorName:
+      typeof source.preferredMonitorName === 'string'
+        ? source.preferredMonitorName
+        : defaultSettings.preferredMonitorName,
+  };
+}
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -259,6 +424,17 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
 
+      setGlobalShortcutSettings: (shortcut) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            globalShortcut: normalizeGlobalShortcutSettings({
+              ...state.settings.globalShortcut,
+              ...shortcut,
+            }),
+          },
+        })),
+
       setAvatarSettings: (avatar) =>
         set((state) => ({
           settings: {
@@ -275,6 +451,14 @@ export const useSettingsStore = create<SettingsState>()(
       setAvatarName: (name) =>
         set((state) => ({
           settings: { ...state.settings, avatarName: normalizeAvatarName(name) },
+        })),
+
+      setAvatarPersonalityPrompt: (prompt) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            avatarPersonalityPrompt: normalizeAvatarPersonalityPrompt(prompt),
+          },
         })),
 
       setVrmModelPath: (path) =>
@@ -312,7 +496,19 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 6,
+      version: 12,
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState || {}) as Partial<SettingsState>;
+        const persistedSettings = persisted.settings as Partial<Settings> | undefined;
+
+        return {
+          ...currentState,
+          ...persisted,
+          settings: normalizeSettings(
+            persistedSettings ?? currentState.settings
+          ),
+        };
+      },
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState;
@@ -321,52 +517,9 @@ export const useSettingsStore = create<SettingsState>()(
         const state = persistedState as { settings?: Partial<Settings> } & Record<string, unknown>;
         if (!state.settings) return persistedState;
 
-        const legacyAvatar = (state.settings.avatar || {}) as Partial<AvatarSettings>;
-        const normalizedAvatar: AvatarSettings = {
-          ...defaultSettings.avatar,
-          ...legacyAvatar,
-          physics: {
-            ...defaultSettings.avatar.physics,
-            ...(legacyAvatar.physics || {}),
-          },
-          animation: {
-            ...defaultSettings.avatar.animation,
-            ...(legacyAvatar.animation || {}),
-          },
-          lighting: {
-            ...defaultSettings.avatar.lighting,
-            ...(legacyAvatar.lighting || {}),
-            directionalPosition: {
-              ...defaultSettings.avatar.lighting.directionalPosition,
-              ...(legacyAvatar.lighting?.directionalPosition || {}),
-            },
-          },
-          initialViewRotation: normalizeInitialViewRotation(legacyAvatar.initialViewRotation),
-        };
-
-        const normalizedSettings: Partial<Settings> = {
-          ...state.settings,
-          avatarName: normalizeAvatarName(state.settings.avatarName),
-          stt: {
-            ...(state.settings.stt || defaultSettings.stt),
-            engine: 'whisper',
-            model: normalizeWhisperModel(state.settings.stt?.model),
-          },
-          tts: {
-            ...(state.settings.tts || defaultSettings.tts),
-            engine: 'supertonic',
-            voice: normalizeSupertonicVoice(state.settings.tts?.voice),
-          },
-          avatar: normalizedAvatar,
-          historyPanel: (state.settings as any).historyPanel ?? defaultSettings.historyPanel,
-        };
-
         return {
           ...state,
-          settings: {
-            ...normalizedSettings,
-            vrmModelPath: normalizeVrmModelPath(normalizedSettings.vrmModelPath),
-          },
+          settings: normalizeSettings(state.settings),
         };
       },
     }
