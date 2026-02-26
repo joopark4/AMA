@@ -266,6 +266,12 @@
     "restart": "재시작",
     "progress": "{{percent}}% 완료"
   },
+  "about": {
+    "title": "AMA 정보",
+    "version": "버전",
+    "license": "라이선스",
+    "close": "닫기"
+  },
   "errors": {
     "llmConnection": "AI 서버에 연결할 수 없습니다",
     "microphoneAccess": "마이크 접근 권한이 필요합니다",
