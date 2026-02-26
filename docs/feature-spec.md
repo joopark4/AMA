@@ -540,8 +540,8 @@ Web Audio API로 TTS 오디오 분석
 
 | OS | 기본값 |
 |----|-------|
-| macOS | `Cmd+Shift+A` |
-| Windows/Linux | `Ctrl+Shift+A` |
+| macOS | `Cmd+Shift+Space` |
+| Windows/Linux | `Ctrl+Shift+Space` |
 
 ### 정책
 - **활성화 조건:** `settings.globalShortcut.enabled = true`
