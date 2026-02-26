@@ -13,6 +13,7 @@ import LightingControl from './components/avatar/LightingControl';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import ModelDownloadModal from './components/ui/ModelDownloadModal';
 import UpdateNotification from './components/ui/UpdateNotification';
+import AboutModal from './components/ui/AboutModal';
 import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useAuthStore } from './stores/authStore';
@@ -37,6 +38,7 @@ function App() {
     setPendingProvider,
   } = useAuthStore();
   const [initialAvatarName, setInitialAvatarName] = useState('');
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const { status: modelStatus, isChecking: isCheckingModels, checkModelStatus } = useModelDownloadStore();
 
   // Enable click-through for transparent window (except on interactive elements)
@@ -136,11 +138,15 @@ function App() {
     const unlistenMonitor = listen('menu-move-monitor-next', () => {
       useMonitorStore.getState().moveToNextMonitor();
     });
+    const unlistenAbout = listen('menu-about', () => {
+      setIsAboutOpen(true);
+    });
 
     return () => {
       unlistenUpdate.then((fn) => fn());
       unlistenSettings.then((fn) => fn());
       unlistenMonitor.then((fn) => fn());
+      unlistenAbout.then((fn) => fn());
     };
   }, []);
 
@@ -232,6 +238,9 @@ function App() {
       <ErrorBoundary name="UpdateNotification">
         <UpdateNotification />
       </ErrorBoundary>
+
+      {/* About modal */}
+      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
 
       {/* Model download modal (shown before onboarding) */}
       {requiresModelDownload && (
