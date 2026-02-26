@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAutoUpdateStore } from '../../hooks/useAutoUpdate';
+import { invoke } from '@tauri-apps/api/core';
 
 export default function UpdateSettings() {
   const { t } = useTranslation();
@@ -79,6 +80,21 @@ export default function UpdateSettings() {
             </div>
           </div>
         )}
+
+        {/* Model folder shortcut */}
+        <button
+          onClick={async () => {
+            try {
+              const modelPath = await invoke<string>('get_models_dir');
+              await invoke('plugin:shell|open', { path: modelPath });
+            } catch (e) {
+              console.error('Failed to open model folder:', e);
+            }
+          }}
+          className="w-full px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-left"
+        >
+          {t('settings.update.modelFolder')}
+        </button>
 
         {/* Action buttons */}
         <div className="flex gap-2">

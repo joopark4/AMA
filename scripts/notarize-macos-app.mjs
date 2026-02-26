@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { resolve, join } from 'node:path';
+import { join } from 'node:path';
+import { findAppBundleSync } from './lib/findAppBundle.mjs';
 
 function run(command, args) {
   const result = spawnSync(command, args, { stdio: 'inherit' });
@@ -16,14 +17,7 @@ function main() {
     return;
   }
 
-  const appPath = resolve(
-    process.cwd(),
-    'src-tauri/target/release/bundle/macos/AMA.app'
-  );
-
-  if (!existsSync(appPath)) {
-    throw new Error(`[notarize-macos-app] App bundle not found: ${appPath}`);
-  }
+  const appPath = findAppBundleSync();
 
   const profile = process.env.APPLE_NOTARY_PROFILE?.trim();
   const appleId = process.env.APPLE_ID?.trim();

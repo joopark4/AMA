@@ -2,6 +2,7 @@ import { access, chmod, cp, mkdir, readdir, rm, readFile } from 'node:fs/promise
 import { constants } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { findAppBundle } from './lib/findAppBundle.mjs';
 
 async function ensureExists(path, description) {
   try {
@@ -155,10 +156,7 @@ async function main() {
     process.env.PREPARE_MODELS_DIR?.trim() || 'models'
   );
   const signingIdentity = await resolveCodesignIdentity(rootDir);
-  const appBundlePath = resolve(
-    rootDir,
-    'src-tauri/target/release/bundle/macos/AMA.app'
-  );
+  const appBundlePath = await findAppBundle(rootDir);
   const resourcesDir = resolve(appBundlePath, 'Contents/Resources');
   const modelsDir = resolve(resourcesDir, 'models');
 
