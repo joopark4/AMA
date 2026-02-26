@@ -75,8 +75,8 @@ export const useModelDownloadStore = create<ModelDownloadState>()((set, get) => 
       if (modelType === 'supertonic') {
         try {
           await getSupertonicClient().dispose();
-        } catch {
-          // ignore dispose errors
+        } catch (e) {
+          console.warn('Failed to dispose SupertonicClient after model download:', e);
         }
       }
 
