@@ -16,10 +16,6 @@ export default function MonitorSettings() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium text-gray-800">
-        {t('settings.monitor.title')}
-      </h3>
-
       <p className="text-sm text-gray-500">
         {t('settings.monitor.description')}
       </p>
