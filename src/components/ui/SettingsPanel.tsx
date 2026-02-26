@@ -8,8 +8,6 @@ import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
 import MonitorSettings from '../settings/MonitorSettings';
-import UserProfile from '../auth/UserProfile';
-
 export default function SettingsPanel() {
   const { t } = useTranslation();
   const { closeSettings, setLanguage, settings, resetSettings, setAvatarSettings } = useSettingsStore();
@@ -62,11 +60,6 @@ export default function SettingsPanel() {
 
         {/* Content */}
         <div className="px-4 py-4 overflow-y-auto max-h-[calc(80vh-140px)] custom-scrollbar space-y-3">
-          {/* Account */}
-          <SettingsSection title={t('auth.profile.title')} defaultOpen>
-            <UserProfile />
-          </SettingsSection>
-
           {/* General: Language + Monitor */}
           <SettingsSection title={t('settings.general.title')} defaultOpen>
             <div className="space-y-2">
