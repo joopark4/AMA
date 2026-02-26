@@ -144,6 +144,54 @@ export default function AvatarSettings() {
         </div>
       </div>
 
+      {/* Free Movement Mode */}
+      <div className="flex items-center justify-between py-2">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-gray-700">
+            {t('settings.avatar.freeMovement.title')}
+          </span>
+          <span className="text-xs text-gray-500">
+            {t('settings.avatar.freeMovement.description')}
+          </span>
+        </div>
+        <button
+          onClick={() => setAvatarSettings({ freeMovement: !(settings.avatar?.freeMovement ?? false) })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+            settings.avatar?.freeMovement ? 'bg-blue-600' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+              settings.avatar?.freeMovement ? 'translate-x-5' : ''
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Speech Bubble Toggle */}
+      <div className="flex items-center justify-between py-2">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-gray-700">
+            {t('settings.avatar.speechBubble.title')}
+          </span>
+          <span className="text-xs text-gray-500">
+            {t('settings.avatar.speechBubble.description')}
+          </span>
+        </div>
+        <button
+          onClick={() => setAvatarSettings({ showSpeechBubble: !(settings.avatar?.showSpeechBubble ?? true) })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+            settings.avatar?.showSpeechBubble !== false ? 'bg-blue-600' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+              settings.avatar?.showSpeechBubble !== false ? 'translate-x-5' : ''
+            }`}
+          />
+        </button>
+      </div>
+
       {/* Expression Control */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
