@@ -16,13 +16,17 @@ function main() {
     return;
   }
 
-  const appPath = resolve(
-    process.cwd(),
-    'src-tauri/target/release/bundle/macos/AMA.app'
-  );
+  const candidatePaths = [
+    process.env.CARGO_TARGET_DIR && resolve(process.env.CARGO_TARGET_DIR, 'release/bundle/macos/AMA.app'),
+    resolve(process.env.HOME || '', 'Library/Caches/mypartnerai-build/release/bundle/macos/AMA.app'),
+    resolve(process.cwd(), 'src-tauri/target/release/bundle/macos/AMA.app'),
+    '/tmp/ama-build/release/bundle/macos/AMA.app',
+    resolve(process.cwd(), '.build/release/bundle/macos/AMA.app'),
+  ].filter(Boolean);
+  const appPath = candidatePaths.find(p => existsSync(p));
 
-  if (!existsSync(appPath)) {
-    throw new Error(`[notarize-macos-app] App bundle not found: ${appPath}`);
+  if (!appPath) {
+    throw new Error(`[notarize-macos-app] App bundle not found. Checked: ${candidatePaths.join(', ')}`);
   }
 
   const profile = process.env.APPLE_NOTARY_PROFILE?.trim();
