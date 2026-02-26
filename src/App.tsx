@@ -201,7 +201,7 @@ function App() {
       </ErrorBoundary>
 
       {/* Speech Bubble - shows AI responses */}
-      {currentResponse && (
+      {currentResponse && settings.avatar?.showSpeechBubble !== false && (
         <ErrorBoundary name="SpeechBubble">
           <SpeechBubble message={currentResponse} />
         </ErrorBoundary>
