@@ -160,7 +160,8 @@
       "checkButton": "업데이트 확인",
       "checking": "확인 중...",
       "upToDate": "최신 버전입니다",
-      "error": "업데이트 확인 실패"
+      "error": "업데이트 확인 실패",
+      "modelFolder": "다운로드 모델 폴더 열기"
     },
     "licenses": {
       "title": "오픈소스/모델 라이선스",
