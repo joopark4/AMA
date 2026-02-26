@@ -2,6 +2,7 @@ import { access, chmod, cp, mkdir, readdir, rm, readFile } from 'node:fs/promise
 import { constants } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { findAppBundle } from './lib/findAppBundle.mjs';
 
 async function ensureExists(path, description) {
   try {
@@ -155,14 +156,7 @@ async function main() {
     process.env.PREPARE_MODELS_DIR?.trim() || 'models'
   );
   const signingIdentity = await resolveCodesignIdentity(rootDir);
-  const candidatePaths = [
-    process.env.CARGO_TARGET_DIR && resolve(process.env.CARGO_TARGET_DIR, 'release/bundle/macos/AMA.app'),
-    resolve(process.env.HOME || '', 'Library/Caches/mypartnerai-build/release/bundle/macos/AMA.app'),
-    resolve(rootDir, 'src-tauri/target/release/bundle/macos/AMA.app'),
-    '/tmp/ama-build/release/bundle/macos/AMA.app',
-    resolve(rootDir, '.build/release/bundle/macos/AMA.app'),
-  ];
-  const appBundlePath = await findExistingPath(candidatePaths, 'Built app bundle');
+  const appBundlePath = await findAppBundle(rootDir);
   const resourcesDir = resolve(appBundlePath, 'Contents/Resources');
   const modelsDir = resolve(resourcesDir, 'models');
 

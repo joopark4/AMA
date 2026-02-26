@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { findAppBundleSync } from './lib/findAppBundle.mjs';
 
 function run(command, args) {
   const result = spawnSync(command, args, { stdio: 'inherit' });
@@ -15,20 +16,9 @@ function main() {
     return;
   }
 
-  const candidatePaths = [
-    process.env.CARGO_TARGET_DIR && resolve(process.env.CARGO_TARGET_DIR, 'release/bundle/macos/AMA.app'),
-    resolve(process.env.HOME || '', 'Library/Caches/mypartnerai-build/release/bundle/macos/AMA.app'),
-    resolve(process.cwd(), 'src-tauri/target/release/bundle/macos/AMA.app'),
-    '/tmp/ama-build/release/bundle/macos/AMA.app',
-    resolve(process.cwd(), '.build/release/bundle/macos/AMA.app'),
-  ].filter(Boolean);
-  const appPath = candidatePaths.find(p => existsSync(p));
+  const appPath = findAppBundleSync();
   const entitlementsPath = resolve(process.cwd(), 'src-tauri/entitlements.plist');
   const signingIdentity = process.env.APPLE_CODESIGN_IDENTITY || '-';
-
-  if (!appPath) {
-    throw new Error(`[sign-macos-app] App bundle not found. Checked: ${candidatePaths.join(', ')}`);
-  }
 
   const isDeveloperIdSigning = signingIdentity !== '-';
   const signArgs = ['--force', '--deep', '--sign', signingIdentity];

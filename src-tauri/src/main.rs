@@ -145,6 +145,9 @@ fn main() {
                     let logical_w = monitor_size.width as f64 / scale;
                     let logical_h = monitor_size.height as f64 / scale;
 
+                    let target_pos = tauri::LogicalPosition { x: logical_x, y: logical_y };
+                    let target_size = tauri::LogicalSize { width: logical_w, height: logical_h };
+
                     let _ = window.set_resizable(true);
 
                     // 1. Shrink first to avoid macOS constraining position
@@ -154,26 +157,13 @@ fn main() {
                     }));
 
                     // 2. Move to target position
-                    let _ = window.set_position(tauri::Position::Logical(
-                        tauri::LogicalPosition {
-                            x: logical_x,
-                            y: logical_y,
-                        },
-                    ));
+                    let _ = window.set_position(tauri::Position::Logical(target_pos));
 
                     // 3. Expand to fill monitor
-                    let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
-                        width: logical_w,
-                        height: logical_h,
-                    }));
+                    let _ = window.set_size(tauri::Size::Logical(target_size));
 
                     // 4. Re-set position after resize (macOS Y correction)
-                    let _ = window.set_position(tauri::Position::Logical(
-                        tauri::LogicalPosition {
-                            x: logical_x,
-                            y: logical_y,
-                        },
-                    ));
+                    let _ = window.set_position(tauri::Position::Logical(target_pos));
 
                     let _ = window.set_resizable(false);
                 }
