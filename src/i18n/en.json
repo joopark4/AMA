@@ -6,6 +6,9 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
+    "general": {
+      "title": "General"
+    },
     "monitor": {
       "title": "Monitor",
       "description": "Select a monitor to display the avatar on.",

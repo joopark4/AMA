@@ -64,10 +64,6 @@ export default function AvatarSettings() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium text-gray-800">
-        {t('settings.avatar.title')}
-      </h3>
-
       {/* VRM Model Path */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
