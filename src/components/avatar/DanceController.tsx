@@ -142,13 +142,6 @@ export default function DanceController() {
     }
   }, [isDancing, vrm]);
 
-  // Auto-start dancing when enabled in settings (for demo purposes)
-  useEffect(() => {
-    if (settings.avatar?.animation?.enableDancing && !isDancing) {
-      // Can start dancing automatically or wait for trigger
-    }
-  }, [settings.avatar?.animation?.enableDancing, isDancing]);
-
   useFrame((_, delta) => {
     if (!vrm?.humanoid) return;
     if (!settings.avatar?.animation?.enableDancing) return;

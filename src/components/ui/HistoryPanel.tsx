@@ -3,6 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
+function clampPanelPosition(
+  pos: { x: number; y: number },
+  panelSize: { width: number; height: number }
+) {
+  return {
+    x: Math.max(0, Math.min(window.innerWidth - panelSize.width, pos.x)),
+    y: Math.max(0, Math.min(window.innerHeight - 60, pos.y)),
+  };
+}
+
 export default function HistoryPanel() {
   const { t } = useTranslation();
   const { messages, clearMessages } = useConversationStore();
@@ -22,7 +32,7 @@ export default function HistoryPanel() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // First-mount: set position to top-right if not yet stored
+  // First-mount: set position to top-right if not yet stored; clamp if stored
   useEffect(() => {
     if (position === null) {
       setHistoryPanelSettings({
@@ -31,8 +41,28 @@ export default function HistoryPanel() {
           y: 16,
         },
       });
+    } else {
+      const clamped = clampPanelPosition(position, size);
+      if (clamped.x !== position.x || clamped.y !== position.y) {
+        setHistoryPanelSettings({ position: clamped });
+      }
     }
-  }, [position, setHistoryPanelSettings, size.width]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Clamp position on resize (monitor change, resolution change)
+  useEffect(() => {
+    const handleResize = () => {
+      if (position) {
+        const clamped = clampPanelPosition(position, size);
+        if (clamped.x !== position.x || clamped.y !== position.y) {
+          setHistoryPanelSettings({ position: clamped });
+        }
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [position, size, setHistoryPanelSettings]);
 
   // 패널 마운트 시 기존 대화 기록 하단으로 즉시 스크롤
   useEffect(() => {
@@ -125,21 +155,21 @@ export default function HistoryPanel() {
           <button
             onClick={decreaseFontSize}
             className="px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-600 transition-colors"
-            title="글자 크기 줄이기"
+            title={t('history.decreaseFontSize')}
           >
             A-
           </button>
           <button
             onClick={increaseFontSize}
             className="px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-600 transition-colors"
-            title="글자 크기 늘리기"
+            title={t('history.increaseFontSize')}
           >
             A+
           </button>
           <button
             onClick={closeHistory}
             className="ml-1 px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-500 transition-colors"
-            title="닫기"
+            title={t('history.close')}
           >
             ×
           </button>
