@@ -67,6 +67,10 @@ export class WindowManager {
   async getCurrentMonitor(): Promise<MonitorInfo> {
     return await invoke<MonitorInfo>('get_current_monitor');
   }
+
+  async logToTerminal(message: string): Promise<void> {
+    await invoke('log_to_terminal', { message });
+  }
 }
 
 export const windowManager = new WindowManager();
