@@ -21,6 +21,8 @@ target/
 .DS_Store
 **/.DS_Store
 Thumbs.db
+._*
+**/._*
 
 # Logs
 *.log
@@ -56,5 +58,5 @@ AGENTS.md
 GEMINI.md
 
 # Documents
-docs/
 release/
+#docs/

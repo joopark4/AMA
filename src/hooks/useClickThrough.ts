@@ -8,48 +8,31 @@ const POLL_INTERVAL = 30;
 // Delay before enabling click-through after leaving interactive area
 const CLICK_THROUGH_DELAY = 180;
 const CURSOR_SANITY_MARGIN = 120;
-const AVATAR_FALLBACK_HALF_WIDTH = 280;
-const AVATAR_FALLBACK_HEIGHT_ABOVE_FEET = 780;
-const AVATAR_FALLBACK_HEIGHT_BELOW_FEET = 160;
+
+// Tight body-only hitbox (fallback when interactionBounds not available).
+// These define a slim column around the avatar's feet position.
+const BODY_HALF_WIDTH = 100;
+const BODY_HEIGHT_ABOVE_FEET = 450;
+const BODY_HEIGHT_BELOW_FEET = 30;
 
 function isPointInsideRect(x: number, y: number, rect: DOMRect): boolean {
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-}
-
-type CursorPoint = { x: number; y: number };
-
-function buildCursorCandidates(
-  cursorX: number,
-  cursorY: number,
-  windowLeft: number,
-  windowTop: number,
-  dpr: number
-): CursorPoint[] {
-  const base: CursorPoint[] = [
-    // Global -> local (logical)
-    { x: cursorX - windowLeft, y: cursorY - windowTop },
-    // Global physical -> local logical
-    { x: cursorX / dpr - windowLeft, y: cursorY / dpr - windowTop },
-    // Raw fallback (some environments already report local-ish values)
-    { x: cursorX, y: cursorY },
-    { x: cursorX / dpr, y: cursorY / dpr },
-  ];
-
-  // Deduplicate near-identical candidates to keep checks lightweight.
-  const unique: CursorPoint[] = [];
-  for (const p of base) {
-    const exists = unique.some(
-      (u) => Math.abs(u.x - p.x) < 0.5 && Math.abs(u.y - p.y) < 0.5
-    );
-    if (!exists) unique.push(p);
-  }
-  return unique;
 }
 
 /**
  * Hook to manage click-through behavior for transparent windows.
  * Uses global cursor position polling since mouse events are not received
  * when click-through is enabled.
+ *
+ * The Rust backend returns cursor position already converted to
+ * window-local coordinates (logical pixels), so no frontend
+ * coordinate conversion is needed.
+ *
+ * The avatar hit area uses the center of the 3D AABB (interactionBounds)
+ * with a tight body-only rectangle, ignoring hair/accessories that make
+ * the raw AABB much larger than the visible body.
+ * interactionBounds updates every animation frame, so the hit area
+ * tracks the avatar's position and scale in real time.
  */
 export function useClickThrough() {
   const lastStateRef = useRef<boolean | null>(null);
@@ -71,36 +54,24 @@ export function useClickThrough() {
 
   const checkCursorPosition = useCallback(async () => {
     try {
+      // Rust returns window-local coordinates (logical pixels)
       const cursor = await windowManager.getCursorPosition();
-      const windowLeft = window.screenX || 0;
-      const windowTop = window.screenY || 0;
+      const mouseX = cursor.x;
+      const mouseY = cursor.y;
 
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      const mouseCandidates = buildCursorCandidates(
-        cursor.x,
-        cursor.y,
-        windowLeft,
-        windowTop,
-        dpr
-      );
 
-      const anyCursorMatches = (predicate: (x: number, y: number) => boolean) =>
-        mouseCandidates.some((p) => predicate(p.x, p.y));
+      // Check if cursor is within or near the window
+      const isPlausible =
+        mouseX >= -CURSOR_SANITY_MARGIN &&
+        mouseX <= viewportWidth + CURSOR_SANITY_MARGIN &&
+        mouseY >= -CURSOR_SANITY_MARGIN &&
+        mouseY <= viewportHeight + CURSOR_SANITY_MARGIN;
 
-      const hasPlausibleCursorCandidate = mouseCandidates.some(
-        (p) =>
-          p.x >= -CURSOR_SANITY_MARGIN &&
-          p.x <= viewportWidth + CURSOR_SANITY_MARGIN &&
-          p.y >= -CURSOR_SANITY_MARGIN &&
-          p.y <= viewportHeight + CURSOR_SANITY_MARGIN
-      );
-
-      // If cursor conversion looks invalid, fail-safe to interactive mode
-      // so avatar/buttons remain selectable instead of becoming unclickable.
-      if (!hasPlausibleCursorCandidate) {
-        await updateClickThrough(false);
+      // If cursor is far from window, enable click-through
+      if (!isPlausible) {
+        await updateClickThrough(true);
         return;
       }
 
@@ -109,49 +80,57 @@ export function useClickThrough() {
       const settingsState = useSettingsStore.getState();
       const avatarPos = avatarState.position;
       const interactionBounds = avatarState.interactionBounds;
+      const avatarScale = settingsState.settings.avatar?.scale || 1.0;
 
-      // Fallback hitbox uses a simple fixed rectangle centered on the avatar feet anchor.
-      const avatarLeft = avatarPos.x - AVATAR_FALLBACK_HALF_WIDTH;
-      const avatarRight = avatarPos.x + AVATAR_FALLBACK_HALF_WIDTH;
-      const avatarTop = avatarPos.y - AVATAR_FALLBACK_HEIGHT_ABOVE_FEET;
-      const avatarBottom = avatarPos.y + AVATAR_FALLBACK_HEIGHT_BELOW_FEET;
+      // Build a body hitbox from the 3D AABB (interactionBounds).
+      // The AABB includes hair, accessories, etc. so we trim it to the
+      // visible body area. Use 55% of width (body + shoulders) centered,
+      // and skip top 15% (hair tips only).
+      // When unavailable, fall back to fixed constants around avatar feet.
+      let hitLeft: number, hitRight: number, hitTop: number, hitBottom: number;
+      if (interactionBounds) {
+        const ibW = interactionBounds.right - interactionBounds.left;
+        const ibH = interactionBounds.bottom - interactionBounds.top;
+        const centerX = (interactionBounds.left + interactionBounds.right) / 2;
 
-      const isOverAvatar = interactionBounds
-        ? anyCursorMatches(
-            (x, y) =>
-              x >= interactionBounds.left &&
-              x <= interactionBounds.right &&
-              y >= interactionBounds.top &&
-              y <= interactionBounds.bottom
-          )
-        : anyCursorMatches(
-            (x, y) =>
-              x >= avatarLeft &&
-              x <= avatarRight &&
-              y >= avatarTop &&
-              y <= avatarBottom
-          );
+        // Body column: 55% of AABB width (body + shoulders)
+        const bodyW = ibW * 0.55;
+        hitLeft = centerX - bodyW / 2;
+        hitRight = centerX + bodyW / 2;
+
+        // Vertical: keep bottom 85% of AABB (skip top 15% = hair tips only)
+        hitTop = interactionBounds.top + ibH * 0.15;
+        hitBottom = interactionBounds.bottom;
+      } else {
+        const hw = BODY_HALF_WIDTH * avatarScale;
+        hitLeft = avatarPos.x - hw;
+        hitRight = avatarPos.x + hw;
+        hitTop = avatarPos.y - BODY_HEIGHT_ABOVE_FEET * avatarScale;
+        hitBottom = avatarPos.y + BODY_HEIGHT_BELOW_FEET * avatarScale;
+      }
+
+      const isOverAvatar =
+        mouseX >= hitLeft &&
+        mouseX <= hitRight &&
+        mouseY >= hitTop &&
+        mouseY <= hitBottom;
 
       // Check if mouse is over sun (lighting control)
-      // Sun is positioned relative to avatar center (fixed distance regardless of scale)
       const lightPos = settingsState.settings.avatar?.lighting?.directionalPosition || { x: 0, y: 1, z: 2 };
       const sunOffsetX = (lightPos.x / 5) * 200;
       const sunOffsetY = -(lightPos.y / 5) * 300;
       const avatarCenterY = avatarPos.y - 150;
       const sunX = avatarPos.x + sunOffsetX;
       const sunY = avatarCenterY + sunOffsetY;
-      const sunRadius = 30; // Clickable area around sun
+      const sunRadius = 30;
 
-      const isOverSun = anyCursorMatches(
-        (x, y) =>
-          x >= sunX - sunRadius &&
-          x <= sunX + sunRadius &&
-          y >= sunY - sunRadius &&
-          y <= sunY + sunRadius
-      );
+      const isOverSun =
+        mouseX >= sunX - sunRadius &&
+        mouseX <= sunX + sunRadius &&
+        mouseY >= sunY - sunRadius &&
+        mouseY <= sunY + sunRadius;
 
       // Check any declared interactive DOM region.
-      // This is more robust than hardcoded bottom-right bounds.
       const interactiveElements = Array.from(
         document.querySelectorAll<HTMLElement>('[data-interactive="true"]')
       );
@@ -160,7 +139,7 @@ export function useClickThrough() {
         if (style.display === 'none' || style.visibility === 'hidden') return false;
         const rect = el.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) return false;
-        return mouseCandidates.some((p) => isPointInsideRect(p.x, p.y, rect));
+        return isPointInsideRect(mouseX, mouseY, rect);
       });
 
       // Check if settings panel is open (full screen interactive)
