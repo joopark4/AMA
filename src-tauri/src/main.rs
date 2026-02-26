@@ -57,6 +57,9 @@ fn main() {
                     "open_settings" => {
                         let _ = window.emit("menu-open-settings", ());
                     }
+                    "about_ama" => {
+                        let _ = window.emit("menu-about", ());
+                    }
                     "move_monitor_next" => {
                         let _ = window.emit("menu-move-monitor-next", ());
                     }
@@ -81,8 +84,16 @@ fn main() {
                 Some("CmdOrCtrl+,"),
             )?;
 
+            let about_ama = MenuItem::with_id(
+                app,
+                "about_ama",
+                "About AMA",
+                true,
+                None::<&str>,
+            )?;
+
             let app_submenu = SubmenuBuilder::new(app, "AMA")
-                .about(None)
+                .item(&about_ama)
                 .separator()
                 .item(&check_update)
                 .separator()
