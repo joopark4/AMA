@@ -28,10 +28,6 @@ export default function UpdateSettings() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium text-gray-800">
-        {t('settings.update.title')}
-      </h3>
-
       <div className="p-4 bg-gray-50 rounded-lg space-y-3">
         {/* Current version */}
         <div className="flex items-center justify-between">

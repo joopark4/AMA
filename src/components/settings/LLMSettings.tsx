@@ -447,7 +447,7 @@ export default function LLMSettings() {
   const [modelStatuses, setModelStatuses] = useState<Record<string, ModelStatus>>({});
   const [modelCheckNote, setModelCheckNote] = useState<string | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  // isExpanded state removed — collapse is now handled by SettingsSection wrapper
 
   const currentProvider = settings.llm.provider;
   const isCloudProvider = isCloudProviderValue(currentProvider);
@@ -569,19 +569,6 @@ export default function LLMSettings() {
 
   return (
     <div className="space-y-4">
-      <button
-        type="button"
-        onClick={() => setIsExpanded((prev) => !prev)}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
-      >
-        <h3 className="text-lg font-medium text-gray-800">{t('settings.llm.title')}</h3>
-        <span className="text-xs text-gray-500">
-          {isExpanded ? t('settings.llm.collapse') : t('settings.llm.expand')}
-        </span>
-      </button>
-
-      {isExpanded && (
-        <>
           {/* Provider Selection */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
@@ -706,8 +693,6 @@ export default function LLMSettings() {
               </p>
             </div>
           )}
-        </>
-      )}
     </div>
   );
 }
