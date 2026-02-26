@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useConversationStore } from '../stores/conversationStore';
 import { useAvatarStore, type Emotion, type GestureType } from '../stores/avatarStore';
 import { useSettingsStore, type Language } from '../stores/settingsStore';
+import { useModelDownloadStore } from '../stores/modelDownloadStore';
 import { llmRouter } from '../services/ai/llmRouter';
 import { screenAnalyzer } from '../services/ai/screenAnalyzer';
 import { useSpeechSynthesis } from './useSpeechSynthesis';
@@ -261,6 +262,7 @@ export function useConversation(): UseConversationReturn {
   const isProcessingRef = useRef(false);
   const localRecordingRef = useRef(false);
   const { settings, openSettings, closeSettings, setLanguage } = useSettingsStore();
+  const modelStatus = useModelDownloadStore((s) => s.status);
 
   const {
     addMessage,
@@ -481,7 +483,7 @@ export function useConversation(): UseConversationReturn {
     return () => {
       cancelled = true;
     };
-  }, [runtimeVoiceInputBlockReason, settings.stt.model]);
+  }, [runtimeVoiceInputBlockReason, settings.stt.model, modelStatus?.whisperBaseReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -505,7 +507,7 @@ export function useConversation(): UseConversationReturn {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [modelStatus?.supertonicReady]);
 
   const transcribeWithLocalWhisper = useCallback(async (audioData: ArrayBuffer): Promise<string> => {
     const audioBase64 = arrayBufferToBase64(audioData);
