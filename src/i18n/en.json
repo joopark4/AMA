@@ -138,6 +138,14 @@
         "showIcon": "Show Light Icon",
         "dragHint": "Drag the sun icon near the avatar to adjust light direction."
       },
+      "freeMovement": {
+        "title": "Free Movement",
+        "description": "Place the avatar anywhere on screen. It can also be moved off-screen."
+      },
+      "speechBubble": {
+        "title": "Speech Bubble",
+        "description": "Display AI responses as a speech bubble above the avatar."
+      },
       "info": "Supported format: VRM 0.x and 1.0 models. Recommended file size: under 30MB for smooth performance."
     },
     "save": "Save",

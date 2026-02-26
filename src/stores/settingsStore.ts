@@ -73,6 +73,8 @@ export interface ViewRotationSettings {
 export interface AvatarSettings {
   scale: number;
   movementSpeed: number;
+  freeMovement: boolean;
+  showSpeechBubble: boolean;
   physics: PhysicsSettings;
   animation: AnimationSettings;
   lighting: LightingSettings;
@@ -245,6 +247,8 @@ const defaultSettings: Settings = {
   avatar: {
     scale: 1.0,
     movementSpeed: 50,
+    freeMovement: false,
+    showSpeechBubble: true,
     physics: {
       enabled: true,
       gravityMultiplier: 1.0,
@@ -286,6 +290,12 @@ function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): A
   return {
     ...defaultSettings.avatar,
     ...legacyAvatar,
+    freeMovement: typeof legacyAvatar.freeMovement === 'boolean'
+      ? legacyAvatar.freeMovement
+      : defaultSettings.avatar.freeMovement,
+    showSpeechBubble: typeof legacyAvatar.showSpeechBubble === 'boolean'
+      ? legacyAvatar.showSpeechBubble
+      : defaultSettings.avatar.showSpeechBubble,
     physics: {
       ...defaultSettings.avatar.physics,
       ...(legacyAvatar.physics || {}),
@@ -486,7 +496,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 11,
+      version: 12,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;

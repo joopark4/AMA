@@ -6,7 +6,7 @@
 
 - 파일: `src/stores/settingsStore.ts`
 - persist key: `mypartnerai-settings`
-- persist version: `10`
+- persist version: `12`
 
 ## 설정 스키마 (요약)
 
@@ -32,6 +32,8 @@ interface Settings {
   avatar: {
     scale: number;
     movementSpeed: number;
+    freeMovement: boolean;      // 자유 이동 모드 (기본: false)
+    showSpeechBubble: boolean;  // 말풍선 표시 (기본: true)
     physics: {
       enabled: boolean;
       gravityMultiplier: number;
@@ -84,6 +86,10 @@ interface Settings {
 
 ### 아바타 이름
 - trim + 최대 40자 제한
+
+### 자유 이동 / 말풍선
+- `freeMovement`: boolean 타입 검증, 기본값 `false`
+- `showSpeechBubble`: boolean 타입 검증, 기본값 `true`
 
 ## UI 연결
 
