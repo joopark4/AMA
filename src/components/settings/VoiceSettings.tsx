@@ -116,10 +116,6 @@ export default function VoiceSettings() {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium text-gray-800">
-        {t('settings.voice.title')}
-      </h3>
-
       {/* STT Settings - Whisper */}
       <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
         <h4 className="text-sm font-medium text-gray-700">

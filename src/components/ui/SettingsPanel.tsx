@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
+import SettingsSection from '../settings/SettingsSection';
 import LLMSettings from '../settings/LLMSettings';
 import VoiceSettings from '../settings/VoiceSettings';
 import AvatarSettings from '../settings/AvatarSettings';
@@ -33,9 +34,9 @@ export default function SettingsPanel() {
       />
 
       {/* Panel */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
+      <div className="relative bg-gray-100 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
           <h2 className="text-xl font-semibold text-gray-800">
             {t('settings.title')}
           </h2>
@@ -60,46 +61,58 @@ export default function SettingsPanel() {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)] custom-scrollbar space-y-6">
+        <div className="px-4 py-4 overflow-y-auto max-h-[calc(80vh-140px)] custom-scrollbar space-y-3">
           {/* Account */}
-          <UserProfile />
+          <SettingsSection title={t('auth.profile.title')} defaultOpen>
+            <UserProfile />
+          </SettingsSection>
 
-          {/* Language Setting */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {t('settings.language')}
-            </label>
-            <select
-              value={settings.language}
-              onChange={(e) => setLanguage(e.target.value as 'ko' | 'en')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="ko">한국어</option>
-              <option value="en">English</option>
-            </select>
-          </div>
-
-          {/* Monitor Settings (hidden when single monitor) */}
-          <MonitorSettings />
+          {/* General: Language + Monitor */}
+          <SettingsSection title={t('settings.general.title')} defaultOpen>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                {t('settings.language')}
+              </label>
+              <select
+                value={settings.language}
+                onChange={(e) => setLanguage(e.target.value as 'ko' | 'en')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <MonitorSettings />
+          </SettingsSection>
 
           {/* LLM Settings */}
-          <LLMSettings />
+          <SettingsSection title={t('settings.llm.title')}>
+            <LLMSettings />
+          </SettingsSection>
 
           {/* Voice Settings */}
-          <VoiceSettings />
+          <SettingsSection title={t('settings.voice.title')}>
+            <VoiceSettings />
+          </SettingsSection>
 
           {/* Avatar Settings */}
-          <AvatarSettings />
+          <SettingsSection title={t('settings.avatar.title')}>
+            <AvatarSettings />
+          </SettingsSection>
 
           {/* Update Settings */}
-          <UpdateSettings />
+          <SettingsSection title={t('settings.update.title')}>
+            <UpdateSettings />
+          </SettingsSection>
 
           {/* License Settings */}
-          <LicensesSettings />
+          <SettingsSection title={t('settings.licenses.title')}>
+            <LicensesSettings />
+          </SettingsSection>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white">
           <button
             onClick={resetSettings}
             className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
