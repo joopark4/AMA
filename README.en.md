@@ -21,6 +21,7 @@ Korean version: [README.md](README.md)
 - Voice:
   - STT: Whisper local (`base/small/medium`)
   - TTS: Supertonic (`F1~F5`, `M1~M5`)
+  - Global shortcut: default `Cmd+Shift+Space` (works regardless of focused app)
 - When a remote session is detected:
   - Voice input (STT) is blocked
   - Text chat remains available
@@ -120,7 +121,18 @@ npm run tauri build
    - LLM provider/model
    - Whisper model (`base/small/medium`)
    - Supertonic voice
+   - Global voice shortcut on/off and key binding
 4. Start chatting via microphone or text input
+
+## Global Voice Shortcut
+
+- Default: `Cmd+Shift+Space`
+- Behavior: press once to start voice input, press again to stop
+- Location: `Settings > Voice > Global Voice Shortcut`
+- Input method: focus the shortcut field and press your key combo directly
+- If registration fails:
+  - Use the in-app warning toast action to open Accessibility settings
+  - Switch to a different combo if another app/system shortcut conflicts
 
 ## Models / Runtime
 
@@ -232,6 +244,7 @@ Notes:
 - Check whether you are in a remote session
 - Check microphone permission
 - Check Whisper model/runtime file paths
+- If using the global shortcut, also check Accessibility permission and shortcut conflicts
 
 ### 2) TTS has no sound
 

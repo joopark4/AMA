@@ -41,7 +41,7 @@ export default defineConfig({
   },
   // WASM 모듈 특수 처리
   optimizeDeps: {
-    exclude: ['@huggingface/transformers'],
+    exclude: ['@huggingface/transformers', 'onnxruntime-web'],
   },
   // WASM 파일 처리
   assetsInclude: ['**/*.wasm'],

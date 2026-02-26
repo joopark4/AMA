@@ -62,12 +62,16 @@ export default function DragController() {
     let newX = positionStartRef.current.x + dx;
     let newY = positionStartRef.current.y + dy;
 
-    // Clamp to bounds
-    newX = Math.max(bounds.minX, Math.min(bounds.maxX, newX));
-    newY = Math.max(bounds.minY, Math.min(bounds.maxY, newY));
+    const freeMovement = settings.avatar?.freeMovement ?? false;
+    if (!freeMovement) {
+      // Normal mode: clamp to bounds
+      newX = Math.max(bounds.minX, Math.min(bounds.maxX, newX));
+      newY = Math.max(bounds.minY, Math.min(bounds.maxY, newY));
+    }
+    // Free movement: no clamp, allow off-screen
 
     setPosition({ x: newX, y: newY });
-  }, [isDragging, bounds, setPosition]);
+  }, [isDragging, bounds, setPosition, settings.avatar?.freeMovement]);
 
   const handleMouseUp = useCallback(() => {
     if (isDragging) {

@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
 import StatusIndicator from './components/ui/StatusIndicator';
@@ -7,17 +11,33 @@ import SettingsPanel from './components/ui/SettingsPanel';
 import HistoryPanel from './components/ui/HistoryPanel';
 import LightingControl from './components/avatar/LightingControl';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import ModelDownloadModal from './components/ui/ModelDownloadModal';
+import UpdateNotification from './components/ui/UpdateNotification';
 import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
+import { useAuthStore } from './stores/authStore';
+import { useModelDownloadStore } from './stores/modelDownloadStore';
+import { useAutoUpdateStore } from './hooks/useAutoUpdate';
 import { useClickThrough } from './hooks/useClickThrough';
+import { useMonitorStore } from './stores/monitorStore';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
+import { authService } from './services/auth/authService';
 
 function App() {
   const { i18n, t } = useTranslation();
   const { settings, isSettingsOpen, isHistoryOpen, setLLMSettings, setAvatarName } = useSettingsStore();
   const { currentResponse, isProcessing } = useConversationStore();
+  const {
+    pendingProvider,
+    setUser,
+    setTokens,
+    setLoading,
+    setError,
+    setPendingProvider,
+  } = useAuthStore();
   const [initialAvatarName, setInitialAvatarName] = useState('');
+  const { status: modelStatus, isChecking: isCheckingModels, checkModelStatus } = useModelDownloadStore();
 
   // Enable click-through for transparent window (except on interactive elements)
   useClickThrough();
@@ -31,6 +51,111 @@ function App() {
       setInitialAvatarName(settings.avatarName);
     }
   }, [settings.avatarName, initialAvatarName]);
+
+  // Deep-link OAuth 콜백 처리
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    onOpenUrl(async (urls) => {
+      const callbackUrl = urls.find((u) => u.includes('auth/callback'));
+      if (!callbackUrl) return;
+
+      try {
+        const params: { code?: string; state?: string; error?: string } =
+          await invoke('parse_auth_callback', { url: callbackUrl });
+
+        if (params.error) {
+          setError(t('auth.errors.cancelled'));
+          setLoading(false);
+          return;
+        }
+
+        if (!params.code) {
+          setError(t('auth.errors.failed'));
+          setLoading(false);
+          return;
+        }
+
+        if (!pendingProvider) {
+          setLoading(false);
+          return;
+        }
+
+        const result = await authService.handleCallback(params.code, params.state ?? '', '');
+
+        setUser(result.user);
+        setTokens(result.tokens);
+
+        // OAuth 닉네임을 아바타 이름 초기값으로 연동
+        if (result.user.nickname && !(settings.avatarName || '').trim()) {
+          setAvatarName(result.user.nickname);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(t('auth.errors.networkError') + ': ' + message);
+      } finally {
+        setLoading(false);
+        setPendingProvider(null);
+      }
+    }).then((fn) => { unlisten = fn; });
+
+    return () => { unlisten?.(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingProvider]);
+
+  // Check model download status on startup (production only)
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    checkModelStatus().catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Dev mode: F12 to open devtools
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'F12') {
+        const win = getCurrentWebviewWindow() as any;
+        win.openDevtools?.();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Listen for native menu events
+  useEffect(() => {
+    const unlistenUpdate = listen('menu-check-update', () => {
+      useAutoUpdateStore.getState().checkForUpdate();
+    });
+    const unlistenSettings = listen('menu-open-settings', () => {
+      useSettingsStore.getState().openSettings();
+    });
+    const unlistenMonitor = listen('menu-move-monitor-next', () => {
+      useMonitorStore.getState().moveToNextMonitor();
+    });
+
+    return () => {
+      unlistenUpdate.then((fn) => fn());
+      unlistenSettings.then((fn) => fn());
+      unlistenMonitor.then((fn) => fn());
+    };
+  }, []);
+
+  // Restore preferred monitor on startup
+  useEffect(() => {
+    const restore = async () => {
+      const store = useMonitorStore.getState();
+      await store.fetchMonitors();
+      const preferred = settings.preferredMonitorName;
+      if (!preferred) return;
+      const { monitors } = useMonitorStore.getState();
+      const idx = monitors.findIndex((m) => m.name === preferred);
+      if (idx >= 0) await store.moveToMonitor(idx);
+    };
+    restore();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-detect and set available Ollama model on startup
   useEffect(() => {
@@ -55,8 +180,13 @@ function App() {
 
 
   const isDevBuild = Boolean((import.meta as any)?.env?.DEV);
+  const requiresModelDownload =
+    !isDevBuild &&
+    !isCheckingModels &&
+    modelStatus !== null &&
+    (!modelStatus.supertonicReady || !modelStatus.whisperBaseReady);
   const requiresAvatarNameSetup =
-    !isDevBuild && !(settings.avatarName || '').trim();
+    !requiresModelDownload && !isDevBuild && !(settings.avatarName || '').trim();
 
   return (
     <div className="w-full h-full relative">
@@ -71,7 +201,7 @@ function App() {
       </ErrorBoundary>
 
       {/* Speech Bubble - shows AI responses */}
-      {currentResponse && (
+      {currentResponse && settings.avatar?.showSpeechBubble !== false && (
         <ErrorBoundary name="SpeechBubble">
           <SpeechBubble message={currentResponse} />
         </ErrorBoundary>
@@ -93,6 +223,18 @@ function App() {
       {isHistoryOpen && (
         <ErrorBoundary name="HistoryPanel">
           <HistoryPanel />
+        </ErrorBoundary>
+      )}
+
+      {/* Auto-update notification */}
+      <ErrorBoundary name="UpdateNotification">
+        <UpdateNotification />
+      </ErrorBoundary>
+
+      {/* Model download modal (shown before onboarding) */}
+      {requiresModelDownload && (
+        <ErrorBoundary name="ModelDownloadModal">
+          <ModelDownloadModal />
         </ErrorBoundary>
       )}
 

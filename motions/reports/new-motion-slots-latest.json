@@ -1,0 +1,391 @@
+{
+  "generated_at": "2026-02-22T23:28:01.227Z",
+  "total_slots": 96,
+  "new_slots_count": 32,
+  "new_slots": [
+    {
+      "id": "motion_neutral_09",
+      "emotion_tags": [
+        "neutral"
+      ],
+      "intensity": "mid",
+      "priority": 3,
+      "variation_tag": "neutral_weight_shift",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_neutral_10",
+      "emotion_tags": [
+        "neutral"
+      ],
+      "intensity": "low",
+      "priority": 2,
+      "variation_tag": "neutral_attentive_nod",
+      "body_zone": "upper",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_neutral_11",
+      "emotion_tags": [
+        "neutral"
+      ],
+      "intensity": "mid",
+      "priority": 3,
+      "variation_tag": "neutral_open_posture",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_neutral_12",
+      "emotion_tags": [
+        "neutral"
+      ],
+      "intensity": "high",
+      "priority": 4,
+      "variation_tag": "neutral_ready_shift",
+      "body_zone": "full",
+      "speaking_compatible": false,
+      "loopable": false
+    },
+    {
+      "id": "motion_happy_11",
+      "emotion_tags": [
+        "happy"
+      ],
+      "intensity": "mid",
+      "priority": 6,
+      "variation_tag": "happy_bounce_step",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_happy_12",
+      "emotion_tags": [
+        "happy"
+      ],
+      "intensity": "high",
+      "priority": 6,
+      "variation_tag": "happy_open_arms",
+      "body_zone": "full",
+      "speaking_compatible": false,
+      "loopable": false
+    },
+    {
+      "id": "motion_happy_13",
+      "emotion_tags": [
+        "happy"
+      ],
+      "intensity": "low",
+      "priority": 6,
+      "variation_tag": "happy_quick_shuffle",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_happy_14",
+      "emotion_tags": [
+        "happy"
+      ],
+      "intensity": "mid",
+      "priority": 5,
+      "variation_tag": "happy_talk_beats",
+      "body_zone": "upper",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_happy_15",
+      "emotion_tags": [
+        "happy"
+      ],
+      "intensity": "high",
+      "priority": 6,
+      "variation_tag": "happy_side_sway",
+      "body_zone": "full",
+      "speaking_compatible": false,
+      "loopable": false
+    },
+    {
+      "id": "motion_sad_09",
+      "emotion_tags": [
+        "sad"
+      ],
+      "intensity": "low",
+      "priority": 3,
+      "variation_tag": "sad_slumped_shift",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_sad_10",
+      "emotion_tags": [
+        "sad"
+      ],
+      "intensity": "mid",
+      "priority": 4,
+      "variation_tag": "sad_self_hold",
+      "body_zone": "upper",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_sad_11",
+      "emotion_tags": [
+        "sad"
+      ],
+      "intensity": "low",
+      "priority": 4,
+      "variation_tag": "sad_slow_step_back",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_sad_12",
+      "emotion_tags": [
+        "sad"
+      ],
+      "intensity": "mid",
+      "priority": 5,
+      "variation_tag": "sad_head_drop_recover",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_angry_09",
+      "emotion_tags": [
+        "angry"
+      ],
+      "intensity": "mid",
+      "priority": 7,
+      "variation_tag": "angry_forward_press",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_angry_10",
+      "emotion_tags": [
+        "angry"
+      ],
+      "intensity": "high",
+      "priority": 6,
+      "variation_tag": "angry_point_stance",
+      "body_zone": "full",
+      "speaking_compatible": false,
+      "loopable": false
+    },
+    {
+      "id": "motion_angry_11",
+      "emotion_tags": [
+        "angry"
+      ],
+      "intensity": "low",
+      "priority": 6,
+      "variation_tag": "angry_stomp",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_angry_12",
+      "emotion_tags": [
+        "angry"
+      ],
+      "intensity": "mid",
+      "priority": 5,
+      "variation_tag": "angry_controlled_breath",
+      "body_zone": "upper",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_surprised_09",
+      "emotion_tags": [
+        "surprised"
+      ],
+      "intensity": "high",
+      "priority": 7,
+      "variation_tag": "surprised_recoil_step",
+      "body_zone": "full",
+      "speaking_compatible": false,
+      "loopable": false
+    },
+    {
+      "id": "motion_surprised_10",
+      "emotion_tags": [
+        "surprised"
+      ],
+      "intensity": "mid",
+      "priority": 6,
+      "variation_tag": "surprised_hands_up",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_surprised_11",
+      "emotion_tags": [
+        "surprised"
+      ],
+      "intensity": "low",
+      "priority": 6,
+      "variation_tag": "surprised_quick_pivot",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_surprised_12",
+      "emotion_tags": [
+        "surprised"
+      ],
+      "intensity": "high",
+      "priority": 5,
+      "variation_tag": "surprised_settle",
+      "body_zone": "upper",
+      "speaking_compatible": false,
+      "loopable": false
+    },
+    {
+      "id": "motion_thinking_09",
+      "emotion_tags": [
+        "thinking"
+      ],
+      "intensity": "mid",
+      "priority": 4,
+      "variation_tag": "thinking_chin_touch",
+      "body_zone": "upper",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_thinking_10",
+      "emotion_tags": [
+        "thinking"
+      ],
+      "intensity": "low",
+      "priority": 4,
+      "variation_tag": "thinking_pacing_shift",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_thinking_11",
+      "emotion_tags": [
+        "thinking"
+      ],
+      "intensity": "mid",
+      "priority": 4,
+      "variation_tag": "thinking_micro_gesture",
+      "body_zone": "upper",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_thinking_12",
+      "emotion_tags": [
+        "thinking"
+      ],
+      "intensity": "high",
+      "priority": 5,
+      "variation_tag": "thinking_decision_step",
+      "body_zone": "full",
+      "speaking_compatible": false,
+      "loopable": false
+    },
+    {
+      "id": "motion_relaxed_09",
+      "emotion_tags": [
+        "relaxed"
+      ],
+      "intensity": "low",
+      "priority": 2,
+      "variation_tag": "relaxed_breath",
+      "body_zone": "upper",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_relaxed_10",
+      "emotion_tags": [
+        "relaxed"
+      ],
+      "intensity": "mid",
+      "priority": 3,
+      "variation_tag": "relaxed_sway",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_relaxed_11",
+      "emotion_tags": [
+        "relaxed"
+      ],
+      "intensity": "low",
+      "priority": 3,
+      "variation_tag": "relaxed_stretch",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_relaxed_12",
+      "emotion_tags": [
+        "relaxed"
+      ],
+      "intensity": "mid",
+      "priority": 3,
+      "variation_tag": "relaxed_grounded_shift",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": true
+    },
+    {
+      "id": "motion_bridge_07",
+      "emotion_tags": [
+        "bridge"
+      ],
+      "intensity": "low",
+      "priority": 1,
+      "variation_tag": "bridge_settle_in",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_bridge_08",
+      "emotion_tags": [
+        "bridge"
+      ],
+      "intensity": "mid",
+      "priority": 3,
+      "variation_tag": "bridge_turn_reset",
+      "body_zone": "full",
+      "speaking_compatible": true,
+      "loopable": false
+    },
+    {
+      "id": "motion_bridge_09",
+      "emotion_tags": [
+        "bridge"
+      ],
+      "intensity": "high",
+      "priority": 2,
+      "variation_tag": "bridge_release",
+      "body_zone": "upper",
+      "speaking_compatible": false,
+      "loopable": false
+    }
+  ]
+}

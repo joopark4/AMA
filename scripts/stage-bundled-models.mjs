@@ -150,10 +150,14 @@ async function main() {
   }
 
   const rootDir = process.cwd();
+  const modelsSourceRoot = resolve(
+    rootDir,
+    process.env.PREPARE_MODELS_DIR?.trim() || 'models'
+  );
   const signingIdentity = await resolveCodesignIdentity(rootDir);
   const appBundlePath = resolve(
     rootDir,
-    'src-tauri/target/release/bundle/macos/MyPartnerAI.app'
+    'src-tauri/target/release/bundle/macos/AMA.app'
   );
   const resourcesDir = resolve(appBundlePath, 'Contents/Resources');
   const modelsDir = resolve(resourcesDir, 'models');
@@ -161,25 +165,11 @@ async function main() {
   await ensureExists(appBundlePath, 'Built app bundle');
   await mkdir(resourcesDir, { recursive: true });
 
-  // Clear stale updater-embedded model payloads from previous builds.
+  // Clear stale model payloads from previous builds (models are now downloaded on-demand)
   await rm(resolve(resourcesDir, '_up_/models'), { recursive: true, force: true });
   await rm(modelsDir, { recursive: true, force: true });
 
-  await syncDirectory(
-    resolve(rootDir, 'models/whisper'),
-    resolve(modelsDir, 'whisper'),
-    'Whisper models'
-  );
-  await syncDirectory(
-    resolve(rootDir, 'models/supertonic/onnx'),
-    resolve(modelsDir, 'supertonic/onnx'),
-    'Supertonic ONNX models'
-  );
-  await syncDirectory(
-    resolve(rootDir, 'models/supertonic/voice_styles'),
-    resolve(modelsDir, 'supertonic/voice_styles'),
-    'Supertonic voice styles'
-  );
+  // Only stage Whisper runtime (bin/lib); model files are downloaded at first launch
   await stageWhisperRuntime(resourcesDir, signingIdentity);
 }
 

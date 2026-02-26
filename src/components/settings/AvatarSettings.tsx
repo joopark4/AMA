@@ -3,18 +3,51 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
 import { pickVrmFile } from '../../services/tauri/fileDialog';
+import { getMotionManifest } from '../../services/avatar/motionLibrary';
 
 export default function AvatarSettings() {
   const { t } = useTranslation();
-  const { settings, setVrmModelPath, setAvatarSettings, setAvatarName } = useSettingsStore();
-  const { setEmotion, emotion, manualRotation, setManualRotation } = useAvatarStore();
+  const {
+    settings,
+    setVrmModelPath,
+    setAvatarSettings,
+    setAvatarName,
+    setAvatarPersonalityPrompt,
+  } = useSettingsStore();
+  const {
+    setEmotion,
+    emotion,
+    manualRotation,
+    setManualRotation,
+    isLoaded,
+    isMotionSequenceActive,
+    motionSequenceIndex,
+    motionSequenceTotal,
+    startMotionSequenceDemo,
+    stopMotionSequenceDemo,
+  } = useAvatarStore();
   const { speak, isSpeaking, stop, error: ttsError } = useSpeechSynthesis();
 
   const savedInitialView = settings.avatar?.initialViewRotation || { x: 0, y: 0 };
-  const avatarName = settings.avatarName?.trim() || '아바타';
-  const ttsSample = `안녕 나는 ${avatarName}이라고 해`;
+  const avatarName = settings.avatarName?.trim() || t('settings.avatar.defaultName');
+  const avatarPersonalityPrompt = settings.avatarPersonalityPrompt ?? '';
+  const ttsSample = t('settings.avatar.ttsTest.sample', { name: avatarName });
+  const isDevBuild = import.meta.env.DEV;
+  const totalMotionCount = getMotionManifest().length;
+  const faceOnlyModeEnabled = settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
 
   const formatDegrees = (radian: number) => `${(radian * 180 / Math.PI).toFixed(1)}°`;
+
+  const handleMotionSequenceToggle = () => {
+    if (faceOnlyModeEnabled) return;
+
+    if (isMotionSequenceActive) {
+      stopMotionSequenceDemo();
+      return;
+    }
+
+    startMotionSequenceDemo(totalMotionCount);
+  };
 
   const handleSelectVRM = async () => {
     try {
@@ -31,10 +64,6 @@ export default function AvatarSettings() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium text-gray-800">
-        {t('settings.avatar.title')}
-      </h3>
-
       {/* VRM Model Path */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
@@ -44,7 +73,7 @@ export default function AvatarSettings() {
           <input
             type="text"
             value={settings.vrmModelPath}
-            placeholder="선택된 VRM 파일 없음"
+            placeholder={t('settings.avatar.vrmPlaceholder')}
             readOnly
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 text-sm"
           />
@@ -60,22 +89,40 @@ export default function AvatarSettings() {
       {/* Avatar Name */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.name', '아바타 이름')}
+          {t('settings.avatar.name')}
         </label>
         <input
           type="text"
           value={settings.avatarName}
           onChange={(e) => setAvatarName(e.target.value)}
-          placeholder={t('settings.avatar.namePlaceholder', '예: 은연')}
+          placeholder={t('settings.avatar.namePlaceholder')}
           maxLength={40}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
       </div>
 
+      {/* Avatar Personality Prompt */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+          {t('settings.avatar.personalityPrompt')}
+        </label>
+        <textarea
+          value={avatarPersonalityPrompt}
+          onChange={(e) => setAvatarPersonalityPrompt(e.target.value)}
+          placeholder={t('settings.avatar.personalityPromptPlaceholder')}
+          maxLength={800}
+          rows={4}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y"
+        />
+        <p className="text-xs text-gray-500 text-right">
+          {avatarPersonalityPrompt.length}/800
+        </p>
+      </div>
+
       {/* Avatar Scale */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.scale', 'Avatar Size')}: {settings.avatar?.scale?.toFixed(1) || '1.0'}x
+          {t('settings.avatar.scale')}: {settings.avatar?.scale?.toFixed(1) || '1.0'}x
         </label>
         <input
           type="range"
@@ -93,10 +140,58 @@ export default function AvatarSettings() {
         </div>
       </div>
 
+      {/* Free Movement Mode */}
+      <div className="flex items-center justify-between py-2">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-gray-700">
+            {t('settings.avatar.freeMovement.title')}
+          </span>
+          <span className="text-xs text-gray-500">
+            {t('settings.avatar.freeMovement.description')}
+          </span>
+        </div>
+        <button
+          onClick={() => setAvatarSettings({ freeMovement: !(settings.avatar?.freeMovement ?? false) })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+            settings.avatar?.freeMovement ? 'bg-blue-600' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+              settings.avatar?.freeMovement ? 'translate-x-5' : ''
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Speech Bubble Toggle */}
+      <div className="flex items-center justify-between py-2">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-gray-700">
+            {t('settings.avatar.speechBubble.title')}
+          </span>
+          <span className="text-xs text-gray-500">
+            {t('settings.avatar.speechBubble.description')}
+          </span>
+        </div>
+        <button
+          onClick={() => setAvatarSettings({ showSpeechBubble: !(settings.avatar?.showSpeechBubble ?? true) })}
+          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+            settings.avatar?.showSpeechBubble !== false ? 'bg-blue-600' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+              settings.avatar?.showSpeechBubble !== false ? 'translate-x-5' : ''
+            }`}
+          />
+        </button>
+      </div>
+
       {/* Expression Control */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.expression', 'Expression')}
+          {t('settings.avatar.expression')}
         </label>
         <div className="flex flex-wrap gap-2">
           {emotions.map((em) => (
@@ -109,7 +204,7 @@ export default function AvatarSettings() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {em}
+              {t(`settings.avatar.emotions.${em}`)}
             </button>
           ))}
         </div>
@@ -117,9 +212,11 @@ export default function AvatarSettings() {
 
       {/* Initial View Rotation */}
       <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">Initial View</h4>
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('settings.avatar.initialView.title')}
+        </h4>
         <p className="text-xs text-gray-500">
-          머리 드래그로 시선을 맞춘 뒤 저장하면, 앱 시작 시 동일한 시선을 적용합니다.
+          {t('settings.avatar.initialView.description')}
         </p>
 
         <div className="grid grid-cols-3 gap-2">
@@ -132,7 +229,7 @@ export default function AvatarSettings() {
             })}
             className="px-3 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           >
-            현재 시선 저장
+            {t('settings.avatar.initialView.saveCurrent')}
           </button>
           <button
             onClick={() => setManualRotation({
@@ -141,7 +238,7 @@ export default function AvatarSettings() {
             })}
             className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
           >
-            저장 시선 적용
+            {t('settings.avatar.initialView.applySaved')}
           </button>
           <button
             onClick={() => {
@@ -151,24 +248,34 @@ export default function AvatarSettings() {
             }}
             className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
           >
-            정면 초기화
+            {t('settings.avatar.initialView.resetFront')}
           </button>
         </div>
 
         <div className="text-xs text-gray-500 space-y-1">
           <p>
-            저장된 초기 시선: 상하 {formatDegrees(savedInitialView.x)} / 좌우 {formatDegrees(savedInitialView.y)}
+            {t('settings.avatar.initialView.savedInfo', {
+              vertical: formatDegrees(savedInitialView.x),
+              horizontal: formatDegrees(savedInitialView.y),
+            })}
           </p>
           <p>
-            현재 시선: 상하 {formatDegrees(manualRotation.x)} / 좌우 {formatDegrees(manualRotation.y)}
+            {t('settings.avatar.initialView.currentInfo', {
+              vertical: formatDegrees(manualRotation.x),
+              horizontal: formatDegrees(manualRotation.y),
+            })}
           </p>
         </div>
       </div>
 
       {/* TTS Test */}
       <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">TTS Test</h4>
-        <p className="text-xs text-gray-500">Test text-to-speech with lip sync</p>
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('settings.avatar.ttsTest.title')}
+        </h4>
+        <p className="text-xs text-gray-500">
+          {t('settings.avatar.ttsTest.description')}
+        </p>
         <button
           onClick={() => {
             if (isSpeaking) {
@@ -184,21 +291,233 @@ export default function AvatarSettings() {
               : 'bg-green-500 text-white hover:bg-green-600'
           }`}
         >
-          {isSpeaking ? 'Stop' : `Speak: "${ttsSample}"`}
+          {isSpeaking
+            ? t('settings.avatar.ttsTest.stop')
+            : t('settings.avatar.ttsTest.speak', { text: ttsSample })}
         </button>
         {ttsError && (
           <p className="text-xs text-red-600 break-all">
-            TTS Error: {ttsError}
+            {t('settings.avatar.ttsTest.error', { error: ttsError })}
           </p>
         )}
       </div>
 
-      {/* Physics Settings */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">Physics</h4>
+      {/* Animation Settings */}
+      <div className="space-y-3 border-t pt-4 mt-4">
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('settings.avatar.animation.title')}
+        </h4>
+
+        {isDevBuild && (
+          <div className="space-y-2 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-blue-900">
+                {t('settings.avatar.animation.motionSequenceDemo')}
+              </label>
+              <button
+                type="button"
+                onClick={handleMotionSequenceToggle}
+                disabled={
+                  !isLoaded ||
+                  totalMotionCount === 0 ||
+                  faceOnlyModeEnabled ||
+                  !(settings.avatar?.animation?.enableMotionClips ?? true)
+                }
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  isMotionSequenceActive
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                } disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed`}
+              >
+                {isMotionSequenceActive
+                  ? t('settings.avatar.animation.sequenceStop')
+                  : t('settings.avatar.animation.sequenceStart')}
+              </button>
+            </div>
+            <p className="text-xs text-blue-900/90">
+              {t('settings.avatar.animation.sequenceDevOnly')}
+            </p>
+            <p className="text-xs text-blue-900/80">
+              {isMotionSequenceActive
+                ? t('settings.avatar.animation.sequenceProgress', {
+                    current: Math.max(1, motionSequenceIndex + 1),
+                    total: Math.max(1, motionSequenceTotal),
+                  })
+                : t('settings.avatar.animation.sequenceWaiting', { count: totalMotionCount })}
+            </p>
+            {!(settings.avatar?.animation?.enableMotionClips ?? true) && (
+              <p className="text-xs text-amber-700">
+                {t('settings.avatar.animation.motionClipsWarning')}
+              </p>
+            )}
+            {faceOnlyModeEnabled && (
+              <p className="text-xs text-amber-700">
+                {t('settings.avatar.animation.faceOnlyWarning')}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-600">Enable Physics</label>
+          <label className="text-sm text-gray-600">
+            {t('settings.avatar.animation.faceOnlyMode')}
+          </label>
+          <button
+            onClick={() => setAvatarSettings({
+              animation: {
+                ...settings.avatar?.animation,
+                faceExpressionOnlyMode: !faceOnlyModeEnabled,
+              },
+            })}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              faceOnlyModeEnabled ? 'bg-emerald-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                faceOnlyModeEnabled ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
+        </div>
+
+        {faceOnlyModeEnabled && (
+          <p className="text-xs text-emerald-700">
+            {t('settings.avatar.animation.faceOnlyDescription')}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-gray-600">
+            {t('settings.avatar.animation.enableMotionClips')}
+          </label>
+          <button
+            onClick={() => setAvatarSettings({
+              animation: {
+                ...settings.avatar?.animation,
+                enableMotionClips: !(settings.avatar?.animation?.enableMotionClips ?? true),
+              },
+            })}
+            disabled={faceOnlyModeEnabled}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              settings.avatar?.animation?.enableMotionClips ?? true ? 'bg-blue-600' : 'bg-gray-300'
+            } ${faceOnlyModeEnabled ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                settings.avatar?.animation?.enableMotionClips ?? true ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-gray-600">
+            {t('settings.avatar.animation.dynamicMotionBoost')}
+          </label>
+          <button
+            onClick={() => setAvatarSettings({
+              animation: {
+                ...settings.avatar?.animation,
+                dynamicMotionEnabled: !(settings.avatar?.animation?.dynamicMotionEnabled ?? false),
+              },
+            })}
+            disabled={faceOnlyModeEnabled}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              settings.avatar?.animation?.dynamicMotionEnabled ?? false ? 'bg-emerald-600' : 'bg-gray-300'
+            } ${faceOnlyModeEnabled ? 'opacity-50 cursor-not-allowed' : ''}
+            `}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                settings.avatar?.animation?.dynamicMotionEnabled ?? false ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600">
+            {t('settings.avatar.animation.dynamicBoostStrength', {
+              value: ((settings.avatar?.animation?.dynamicMotionBoost ?? 1.0) * 100).toFixed(0),
+            })}
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="1.5"
+            step="0.05"
+            value={settings.avatar?.animation?.dynamicMotionBoost ?? 1.0}
+            onChange={(e) => setAvatarSettings({
+              animation: {
+                ...settings.avatar?.animation,
+                dynamicMotionBoost: parseFloat(e.target.value),
+              },
+            })}
+            disabled={faceOnlyModeEnabled || !(settings.avatar?.animation?.dynamicMotionEnabled ?? false)}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-xs text-gray-600">
+            {t('settings.avatar.animation.motionDiversity', {
+              value: ((settings.avatar?.animation?.motionDiversity ?? 1.0) * 100).toFixed(0),
+            })}
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={settings.avatar?.animation?.motionDiversity ?? 1.0}
+            onChange={(e) => setAvatarSettings({
+              animation: {
+                ...settings.avatar?.animation,
+                motionDiversity: parseFloat(e.target.value),
+              },
+            })}
+            disabled={faceOnlyModeEnabled}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-gray-600">
+            {t('settings.avatar.animation.enableGestureFallback')}
+          </label>
+          <button
+            onClick={() => setAvatarSettings({
+              animation: {
+                ...settings.avatar?.animation,
+                enableGestures: !settings.avatar?.animation?.enableGestures,
+              },
+            })}
+            disabled={faceOnlyModeEnabled}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              settings.avatar?.animation?.enableGestures ? 'bg-blue-600' : 'bg-gray-300'
+            } ${faceOnlyModeEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                settings.avatar?.animation?.enableGestures ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Physics Settings */}
+      <div className="space-y-2 border-t pt-4 mt-4">
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('settings.avatar.physics.title')}
+        </h4>
+
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-gray-600">
+            {t('settings.avatar.physics.enable')}
+          </label>
           <button
             onClick={() => setAvatarSettings({
               physics: {
@@ -222,7 +541,9 @@ export default function AvatarSettings() {
           <>
             <div className="space-y-1">
               <label className="block text-xs text-gray-600">
-                Gravity: {(settings.avatar?.physics?.gravityMultiplier ?? 1.0).toFixed(1)}x
+                {t('settings.avatar.physics.gravity', {
+                  value: (settings.avatar?.physics?.gravityMultiplier ?? 1.0).toFixed(1),
+                })}
               </label>
               <input
                 type="range"
@@ -242,7 +563,9 @@ export default function AvatarSettings() {
 
             <div className="space-y-1">
               <label className="block text-xs text-gray-600">
-                Stiffness: {(settings.avatar?.physics?.stiffnessMultiplier ?? 1.0).toFixed(1)}x
+                {t('settings.avatar.physics.stiffness', {
+                  value: (settings.avatar?.physics?.stiffnessMultiplier ?? 1.0).toFixed(1),
+                })}
               </label>
               <input
                 type="range"
@@ -266,12 +589,14 @@ export default function AvatarSettings() {
       {/* Lighting Intensity */}
       <div className="space-y-2 border-t pt-4 mt-4">
         <h4 className="text-sm font-medium text-gray-700">
-          {t('settings.avatar.lighting', 'Lighting')}
+          {t('settings.avatar.lighting.title')}
         </h4>
 
         <div className="space-y-1">
           <label className="block text-xs text-gray-600">
-            Ambient: {(settings.avatar?.lighting?.ambientIntensity ?? 1.0).toFixed(1)}
+            {t('settings.avatar.lighting.ambient', {
+              value: (settings.avatar?.lighting?.ambientIntensity ?? 1.0).toFixed(1),
+            })}
           </label>
           <input
             type="range"
@@ -291,7 +616,9 @@ export default function AvatarSettings() {
 
         <div className="space-y-1">
           <label className="block text-xs text-gray-600">
-            Directional: {(settings.avatar?.lighting?.directionalIntensity ?? 1.0).toFixed(1)}
+            {t('settings.avatar.lighting.directional', {
+              value: (settings.avatar?.lighting?.directionalIntensity ?? 1.0).toFixed(1),
+            })}
           </label>
           <input
             type="range"
@@ -310,7 +637,9 @@ export default function AvatarSettings() {
         </div>
 
         <div className="flex items-center justify-between mt-3">
-          <label className="text-sm text-gray-600">Show Light Icon</label>
+          <label className="text-sm text-gray-600">
+            {t('settings.avatar.lighting.showIcon')}
+          </label>
           <button
             onClick={() => setAvatarSettings({
               lighting: {
@@ -331,15 +660,14 @@ export default function AvatarSettings() {
         </div>
 
         <p className="text-xs text-gray-500 mt-2">
-          Drag the sun icon near the avatar to adjust light direction.
+          {t('settings.avatar.lighting.dragHint')}
         </p>
       </div>
 
       {/* Avatar Info */}
       <div className="p-3 bg-gray-50 rounded-lg">
         <p className="text-xs text-gray-600">
-          Supported format: VRM 0.x and 1.0 models.
-          Recommended file size: under 30MB for smooth performance.
+          {t('settings.avatar.info')}
         </p>
       </div>
     </div>
