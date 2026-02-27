@@ -1,8 +1,8 @@
-# MyPartnerAI 기능 명세서
+# AMA 기능 명세서
 
-> 최종 수정: 2026-02-23
-> 버전: 0.3.0
-> 플랫폼: macOS (Tauri 2.x + React 18 + Three.js)
+> 최종 수정: 2026-02-27
+> 버전: 0.4.2
+> 플랫폼: macOS Apple Silicon (Tauri 2.x + React 18 + Three.js)
 
 ---
 
@@ -31,6 +31,11 @@
 21. [인증 (OAuth)](#21-인증-oauth)
 22. [약관 동의](#22-약관-동의)
 23. [계정 탈퇴](#23-계정-탈퇴)
+24. [자동 업데이트](#24-자동-업데이트)
+25. [모델 다운로드](#25-모델-다운로드)
+26. [macOS 네이티브 메뉴바](#26-macos-네이티브-메뉴바)
+27. [About 모달](#27-about-모달)
+28. [로컬 배포 파이프라인](#28-로컬-배포-파이프라인)
 
 ---
 
@@ -566,6 +571,7 @@ Web Audio API로 TTS 오디오 분석
 | AI 모델 | 프로바이더, 모델명, API 키, 엔드포인트 |
 | 음성 | STT 모델, TTS 음성, 글로벌 단축키 |
 | 아바타 | VRM 파일, 이름, 스케일, 자유 이동, 말풍선, 물리, 애니메이션, 조명 |
+| 앱 업데이트 | 현재 버전 표시, 업데이트 확인/다운로드/설치 |
 | 라이선스 | 오픈소스 및 AI 서비스 라이선스 정보 |
 
 ### 관련 파일
@@ -574,7 +580,7 @@ Web Audio API로 TTS 오디오 분석
 
 ### 정책
 - **즉시 저장:** 설정 변경 즉시 `localStorage`에 persist. 저장 버튼 불필요
-- **설정 버전 관리:** 스토어 버전 12. 구버전 설정값 자동 정규화
+- **설정 버전 관리:** 스토어 버전 12 (`settingsStore`). 구버전 설정값 자동 정규화
 - **초기화:** 설정 초기화 버튼으로 모든 설정을 기본값으로 복원
 - **API 키 보호:** API 키는 UI에서 마스킹(`password` 필드)로 표시
 
@@ -759,6 +765,145 @@ OAuth 2.0 기반 소셜 로그인으로 계정을 생성하고 관리한다.
 
 ---
 
+## 24. 자동 업데이트
+
+### 기능 설명
+앱 내에서 새 버전을 감지하고 다운로드/설치/재시작까지 자동 처리한다.
+
+### 관련 파일
+- `src/hooks/useAutoUpdate.ts` (`useAutoUpdateStore` Zustand 스토어)
+- `src/components/settings/UpdateSettings.tsx`
+- `src/components/ui/UpdateNotification.tsx`
+
+### 업데이트 흐름
+```
+앱 시작 시 자동 확인 또는 수동 트리거 (설정 패널 / 메뉴바)
+  → tauri-plugin-updater check()
+  → GitHub Pages latest.json 조회
+  → 새 버전 감지 시 UpdateNotification 표시 (상단 알림)
+  → "업데이트" 버튼 클릭 → downloadAndInstall()
+  → 바이트 누적 프로그레스 표시
+  → 설치 완료 → relaunch() 자동 재시작
+```
+
+### 정책
+- **업데이터 엔드포인트:** GitHub Pages (`joopark4.github.io/apps/ama/latest.json`)
+- **지원 플랫폼:** `darwin-aarch64` (Apple Silicon) 단일 플랫폼
+- **서명 검증:** `TAURI_SIGNING_PRIVATE_KEY`로 생성된 `.sig` 파일로 무결성 검증
+- **UI 표시:** 상단 UpdateNotification (자동) + 설정 패널 UpdateSettings (수동)
+- **다운로드 진행:** 바이트 단위 누적 프로그레스 표시
+
+---
+
+## 25. 모델 다운로드
+
+### 기능 설명
+필수 AI 모델(Whisper STT, Supertonic TTS)을 첫 실행 시 자동/수동 다운로드한다.
+
+### 관련 파일
+- `src/stores/modelDownloadStore.ts`
+- `src/components/ui/ModelDownloadModal.tsx`
+- `src/components/settings/VoiceSettings.tsx`
+- `src-tauri/src/commands/models.rs`
+
+### 동작 흐름
+```
+앱 시작
+  → check_model_status (Rust) → 모델 존재 여부 확인
+  → 필수 모델 미설치 → ModelDownloadModal 표시
+  → 사용자 다운로드 승인 → download_model (Rust)
+  → ~/.mypartnerai/models/ 에 저장
+  → 완료 후 모달 닫기
+```
+
+### 정책
+- **사용자 모델 디렉토리:** `~/.mypartnerai/models/`
+- **필수 번들 모델:** `whisper/ggml-base.bin` (앱 번들에 포함)
+- **온디맨드:** `small`, `medium` 모델은 설정에서 선택 시 자동 다운로드
+- **프로그레스:** 바이트 기반 퍼센트 표시
+- **에러 처리:** 다운로드 실패 시 에러 상태 저장, 재시도 가능
+
+---
+
+## 26. macOS 네이티브 메뉴바
+
+### 기능 설명
+macOS 상단 메뉴바에 앱 기능 바로가기를 제공한다.
+
+### 관련 파일
+- `src-tauri/src/main.rs`
+- `src/App.tsx` (이벤트 리스너)
+
+### 메뉴 구성
+
+| 메뉴 | 항목 |
+|------|------|
+| **AMA** | About AMA / Check for Updates... / Settings... (⌘,) / Hide / Hide Others / Show All / Quit |
+| **Edit** | Undo / Redo / Cut / Copy / Paste / Select All |
+| **Window** | Minimize |
+
+### 정책
+- **이벤트 전달:** Rust `on_menu_event` → `window.emit()` → 프론트엔드 `listen()`으로 처리
+- **About:** 커스텀 모달 (네이티브 About 다이얼로그 대체)
+- **Check for Updates:** `useAutoUpdateStore.checkForUpdate()` 트리거
+- **Settings:** `SettingsPanel` 열기
+
+---
+
+## 27. About 모달
+
+### 기능 설명
+앱 정보(이름, 버전, 설명, 라이선스)를 커스텀 모달로 표시한다.
+
+### 관련 파일
+- `src/components/ui/AboutModal.tsx`
+- `src/App.tsx`
+
+### 표시 내용
+- 앱 이름: AMA
+- 버전: `@tauri-apps/api`의 `getVersion()`으로 동적 조회
+- 설명: AI 아바타 데스크톱 애플리케이션
+- 라이선스: BSD 2-Clause
+
+### 정책
+- **트리거:** macOS 메뉴바 "About AMA" → `menu-about` 이벤트
+- **z-index:** `z-[250]` (설정 패널 위, 약관 모달 아래)
+- **닫기:** X 버튼 또는 배경 클릭
+- **클릭스루 차단:** `data-interactive="true"`
+
+---
+
+## 28. 로컬 배포 파이프라인
+
+### 기능 설명
+macOS 앱 빌드부터 GitHub Release/Pages 배포까지 전체 파이프라인을 자동화한다.
+
+### 관련 파일
+- `scripts/release-local.mjs`
+- `scripts/stage-bundled-models.mjs`
+- `scripts/sign-macos-app.mjs`
+- `scripts/notarize-macos-app.mjs`
+
+### 파이프라인 단계
+```
+1. PRE-CHECK — 환경변수, 도구, 버전 동기화, git 상태
+2. BUILD — npm run tauri build --bundles app
+3. STAGE — whisper runtime + 모델 스테이징
+4. SIGN — Developer ID 코드사인
+5. NOTARIZE — Apple 노타라이즈 + staple
+6. PACKAGE — tar.gz + updater sig + DMG
+7. GITHUB RELEASE — gh release create + DMG 업로드
+8. GITHUB PAGES — latest.json + tar.gz 업데이터 아티팩트 배포
+```
+
+### 정책
+- **버전 동기화:** `package.json` 기준으로 `Cargo.toml`, `tauri.conf.json` 자동 동기화
+- **리소스 포크 방지:** tar.gz 생성 시 `COPYFILE_DISABLE=1` 필수 + 생성 후 `._*` 파일 자동 검증
+- **Apple Silicon only:** `latest.json`에 `darwin-aarch64` 단일 플랫폼 등록
+- **CLI 플래그:** `--skip-build`, `--skip-notarize`, `--skip-release`, `--skip-pages`, `--dry-run`
+
+---
+
 ## 부록 — 데이터 저장 정책 요약
 
 | 데이터 | 저장 위치 | 클라우드 전송 여부 |
@@ -790,5 +935,8 @@ OAuth 2.0 기반 소셜 로그인으로 계정을 생성하고 관리한다.
 | `open_accessibility_settings` | settings.rs | 접근성 설정 열기 |
 | `open_screen_recording_settings` | settings.rs | 화면 녹화 권한 열기 |
 | `pick_vrm_file` | settings.rs | VRM 파일 선택 다이얼로그 |
+| `check_model_status` | models.rs | 모델 설치 상태 확인 |
+| `download_model` | models.rs | 모델 다운로드 |
+| `get_models_dir` | models.rs | 모델 디렉토리 경로 반환 |
 | `open_oauth_url` | auth.rs | OAuth URL 브라우저 열기 |
 | `parse_auth_callback` | auth.rs | 딥링크 콜백 URL 파싱 |
