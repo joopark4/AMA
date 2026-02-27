@@ -35,8 +35,8 @@ let ort: any = null;
 
 async function getOrt() {
   if (!ort) {
-    // @ts-ignore - ESM 직접 import (ORT 1.17.x는 dist/esm/ 구조 사용)
-    ort = await import('/node_modules/onnxruntime-web/dist/esm/ort.min.js');
+    // onnxruntime-web ESM import — Vite가 manualChunks로 번들링
+    ort = await import('onnxruntime-web');
 
     if (isTauriDesktopRuntime()) {
       // WKWebView: 싱글스레드 모드 + WASM 바이너리 pre-load
@@ -969,6 +969,8 @@ export class SupertonicClient implements TTSClient {
     this.voiceStyles.clear();
     this.isInitialized = false;
     this.initPromise = null;
+    this.resolvedBasePath = null;
+    this.resolvedResourcePrefix = null;
     this.resolvedUserModelDir = false;
   }
 }
