@@ -128,6 +128,18 @@ ls src-tauri/target/release/bundle/macos/MyPartnerAI.app/Contents/Resources/lib
 1. `onnx`, `voice_styles` 폴더 존재 확인
 2. 앱 완전 종료 후 재실행
 
+### 업데이터 설치 시 `._AMA.app` unpack 실패
+
+원인:
+- macOS `tar`가 리소스 포크(`._*`)를 아카이브에 포함
+- Tauri 업데이터가 `._` 파일을 디렉토리로 생성 시도하여 실패
+
+대응:
+1. tar 생성 시 `COPYFILE_DISABLE=1` 환경변수 필수 적용
+2. `release-local.mjs`가 자동 검증 수행 (리소스 포크 감지 시 빌드 중단)
+3. 수동 검증: `tar -tzf AMA.app.tar.gz | grep '\._'` → 결과 없어야 정상
+4. 관련 이슈: [#011 업데이터 리소스 포크](issues/011-updater-resource-fork.md)
+
 ## 6) 릴리즈 체크리스트
 
 - [ ] 첫 실행 시 VRM 파일 선택 동작
@@ -136,3 +148,5 @@ ls src-tauri/target/release/bundle/macos/MyPartnerAI.app/Contents/Resources/lib
 - [ ] 답변 시 말풍선/아바타/버튼 유지
 - [ ] 우하단 기능/옵션 버튼 고정
 - [ ] 단일 인스턴스 동작
+- [ ] 자동 업데이트 확인 (latest.json 버전/서명 일치)
+- [ ] tar.gz 리소스 포크 미포함 확인 (`tar -tzf ... | grep '\._'` → 결과 없음)
