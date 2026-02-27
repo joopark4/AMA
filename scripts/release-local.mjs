@@ -365,10 +365,6 @@ function githubPages(version, tarGzPath) {
           signature: sig,
           url: `${PAGES_BASE_URL}/AMA.app.tar.gz`,
         },
-        'darwin-x86_64': {
-          signature: sig,
-          url: `${PAGES_BASE_URL}/AMA.app.tar.gz`,
-        },
       },
     };
     writeFileSync(join(amaDir, 'latest.json'), JSON.stringify(latestJson, null, 2) + '\n');
