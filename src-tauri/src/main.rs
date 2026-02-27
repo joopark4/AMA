@@ -57,6 +57,9 @@ fn main() {
                     "open_settings" => {
                         let _ = window.emit("menu-open-settings", ());
                     }
+                    "about_ama" => {
+                        let _ = window.emit("menu-about", ());
+                    }
                     "move_monitor_next" => {
                         let _ = window.emit("menu-move-monitor-next", ());
                     }
@@ -81,8 +84,16 @@ fn main() {
                 Some("CmdOrCtrl+,"),
             )?;
 
+            let about_ama = MenuItem::with_id(
+                app,
+                "about_ama",
+                "About AMA",
+                true,
+                None::<&str>,
+            )?;
+
             let app_submenu = SubmenuBuilder::new(app, "AMA")
-                .about(None)
+                .item(&about_ama)
                 .separator()
                 .item(&check_update)
                 .separator()
@@ -145,17 +156,26 @@ fn main() {
                     let logical_w = monitor_size.width as f64 / scale;
                     let logical_h = monitor_size.height as f64 / scale;
 
+                    let target_pos = tauri::LogicalPosition { x: logical_x, y: logical_y };
+                    let target_size = tauri::LogicalSize { width: logical_w, height: logical_h };
+
                     let _ = window.set_resizable(true);
-                    let _ = window.set_position(tauri::Position::Logical(
-                        tauri::LogicalPosition {
-                            x: logical_x,
-                            y: logical_y,
-                        },
-                    ));
+
+                    // 1. Shrink first to avoid macOS constraining position
                     let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
-                        width: logical_w,
-                        height: logical_h,
+                        width: 100.0,
+                        height: 100.0,
                     }));
+
+                    // 2. Move to target position
+                    let _ = window.set_position(tauri::Position::Logical(target_pos));
+
+                    // 3. Expand to fill monitor
+                    let _ = window.set_size(tauri::Size::Logical(target_size));
+
+                    // 4. Re-set position after resize (macOS Y correction)
+                    let _ = window.set_position(tauri::Position::Logical(target_pos));
+
                     let _ = window.set_resizable(false);
                 }
             }
