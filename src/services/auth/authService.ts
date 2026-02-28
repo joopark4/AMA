@@ -22,10 +22,16 @@ class SupabaseAuthService implements IAuthService {
                            : provider === 'x'    ? 'twitter'
                            : provider;
 
+    // 개발 모드: Vite dev 서버의 OAuth 콜백 미들웨어로 리다이렉트
+    // 프로덕션: 딥링크 URL 스킴으로 리다이렉트
+    const redirectTo = import.meta.env.DEV
+      ? 'http://localhost:1420/auth/callback'
+      : 'mypartnerai://auth/callback';
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: supabaseProvider as Parameters<typeof supabase.auth.signInWithOAuth>[0]['provider'],
       options: {
-        redirectTo: 'mypartnerai://auth/callback',
+        redirectTo,
         skipBrowserRedirect: true,
       },
     });

@@ -41,8 +41,10 @@
 |------|------|------|
 | STT 엔진 | whisper.cpp (`whisper-cli`) | 사용 중 (단일 엔진) |
 | STT 모델 | `base`, `small`, `medium` | 사용 중 |
-| TTS 엔진 | Supertonic + onnxruntime-web | 사용 중 (단일 엔진) |
-| TTS 보이스 | `F1~F5`, `M1~M5` | 사용 중 |
+| TTS 엔진 (로컬) | Supertonic + onnxruntime-web | 사용 중 (기본) |
+| TTS 엔진 (클라우드) | Supertone API (Edge Function 프록시) | 사용 중 (프리미엄) |
+| TTS 보이스 (로컬) | `F1~F5`, `M1~M5` | 사용 중 |
+| TTS 보이스 (클라우드) | Supertone API 음성 목록 (동적 조회) | 사용 중 |
 
 ## Tauri 플러그인
 
@@ -52,6 +54,15 @@
 | `tauri-plugin-fs` | 모델/리소스 파일 읽기 |
 | `tauri-plugin-shell` | 시스템 명령 연동 보조 |
 | `tauri-plugin-single-instance` | 단일 인스턴스 강제 |
+
+## 클라우드 서비스
+
+| 서비스 | 용도 |
+|--------|------|
+| Supabase Auth | OAuth 인증 (Google) |
+| Supabase Database | 프로필, 설정, 약관 동의, 구독, TTS 사용량 |
+| Supabase Edge Functions | Edge Function 프록시 (TTS, 음성 목록, 사용량, 계정 삭제) |
+| Supertone API | 클라우드 TTS (프리미엄) |
 
 ## macOS 배포 관련 스크립트
 
