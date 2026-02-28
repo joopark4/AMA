@@ -86,6 +86,8 @@ export default function MotionSequenceDemoController() {
         const message =
           language === 'en'
             ? 'Avatar model is not loaded. Please load a VRM model first.'
+            : language === 'ja'
+            ? 'アバターモデルが読み込まれていません。先にVRMモデルを選択してください。'
             : '아바타 모델이 로드되지 않았습니다. 먼저 VRM 모델을 선택해 주세요.';
         setCurrentResponse(message);
         try {

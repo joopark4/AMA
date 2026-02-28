@@ -6,7 +6,7 @@
 
 - 파일: `src/stores/settingsStore.ts`
 - persist key: `mypartnerai-settings`
-- persist version: `12`
+- persist version: `13`
 
 ## 설정 스키마 (요약)
 
@@ -23,8 +23,21 @@ interface Settings {
     model: 'base' | 'small' | 'medium' | string;
   };
   tts: {
-    engine: 'supertonic';
+    engine: 'supertonic' | 'supertone_api';
     voice?: 'F1'|'F2'|'F3'|'F4'|'F5'|'M1'|'M2'|'M3'|'M4'|'M5';
+    supertoneApi?: {
+      voiceId: string;
+      voiceName: string;
+      model: 'sona_speech_1' | 'sona_speech_2' | 'sona_speech_2_flash';
+      language: string;
+      style: string;
+      autoEmotionStyle: boolean;
+      voiceSettings: {
+        pitchShift: number;      // -24 ~ 24
+        pitchVariance: number;   // 0 ~ 2
+        speed: number;           // 0.5 ~ 2
+      };
+    };
   };
   language: 'ko' | 'en';
   avatarName: string;
@@ -73,8 +86,9 @@ interface Settings {
 - 레거시 값(`ggml-small.bin`, `small.en`) 대응
 
 ### TTS
-- 엔진은 항상 `supertonic`으로 강제
-- 보이스는 `F1~F5/M1~M5`로 정규화
+- 엔진은 `supertonic`(로컬) 또는 `supertone_api`(클라우드) 중 선택
+- 로컬 보이스는 `F1~F5/M1~M5`로 정규화
+- `supertoneApi` 설정은 프리미엄 사용자만 유효
 
 ### VRM 경로
 - 구형 번들 경로(`/vrm/eunyeon_ps.vrm`)는 빈 값으로 정규화
@@ -97,6 +111,7 @@ interface Settings {
 |-------------|-----------|
 | `LLMSettings` | `settings.llm.*` |
 | `VoiceSettings` | `settings.stt`, `settings.tts`, `modelDownloadStore` |
+| `PremiumVoiceSettings` | `settings.tts.engine`, `settings.tts.supertoneApi`, `premiumStore` |
 | `AvatarSettings` | `vrmModelPath`, `avatarName`, `avatar.*` |
 | `UpdateSettings` | `useAutoUpdateStore` (앱 버전/업데이트 확인) |
 | `LicensesSettings` | 설정값 저장 없음 (라이선스 안내 전용) |
@@ -110,6 +125,17 @@ interface Settings {
 - `downloadModel(modelType)` → Rust `download_model` 커맨드로 개별 모델 다운로드
 - 다운로드 진행률은 Tauri `model-download-progress` 이벤트로 수신
 - 에러 발생 시 `error` 상태에 메시지 저장 + 콘솔 로그
+
+## 프리미엄 스토어 (`premiumStore`)
+
+- 파일: `src/stores/premiumStore.ts`
+- 프리미엄 구독 상태, Supertone API 음성 목록, 할당량/사용량 관리
+- `checkPremiumStatus()` → Supabase `profiles` 테이블에서 `is_premium`, `plan_id` 조회
+- `fetchVoices(filters?)` → Edge Function `supertone-voices` 호출
+- `fetchUsageSummary()` / `fetchUsageDaily()` → Edge Function `supertone-usage` 호출
+- `updateQuotaFromTtsResponse(headers)` → TTS 응답 헤더에서 할당량 정보 추출
+- `isQuotaExceeded` 플래그로 `ttsRouter`가 자동 폴백 판단
+- 이중 호출 방지: `checkPremiumStatus()`는 Promise 싱글턴 패턴 사용
 
 ## 온보딩 규칙
 

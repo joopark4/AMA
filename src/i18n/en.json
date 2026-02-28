@@ -6,6 +6,9 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
+    "account": {
+      "title": "Account"
+    },
     "general": {
       "title": "General"
     },
@@ -151,6 +154,71 @@
       },
       "info": "Supported format: VRM 0.x and 1.0 models. Recommended file size: under 30MB for smooth performance."
     },
+    "premium": {
+      "title": "Premium Voice",
+      "locked": "Premium Feature",
+      "lockedDesc": "Unlock diverse cloud voices with a premium subscription.",
+      "loginRequired": "Sign in to use premium features.",
+      "badge": "Premium",
+      "active": "Premium Active",
+      "engineSelect": "TTS Engine",
+      "engineLocal": "Local (Supertonic)",
+      "engineCloud": "Supertone API (Cloud)",
+      "voiceSelect": "Select Voice",
+      "voiceSearch": "Search voices...",
+      "voiceGender": "Gender",
+      "voiceGenderAll": "All",
+      "voiceGenderFemale": "Female",
+      "voiceGenderMale": "Male",
+      "voiceLanguage": "Voice Filter Language",
+      "voiceLanguageAll": "All",
+      "ttsLanguage": "Voice Output Language",
+      "ttsLanguageDesc": "The language for TTS voice output. Set independently from the app UI language.",
+      "ttsLanguageUnsupported": "Selected model doesn't support this language. Falling back to English.",
+      "modelSelect": "Model",
+      "models": {
+        "sona_speech_1": "Sona Speech 1 (ko/en/ja)",
+        "sona_speech_2": "Sona Speech 2 (23 languages, best quality)",
+        "sona_speech_2_flash": "Sona Speech 2 Flash (23 languages, fast)"
+      },
+      "styleSelect": "Style",
+      "styleAuto": "Auto (emotion-based)",
+      "autoEmotion": "Auto-switch style based on conversation emotion",
+      "autoEmotionDesc": "Analyzes AI response emotion and adjusts voice style automatically. Unsupported styles fall back to default tone.",
+      "voiceSettings": "Voice Fine-tuning",
+      "pitchShift": "Pitch: {{value}}",
+      "pitchVariance": "Intonation: {{value}}",
+      "speed": "Speed: {{value}}x",
+      "preview": "Preview",
+      "previewPlaying": "Playing...",
+      "noVoicesFound": "No voices found",
+      "loadingVoices": "Loading voices...",
+      "voiceInfo": "{{name}} · {{gender}} · {{languages}}",
+      "usage": {
+        "title": "My Usage",
+        "refresh": "Refresh",
+        "thisMonth": "This Month",
+        "seconds": "{{value}} sec",
+        "characters": "{{value}} chars",
+        "requests": "{{value}} requests",
+        "summary": "{{seconds}} sec · {{characters}} chars · {{requests}} requests",
+        "credits": "Est. Credits: {{value}}",
+        "recent7days": "Last 7 Days",
+        "noUsage": "No usage history",
+        "loading": "Loading usage..."
+      },
+      "quota": {
+        "title": "Monthly Quota",
+        "used": "{{used}} / {{limit}} credits",
+        "percent": "{{value}}% used",
+        "remaining": "Remaining: {{value}} credits (~{{minutes}}m {{seconds}}s)",
+        "warning": "Quota almost exhausted",
+        "exceeded": "Monthly Quota Exceeded",
+        "exceededDesc": "Automatically switched to local voice (Supertonic)",
+        "resetInfo": "Resets on the 1st of next month",
+        "fallbackToast": "Monthly quota exceeded. Switching to local voice."
+      }
+    },
     "save": "Save",
     "cancel": "Cancel",
     "reset": "Reset",
@@ -275,7 +343,12 @@
   "errors": {
     "llmConnection": "Cannot connect to AI server",
     "microphoneAccess": "Microphone access required",
-    "vrmLoad": "Cannot load VRM model"
+    "vrmLoad": "Cannot load VRM model",
+    "premiumRequired": "Premium subscription required",
+    "supertoneApiFail": "Voice synthesis failed: {{error}}",
+    "supertoneVoiceLoadFail": "Failed to load voice list: {{error}}",
+    "supertoneUsageLoadFail": "Failed to load usage data: {{error}}",
+    "quotaExceeded": "Monthly quota exceeded. Switching to local voice."
   },
   "auth": {
     "title": "Welcome to AMA",
@@ -283,6 +356,7 @@
     "loginWith": "Continue with {{provider}}",
     "mockModeNotice": "Test mode — OAuth keys not set, click to proceed with mock login",
     "loading": "Authenticating...",
+    "cancelLogin": "Cancel Login",
     "success": "Signed in successfully",
     "logout": "Sign Out",
     "logoutConfirm": "Are you sure you want to sign out?",
