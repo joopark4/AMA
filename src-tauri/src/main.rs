@@ -47,6 +47,7 @@ fn main() {
             commands::window::get_available_monitors,
             commands::window::move_to_monitor,
             commands::window::get_current_monitor,
+            commands::http::fetch_url_bytes,
         ])
         .on_menu_event(|app, event| {
             if let Some(window) = app.get_webview_window("main") {

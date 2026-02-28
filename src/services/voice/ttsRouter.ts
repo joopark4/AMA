@@ -1,22 +1,22 @@
 import type { TTSResult, TTSClient, TTSOptions } from './types';
 import { getSupertonicClient } from './supertonicClient';
+import { getSupertoneApiClient } from './supertoneApiClient';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { QuotaExceededError } from '../auth/edgeFunctionClient';
 import { invoke } from '@tauri-apps/api/core';
 
-// Helper function to log to terminal
-const log = (...args: any[]) => {
+const log = (...args: unknown[]) => {
   const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-  console.log('[TTSRouter]', ...args);
   invoke('log_to_terminal', { message: `[TTSRouter] ${message}` }).catch(() => {});
 };
 
 class TTSRouter {
-  private client: TTSClient;
+  private supertonicClient: TTSClient;
   private audioContext: AudioContext | null = null;
   private activePlaybackStopper: (() => void) | null = null;
 
   constructor() {
-    this.client = getSupertonicClient();
+    this.supertonicClient = getSupertonicClient();
   }
 
   private getAudioContext(): AudioContext {
@@ -26,13 +26,37 @@ class TTSRouter {
     return this.audioContext;
   }
 
+  /** 현재 설정 + 할당량 상태에 따라 적절한 클라이언트 선택 */
+  private getActiveClient(): TTSClient {
+    const { settings } = useSettingsStore.getState();
+
+    if (settings.tts.engine === 'supertone_api') {
+      // 할당량 소진 시 로컬 폴백 (동기 import 사용)
+      try {
+        const { usePremiumStore } = require('../../stores/premiumStore');
+        const { isQuotaExceeded } = usePremiumStore.getState();
+        if (isQuotaExceeded) {
+          log('Quota exceeded, falling back to local Supertonic');
+          return this.supertonicClient;
+        }
+      } catch {
+        // premiumStore 로드 실패 시 로컬 폴백
+      }
+
+      return getSupertoneApiClient();
+    }
+
+    return this.supertonicClient;
+  }
+
   async synthesize(text: string, options?: TTSOptions): Promise<TTSResult> {
-    return this.client.synthesize(text, options);
+    const client = this.getActiveClient();
+    return client.synthesize(text, options);
   }
 
   async isAvailable(): Promise<boolean> {
     try {
-      return await this.client.isAvailable();
+      return await this.supertonicClient.isAvailable();
     } catch {
       return false;
     }
@@ -78,20 +102,72 @@ class TTSRouter {
   }
 
   // Data URL 방식으로 재생 (Tauri WebView 호환)
-  async playAudio(text: string): Promise<void> {
-    log('playAudio called');
+  async playAudio(text: string, options?: TTSOptions): Promise<void> {
+    log('playAudio called, engine:', useSettingsStore.getState().settings.tts.engine);
     this.stopPlayback();
+
     const { settings } = useSettingsStore.getState();
-    const result = await this.synthesize(text, {
+    const ttsOptions: TTSOptions = {
       voice: settings.tts.voice,
-    });
-    log('Synthesize complete, audioData size:', result.audioData.byteLength);
+      ...options,
+    };
+
     try {
-      await this.playViaHtmlAudio(result.audioData);
-      return;
-    } catch (htmlAudioError) {
-      log('HTMLAudio playback failed, fallback to WebAudio decode:', htmlAudioError);
-      await this.playViaWebAudio(result.audioData);
+      const result = await this.synthesize(text, ttsOptions);
+      log('Synthesize complete, audioData size:', result.audioData.byteLength);
+
+      try {
+        await this.playViaHtmlAudio(result.audioData);
+        return;
+      } catch (htmlAudioError) {
+        log('HTMLAudio playback failed, fallback to WebAudio decode:', htmlAudioError);
+        await this.playViaWebAudio(result.audioData);
+      }
+    } catch (error) {
+      // 할당량 소진 시 로컬 폴백 + 토스트 알림
+      if (error instanceof QuotaExceededError) {
+        log('Quota exceeded, falling back to local Supertonic');
+        try {
+          const { usePremiumStore } = await import('../../stores/premiumStore');
+          usePremiumStore.getState().updateQuotaFromTtsResponse(error.headers);
+        } catch { /* ignore */ }
+
+        // 토스트 이벤트 발행
+        window.dispatchEvent(new CustomEvent('ama-toast', {
+          detail: { type: 'warning', messageKey: 'settings.premium.quota.fallbackToast' },
+        }));
+
+        // 로컬 폴백
+        const fallbackResult = await this.supertonicClient.synthesize(text, ttsOptions);
+        try {
+          await this.playViaHtmlAudio(fallbackResult.audioData);
+        } catch {
+          await this.playViaWebAudio(fallbackResult.audioData);
+        }
+        return;
+      }
+
+      // 네트워크/서버 에러 시 로컬 폴백
+      if (settings.tts.engine === 'supertone_api') {
+        log('Supertone API error, falling back to local:', error);
+        window.dispatchEvent(new CustomEvent('ama-toast', {
+          detail: { type: 'error', messageKey: 'errors.supertoneApiFail' },
+        }));
+
+        try {
+          const fallbackResult = await this.supertonicClient.synthesize(text, ttsOptions);
+          try {
+            await this.playViaHtmlAudio(fallbackResult.audioData);
+          } catch {
+            await this.playViaWebAudio(fallbackResult.audioData);
+          }
+          return;
+        } catch (localError) {
+          log('Local fallback also failed:', localError);
+        }
+      }
+
+      throw error;
     }
   }
 
