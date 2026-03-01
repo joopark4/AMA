@@ -33,10 +33,11 @@ export default function PremiumVoiceSettings() {
     voices, isLoadingVoices,
     quota, isQuotaExceeded,
     usageSummary, usageDaily, isLoadingUsage,
-    checkPremiumStatus, fetchVoices, fetchUsageSummary, fetchUsageDaily,
+    checkPremiumStatus, fetchVoices, refreshVoices, fetchUsageSummary, fetchUsageDaily,
   } = usePremiumStore();
 
-  const [voiceFilter, setVoiceFilter] = useState({ gender: '', language: '' });
+  // 향후 필터 UI 복원 시 setVoiceFilter 활성화
+  const [voiceFilter] = useState({ gender: '', language: '' });
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const apiSettings = settings.tts.supertoneApi;
@@ -302,12 +303,22 @@ export default function PremiumVoiceSettings() {
 
           {/* 음성 선택 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {t('settings.premium.voiceSelect')}
-              {!isLoadingVoices && (
-                <span className="ml-1.5 text-xs font-normal text-gray-400">({filteredVoices.length})</span>
-              )}
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-medium text-gray-700">
+                {t('settings.premium.voiceSelect')}
+                {!isLoadingVoices && (
+                  <span className="ml-1.5 text-xs font-normal text-gray-400">({filteredVoices.length})</span>
+                )}
+              </label>
+              <button
+                onClick={() => refreshVoices()}
+                disabled={isLoadingVoices}
+                className="text-xs text-purple-600 hover:text-purple-800 disabled:text-gray-400"
+                title={t('settings.premium.voiceRefresh')}
+              >
+                {t('settings.premium.voiceRefresh')}
+              </button>
+            </div>
 
             {isLoadingVoices ? (
               <div className="text-sm text-gray-400 py-3 text-center">{t('settings.premium.loadingVoices')}</div>

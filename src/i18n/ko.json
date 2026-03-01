@@ -165,6 +165,7 @@
       "engineLocal": "로컬 (Supertonic)",
       "engineCloud": "Supertone API (클라우드)",
       "voiceSelect": "음성 선택",
+      "voiceRefresh": "새로고침",
       "voiceSearch": "음성 검색...",
       "voiceGender": "성별",
       "voiceGenderAll": "전체",
@@ -179,9 +180,9 @@
       "ttsLanguageUnsupported": "선택한 모델이 이 언어를 지원하지 않습니다. 영어로 대체됩니다.",
       "modelSelect": "모델",
       "models": {
-        "sona_speech_1": "Sona Speech 1 (ko/en/ja)",
-        "sona_speech_2": "Sona Speech 2 (23개 언어, 최고 품질)",
-        "sona_speech_2_flash": "Sona Speech 2 Flash (23개 언어, 빠른 응답)"
+        "sona_speech_1": "Sona Speech 1 (기본)",
+        "sona_speech_2": "Sona Speech 2 (최고 품질)",
+        "sona_speech_2_flash": "Sona Speech 2 Flash (빠른 응답)"
       },
       "styleSelect": "스타일",
       "styleAuto": "자동 (감정 기반)",

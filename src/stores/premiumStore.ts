@@ -47,11 +47,17 @@ interface VoiceSearchFilters {
   gender?: string;
 }
 
+/** 음성 목록 캐시 유효 기간: 7일 */
+const VOICES_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+const APP_VERSION = __APP_VERSION__;
+
 interface PremiumState {
   isPremium: boolean;
   isChecking: boolean;
   voices: SupertoneVoice[];
   isLoadingVoices: boolean;
+  voicesFetchedAt: number | null;
+  voicesFetchedVersion: string | null;
 
   quota: QuotaInfo | null;
   isQuotaExceeded: boolean;
@@ -62,6 +68,7 @@ interface PremiumState {
 
   checkPremiumStatus: () => Promise<void>;
   fetchVoices: (filters?: VoiceSearchFilters) => Promise<void>;
+  refreshVoices: () => Promise<void>;
   fetchUsageSummary: () => Promise<void>;
   fetchUsageDaily: () => Promise<void>;
   updateQuotaFromTtsResponse: (headers: Headers) => void;
@@ -76,6 +83,8 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
   isChecking: false,
   voices: [],
   isLoadingVoices: false,
+  voicesFetchedAt: null,
+  voicesFetchedVersion: null,
 
   quota: null,
   isQuotaExceeded: false,
@@ -166,15 +175,23 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     }
   },
 
-  fetchVoices: async (filters?: VoiceSearchFilters) => {
+  fetchVoices: async (_filters?: VoiceSearchFilters) => {
+    const { voices, voicesFetchedAt, voicesFetchedVersion } = get();
+
+    // 캐시 유효성 검사: 목록이 있고, 7일 이내이고, 앱 버전이 같으면 생략
+    if (voices.length > 0 && voicesFetchedAt && voicesFetchedVersion) {
+      const isExpired = Date.now() - voicesFetchedAt > VOICES_CACHE_TTL;
+      const isVersionChanged = voicesFetchedVersion !== APP_VERSION;
+      if (!isExpired && !isVersionChanged) return;
+    }
+
+    await get().refreshVoices();
+  },
+
+  refreshVoices: async () => {
     set({ isLoadingVoices: true });
     try {
-      const params: Record<string, string> = {};
-      if (filters?.language) params.language = filters.language;
-      if (filters?.style) params.style = filters.style;
-      if (filters?.gender) params.gender = filters.gender;
-
-      const data = await callEdgeFunction<unknown>('supertone-voices', { params });
+      const data = await callEdgeFunction<unknown>('supertone-voices', { params: {} });
 
       // Supertone API 응답 형식: { items: [...], total: N } 또는 배열
       let voiceList: SupertoneVoice[];
@@ -200,7 +217,11 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
         languages: v.languages || (v as unknown as { language?: string[] }).language || [],
       }));
 
-      set({ voices: voiceList });
+      set({
+        voices: voiceList,
+        voicesFetchedAt: Date.now(),
+        voicesFetchedVersion: APP_VERSION,
+      });
     } catch (err) {
       console.error('[PremiumStore] Failed to fetch voices:', err);
       set({ voices: [] });
@@ -275,6 +296,8 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     isChecking: false,
     voices: [],
     isLoadingVoices: false,
+    voicesFetchedAt: null,
+    voicesFetchedVersion: null,
     quota: null,
     isQuotaExceeded: false,
     usageSummary: null,
