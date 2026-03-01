@@ -165,6 +165,7 @@
       "engineLocal": "ローカル（Supertonic）",
       "engineCloud": "Supertone API（クラウド）",
       "voiceSelect": "音声を選択",
+      "voiceRefresh": "更新",
       "voiceSearch": "音声を検索...",
       "voiceGender": "性別",
       "voiceGenderAll": "すべて",
@@ -179,9 +180,9 @@
       "ttsLanguageUnsupported": "選択したモデルはこの言語に対応していません。英語に切り替わります。",
       "modelSelect": "モデル",
       "models": {
-        "sona_speech_1": "Sona Speech 1（ko/en/ja）",
-        "sona_speech_2": "Sona Speech 2（23言語、最高品質）",
-        "sona_speech_2_flash": "Sona Speech 2 Flash（23言語、高速応答）"
+        "sona_speech_1": "Sona Speech 1（標準）",
+        "sona_speech_2": "Sona Speech 2（最高品質）",
+        "sona_speech_2_flash": "Sona Speech 2 Flash（高速応答）"
       },
       "styleSelect": "スタイル",
       "styleAuto": "自動（感情ベース）",
