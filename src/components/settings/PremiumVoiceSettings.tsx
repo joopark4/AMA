@@ -125,11 +125,14 @@ export default function PremiumVoiceSettings() {
       return;
     }
 
-    // 현재 언어/스타일에 맞는 샘플 찾기
+    // 현재 언어 + 스타일에 맞는 샘플 찾기
     const samples = voice.samples || [];
     const lang = effectiveApiSettings.language || 'ko';
+    const style = effectiveApiSettings.style || 'neutral';
     const sample =
+      samples.find(s => s.language === lang && s.style === style) ||
       samples.find(s => s.language === lang) ||
+      samples.find(s => s.style === style) ||
       samples.find(s => s.language === 'ko') ||
       samples.find(s => s.language === 'en') ||
       samples[0];
@@ -166,7 +169,7 @@ export default function PremiumVoiceSettings() {
       setPreviewingVoiceId(null);
       previewAudioRef.current = null;
     }
-  }, [previewingVoiceId, effectiveApiSettings.language]);
+  }, [previewingVoiceId, effectiveApiSettings.language, effectiveApiSettings.style]);
 
   // 컴포넌트 언마운트 시 재생 정지
   useEffect(() => {
@@ -177,6 +180,9 @@ export default function PremiumVoiceSettings() {
 
   const filteredVoices = voices.filter(v => {
     if (voiceFilter.gender && v.gender !== voiceFilter.gender) return false;
+    // 음성 출력 언어를 지원하는 음성만 표시
+    const ttsLang = effectiveApiSettings.language || 'ko';
+    if (!v.languages?.includes(ttsLang)) return false;
     if (voiceFilter.language && !v.languages?.includes(voiceFilter.language)) return false;
     return true;
   });
@@ -292,76 +298,45 @@ export default function PremiumVoiceSettings() {
             )}
           </div>
 
-          {/* 음성 필터 + 선택 */}
+          {/* 음성 선택 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t('settings.premium.voiceSelect')}
+              {!isLoadingVoices && (
+                <span className="ml-1.5 text-xs font-normal text-gray-400">({filteredVoices.length})</span>
+              )}
             </label>
-            <div className="flex gap-2 mb-2">
-              <select
-                value={voiceFilter.gender}
-                onChange={(e) => setVoiceFilter(f => ({ ...f, gender: e.target.value }))}
-                className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs"
-              >
-                <option value="">{t('settings.premium.voiceGenderAll')}</option>
-                <option value="female">{t('settings.premium.voiceGenderFemale')}</option>
-                <option value="male">{t('settings.premium.voiceGenderMale')}</option>
-              </select>
-              <select
-                value={voiceFilter.language}
-                onChange={(e) => setVoiceFilter(f => ({ ...f, language: e.target.value }))}
-                className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs"
-              >
-                <option value="">{t('settings.premium.voiceLanguageAll')}</option>
-                {supportedLanguages.map(l => (
-                  <option key={l} value={l}>{LANGUAGE_LABELS[l] || l}</option>
-                ))}
-              </select>
-            </div>
 
             {isLoadingVoices ? (
               <div className="text-sm text-gray-400 py-3 text-center">{t('settings.premium.loadingVoices')}</div>
             ) : filteredVoices.length === 0 ? (
               <div className="text-sm text-gray-400 py-3 text-center">{t('settings.premium.noVoicesFound')}</div>
             ) : (
-              <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+              <div className="flex flex-wrap gap-1.5">
                 {filteredVoices.map(voice => {
-                  const hasSamples = voice.samples && voice.samples.length > 0;
+                  const isSelected = effectiveApiSettings.voiceId === voice.voice_id;
                   const isPreviewing = previewingVoiceId === voice.voice_id;
+                  const genderLabel = voice.gender === 'female'
+                    ? t('settings.premium.voiceGenderFemaleShort')
+                    : t('settings.premium.voiceGenderMaleShort');
                   return (
-                    <div
+                    <button
                       key={voice.voice_id}
-                      onClick={() => handleVoiceSelect(voice)}
-                      className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer ${
-                        effectiveApiSettings.voiceId === voice.voice_id
-                          ? 'bg-purple-50 text-purple-700'
-                          : 'hover:bg-gray-50 text-gray-700'
+                      onClick={() => { handleVoiceSelect(voice); handlePreview(voice, { stopPropagation: () => {} } as React.MouseEvent); }}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                        isSelected
+                          ? 'border-purple-500 bg-purple-50 text-purple-700 font-medium'
+                          : 'border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50/50'
                       }`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium">{voice.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {voice.gender} · {voice.languages?.join(', ')}
-                        </div>
-                      </div>
-                      {hasSamples && (
-                        <button
-                          onClick={(e) => handlePreview(voice, e)}
-                          className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
-                            isPreviewing
-                              ? 'bg-purple-500 text-white'
-                              : 'bg-gray-200 text-gray-600 hover:bg-purple-100 hover:text-purple-600'
-                          }`}
-                          title={t('settings.premium.preview')}
-                        >
-                          {isPreviewing ? (
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8" rx="0.5"/><rect x="7" y="2" width="3" height="8" rx="0.5"/></svg>
-                          ) : (
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M3 1.5v9l7.5-4.5z"/></svg>
-                          )}
-                        </button>
+                      {isPreviewing && (
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" className="shrink-0 text-purple-500">
+                          <path d="M3 1.5v9l7.5-4.5z"/>
+                        </svg>
                       )}
-                    </div>
+                      <span>{voice.name}</span>
+                      <span className="text-gray-400">({genderLabel})</span>
+                    </button>
                   );
                 })}
               </div>
