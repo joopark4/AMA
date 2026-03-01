@@ -72,13 +72,15 @@ export default function PremiumVoiceSettings() {
   }, [setTTSSettings]);
 
   const handleVoiceSelect = useCallback((voice: SupertoneVoice) => {
+    const isAlreadySelected = effectiveApiSettings.voiceId === voice.voice_id;
     setTTSSettings({
       engine: 'supertone_api',
       supertoneApi: {
         ...effectiveApiSettings,
         voiceId: voice.voice_id,
         voiceName: voice.name,
-        style: voice.styles?.[0] || 'neutral',
+        // 이미 선택된 음성이면 현재 스타일 유지, 새 음성이면 첫 번째 스타일
+        style: isAlreadySelected ? effectiveApiSettings.style : (voice.styles?.[0] || 'neutral'),
       },
     });
   }, [setTTSSettings, effectiveApiSettings]);
@@ -114,7 +116,7 @@ export default function PremiumVoiceSettings() {
   }, [setTTSSettings, effectiveApiSettings]);
 
   /** 샘플 URL로 미리듣기 (크레딧 소비 없음) */
-  const handlePreview = useCallback(async (voice: SupertoneVoice, e: React.MouseEvent) => {
+  const handlePreview = useCallback(async (voice: SupertoneVoice, e: React.MouseEvent, styleOverride?: string) => {
     e.stopPropagation();
 
     // 이미 재생 중이면 정지
@@ -128,7 +130,7 @@ export default function PremiumVoiceSettings() {
     // 현재 언어 + 스타일에 맞는 샘플 찾기
     const samples = voice.samples || [];
     const lang = effectiveApiSettings.language || 'ko';
-    const style = effectiveApiSettings.style || 'neutral';
+    const style = styleOverride || effectiveApiSettings.style || 'neutral';
     const sample =
       samples.find(s => s.language === lang && s.style === style) ||
       samples.find(s => s.language === lang) ||
@@ -322,7 +324,12 @@ export default function PremiumVoiceSettings() {
                   return (
                     <button
                       key={voice.voice_id}
-                      onClick={() => { handleVoiceSelect(voice); handlePreview(voice, { stopPropagation: () => {} } as React.MouseEvent); }}
+                      onClick={() => {
+                        const isAlreadySelected = effectiveApiSettings.voiceId === voice.voice_id;
+                        const previewStyle = isAlreadySelected ? effectiveApiSettings.style : voice.styles?.[0] || 'neutral';
+                        handleVoiceSelect(voice);
+                        handlePreview(voice, { stopPropagation: () => {} } as React.MouseEvent, previewStyle);
+                      }}
                       className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
                         isSelected
                           ? 'border-purple-500 bg-purple-50 text-purple-700 font-medium'
