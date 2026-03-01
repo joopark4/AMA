@@ -165,6 +165,7 @@
       "engineLocal": "Local (Supertonic)",
       "engineCloud": "Supertone API (Cloud)",
       "voiceSelect": "Select Voice",
+      "voiceRefresh": "Refresh",
       "voiceSearch": "Search voices...",
       "voiceGender": "Gender",
       "voiceGenderAll": "All",
@@ -179,9 +180,9 @@
       "ttsLanguageUnsupported": "Selected model doesn't support this language. Falling back to English.",
       "modelSelect": "Model",
       "models": {
-        "sona_speech_1": "Sona Speech 1 (ko/en/ja)",
-        "sona_speech_2": "Sona Speech 2 (23 languages, best quality)",
-        "sona_speech_2_flash": "Sona Speech 2 Flash (23 languages, fast)"
+        "sona_speech_1": "Sona Speech 1 (Standard)",
+        "sona_speech_2": "Sona Speech 2 (Best Quality)",
+        "sona_speech_2_flash": "Sona Speech 2 Flash (Fast)"
       },
       "styleSelect": "Style",
       "styleAuto": "Auto (emotion-based)",
