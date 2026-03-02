@@ -84,6 +84,7 @@ src/components/settings/
 ├── LLMSettings.tsx              # LLM provider/model/apiKey/endpoint
 ├── LicensesSettings.tsx         # 오픈소스/모델 라이선스 표
 ├── MonitorSettings.tsx          # 모니터/디스플레이 설정
+├── PremiumVoiceSettings.tsx     # 프리미엄 음성 설정 (TTS 엔진/음성/모델/사용량)
 ├── SettingsSection.tsx          # 접을 수 있는 카드 UI 공통 컴포넌트
 ├── UpdateSettings.tsx           # 앱 버전 표시, 업데이트 확인/설치
 └── VoiceSettings.tsx            # Whisper 모델 선택/다운로드 + Supertonic 보이스
@@ -121,6 +122,7 @@ src/services/
 │   └── rhythmAnalyzer.ts        # 댄스용 리듬 분석
 ├── auth/
 │   ├── authService.ts           # 인증 서비스
+│   ├── edgeFunctionClient.ts    # Edge Function 호출 래퍼 (세션 복원 + invoke)
 │   ├── oauthClient.ts           # OAuth 클라이언트
 │   ├── supabaseClient.ts        # Supabase 연결
 │   ├── tokenManager.ts          # 토큰 관리
@@ -137,8 +139,9 @@ src/services/
 │   └── windowManager.ts         # 윈도우 관리
 └── voice/
     ├── audioProcessor.ts        # 녹음 + WAV 인코딩
-    ├── supertonicClient.ts      # 모델 로딩 + 합성
-    ├── ttsRouter.ts             # 합성/재생 라우팅
+    ├── supertonicClient.ts      # 로컬 ONNX TTS 모델 로딩 + 합성
+    ├── supertoneApiClient.ts    # Supertone API 클라우드 TTS 클라이언트
+    ├── ttsRouter.ts             # 합성/재생 라우팅 (엔진 선택 + 폴백)
     └── voiceCommandParser.ts    # 음성 명령어 파서
 ```
 
@@ -152,7 +155,8 @@ src/stores/
 ├── conversationStore.ts         # 대화/상태 (persist)
 ├── modelDownloadStore.ts        # Whisper/Supertonic 모델 다운로드 상태
 ├── monitorStore.ts              # 모니터/디스플레이 상태
-└── settingsStore.ts             # persist 설정 (version 12)
+├── premiumStore.ts              # 프리미엄 상태/음성목록/사용량/할당량
+└── settingsStore.ts             # persist 설정 (version 13)
 ```
 
 ### i18n
@@ -176,7 +180,8 @@ src-tauri/
 │       ├── window.rs            # click-through, cursor, window helper
 │       ├── screenshot.rs        # Vision용 화면 캡처
 │       ├── auth.rs              # OAuth URL/콜백 처리
-│       └── models.rs            # 모델 상태/다운로드
+│       ├── models.rs            # 모델 상태/다운로드
+│       └── http.rs              # 외부 URL 바이너리 fetch (미리듣기용)
 ├── tauri.conf.json
 ├── Cargo.toml
 ├── Info.plist                   # 마이크/음성인식 권한 설명
@@ -216,3 +221,17 @@ models/
 - 개발 모드: 필요 시 `public/models`로 동기화
 - 배포 모드: `Contents/Resources/models`로 스테이징
 - 사용자 모델: `~/.mypartnerai/models/` (온디맨드 다운로드)
+
+## Supabase
+
+```text
+supabase/
+├── functions/
+│   ├── delete-account/index.ts      # 계정 삭제 Edge Function
+│   ├── supertone-tts/index.ts       # TTS 프록시 (JWT 검증 + 할당량 관리)
+│   ├── supertone-voices/index.ts    # 음성 목록 프록시
+│   └── supertone-usage/index.ts     # 사용량 조회
+└── migrations/
+    ├── 001_initial_schema.sql       # 초기 스키마 (profiles, user_settings, user_consents)
+    └── 20260228000000_premium_feature.sql # 프리미엄 기능 (subscription_plans, tts_usage 등)
+```

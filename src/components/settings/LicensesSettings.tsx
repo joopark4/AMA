@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 type LocalizedText = {
   ko: string;
   en: string;
+  ja: string;
 };
 
 type LicenseItem = {
@@ -16,44 +17,44 @@ type LicenseItem = {
 const OPEN_SOURCE_LICENSES: LicenseItem[] = [
   {
     name: 'Tauri',
-    usage: { ko: '데스크톱 앱 프레임워크', en: 'Desktop app framework' },
-    license: { ko: 'Apache-2.0 OR MIT', en: 'Apache-2.0 OR MIT' },
+    usage: { ko: '데스크톱 앱 프레임워크', en: 'Desktop app framework', ja: 'デスクトップアプリフレームワーク' },
+    license: { ko: 'Apache-2.0 OR MIT', en: 'Apache-2.0 OR MIT', ja: 'Apache-2.0 OR MIT' },
     link: 'https://github.com/tauri-apps/tauri',
   },
   {
     name: 'React',
-    usage: { ko: 'UI 프레임워크', en: 'UI framework' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: 'UI 프레임워크', en: 'UI framework', ja: 'UIフレームワーク' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/facebook/react',
   },
   {
     name: 'Three.js',
-    usage: { ko: '3D 렌더링', en: '3D rendering' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: '3D 렌더링', en: '3D rendering', ja: '3Dレンダリング' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/mrdoob/three.js',
   },
   {
     name: '@react-three/fiber',
-    usage: { ko: 'React-Three 통합', en: 'React-Three integration' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: 'React-Three 통합', en: 'React-Three integration', ja: 'React-Three統合' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/pmndrs/react-three-fiber',
   },
   {
     name: '@pixiv/three-vrm',
-    usage: { ko: 'VRM 로더/런타임', en: 'VRM loader/runtime' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: 'VRM 로더/런타임', en: 'VRM loader/runtime', ja: 'VRMローダー/ランタイム' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/pixiv/three-vrm',
   },
   {
     name: 'Zustand',
-    usage: { ko: '전역 상태 관리', en: 'Global state management' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: '전역 상태 관리', en: 'Global state management', ja: 'グローバル状態管理' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/pmndrs/zustand',
   },
   {
     name: 'i18next',
-    usage: { ko: '다국어(i18n)', en: 'Internationalization (i18n)' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: '다국어(i18n)', en: 'Internationalization (i18n)', ja: '多言語対応(i18n)' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/i18next/i18next',
   },
 ];
@@ -61,68 +62,68 @@ const OPEN_SOURCE_LICENSES: LicenseItem[] = [
 const MODEL_AND_SERVICE_LICENSES: LicenseItem[] = [
   {
     name: 'Ollama',
-    usage: { ko: '로컬 LLM 서버', en: 'Local LLM server' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: '로컬 LLM 서버', en: 'Local LLM server', ja: 'ローカルLLMサーバー' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/ollama/ollama',
   },
   {
     name: 'LocalAI',
-    usage: { ko: '로컬 OpenAI 호환 서버', en: 'Local OpenAI-compatible server' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: '로컬 OpenAI 호환 서버', en: 'Local OpenAI-compatible server', ja: 'ローカルOpenAI互換サーバー' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/mudler/LocalAI',
   },
   {
     name: 'Claude API',
-    usage: { ko: '클라우드 LLM', en: 'Cloud LLM' },
-    license: { ko: 'Anthropic 서비스 약관', en: 'Anthropic service terms' },
+    usage: { ko: '클라우드 LLM', en: 'Cloud LLM', ja: 'クラウドLLM' },
+    license: { ko: 'Anthropic 서비스 약관', en: 'Anthropic service terms', ja: 'Anthropicサービス規約' },
     link: 'https://www.anthropic.com/claude',
   },
   {
     name: 'OpenAI API',
-    usage: { ko: '클라우드 LLM', en: 'Cloud LLM' },
-    license: { ko: 'OpenAI 서비스 약관', en: 'OpenAI service terms' },
+    usage: { ko: '클라우드 LLM', en: 'Cloud LLM', ja: 'クラウドLLM' },
+    license: { ko: 'OpenAI 서비스 약관', en: 'OpenAI service terms', ja: 'OpenAIサービス規約' },
     link: 'https://platform.openai.com',
   },
   {
     name: 'Gemini API',
-    usage: { ko: '클라우드 LLM', en: 'Cloud LLM' },
-    license: { ko: 'Google 서비스 약관', en: 'Google service terms' },
+    usage: { ko: '클라우드 LLM', en: 'Cloud LLM', ja: 'クラウドLLM' },
+    license: { ko: 'Google 서비스 약관', en: 'Google service terms', ja: 'Googleサービス規約' },
     link: 'https://ai.google.dev',
   },
   {
     name: 'ONNX Runtime Web',
-    usage: { ko: 'Supertonic 추론 런타임', en: 'Supertonic inference runtime' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: 'Supertonic 추론 런타임', en: 'Supertonic inference runtime', ja: 'Supertonic推論ランタイム' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/microsoft/onnxruntime',
   },
   {
     name: 'whisper.cpp',
-    usage: { ko: 'STT 엔진 (whisper-cli)', en: 'STT engine (whisper-cli)' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: 'STT 엔진 (whisper-cli)', en: 'STT engine (whisper-cli)', ja: 'STTエンジン (whisper-cli)' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/ggml-org/whisper.cpp',
   },
   {
     name: 'Whisper (OpenAI)',
-    usage: { ko: 'STT 모델 계열', en: 'STT model family' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: 'STT 모델 계열', en: 'STT model family', ja: 'STTモデルファミリー' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/openai/whisper',
   },
   {
     name: 'GGML Whisper models',
-    usage: { ko: '앱 로컬 STT 모델', en: 'Local STT models for app' },
-    license: { ko: '배포처 라이선스 준수', en: 'Follow source distribution license' },
+    usage: { ko: '앱 로컬 STT 모델', en: 'Local STT models for app', ja: 'アプリ内STTモデル' },
+    license: { ko: '배포처 라이선스 준수', en: 'Follow source distribution license', ja: '配布元ライセンスに準拠' },
     link: 'https://huggingface.co/ggerganov/whisper.cpp',
   },
   {
     name: 'Supertonic code',
-    usage: { ko: 'TTS 엔진 구현', en: 'TTS engine implementation' },
-    license: { ko: 'MIT', en: 'MIT' },
+    usage: { ko: 'TTS 엔진 구현', en: 'TTS engine implementation', ja: 'TTSエンジン実装' },
+    license: { ko: 'MIT', en: 'MIT', ja: 'MIT' },
     link: 'https://github.com/supertone-inc/supertonic',
   },
   {
     name: 'Supertonic models',
-    usage: { ko: '앱 로컬 TTS 모델', en: 'Local TTS models for app' },
-    license: { ko: 'BigScience Open RAIL-M', en: 'BigScience Open RAIL-M' },
+    usage: { ko: '앱 로컬 TTS 모델', en: 'Local TTS models for app', ja: 'アプリ内TTSモデル' },
+    license: { ko: 'BigScience Open RAIL-M', en: 'BigScience Open RAIL-M', ja: 'BigScience Open RAIL-M' },
     link: 'https://huggingface.co/Supertone/supertonic',
   },
 ];
@@ -136,7 +137,7 @@ function LicenseTable({
   linkLabel,
 }: {
   items: LicenseItem[];
-  lang: 'ko' | 'en';
+  lang: 'ko' | 'en' | 'ja';
   nameLabel: string;
   usageLabel: string;
   licenseLabel: string;
@@ -179,7 +180,7 @@ function LicenseTable({
 
 export default function LicensesSettings() {
   const { t, i18n } = useTranslation();
-  const lang = i18n.language === 'ko' ? 'ko' : 'en';
+  const lang = i18n.language === 'ko' ? 'ko' : i18n.language === 'ja' ? 'ja' : 'en';
   const [isOpenSourceExpanded, setIsOpenSourceExpanded] = useState(false);
   const [isModelExpanded, setIsModelExpanded] = useState(false);
 

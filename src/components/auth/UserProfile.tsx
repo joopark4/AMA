@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/auth/authService';
 import { isMockMode, ENABLED_PROVIDERS, PROVIDER_ICONS, PROVIDER_COLORS } from '../../services/auth/oauthClient';
 import { useAuthStore } from '../../stores/authStore';
 import { useConversationStore } from '../../stores/conversationStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import TermsModal from './TermsModal';
 import type { OAuthProvider } from '../../services/auth/types';
 
@@ -25,6 +26,7 @@ export default function UserProfile() {
   const [agreedTerms, setAgreedTerms] = useState(hasAgreedToTerms);
   const [agreedPrivacy, setAgreedPrivacy] = useState(hasAgreedToTerms);
   const oauthTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const oauthPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleAgreementChange = (type: 'terms' | 'privacy', checked: boolean) => {
     if (type === 'terms') setAgreedTerms(checked);
@@ -40,6 +42,21 @@ export default function UserProfile() {
       oauthTimeoutRef.current = null;
     }
   };
+
+  const clearOAuthPoll = () => {
+    if (oauthPollRef.current) {
+      clearInterval(oauthPollRef.current);
+      oauthPollRef.current = null;
+    }
+  };
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      clearOAuthTimeout();
+      clearOAuthPoll();
+    };
+  }, []);
 
   const handleLogout = async () => {
     if (!window.confirm(t('auth.logoutConfirm'))) return;
@@ -91,17 +108,49 @@ export default function UserProfile() {
 
       const { authUrl } = await authService.initiateOAuth(provider, '', '');
       setPendingProvider(provider);
+      // OAuth 브라우저가 보이도록 설정 패널 닫기
+      useSettingsStore.getState().closeSettings();
       await invoke('open_oauth_url', { url: authUrl });
-      // 이후 App.tsx의 딥링크 이벤트 리스너에서 처리
+
+      // 개발 모드: Vite dev 서버에서 OAuth 코드를 폴링
+      // 프로덕션: App.tsx의 딥링크 이벤트 리스너에서 처리
+      if (import.meta.env.DEV) {
+        clearOAuthPoll();
+        oauthPollRef.current = setInterval(async () => {
+          try {
+            const res = await fetch('/api/auth-code');
+            const data = await res.json() as { code: string | null };
+            if (data.code) {
+              clearOAuthPoll();
+              clearOAuthTimeout();
+              const result = await authService.handleCallback(data.code, '', '');
+              setUser(result.user);
+              setTokens(result.tokens);
+              // OAuth 닉네임을 아바타 이름 초기값으로 연동
+              const currentSettings = useSettingsStore.getState();
+              if (result.user.nickname && !(currentSettings.settings.avatarName || '').trim()) {
+                currentSettings.setAvatarName(result.user.nickname);
+              }
+              setLoading(false);
+              setPendingProvider(null);
+            }
+          } catch {
+            // 폴링 실패는 무시 (서버가 아직 코드를 받지 못한 경우)
+          }
+        }, 1000);
+      }
+
       // 5분 내 콜백이 없으면 로딩 상태 자동 복귀
       const OAUTH_TIMEOUT_MS = 5 * 60 * 1000;
       oauthTimeoutRef.current = setTimeout(() => {
+        clearOAuthPoll();
         setLoading(false);
         setPendingProvider(null);
         setError(t('auth.errors.timeout'));
       }, OAUTH_TIMEOUT_MS);
     } catch (err) {
       clearOAuthTimeout();
+      clearOAuthPoll();
       const message = err instanceof Error ? err.message : String(err);
       setError(t('auth.errors.providerError', { provider, error: message }));
       setLoading(false);
