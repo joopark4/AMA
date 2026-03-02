@@ -20,18 +20,7 @@ export default function App() {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        checkAdmin(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    function handleSession(session: { user: User } | null) {
       setUser(session?.user ?? null);
       if (session?.user) {
         checkAdmin(session.user.id);
@@ -39,6 +28,16 @@ export default function App() {
         setIsAdmin(false);
         setLoading(false);
       }
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
     });
 
     return () => subscription.unsubscribe();
