@@ -57,6 +57,34 @@ const INTENSITY_LABEL_EN: Record<string, string> = {
   high: 'high intensity',
 };
 
+const EMOTION_LABEL_JA: Record<string, string> = {
+  neutral: 'ニュートラル',
+  happy: '幸せ',
+  sad: '悲しみ',
+  angry: '怒り',
+  surprised: '驚き',
+  thinking: '思考',
+  relaxed: 'リラックス',
+  bridge: 'ブリッジ',
+};
+
+const EMOTION_MEANING_JA: Record<string, string> = {
+  neutral: '基本的な呼吸と安定した姿勢を示します。',
+  happy: 'ポジティブなリアクションと活力を表現します。',
+  sad: '落ち着いた穏やかな反応を表現します。',
+  angry: '強い意志と断固たる感情を表現します。',
+  surprised: '瞬間的な驚きの反応を表現します。',
+  thinking: '考え込んでいる探索動作を表現します。',
+  relaxed: 'リラックスした快適な動きを表現します。',
+  bridge: '状態を自然に切り替える接続動作です。',
+};
+
+const INTENSITY_LABEL_JA: Record<string, string> = {
+  low: '低強度',
+  mid: '中強度',
+  high: '高強度',
+};
+
 function pickPrimaryTag(clip: MotionClipMeta): string {
   if (clip.emotion_tags.length === 0) return 'bridge';
   if (clip.emotion_tags[0] === 'bridge' && clip.emotion_tags.length > 1) {
@@ -78,6 +106,13 @@ export function buildMotionNarration(
     const intensityLabel = INTENSITY_LABEL_EN[clip.intensity] ?? clip.intensity;
     const meaning = EMOTION_MEANING_EN[tag] ?? EMOTION_MEANING_EN.bridge;
     return `[${index + 1}/${total}] ${clip.id}. ${emotionLabel}, ${intensityLabel}. ${meaning}`;
+  }
+
+  if (language === 'ja') {
+    const emotionLabel = EMOTION_LABEL_JA[tag] ?? tag;
+    const intensityLabel = INTENSITY_LABEL_JA[clip.intensity] ?? clip.intensity;
+    const meaning = EMOTION_MEANING_JA[tag] ?? EMOTION_MEANING_JA.bridge;
+    return `[${index + 1}/${total}] ${clip.id}。${emotionLabel}、${intensityLabel}のモーションです。${meaning}`;
   }
 
   const emotionLabel = EMOTION_LABEL_KO[tag] ?? tag;

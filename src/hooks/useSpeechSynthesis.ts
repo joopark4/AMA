@@ -8,6 +8,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useConversationStore } from '../stores/conversationStore';
 import { useAvatarStore } from '../stores/avatarStore';
 import { ttsRouter } from '../services/voice/ttsRouter';
+import type { TTSOptions } from '../services/voice/types';
 import { invoke } from '@tauri-apps/api/core';
 
 // Helper function to log to terminal
@@ -20,7 +21,7 @@ const log = (...args: any[]) => {
 interface UseSpeechSynthesisReturn {
   isSpeaking: boolean;
   error: string | null;
-  speak: (text: string) => Promise<void>;
+  speak: (text: string, options?: TTSOptions) => Promise<void>;
   stop: () => void;
 }
 
@@ -60,7 +61,7 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
     setStatus('idle');
   }, [stopLipSync, setStoreSpeaking, setStatus]);
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, options?: TTSOptions) => {
     log('speak() called with text:', text?.substring(0, 30) + '...');
 
     // 진행 중인 음성 중지
@@ -77,7 +78,7 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
       startLipSync();
 
       // Web Audio API를 사용한 직접 재생
-      await ttsRouter.playAudio(text);
+      await ttsRouter.playAudio(text, options);
 
       log('Audio playback completed');
       cleanup();

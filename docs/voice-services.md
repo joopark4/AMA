@@ -1,6 +1,6 @@
 # 음성 서비스
 
-현재 음성 스택은 **Whisper(STT) + Supertonic(TTS)** 단일 경로입니다.
+음성 스택은 **Whisper(STT)** + **Supertonic(로컬 TTS)** / **Supertone API(클라우드 TTS)** 이중 경로입니다.
 
 ## 현재 구성
 
@@ -8,8 +8,10 @@
 |------|------|------|
 | STT | whisper.cpp (`whisper-cli`) | 사용 중 |
 | STT 모델 | `base`, `small`, `medium` | 사용 중 |
-| TTS | Supertonic + onnxruntime-web | 사용 중 |
-| TTS 음성 | `F1~F5`, `M1~M5` | 사용 중 |
+| TTS (로컬) | Supertonic + onnxruntime-web | 사용 중 (기본) |
+| TTS (클라우드) | Supertone API (Edge Function 프록시) | 사용 중 (프리미엄) |
+| TTS 음성 (로컬) | `F1~F5`, `M1~M5` | 사용 중 |
+| TTS 음성 (클라우드) | Supertone API 동적 조회 | 사용 중 |
 
 ## STT 파이프라인
 
@@ -50,16 +52,38 @@
 
 ## TTS 파이프라인
 
+### 엔진 선택
+`ttsRouter`가 설정(`settings.tts.engine`)에 따라 적절한 클라이언트를 선택합니다:
+- `supertonic` → `supertonicClient` (로컬 ONNX)
+- `supertone_api` → `supertoneApiClient` (클라우드)
+
+`supertone_api` 선택 시 할당량 소진 여부를 `premiumStore.isQuotaExceeded`로 확인하고, 소진이면 로컬로 자동 폴백합니다.
+
+### 로컬 TTS (Supertonic)
+
 1. `useSpeechSynthesis.speak(text)` 호출
 2. `ttsRouter.playAudio(text)`
 3. `supertonicClient.synthesize()`로 WAV 생성
 4. HTMLAudio 재생 시도
 5. 실패하면 WebAudio decode/play로 fallback
 
+### 클라우드 TTS (Supertone API)
+
+1. `useSpeechSynthesis.speak(text)` 호출
+2. `ttsRouter.playAudio(text)` → `supertoneApiClient.synthesize()`
+3. 텍스트를 300자 이하 청크로 분할
+4. 각 청크에 대해 `callEdgeFunction('supertone-tts', ...)` 호출
+5. Edge Function: JWT 검증 → 프리미엄 확인 → 할당량 검사 → Supertone API 호출
+6. WAV 청크를 결합 (청크 사이 100ms 무음 삽입)
+7. HTMLAudio 재생 시도 → 실패하면 WebAudio fallback
+8. 에러 발생 시 로컬 Supertonic으로 자동 폴백 + 토스트 알림
+
 주요 파일:
 - `src/hooks/useSpeechSynthesis.ts`
 - `src/services/voice/ttsRouter.ts`
 - `src/services/voice/supertonicClient.ts`
+- `src/services/voice/supertoneApiClient.ts`
+- `src/services/auth/edgeFunctionClient.ts`
 
 ## Supertonic 모델 로딩 우선순위
 
@@ -73,14 +97,52 @@
 - `onnx/`
 - `voice_styles/`
 
+## Supertone API 클라이언트
+
+### 지원 모델/언어
+
+| 모델 | 지원 언어 |
+|------|----------|
+| `sona_speech_1` | ko, en, ja |
+| `sona_speech_2` | ko, en, ja, zh + 19개 언어 |
+| `sona_speech_2_flash` | sona_speech_2와 동일 (경량) |
+
+### 감정 → 스타일 자동 매핑
+
+`autoEmotionStyle` 활성화 시 AI 응답 감정을 Supertone 스타일로 변환:
+- happy → happy, sad → sad, angry → angry, surprised → surprised
+- relaxed/thinking/neutral → neutral
+
+### Edge Function 프록시 (`supertone-tts`)
+
+1. JWT 검증 (Supabase Auth)
+2. `profiles` 테이블에서 프리미엄 상태/플랜 확인
+3. `tts_usage` 테이블에서 월간 사용량 합산 → 할당량 초과 여부 검사
+4. Supertone API 호출 (`x-sup-api-key` 헤더로 서버 측 API 키 주입)
+5. 사용량 기록 (1초 = 1크레딧)
+6. 오디오 바이너리 + 할당량 정보 헤더(`X-Quota-Used/Limit/Remaining`) 반환
+
+### Edge Function Client (`edgeFunctionClient.ts`)
+
+- `supabase.functions.invoke()` 기반
+- `persistSession: false` 환경에서 세션 자동 복원 (싱글턴)
+- 401 응답 시 세션 무효화 후 1회 자동 재시도
+- `QuotaExceededError` 전용 에러 클래스
+
 ## 설정 UI
 
 - `VoiceSettings`:
   - STT 모델 선택: `base`, `small`, `medium`
   - TTS 보이스 선택: `F1~F5`, `M1~M5`
-- 엔진 타입은 런타임에서 강제됨
-  - STT: `whisper`
-  - TTS: `supertonic`
+- `PremiumVoiceSettings`:
+  - TTS 엔진 선택 (로컬 / 클라우드)
+  - 모델/언어/음성/스타일 선택
+  - 감정 자동 매핑 토글
+  - 음성 미세 조정 (pitchShift, pitchVariance, speed)
+  - 사용량/할당량 모니터링
+- 엔진 타입:
+  - STT: `whisper` (강제)
+  - TTS: `supertonic` (기본) 또는 `supertone_api` (프리미엄)
 
 ### Whisper 모델 온디맨드 다운로드
 

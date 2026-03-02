@@ -54,10 +54,8 @@ function App() {
     }
   }, [settings.avatarName, initialAvatarName]);
 
-  // Deep-link OAuth 콜백 처리 (인증 기능 미완성 — 개발 환경에서만 활성화)
+  // Deep-link OAuth 콜백 처리
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
-
     let unlisten: (() => void) | undefined;
 
     onOpenUrl(async (urls) => {
