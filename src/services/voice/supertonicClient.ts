@@ -859,7 +859,7 @@ export class SupertonicClient implements TTSClient {
   /**
    * 언어 감지
    */
-  private detectLanguage(text: string, defaultLang: 'ko' | 'en'): SupertonicLanguage {
+  private detectLanguage(text: string, defaultLang: string): SupertonicLanguage {
     if (/[\u3131-\u314e\u314f-\u3163\uac00-\ud7a3]/.test(text)) {
       return 'ko';
     }
