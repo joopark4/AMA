@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info',
+  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
@@ -124,19 +124,29 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    // Get monthly usage for each user
+    // Get monthly usage for all users in a single batch query
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const usersWithUsage = [];
-    for (const u of users || []) {
-      const { data: usage } = await adminClient
+    const userIds = (users || []).map(u => u.id);
+
+    const usageMap = new Map<string, number>();
+    if (userIds.length > 0) {
+      const { data: allUsage } = await adminClient
         .from('tts_usage')
-        .select('credits_used')
-        .eq('user_id', u.id)
+        .select('user_id, credits_used')
+        .in('user_id', userIds)
         .gte('created_at', monthStart);
-      const monthlyUsed = usage?.reduce((s, r) => s + (r.credits_used || 0), 0) ?? 0;
-      usersWithUsage.push({ ...u, monthlyUsed });
+
+      for (const r of allUsage || []) {
+        const prev = usageMap.get(r.user_id) || 0;
+        usageMap.set(r.user_id, prev + (r.credits_used || 0));
+      }
     }
+
+    const usersWithUsage = (users || []).map(u => ({
+      ...u,
+      monthlyUsed: usageMap.get(u.id) ?? 0,
+    }));
 
     return new Response(JSON.stringify({
       users: usersWithUsage,

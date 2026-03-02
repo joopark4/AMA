@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info',
+  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
@@ -119,22 +119,29 @@ Deno.serve(async (req) => {
       .sort((a, b) => b[1].seconds - a[1].seconds)
       .slice(0, 20);
 
-    const topUsers = [];
-    for (const [uid, usage] of topUserIds) {
-      const { data: profile } = await adminClient
+    const topUserIds_list = topUserIds.map(([uid]) => uid);
+    const profileMap = new Map<string, { email?: string; nickname?: string; plan_id?: string }>();
+    if (topUserIds_list.length > 0) {
+      const { data: profiles } = await adminClient
         .from('profiles')
-        .select('email, nickname, plan_id')
-        .eq('id', uid)
-        .single();
-      topUsers.push({
+        .select('id, email, nickname, plan_id')
+        .in('id', topUserIds_list);
+      for (const p of profiles || []) {
+        profileMap.set(p.id, p);
+      }
+    }
+
+    const topUsers = topUserIds.map(([uid, usage]) => {
+      const profile = profileMap.get(uid);
+      return {
         userId: uid,
         email: profile?.email,
         nickname: profile?.nickname,
         planId: profile?.plan_id,
         totalSeconds: usage.seconds,
         totalRequests: usage.requests,
-      });
-    }
+      };
+    });
 
     return new Response(JSON.stringify({
       totalUsers: totalUsers || 0,
