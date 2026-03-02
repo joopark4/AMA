@@ -2,6 +2,8 @@
  * Edge Function 호출 래퍼 — supabase.functions.invoke() 기반
  * persistSession: false 환경에서 setSession()으로 세션 복원 후
  * Supabase 클라이언트가 인증을 자동 처리하도록 위임.
+ *
+ * arraybuffer 응답 시에는 raw fetch()를 사용하여 응답 헤더를 보존합니다.
  */
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from './supabaseClient';
@@ -84,6 +86,11 @@ export async function callEdgeFunction<T = unknown>(
 
   await ensureSession();
 
+  // arraybuffer 응답 시 raw fetch 사용 (응답 헤더 보존)
+  if (options.responseType === 'arraybuffer') {
+    return callEdgeFunctionRaw<T>(functionName, options);
+  }
+
   // query params가 있으면 function name에 붙임
   let fnPath = functionName;
   if (options.params && Object.keys(options.params).length > 0) {
@@ -110,8 +117,6 @@ export async function callEdgeFunction<T = unknown>(
   const { data, error } = await supabase.functions.invoke(fnPath, invokeOptions);
 
   if (error) {
-    // FunctionsHttpError: Edge Function returned a non-2xx response
-    // FunctionsRelayError: Supabase relay error (e.g. Invalid JWT)
     const message = error.message || 'Edge function error';
 
     // 401 시 세션 무효화 후 1회 재시도
@@ -130,7 +135,7 @@ export async function callEdgeFunction<T = unknown>(
           {}
         );
       }
-      return parseResponse<T>(retry.data, options.responseType);
+      return retry.data as T;
     }
 
     // 에러 body 파싱 시도
@@ -141,30 +146,89 @@ export async function callEdgeFunction<T = unknown>(
       errorBody = data as Record<string, unknown>;
     }
 
+    const status = (error as unknown as { status?: number }).status || 500;
+
+    // quota_exceeded → QuotaExceededError
+    if (errorBody.error === 'quota_exceeded' || status === 429) {
+      throw new QuotaExceededError(errorBody, new Headers());
+    }
+
     throw new EdgeFunctionError(
       (errorBody.error as string) || 'server_error',
       (errorBody.message as string) || message,
-      (error as unknown as { status?: number }).status || 500,
+      status,
       new Headers(),
       errorBody
     );
   }
 
-  return parseResponse<T>(data, options.responseType);
+  return data as T;
 }
 
-function parseResponse<T>(data: unknown, responseType?: string): T {
-  if (responseType === 'arraybuffer') {
-    // supabase.functions.invoke returns Blob for binary responses
-    if (data instanceof Blob) {
-      // 동기적으로 반환 불가 — 호출자에서 처리 필요
-      // 실제로는 arrayBuffer()를 호출해야 하므로 Promise 반환
-      return data.arrayBuffer().then(buf => ({ data: buf, headers: new Headers() })) as unknown as T;
-    }
-    return { data, headers: new Headers() } as T;
+/**
+ * raw fetch()를 사용하여 Edge Function 호출 — arraybuffer 응답 + 헤더 보존
+ */
+async function callEdgeFunctionRaw<T>(
+  functionName: string,
+  options: CallOptions,
+  isRetry = false,
+): Promise<T> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) throw new Error('Supabase not configured');
+
+  const { data: { session } } = await supabase!.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken) throw new Error('Not authenticated');
+
+  let url = `${supabaseUrl}/functions/v1/${functionName}`;
+  if (options.params && Object.keys(options.params).length > 0) {
+    url += '?' + new URLSearchParams(options.params).toString();
   }
 
-  return data as T;
+  const method = options.method || (options.body ? 'POST' : 'GET');
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'apikey': supabaseAnonKey,
+      'Content-Type': 'application/json',
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  if (!response.ok) {
+    // 401 시 세션 무효화 후 1회 재시도
+    if (response.status === 401 && !isRetry) {
+      console.warn('[EdgeFunctionClient] Raw fetch 401, invalidating session and retrying');
+      invalidateSession();
+      await ensureSession();
+      return callEdgeFunctionRaw<T>(functionName, options, true);
+    }
+
+    // 에러 body 파싱
+    let errorBody: Record<string, unknown> = {};
+    try {
+      const text = await response.text();
+      errorBody = JSON.parse(text);
+    } catch { /* ignore */ }
+
+    // quota_exceeded → QuotaExceededError
+    if (errorBody.error === 'quota_exceeded' || response.status === 429) {
+      throw new QuotaExceededError(errorBody, response.headers);
+    }
+
+    throw new EdgeFunctionError(
+      (errorBody.error as string) || 'server_error',
+      (errorBody.message as string) || response.statusText,
+      response.status,
+      response.headers,
+      errorBody
+    );
+  }
+
+  const buf = await response.arrayBuffer();
+  return { data: buf, headers: response.headers } as T;
 }
 
 export class EdgeFunctionError extends Error {

@@ -2,6 +2,7 @@ import type { TTSResult, TTSClient, TTSOptions } from './types';
 import { getSupertonicClient } from './supertonicClient';
 import { getSupertoneApiClient } from './supertoneApiClient';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { usePremiumStore } from '../../stores/premiumStore';
 import { QuotaExceededError } from '../auth/edgeFunctionClient';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -31,16 +32,11 @@ class TTSRouter {
     const { settings } = useSettingsStore.getState();
 
     if (settings.tts.engine === 'supertone_api') {
-      // 할당량 소진 시 로컬 폴백 (동기 import 사용)
-      try {
-        const { usePremiumStore } = require('../../stores/premiumStore');
-        const { isQuotaExceeded } = usePremiumStore.getState();
-        if (isQuotaExceeded) {
-          log('Quota exceeded, falling back to local Supertonic');
-          return this.supertonicClient;
-        }
-      } catch {
-        // premiumStore 로드 실패 시 로컬 폴백
+      // 할당량 소진 시 로컬 폴백
+      const { isQuotaExceeded } = usePremiumStore.getState();
+      if (isQuotaExceeded) {
+        log('Quota exceeded, falling back to local Supertonic');
+        return this.supertonicClient;
       }
 
       return getSupertoneApiClient();
@@ -127,10 +123,7 @@ class TTSRouter {
       // 할당량 소진 시 로컬 폴백 + 토스트 알림
       if (error instanceof QuotaExceededError) {
         log('Quota exceeded, falling back to local Supertonic');
-        try {
-          const { usePremiumStore } = await import('../../stores/premiumStore');
-          usePremiumStore.getState().updateQuotaFromTtsResponse(error.headers);
-        } catch { /* ignore */ }
+        usePremiumStore.getState().updateQuotaFromTtsResponse(error.headers);
 
         // 토스트 이벤트 발행
         window.dispatchEvent(new CustomEvent('ama-toast', {
