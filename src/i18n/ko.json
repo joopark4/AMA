@@ -225,6 +225,17 @@
     "save": "저장",
     "cancel": "취소",
     "reset": "초기화",
+    "dataCleanup": {
+      "title": "데이터 관리",
+      "description": "다운로드된 AI 모델 데이터를 관리합니다. 앱 삭제 시 이 데이터는 자동으로 제거되지 않습니다.",
+      "openFolder": "앱 데이터 폴더 열기 (~/.mypartnerai/models)",
+      "deleteAll": "모든 데이터 삭제",
+      "confirm": "다운로드된 모든 모델 데이터를 삭제합니다. 앱 재시작 시 필수 모델을 다시 다운로드해야 합니다. 계속하시겠습니까?",
+      "deleting": "삭제 중...",
+      "success": "{{size}} 확보 완료",
+      "error": "삭제 실패: {{error}}",
+      "restartHint": "앱을 재시작하면 필수 모델 다운로드가 다시 시작됩니다."
+    },
     "update": {
       "title": "앱 업데이트",
       "currentVersion": "현재 버전",

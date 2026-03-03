@@ -307,5 +307,35 @@ pub async fn download_model(
 
 #[tauri::command]
 pub async fn get_models_dir() -> Result<String, String> {
-    models_root().map(|p| p.to_string_lossy().to_string())
+    let root = models_root()?;
+    if !root.exists() {
+        fs::create_dir_all(&root)
+            .map_err(|e| format!("Failed to create models directory: {}", e))?;
+    }
+    Ok(root.to_string_lossy().to_string())
+}
+
+fn dir_size(path: &PathBuf) -> u64 {
+    if path.is_file() {
+        return path.metadata().map(|m| m.len()).unwrap_or(0);
+    }
+    fs::read_dir(path)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .map(|e| dir_size(&e.path()))
+                .sum()
+        })
+        .unwrap_or(0)
+}
+
+#[tauri::command]
+pub async fn delete_app_data() -> Result<u64, String> {
+    let root = models_root()?;
+    if !root.exists() {
+        return Ok(0);
+    }
+    let size = dir_size(&root);
+    fs::remove_dir_all(&root).map_err(|e| format!("Failed to delete app data: {}", e))?;
+    Ok(size)
 }

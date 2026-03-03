@@ -237,6 +237,18 @@ Notes:
 - Cloud AI services (Claude/OpenAI/Gemini) are governed by service terms, not open-source licenses.
 - Always verify the latest LICENSE/terms before redistributing models/runtime assets.
 
+## Uninstalling
+
+To completely remove AMA from macOS:
+
+1. Delete `AMA.app` from the `Applications` folder
+2. Remove downloaded model data:
+   ```bash
+   rm -rf ~/.mypartnerai
+   ```
+
+> You can also delete model data from `Settings > Data Management` within the app.
+
 ## Troubleshooting
 
 ### 1) Voice input button does not work
