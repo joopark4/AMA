@@ -149,6 +149,8 @@
         "title": "말풍선",
         "description": "AI 응답을 아바타 위에 말풍선으로 표시합니다."
       },
+      "defaultVrmLabel": "기본 내장 아바타 사용 중",
+      "useDefaultVrm": "기본 아바타로 초기화",
       "info": "지원 형식: VRM 0.x 및 1.0 모델. 원활한 성능을 위해 30MB 이하의 파일을 권장합니다."
     },
     "save": "저장",
