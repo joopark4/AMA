@@ -46,6 +46,7 @@ coverage/
 *.vrm
 vrm/
 public/vrm/
+src-tauri/assets/default.vrm
 
 # AI Models (downloaded separately)
 models/
