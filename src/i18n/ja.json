@@ -225,6 +225,17 @@
     "save": "保存",
     "cancel": "キャンセル",
     "reset": "リセット",
+    "dataCleanup": {
+      "title": "データ管理",
+      "description": "ダウンロードしたAIモデルデータを管理します。アプリを削除してもこのデータは自動的に削除されません。",
+      "openFolder": "アプリデータフォルダを開く (~/.mypartnerai/models)",
+      "deleteAll": "すべてのデータを削除",
+      "confirm": "ダウンロードしたすべてのモデルデータを削除します。アプリの再起動時に必須モデルを再ダウンロードする必要があります。続けますか？",
+      "deleting": "削除中...",
+      "success": "{{size}} を解放しました",
+      "error": "削除に失敗しました: {{error}}",
+      "restartHint": "アプリを再起動すると、必須モデルのダウンロードが再開されます。"
+    },
     "update": {
       "title": "アプリの更新",
       "currentVersion": "現在のバージョン",

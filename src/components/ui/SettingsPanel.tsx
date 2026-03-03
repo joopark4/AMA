@@ -9,6 +9,7 @@ import PremiumVoiceSettings from '../settings/PremiumVoiceSettings';
 import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
+import DataCleanupSettings from '../settings/DataCleanupSettings';
 import MonitorSettings from '../settings/MonitorSettings';
 export default function SettingsPanel() {
   const { t } = useTranslation();
@@ -109,6 +110,11 @@ export default function SettingsPanel() {
           {/* Update Settings */}
           <SettingsSection title={t('settings.update.title')}>
             <UpdateSettings />
+          </SettingsSection>
+
+          {/* Data Cleanup Settings */}
+          <SettingsSection title={t('settings.dataCleanup.title')}>
+            <DataCleanupSettings />
           </SettingsSection>
 
           {/* License Settings */}
