@@ -44,6 +44,7 @@ fn main() {
             commands::models::check_model_status,
             commands::models::download_model,
             commands::models::get_models_dir,
+            commands::models::delete_app_data,
             commands::window::get_available_monitors,
             commands::window::move_to_monitor,
             commands::window::get_current_monitor,

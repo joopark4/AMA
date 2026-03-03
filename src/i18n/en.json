@@ -225,6 +225,17 @@
     "save": "Save",
     "cancel": "Cancel",
     "reset": "Reset",
+    "dataCleanup": {
+      "title": "Data Management",
+      "description": "Manage downloaded AI model data. This data is not automatically removed when the app is deleted.",
+      "openFolder": "Open App Data Folder (~/.mypartnerai/models)",
+      "deleteAll": "Delete All Data",
+      "confirm": "This will delete all downloaded model data. Required models will need to be re-downloaded on next app launch. Continue?",
+      "deleting": "Deleting...",
+      "success": "{{size}} freed",
+      "error": "Delete failed: {{error}}",
+      "restartHint": "Restart the app to re-download required models."
+    },
     "update": {
       "title": "App Update",
       "currentVersion": "Current Version",
