@@ -149,6 +149,8 @@
         "title": "Speech Bubble",
         "description": "Display AI responses as a speech bubble above the avatar."
       },
+      "defaultVrmLabel": "Using built-in default avatar",
+      "useDefaultVrm": "Reset to default avatar",
       "info": "Supported format: VRM 0.x and 1.0 models. Recommended file size: under 30MB for smooth performance."
     },
     "save": "Save",

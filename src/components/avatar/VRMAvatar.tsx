@@ -12,6 +12,7 @@ import {
 } from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getEmotionTuning } from '../../config/emotionTuning';
+import { loadDefaultVrmBuffer, isDefaultVrmAvailable } from '../../services/tauri/defaultVrm';
 
 // Helper function to log to terminal
 const logToTerminal = (message: string) => {
@@ -735,30 +736,6 @@ export default function VRMAvatar() {
 
     const configuredPath = settings.vrmModelPath?.trim() ?? '';
 
-    if (!configuredPath) {
-      setGroundY(null);
-      setInteractionBounds(null);
-      setLoadError(null);
-      setIsLoading(false);
-
-      const currentVrm = useAvatarStore.getState().vrm;
-      if (currentVrm) {
-        VRMUtils.deepDispose(currentVrm.scene);
-        setVRM(null);
-      }
-      return;
-    }
-
-    const loader = new GLTFLoader();
-    loader.register((parser) => new VRMLoaderPlugin(parser));
-
-    setIsLoading(true);
-    setLoadError(null);
-
-    const modelPath = resolveModelUrl(configuredPath);
-    const shouldUseFsFallback = isTauri() && isLocalFileSource(configuredPath);
-    let fsFallbackAttempted = false;
-
     const handleLoaded = (gltf: any) => {
       if (!isEffectActive) {
         const staleVRM = gltf?.userData?.vrm as VRM | undefined;
@@ -929,6 +906,76 @@ export default function VRMAvatar() {
       setVRM(loadedVRM);
       setIsLoading(false);
     };
+
+    if (!configuredPath) {
+      // Try loading the embedded default VRM
+      void (async () => {
+        try {
+          const available = await isDefaultVrmAvailable();
+          if (!isEffectActive) return;
+
+          if (!available) {
+            // No embedded VRM — unload and show picker overlay
+            setGroundY(null);
+            setInteractionBounds(null);
+            setLoadError(null);
+            setIsLoading(false);
+
+            const currentVrm = useAvatarStore.getState().vrm;
+            if (currentVrm) {
+              VRMUtils.deepDispose(currentVrm.scene);
+              setVRM(null);
+            }
+            return;
+          }
+
+          setIsLoading(true);
+          setLoadError(null);
+
+          const buffer = await loadDefaultVrmBuffer();
+          if (!isEffectActive) return;
+
+          const defaultLoader = new GLTFLoader();
+          defaultLoader.register((parser) => new VRMLoaderPlugin(parser));
+
+          defaultLoader.parse(
+            buffer,
+            '',
+            handleLoaded,
+            (parseError: unknown) => {
+              if (!isEffectActive) return;
+              const msg = parseError instanceof Error ? parseError.message : 'Unknown error';
+              setLoadError(`Failed to load default VRM: ${msg}`);
+              setIsLoading(false);
+            }
+          );
+        } catch {
+          if (!isEffectActive) return;
+          // Default VRM not available — fall back to picker overlay
+          setGroundY(null);
+          setInteractionBounds(null);
+          setLoadError(null);
+          setIsLoading(false);
+
+          const currentVrm = useAvatarStore.getState().vrm;
+          if (currentVrm) {
+            VRMUtils.deepDispose(currentVrm.scene);
+            setVRM(null);
+          }
+        }
+      })();
+      return;
+    }
+
+    const loader = new GLTFLoader();
+    loader.register((parser) => new VRMLoaderPlugin(parser));
+
+    setIsLoading(true);
+    setLoadError(null);
+
+    const modelPath = resolveModelUrl(configuredPath);
+    const shouldUseFsFallback = isTauri() && isLocalFileSource(configuredPath);
+    let fsFallbackAttempted = false;
 
     loader.load(
       modelPath,
