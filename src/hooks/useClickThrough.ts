@@ -60,7 +60,6 @@ export function useClickThrough() {
       const avatarState = useAvatarStore.getState();
       const isFullScreenInteractive =
         settingsState.isSettingsOpen ||
-        settingsState.isHistoryOpen ||
         avatarState.isDragging ||
         avatarState.isRotating;
 
