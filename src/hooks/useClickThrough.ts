@@ -54,7 +54,7 @@ export function useClickThrough() {
 
   const checkCursorPosition = useCallback(async () => {
     try {
-      // 설정/히스토리 패널 열림 또는 아바타 조작 중이면
+      // 설정 패널 열림 또는 아바타 조작 중이면
       // 커서 위치와 무관하게 클릭스루 비활성화
       const settingsState = useSettingsStore.getState();
       const avatarState = useAvatarStore.getState();
