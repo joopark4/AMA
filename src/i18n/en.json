@@ -151,8 +151,7 @@
       "speechBubble": {
         "title": "Speech Bubble",
         "description": "Display AI responses as a speech bubble above the avatar."
-      },
-      "info": "Supported format: VRM 0.x and 1.0 models. Recommended file size: under 30MB for smooth performance."
+      }
     },
     "premium": {
       "title": "Premium Voice",
@@ -269,7 +268,7 @@
     "error": "Error",
     "voiceListeningOverlay": "Voice input active",
     "recognizing": "Recognizing: {{transcript}}",
-    "llmProcessing": "LLM Processing..."
+    "llmProcessing": "Thinking..."
   },
   "chat": {
     "placeholder": "Enter your message...",
