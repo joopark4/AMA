@@ -151,8 +151,7 @@
       "speechBubble": {
         "title": "말풍선",
         "description": "AI 응답을 아바타 위에 말풍선으로 표시합니다."
-      },
-      "info": "지원 형식: VRM 0.x 및 1.0 모델. 원활한 성능을 위해 30MB 이하의 파일을 권장합니다."
+      }
     },
     "premium": {
       "title": "프리미엄 음성",
@@ -269,7 +268,7 @@
     "error": "오류 발생",
     "voiceListeningOverlay": "음성 입력 중",
     "recognizing": "인식중: {{transcript}}",
-    "llmProcessing": "LLM 처리중..."
+    "llmProcessing": "생각중..."
   },
   "chat": {
     "placeholder": "메시지를 입력하세요...",
