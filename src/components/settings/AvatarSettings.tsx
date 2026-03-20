@@ -664,12 +664,6 @@ export default function AvatarSettings() {
         </p>
       </div>
 
-      {/* Avatar Info */}
-      <div className="p-3 bg-gray-50 rounded-lg">
-        <p className="text-xs text-gray-600">
-          {t('settings.avatar.info')}
-        </p>
-      </div>
     </div>
   );
 }

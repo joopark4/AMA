@@ -151,8 +151,7 @@
       "speechBubble": {
         "title": "吹き出し",
         "description": "AIの応答をアバターの上に吹き出しで表示します。"
-      },
-      "info": "対応形式: VRM 0.xおよび1.0モデル。快適な動作のため30MB以下のファイルを推奨します。"
+      }
     },
     "premium": {
       "title": "プレミアム音声",
@@ -269,7 +268,7 @@
     "error": "エラー発生",
     "voiceListeningOverlay": "音声入力中",
     "recognizing": "認識中: {{transcript}}",
-    "llmProcessing": "LLM処理中..."
+    "llmProcessing": "考え中..."
   },
   "chat": {
     "placeholder": "メッセージを入力してください...",
