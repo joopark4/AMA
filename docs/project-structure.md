@@ -1,6 +1,6 @@
 # 프로젝트 구조
 
-> 최종 수정: 2026-02-27 (v0.4.2 기준)
+> 최종 수정: 2026-03-21 (v0.4.2 기준)
 
 최신 구현 기준 디렉터리/핵심 파일 맵입니다.
 
@@ -8,7 +8,7 @@
 
 ```text
 AMA/
-├── src/                         # React 프런트엔드
+├── src/                         # React 프런트엔드 (features/ 포함)
 ├── src-tauri/                   # Rust + Tauri 백엔드
 ├── models/                      # 로컬/배포용 모델 원본
 │   ├── whisper/
@@ -90,6 +90,19 @@ src/components/settings/
 └── VoiceSettings.tsx            # Whisper 모델 선택/다운로드 + Supertonic 보이스
 ```
 
+### Claude Code Channels (`src/features/channels/`)
+
+```text
+src/features/channels/
+├── index.ts                     # 퍼블릭 API (re-export)
+├── constants.ts                 # CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT 등
+├── claudeCodeClient.ts          # LLM 클라이언트 (dev-bridge 통신)
+├── useClaudeCodeChat.ts         # Claude Code 응답 처리 훅
+├── useMcpSpeakListener.ts       # Tauri mcp-speak 이벤트 리스너
+├── responseProcessor.ts         # 응답 파이프라인 (감정/모션/TTS 통합)
+└── MCPSettings.tsx              # Channels 설정 UI (토글/등록/연결확인)
+```
+
 ### 훅
 
 ```text
@@ -110,7 +123,7 @@ src/hooks/
 ```text
 src/services/
 ├── ai/
-│   ├── llmRouter.ts             # LLM 프로바이더 라우팅
+│   ├── llmRouter.ts             # LLM 프로바이더 라우팅 (channels 모듈 포함)
 │   ├── claudeClient.ts          # Anthropic Claude
 │   ├── openaiClient.ts          # OpenAI
 │   ├── geminiClient.ts          # Google Gemini

@@ -21,6 +21,7 @@ import { useModelDownloadStore } from './stores/modelDownloadStore';
 import { useAutoUpdateStore } from './hooks/useAutoUpdate';
 import { useClickThrough } from './hooks/useClickThrough';
 import { useMonitorStore } from './stores/monitorStore';
+import { useMcpSpeakListener } from './features/channels';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
 import { authService } from './services/auth/authService';
@@ -43,6 +44,9 @@ function App() {
 
   // Enable click-through for transparent window (except on interactive elements)
   useClickThrough();
+
+  // MCP 채널 speak 이벤트 리스너
+  useMcpSpeakListener();
 
   useEffect(() => {
     i18n.changeLanguage(settings.language);

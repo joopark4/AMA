@@ -19,7 +19,7 @@ interface CallOptions {
 let restorePromise: Promise<void> | null = null;
 let sessionRestored = false;
 
-async function ensureSession(): Promise<void> {
+export async function ensureSession(): Promise<void> {
   if (!supabase) throw new Error('Supabase not configured');
   if (sessionRestored) return;
 

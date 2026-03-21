@@ -16,6 +16,8 @@
 | [auth-supabase.md](./auth-supabase.md) | Supabase OAuth 연동, 환경변수, 트러블슈팅 | 2026.02.23 |
 | [db-schema.md](./db-schema.md) | DB 테이블 구조, RLS 정책, 데이터 저장 정책 | 2026.02.23 |
 | [member-management.md](./member-management.md) | 가입 흐름, 약관 동의, 계정 탈퇴, Edge Function | 2026.02.23 |
+| [channels-mcp.md](./channels-mcp.md) | Claude Code Channels — 아바타 ↔ Claude Code 연동 | 2026.03.21 |
+| [admin-management.md](./admin-management.md) | 관리자 계정 관리, Edge Function 권한 우회 | 2026.03.21 |
 
 ### 해결된 이슈
 
@@ -32,6 +34,7 @@
 | [#009](./issues/009-cloud-model-list-sync.md) | LLM 모델 목록 동기화 | — |
 | [#010](./issues/010-supertonic-model-multilingual-update.md) | TTS v1.6.0 다국어 업데이트 | — |
 | [#011](./issues/011-updater-resource-fork.md) | 업데이터 tar.gz 리소스 포크 | 2026.02.27 |
+| [#015](./issues/015-premium-tts-fallback-to-local.md) | 프리미엄 TTS 기본 음성 폴백 (3가지 복합 원인) | 2026.03.21 |
 
 ---
 
@@ -63,6 +66,24 @@
 ---
 
 ## 작업 이력
+
+### 2026.03.21 — Claude Code Channels + 관리자 관리 + 프리미엄 TTS 수정
+
+- Claude Code Channels 구현 (외부 Claude Code 세션 ↔ AMA 아바타 양방향 연동)
+  - `ama-bridge` 채널 서버 (Claude Code Channels 공식 스펙 준수)
+  - `ci-webhook`, `monitor-alert` 일방향 채널
+  - AMA Tauri axum HTTP 리스너 (127.0.0.1:8791)
+  - `claude_code` LLM 프로바이더 추가
+  - 설정 UI: Claude Code Channels 토글 ON/OFF (AI 모델 자동 전환/복원, LLM 잠금)
+  - 글로벌 등록: `~/.claude.json` user scope + AMA 설정 버튼으로 자동 등록
+  - dev-bridge 연결 확인 (Rust CORS 우회)
+- 관리자 계정 관리
+  - Edge Function `supertone-tts`에 `is_admin` 체크 추가 (프리미엄/할당량 우회)
+  - `jooparkhappy4@gmail.com` 스태프 계정 등록
+- 프리미엄 TTS 기본 음성 폴백 이슈 수정 (#015)
+  - `VoiceSettings.tsx` useEffect 엔진 리셋 버그 수정
+  - Edge Function `--no-verify-jwt` 재배포
+  - TTS 상태 표시 UI 추가 (Supertonic 녹색 / Supertone API 보라색)
 
 ### 2026.02.27 — 릴리즈 파이프라인 안정화 + 업데이터 수정
 
