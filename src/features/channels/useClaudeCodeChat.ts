@@ -58,10 +58,12 @@ export function useClaudeCodeChat() {
       );
       const llmMessages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },
-        ...currentMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant' | 'system',
-          content: m.content,
-        })),
+        ...currentMessages
+          .filter((m) => m.source !== 'external')
+          .map((m) => ({
+            role: m.role as 'user' | 'assistant' | 'system',
+            content: m.content,
+          })),
       ];
 
       const response = await llmRouter.chat(llmMessages, {
