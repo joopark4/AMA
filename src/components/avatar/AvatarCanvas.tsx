@@ -131,14 +131,25 @@ export default function AvatarCanvas() {
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="bg-red-500/85 rounded-lg px-4 py-3 text-white text-sm max-w-xs" data-interactive="true">
             <div>{loadError}</div>
-            <button
-              type="button"
-              onClick={handleSelectVRM}
-              disabled={isSelectingVrm}
-              className="mt-3 w-full px-3 py-2 rounded-md bg-white/20 hover:bg-white/30 disabled:opacity-60 disabled:cursor-not-allowed text-xs font-medium transition-colors"
-            >
-              {isSelectingVrm ? t('avatar.selectVrm.opening') : t('avatar.changeVrm')}
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={handleSelectVRM}
+                disabled={isSelectingVrm}
+                className="flex-1 px-3 py-2 rounded-md bg-white/20 hover:bg-white/30 disabled:opacity-60 disabled:cursor-not-allowed text-xs font-medium transition-colors"
+              >
+                {isSelectingVrm ? t('avatar.selectVrm.opening') : t('avatar.changeVrm')}
+              </button>
+              {vrmPathConfigured && (
+                <button
+                  type="button"
+                  onClick={() => setVrmModelPath('')}
+                  className="flex-1 px-3 py-2 rounded-md bg-white/20 hover:bg-white/30 text-xs font-medium transition-colors"
+                >
+                  {hasDefaultVrm ? t('settings.avatar.useDefaultVrm') : t('avatar.selectVrm.button')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

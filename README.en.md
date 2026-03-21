@@ -209,6 +209,35 @@ In app settings:
 
 If replies fail, verify provider/model/endpoint/API key first.
 
+## Claude Code Channels (Avatar ↔ Claude Code)
+
+Connect the AMA avatar to an external Claude Code session running in a separate terminal.
+User text/voice input is sent to Claude Code, and responses are spoken aloud by the avatar via TTS.
+
+### Usage
+
+1. Install channel dependencies (one-time): `cd mcp-channels && npm install && cd ..`
+2. Run AMA: `npm run tauri dev`
+3. `Settings > Claude Code Channels > Toggle ON` (auto-registers with Claude Code + switches AI model)
+4. In a separate terminal, start Claude Code:
+   ```bash
+   claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
+   ```
+5. Select `Yes` at the initial confirmation prompt (once per session)
+6. Chat via AMA → Claude Code responds → avatar speaks via TTS
+
+Toggling OFF automatically restores your previous AI model settings.
+
+### Important Notes
+
+- Channels is a **research preview** feature. The `--dangerously-load-development-channels` flag is required, and a security confirmation prompt appears once per session.
+- `--permission-mode bypassPermissions` auto-accepts tool execution permissions. **Use only in trusted local environments.**
+- AMA and Claude Code must run on the **same machine** (localhost).
+
+See [Claude Code Channels Guide](docs/channels-mcp.md) for details.
+
+---
+
 ## AI/Model Licenses and Links
 
 ### 1) AI Services / Runtime
@@ -236,6 +265,18 @@ Notes:
 
 - Cloud AI services (Claude/OpenAI/Gemini) are governed by service terms, not open-source licenses.
 - Always verify the latest LICENSE/terms before redistributing models/runtime assets.
+
+## Uninstalling
+
+To completely remove AMA from macOS:
+
+1. Delete `AMA.app` from the `Applications` folder
+2. Remove downloaded model data:
+   ```bash
+   rm -rf ~/.mypartnerai
+   ```
+
+> You can also delete model data from `Settings > Data Management` within the app.
 
 ## Troubleshooting
 

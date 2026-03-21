@@ -2,11 +2,15 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import SettingsSection from '../settings/SettingsSection';
+import UserProfile from '../auth/UserProfile';
 import LLMSettings from '../settings/LLMSettings';
 import VoiceSettings from '../settings/VoiceSettings';
+import { PremiumVoiceSettings } from '../../features/premium-voice';
 import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
+import DataCleanupSettings from '../settings/DataCleanupSettings';
+import { MCPSettings } from '../../features/channels';
 import MonitorSettings from '../settings/MonitorSettings';
 export default function SettingsPanel() {
   const { t } = useTranslation();
@@ -60,6 +64,11 @@ export default function SettingsPanel() {
 
         {/* Content */}
         <div className="px-4 py-4 overflow-y-auto max-h-[calc(80vh-140px)] custom-scrollbar space-y-3">
+          {/* Account */}
+          <SettingsSection title={t('settings.account.title')}>
+            <UserProfile />
+          </SettingsSection>
+
           {/* General: Language + Monitor */}
           <SettingsSection title={t('settings.general.title')} defaultOpen>
             <div className="space-y-2">
@@ -68,11 +77,12 @@ export default function SettingsPanel() {
               </label>
               <select
                 value={settings.language}
-                onChange={(e) => setLanguage(e.target.value as 'ko' | 'en')}
+                onChange={(e) => setLanguage(e.target.value as 'ko' | 'en' | 'ja')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="ko">한국어</option>
                 <option value="en">English</option>
+                <option value="ja">日本語</option>
               </select>
             </div>
             <MonitorSettings />
@@ -88,14 +98,29 @@ export default function SettingsPanel() {
             <VoiceSettings />
           </SettingsSection>
 
+          {/* Premium Voice Settings */}
+          <SettingsSection title={t('settings.premium.title')}>
+            <PremiumVoiceSettings />
+          </SettingsSection>
+
           {/* Avatar Settings */}
           <SettingsSection title={t('settings.avatar.title')}>
             <AvatarSettings />
           </SettingsSection>
 
+          {/* Claude Code Channels */}
+          <SettingsSection title={t('settings.mcp.title')}>
+            <MCPSettings />
+          </SettingsSection>
+
           {/* Update Settings */}
           <SettingsSection title={t('settings.update.title')}>
             <UpdateSettings />
+          </SettingsSection>
+
+          {/* Data Cleanup Settings */}
+          <SettingsSection title={t('settings.dataCleanup.title')}>
+            <DataCleanupSettings />
           </SettingsSection>
 
           {/* License Settings */}

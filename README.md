@@ -262,6 +262,35 @@ VITE_GOOGLE_API_KEY=발급받은_키
 
 응답이 안 나오는 경우, 설정 화면의 Provider/Model/Endpoint/API Key 값이 모두 올바른지 먼저 확인하세요.
 
+## Claude Code Channels (아바타 ↔ Claude Code 연동)
+
+외부 터미널에서 실행 중인 Claude Code와 AMA 아바타를 연결합니다.
+사용자의 텍스트/음성 입력이 Claude Code로 전달되고, 응답을 아바타가 TTS로 읽어줍니다.
+
+### 사용 방법
+
+1. 채널 의존성 설치 (최초 1회): `cd mcp-channels && npm install && cd ..`
+2. AMA 앱 실행: `npm run tauri dev`
+3. `설정 > Claude Code Channels > 토글 ON` (자동으로 Claude Code 등록 + AI 모델 전환)
+4. 별도 터미널에서 Claude Code 실행:
+   ```bash
+   claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
+   ```
+5. 초기 확인 프롬프트에서 `Yes` 선택 (세션당 1회)
+6. AMA에서 대화 → Claude Code 응답 → 아바타 TTS
+
+토글 OFF 시 이전 AI 모델 설정으로 자동 복원됩니다.
+
+### 주의사항
+
+- Channels는 **리서치 프리뷰** 기능입니다. `--dangerously-load-development-channels` 플래그가 필수이며, 세션 시작 시 보안 확인 프롬프트가 1회 표시됩니다.
+- `--permission-mode bypassPermissions`는 도구 실행 권한을 자동 수락합니다. **신뢰할 수 있는 로컬 환경에서만 사용**하세요.
+- AMA와 Claude Code는 **같은 머신**(localhost)에서 실행되어야 합니다.
+
+자세한 내용은 [Claude Code Channels 가이드](docs/channels-mcp.md)를 참조하세요.
+
+---
+
 ## 사용 AI/모델 라이선스 및 링크
 
 ### 1) AI 서비스/런타임
@@ -289,6 +318,18 @@ VITE_GOOGLE_API_KEY=발급받은_키
 
 - 클라우드 AI(Claude/OpenAI/Gemini)는 오픈소스 라이선스가 아니라 각 서비스 이용약관을 따릅니다.
 - 모델/런타임 재배포 시에는 반드시 각 프로젝트의 최신 LICENSE/약관을 우선 확인하세요.
+
+## 앱 제거
+
+macOS에서 AMA를 완전히 제거하려면:
+
+1. `Applications` 폴더에서 `AMA.app` 삭제
+2. 다운로드된 모델 데이터 삭제:
+   ```bash
+   rm -rf ~/.mypartnerai
+   ```
+
+> 앱 내 `설정 > 데이터 관리`에서도 모델 데이터를 삭제할 수 있습니다.
 
 ## 자주 겪는 문제
 

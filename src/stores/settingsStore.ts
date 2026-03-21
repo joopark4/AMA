@@ -9,14 +9,14 @@ import {
   normalizeGlobalShortcutAccelerator,
 } from '../services/tauri/globalShortcutUtils';
 
-export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini';
+export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code';
 
 // STT 엔진: whisper (로컬 whisper-cli)
 export type STTEngine = 'whisper';
 
-// TTS 엔진: supertonic (고품질 로컬 TTS)
-export type TTSEngine = 'supertonic';
-export type Language = 'ko' | 'en';
+// TTS 엔진: supertonic (로컬 ONNX) | supertone_api (클라우드)
+export type TTSEngine = 'supertonic' | 'supertone_api';
+export type Language = 'ko' | 'en' | 'ja';
 
 export interface LLMSettings {
   provider: LLMProvider;
@@ -30,9 +30,26 @@ export interface STTSettings {
   model: string;
 }
 
+export interface SupertoneApiVoiceSettings {
+  pitchShift: number;      // -24 ~ 24
+  pitchVariance: number;   // 0 ~ 2
+  speed: number;           // 0.5 ~ 2
+}
+
+export interface SupertoneApiSettings {
+  voiceId: string;
+  voiceName: string;
+  model: 'sona_speech_1' | 'sona_speech_2' | 'sona_speech_2_flash';
+  language: string;
+  style: string;
+  autoEmotionStyle: boolean;
+  voiceSettings: SupertoneApiVoiceSettings;
+}
+
 export interface TTSSettings {
   engine: TTSEngine;
-  voice?: string;
+  voice?: string;                       // supertonic용 (F1-M5)
+  supertoneApi?: SupertoneApiSettings;  // supertone_api용
 }
 
 export interface GlobalShortcutSettings {
@@ -99,6 +116,9 @@ export interface Settings {
   avatar: AvatarSettings;
   historyPanel: HistoryPanelSettings;
   preferredMonitorName: string;
+  mcpEnabled: boolean;
+  /** Channels ON 전의 LLM 설정 (OFF 시 복원용) */
+  mcpPreviousLlm: LLMSettings | null;
 }
 
 interface SettingsState {
@@ -208,8 +228,13 @@ function normalizeFaceExpressionOnlyMode(value: unknown): boolean {
 }
 
 function normalizeLanguage(language: unknown): Language {
-  if (language === 'ko' || language === 'en') return language;
+  if (language === 'ko' || language === 'en' || language === 'ja') return language;
   return 'ko';
+}
+
+function normalizeTTSEngine(engine: unknown): TTSEngine {
+  if (engine === 'supertonic' || engine === 'supertone_api') return engine;
+  return 'supertonic';
 }
 
 function normalizeAvatarName(name: unknown): string {
@@ -282,6 +307,8 @@ const defaultSettings: Settings = {
     fontSize: 14,
   },
   preferredMonitorName: '',
+  mcpEnabled: false,
+  mcpPreviousLlm: null,
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -348,7 +375,7 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
     },
     tts: {
       ...(source.tts || defaultSettings.tts),
-      engine: 'supertonic',
+      engine: normalizeTTSEngine(source.tts?.engine),
       voice: normalizeSupertonicVoice(source.tts?.voice),
     },
     globalShortcut: normalizeGlobalShortcutSettings(
@@ -375,6 +402,14 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       typeof source.preferredMonitorName === 'string'
         ? source.preferredMonitorName
         : defaultSettings.preferredMonitorName,
+    mcpEnabled:
+      typeof source.mcpEnabled === 'boolean'
+        ? source.mcpEnabled
+        : defaultSettings.mcpEnabled,
+    mcpPreviousLlm:
+      source.mcpPreviousLlm && typeof source.mcpPreviousLlm === 'object'
+        ? source.mcpPreviousLlm as LLMSettings
+        : null,
   };
 }
 
@@ -418,7 +453,7 @@ export const useSettingsStore = create<SettingsState>()(
             tts: {
               ...state.settings.tts,
               ...tts,
-              engine: 'supertonic',
+              engine: normalizeTTSEngine(tts.engine ?? state.settings.tts.engine),
               voice: normalizeSupertonicVoice(tts.voice ?? state.settings.tts.voice),
             },
           },
@@ -496,7 +531,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 12,
+      version: 13,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
