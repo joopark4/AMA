@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "ci-webhook": {
+      "command": "npx",
+      "args": ["--prefix", "./mcp-channels", "tsx", "./mcp-channels/ci-webhook.mts"],
+      "env": { "WEBHOOK_PORT": "8788" }
+    },
+    "monitor-alert": {
+      "command": "npx",
+      "args": ["--prefix", "./mcp-channels", "tsx", "./mcp-channels/monitor-alert.mts"],
+      "env": { "ALERT_PORT": "8789" }
+    },
+    "ama-bridge": {
+      "command": "npx",
+      "args": ["--prefix", "./mcp-channels", "tsx", "./mcp-channels/dev-bridge.mts"],
+      "env": { "BRIDGE_PORT": "8790" }
+    }
+  }
+}

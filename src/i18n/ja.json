@@ -31,7 +31,9 @@
         "localai": "LocalAI（ローカル）",
         "claude": "Claude（Anthropic）",
         "openai": "OpenAI",
-        "gemini": "Google Gemini"
+        "gemini": "Google Gemini",
+        "claude_code": "Claude Code（外部連携）",
+        "claudeCodeInfo": "外部ターミナルでClaude Codeが実行中である必要があります。プロジェクトディレクトリでclaudeコマンドを実行するとdev-bridgeが自動起動します。"
       },
       "expand": "展開",
       "collapse": "折りたたむ"
@@ -258,6 +260,29 @@
       "note": "参考情報です。実際の配布・利用前に各プロジェクトの最新ライセンスおよび利用規約をご確認ください。",
       "expand": "展開",
       "collapse": "折りたたむ"
+    },
+    "mcp": {
+      "title": "Claude Code Channels",
+      "description": "外部で実行中のClaude Codeとアバターを接続します。ユーザー入力がClaude Codeに送信され、応答をアバターが音声で読み上げます。",
+      "enabled": "Channelsリスナー",
+      "portInfo": "ポート{{port}}で待ち受け中",
+      "statusOn": "有効 — Claude Codeメッセージ受信可能",
+      "statusOff": "無効 — メッセージ無視",
+      "bridgeConnected": "dev-bridge 接続済み（Claude Code実行中）",
+      "bridgeOffline": "dev-bridge 未接続（Claude Codeを先に実行してください）",
+      "bridgeUnknown": "dev-bridge 状態未確認",
+      "checkConnection": "接続確認",
+      "globalSetupTitle": "グローバル登録（全ディレクトリで使用）",
+      "globalSetupDesc": "以下のコマンドをAMAプロジェクトで1回実行すると、どのディレクトリからClaude Codeを実行してもdev-bridgeチャンネルが自動起動します。",
+      "registerButton": "Claude Codeに登録",
+      "registered": "登録済み",
+      "unregister": "登録解除",
+      "registerSuccess": "Claude Codeグローバル設定に登録しました",
+      "registerFail": "登録失敗",
+      "unregisterSuccess": "登録を解除しました",
+      "notRegistered": "未登録（ON時に自動登録されます）",
+      "llmLocked": "Claude Code Channelsが有効です。AIモデルはClaude Codeに固定され、Channelsをオフにすると以前の設定に復元されます。",
+      "testHint": "Channelsはリサーチプレビュー機能です。テストにはclaude --dangerously-load-development-channelsフラグが必要です。"
     }
   },
   "status": {
@@ -414,6 +439,11 @@
       "processing": "ログイン処理中...",
       "redirecting": "まもなく自動的に移動します"
     }
+  },
+  "mcp": {
+    "receivedMessage": "外部チャンネルメッセージ受信",
+    "speakError": "MCP音声出力失敗: {{error}}",
+    "queueFull": "音声キューがいっぱいです。一部のメッセージがスキップされました。"
   },
   "terms": {
     "version": "2026.02",
