@@ -38,6 +38,7 @@ interface QueueItem {
   source: string;
   priority: 'normal' | 'urgent';
   emotion?: string;
+  voice?: string;
 }
 
 const MAX_QUEUE_SIZE = 5;
@@ -101,6 +102,7 @@ export function useMcpSpeakListener(): void {
         source: payload.source,
         priority: payload.priority,
         emotion: payload.emotion,
+        voice: payload.voice,
       };
 
       if (payload.priority === 'urgent') {
@@ -124,7 +126,6 @@ export function useMcpSpeakListener(): void {
         detail: {
           type: 'info',
           messageKey: 'mcp.receivedMessage',
-          message: `[${payload.source}] 메시지 수신`,
         },
       }));
 

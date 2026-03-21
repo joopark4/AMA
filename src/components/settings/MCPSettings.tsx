@@ -95,11 +95,11 @@ export default function MCPSettings() {
     }
   };
 
-  const handleToggle = () => {
+  const handleToggle = async () => {
     if (settings.mcpEnabled) {
       handleToggleOff();
     } else {
-      handleToggleOn();
+      await handleToggleOn();
     }
   };
 
