@@ -1,6 +1,6 @@
 [package]
 name = "AMA"
-version = "0.5.0"
+version = "0.8.0"
 description = "AI Avatar Desktop Companion"
 authors = ["MyPartnerAI"]
 license = "MIT"
@@ -31,6 +31,8 @@ futures-util = "0.3"
 dirs = "5.0"
 tauri-plugin-updater = "2.0"
 tauri-plugin-process = "2.0"
+axum = "0.8"
+uuid = { version = "1", features = ["v4"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"

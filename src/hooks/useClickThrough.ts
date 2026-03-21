@@ -54,6 +54,27 @@ export function useClickThrough() {
 
   const checkCursorPosition = useCallback(async () => {
     try {
+      // 설정 패널 열림 또는 아바타 조작 중이면
+      // 커서 위치와 무관하게 클릭스루 비활성화
+      const settingsState = useSettingsStore.getState();
+      const avatarState = useAvatarStore.getState();
+      const isFullScreenInteractive =
+        settingsState.isSettingsOpen ||
+        avatarState.isDragging ||
+        avatarState.isRotating;
+
+      if (isFullScreenInteractive) {
+        if (!isOverInteractiveRef.current) {
+          isOverInteractiveRef.current = true;
+          if (clickThroughDelayRef.current) {
+            clearTimeout(clickThroughDelayRef.current);
+            clickThroughDelayRef.current = null;
+          }
+          await updateClickThrough(false);
+        }
+        return;
+      }
+
       // Rust returns window-local coordinates (logical pixels)
       const cursor = await windowManager.getCursorPosition();
       const mouseX = cursor.x;
@@ -71,13 +92,18 @@ export function useClickThrough() {
 
       // If cursor is far from window, enable click-through
       if (!isPlausible) {
+        if (isOverInteractiveRef.current) {
+          isOverInteractiveRef.current = false;
+          if (clickThroughDelayRef.current) {
+            clearTimeout(clickThroughDelayRef.current);
+            clickThroughDelayRef.current = null;
+          }
+        }
         await updateClickThrough(true);
         return;
       }
 
-      // Check if mouse is over avatar
-      const avatarState = useAvatarStore.getState();
-      const settingsState = useSettingsStore.getState();
+      // Check if mouse is over avatar (settingsState/avatarState already fetched above)
       const avatarPos = avatarState.position;
       const interactionBounds = avatarState.interactionBounds;
       const avatarScale = settingsState.settings.avatar?.scale || 1.0;
@@ -142,17 +168,10 @@ export function useClickThrough() {
         return isPointInsideRect(mouseX, mouseY, rect);
       });
 
-      // Check if settings panel is open (full screen interactive)
-      const isSettingsOpen = settingsState.isSettingsOpen;
-
-      // Keep window interactive while dragging/rotating avatar so gestures don't get interrupted.
-      const isAvatarManipulating = avatarState.isDragging || avatarState.isRotating;
       const isOverInteractive =
-        isAvatarManipulating ||
         isOverAvatar ||
         isOverSun ||
-        isOverInteractiveDom ||
-        isSettingsOpen;
+        isOverInteractiveDom;
 
       // Track interactive state changes with delay
       if (isOverInteractive !== isOverInteractiveRef.current) {

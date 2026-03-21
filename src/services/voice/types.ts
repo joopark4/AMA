@@ -23,6 +23,8 @@ export interface TTSOptions {
   voice?: string;
   speed?: number;
   pitch?: number;
+  emotion?: string;    // 대화 감정 정보 (happy, sad 등)
+  style?: string;      // Supertone 스타일 직접 지정
 }
 
 export interface VoiceActivityResult {

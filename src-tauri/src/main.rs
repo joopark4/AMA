@@ -44,9 +44,18 @@ fn main() {
             commands::models::check_model_status,
             commands::models::download_model,
             commands::models::get_models_dir,
+            commands::models::open_folder_in_finder,
+            commands::models::delete_app_data,
             commands::window::get_available_monitors,
             commands::window::move_to_monitor,
             commands::window::get_current_monitor,
+            commands::http::fetch_url_bytes,
+            commands::mcp::register_channel_global,
+            commands::mcp::unregister_channel_global,
+            commands::mcp::check_channel_registered,
+            commands::mcp::check_bridge_health,
+            commands::mcp::check_bridge_channel,
+            commands::mcp::send_to_bridge,
             commands::vrm::load_default_vrm,
             commands::vrm::is_default_vrm_available,
         ])
@@ -139,6 +148,9 @@ fn main() {
                 .build()?;
 
             app.set_menu(menu)?;
+
+            // MCP HTTP 리스너 시작 (127.0.0.1:8791)
+            commands::mcp::start_mcp_listener(app.handle().clone());
 
             // Window setup: full-screen overlay
             if let Some(window) = app.get_webview_window("main") {

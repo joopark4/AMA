@@ -1,6 +1,6 @@
 # Issue #005: 마이크 권한 요청 및 시스템 설정 열기 구현
 
-[← CLAUDE.md로 돌아가기](../../CLAUDE.md) | [← 음성 서비스](../voice-services.md)
+[← CLAUDE.md로 돌아가기](../../CLAUDE.md) | [← 음성 서비스](../voice/voice-services.md)
 
 ## 요약
 

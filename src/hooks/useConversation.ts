@@ -14,6 +14,7 @@ import type { Message as LLMMessage } from '../services/ai/types';
 import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
+import { useClaudeCodeChat } from '../features/channels';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -22,7 +23,7 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
-function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
+export function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
   const normalizedName = avatarName.trim() || '아바타';
   const basePrompt = `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
@@ -77,27 +78,32 @@ function getWhisperInstallGuide(
   language: Language,
   model: string
 ): string {
-  const isKo = language === 'ko';
   const normalizedModel = model?.trim() || 'base';
   const modelFileName = normalizedModel.endsWith('.bin')
     ? normalizedModel
     : `ggml-${normalizedModel}.bin`;
   if (!status) {
-    return isKo
-      ? 'Whisper 엔진 상태 확인에 실패했습니다. 앱을 다시 실행한 뒤 다시 시도해 주세요.'
-      : 'Failed to verify Whisper runtime status. Restart the app and try again.';
+    if (language === 'ja') return 'Whisperエンジンの状態確認に失敗しました。アプリを再起動してもう一度お試しください。';
+    if (language === 'en') return 'Failed to verify Whisper runtime status. Restart the app and try again.';
+    return 'Whisper 엔진 상태 확인에 실패했습니다. 앱을 다시 실행한 뒤 다시 시도해 주세요.';
   }
 
   const missingCli = !status || !status.cliFound;
   const missingModel = !status || !status.modelFound;
 
-  const cliGuide = isKo
-    ? '내장 Whisper 런타임을 찾지 못했습니다. 최신 배포본으로 재설치 후 다시 실행해 주세요. (개발 환경에서는 `brew install whisper-cpp`로 대체 가능)'
-    : 'Bundled Whisper runtime is missing. Reinstall the latest app build and restart. (For dev setup, install with `brew install whisper-cpp`.)';
+  const cliGuideMap: Record<Language, string> = {
+    ko: '내장 Whisper 런타임을 찾지 못했습니다. 최신 배포본으로 재설치 후 다시 실행해 주세요. (개발 환경에서는 `brew install whisper-cpp`로 대체 가능)',
+    en: 'Bundled Whisper runtime is missing. Reinstall the latest app build and restart. (For dev setup, install with `brew install whisper-cpp`.)',
+    ja: '内蔵Whisperランタイムが見つかりません。最新ビルドを再インストールして再起動してください。(開発環境では`brew install whisper-cpp`で代替可能)',
+  };
+  const cliGuide = cliGuideMap[language];
 
-  const modelGuide = isKo
-    ? `모델 파일 미설치: \`${modelFileName}\`을 \`models/whisper/\`에 배치하거나 \`WHISPER_MODEL_PATH\`를 설정하세요.`
-    : `Model is missing: place \`${modelFileName}\` under \`models/whisper/\` or set \`WHISPER_MODEL_PATH\`.`;
+  const modelGuideMap: Record<Language, string> = {
+    ko: `모델 파일 미설치: \`${modelFileName}\`을 \`models/whisper/\`에 배치하거나 \`WHISPER_MODEL_PATH\`를 설정하세요.`,
+    en: `Model is missing: place \`${modelFileName}\` under \`models/whisper/\` or set \`WHISPER_MODEL_PATH\`.`,
+    ja: `モデルファイル未インストール: \`${modelFileName}\`を\`models/whisper/\`に配置するか\`WHISPER_MODEL_PATH\`を設定してください。`,
+  };
+  const modelGuide = modelGuideMap[language];
 
   if (missingCli && missingModel) {
     return `${cliGuide} ${modelGuide}`;
@@ -106,9 +112,12 @@ function getWhisperInstallGuide(
   if (missingCli) return cliGuide;
   if (missingModel) return modelGuide;
 
-  return isKo
-    ? 'Whisper 로컬 음성 인식 엔진을 확인하지 못했습니다.'
-    : 'Unable to verify local Whisper dependencies.';
+  const fallbackMap: Record<Language, string> = {
+    ko: 'Whisper 로컬 음성 인식 엔진을 확인하지 못했습니다.',
+    en: 'Unable to verify local Whisper dependencies.',
+    ja: 'Whisperローカル音声認識エンジンを確認できませんでした。',
+  };
+  return fallbackMap[language];
 }
 
 function getVoiceInputUnavailableReason(
@@ -121,9 +130,9 @@ function getVoiceInputUnavailableReason(
   if (hasLocalWhisper) return null;
 
   if (isTauriDesktopRuntime() && !hasCheckedLocalWhisper) {
-    return language === 'ko'
-      ? '로컬 음성 인식 엔진 확인 중입니다. 잠시만 기다려 주세요.'
-      : 'Checking local speech recognition dependencies...';
+    if (language === 'ja') return 'ローカル音声認識エンジンを確認中です。しばらくお待ちください。';
+    if (language === 'en') return 'Checking local speech recognition dependencies...';
+    return '로컬 음성 인식 엔진 확인 중입니다. 잠시만 기다려 주세요.';
   }
 
   return getWhisperInstallGuide(whisperStatus, language, model);
@@ -218,6 +227,20 @@ function getVoiceCommandResponse(command: VoiceCommandType, language: Language):
     return english[command];
   }
 
+  if (language === 'ja') {
+    const japanese: Record<VoiceCommandType, string> = {
+      'open-settings': '設定を開いたよ。',
+      'close-settings': '設定を閉じたよ。',
+      'open-microphone-settings': 'マイク設定を開いたよ。',
+      'clear-messages': '会話履歴を消したよ。',
+      'stop-speaking': '音声出力を止めたよ。',
+      'set-language-ko': '言語を韓国語に変えたよ。',
+      'set-language-en': '言語を英語に変えたよ。',
+      'show-help': '使える音声コマンドは、設定の開閉、マイク設定、会話履歴消去、音声停止、言語切替だよ。',
+    };
+    return japanese[command];
+  }
+
   const korean: Record<VoiceCommandType, string> = {
     'open-settings': '설정 창을 열었어.',
     'close-settings': '설정 창을 닫았어.',
@@ -283,6 +306,7 @@ export function useConversation(): UseConversationReturn {
     stopDancing,
   } = useAvatarStore();
   const { speak, stop: stopSpeaking } = useSpeechSynthesis();
+  const { sendToClaudeCode, isClaudeCodeProvider } = useClaudeCodeChat();
   const runtimeVoiceInputBlockReason = getRuntimeVoiceInputBlockReason(
     isRemoteSession
   );
@@ -301,9 +325,11 @@ export function useConversation(): UseConversationReturn {
     );
   const ttsUnavailableReason = isSupertonicAvailable
     ? null
-    : settings.language === 'ko'
-      ? 'Supertonic 모델 파일을 찾을 수 없습니다. `models/supertonic/onnx`와 `models/supertonic/voice_styles`를 준비한 뒤 앱을 재실행해 주세요.'
-      : 'Supertonic model files are missing. Prepare `models/supertonic/onnx` and `models/supertonic/voice_styles`, then restart the app.';
+    : settings.language === 'ja'
+      ? 'Supertonicモデルファイルが見つかりません。`models/supertonic/onnx`と`models/supertonic/voice_styles`を準備してアプリを再起動してください。'
+      : settings.language === 'ko'
+        ? 'Supertonic 모델 파일을 찾을 수 없습니다. `models/supertonic/onnx`와 `models/supertonic/voice_styles`를 준비한 뒤 앱을 재실행해 주세요.'
+        : 'Supertonic model files are missing. Prepare `models/supertonic/onnx` and `models/supertonic/voice_styles`, then restart the app.';
 
   const showVoiceCommandFeedback = useCallback(async (
     message: string,
@@ -605,6 +631,14 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
+    // Claude Code 모드: 비동기 처리 (입력 비차단, 타임아웃 없음)
+    if (isClaudeCodeProvider()) {
+      // fire-and-forget: 응답 대기 중에도 새 입력 가능
+      setError(null);
+      sendToClaudeCode(text, (errMsg) => setError(errMsg));
+      return;
+    }
+
     if (isProcessingRef.current) {
       log('Already processing, returning');
       return;
@@ -635,13 +669,15 @@ export function useConversation(): UseConversationReturn {
         settings.avatarPersonalityPrompt || ''
       );
 
-      // Prepare messages for LLM (convert conversation store format to LLM format)
+      // Prepare messages for LLM (외부 알림은 프롬프트에서 제외)
       const llmMessages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },
-        ...currentMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant' | 'system',
-          content: m.content,
-        })),
+        ...currentMessages
+          .filter((m) => m.source !== 'external')
+          .map((m) => ({
+            role: m.role as 'user' | 'assistant' | 'system',
+            content: m.content,
+          })),
       ];
 
       log('Sending to LLM:', llmMessages.length, 'messages');
@@ -700,9 +736,9 @@ export function useConversation(): UseConversationReturn {
       // Small delay to ensure React state update is rendered before TTS starts
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Speak the response
+      // Speak the response (감정 정보를 TTS 옵션으로 전달)
       try {
-        await speak(responseText);
+        await speak(responseText, { emotion: responseEmotion });
         log('TTS completed');
       } catch (ttsErr) {
         log('TTS error:', ttsErr);
@@ -761,6 +797,8 @@ export function useConversation(): UseConversationReturn {
     triggerEmotionMotion,
     startDancing,
     stopDancing,
+    sendToClaudeCode,
+    isClaudeCodeProvider,
   ]);
 
   const handleRecognizedInput = useCallback(async (text: string) => {

@@ -11,6 +11,7 @@ import {
 } from '../../services/tauri/globalShortcutUtils';
 import { useAppStatusStore } from '../../stores/appStatusStore';
 import { useModelDownloadStore } from '../../stores/modelDownloadStore';
+import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
 
 // Whisper 모델 목록 (배포 기본 포함 모델)
 const WHISPER_MODELS = [
@@ -57,6 +58,9 @@ export default function VoiceSettings() {
     downloadModel,
     checkModelStatus,
   } = useModelDownloadStore();
+  const { speak, isSpeaking, stop, error: ttsError } = useSpeechSynthesis();
+  const avatarName = settings.avatarName?.trim() || t('settings.avatar.defaultName');
+  const ttsSample = t('settings.avatar.ttsTest.sample', { name: avatarName });
   const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
   const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
   const shortcutRegisterError = useAppStatusStore(
@@ -84,12 +88,13 @@ export default function VoiceSettings() {
     if (settings.stt.engine !== 'whisper' || !WHISPER_MODELS.includes(settings.stt.model)) {
       setSTTSettings({ engine: 'whisper', model: 'base' });
     }
-    // TTS는 supertonic만 지원하므로 항상 supertonic으로 설정
+    // 로컬 TTS(supertonic) 사용 시 voice 값 정규화
+    // supertone_api 사용 중이면 건드리지 않음
     if (
-      settings.tts.engine !== 'supertonic' ||
+      settings.tts.engine === 'supertonic' &&
       !SUPERTONIC_VOICE_KEYS.includes(settings.tts.voice || '')
     ) {
-      setTTSSettings({ engine: 'supertonic', voice: 'F1' });
+      setTTSSettings({ voice: 'F1' });
     }
   }, []);
 
@@ -220,10 +225,25 @@ export default function VoiceSettings() {
 
         {/* TTS Engine Info */}
         <div className="flex items-center gap-2 text-xs mb-3">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-            Supertonic
-          </span>
-          <span className="text-gray-500">{t('settings.voice.tts.supertonicInfo')}</span>
+          {settings.tts.engine === 'supertone_api' ? (
+            <>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                Supertone API
+              </span>
+              <span className="text-purple-600">
+                {settings.tts.supertoneApi?.voiceName
+                  ? `${settings.tts.supertoneApi.voiceName} (${t('settings.premium.badge')})`
+                  : t('settings.premium.badge')}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                Supertonic
+              </span>
+              <span className="text-gray-500">{t('settings.voice.tts.supertonicInfo')}</span>
+            </>
+          )}
         </div>
 
         {/* Supertonic Voice Selection */}
@@ -256,6 +276,39 @@ export default function VoiceSettings() {
             </optgroup>
           </select>
         </div>
+      </div>
+
+      {/* TTS Test */}
+      <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('settings.avatar.ttsTest.title')}
+        </h4>
+        <p className="text-xs text-gray-500">
+          {t('settings.avatar.ttsTest.description')}
+        </p>
+        <button
+          onClick={() => {
+            if (isSpeaking) {
+              stop();
+            } else {
+              speak(ttsSample);
+            }
+          }}
+          className={`w-full px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            isSpeaking
+              ? 'bg-red-500 text-white hover:bg-red-600'
+              : 'bg-green-500 text-white hover:bg-green-600'
+          }`}
+        >
+          {isSpeaking
+            ? t('settings.avatar.ttsTest.stop')
+            : t('settings.avatar.ttsTest.speak', { text: ttsSample })}
+        </button>
+        {ttsError && (
+          <p className="text-xs text-red-600 break-all">
+            {t('settings.avatar.ttsTest.error', { error: ttsError })}
+          </p>
+        )}
       </div>
 
       {/* Global Shortcut */}

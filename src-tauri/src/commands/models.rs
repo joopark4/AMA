@@ -307,5 +307,58 @@ pub async fn download_model(
 
 #[tauri::command]
 pub async fn get_models_dir() -> Result<String, String> {
-    models_root().map(|p| p.to_string_lossy().to_string())
+    let root = models_root()?;
+    if !root.exists() {
+        fs::create_dir_all(&root)
+            .map_err(|e| format!("Failed to create models directory: {}", e))?;
+    }
+    Ok(root.to_string_lossy().to_string())
+}
+
+/// 로컬 폴더를 macOS Finder에서 열기 (~/.mypartnerai/ 하위만 허용)
+#[tauri::command]
+pub async fn open_folder_in_finder(path: String) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+    // 경로 화이트리스트: ~/.mypartnerai/ 하위만 허용
+    let canonical = p.canonicalize()
+        .map_err(|e| format!("Failed to resolve path: {}", e))?;
+    let allowed_root = dirs::home_dir()
+        .ok_or("Cannot find home directory")?
+        .join(".mypartnerai");
+    if !canonical.starts_with(&allowed_root) {
+        return Err(format!("Access denied: only paths under ~/.mypartnerai/ are allowed"));
+    }
+    std::process::Command::new("open")
+        .arg(canonical.to_string_lossy().as_ref())
+        .spawn()
+        .map_err(|e| format!("Failed to open folder: {}", e))?;
+    Ok(())
+}
+
+fn dir_size(path: &PathBuf) -> u64 {
+    if path.is_file() {
+        return path.metadata().map(|m| m.len()).unwrap_or(0);
+    }
+    fs::read_dir(path)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .map(|e| dir_size(&e.path()))
+                .sum()
+        })
+        .unwrap_or(0)
+}
+
+#[tauri::command]
+pub async fn delete_app_data() -> Result<u64, String> {
+    let root = models_root()?;
+    if !root.exists() {
+        return Ok(0);
+    }
+    let size = dir_size(&root);
+    fs::remove_dir_all(&root).map_err(|e| format!("Failed to delete app data: {}", e))?;
+    Ok(size)
 }
