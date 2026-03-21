@@ -164,10 +164,8 @@ export async function processExternalResponse(options: ProcessResponseOptions): 
 
   log(`Processing ${source} response:`, text.substring(0, 50), `emotion=${emotion}`);
 
-  // 1. 대화 기록 저장 (외부 일방향 알림은 LLM 프롬프트 오염 방지를 위해 저장하지 않음)
-  if (source === 'internal') {
-    store.addMessage({ role: 'assistant', content: text });
-  }
+  // 1. 대화 기록 저장 (외부 알림은 source 태그 부착 → LLM 프롬프트에서 제외)
+  store.addMessage({ role: 'assistant', content: text, source });
 
   // 2. 말풍선 표시
   store.setCurrentResponse(text);
