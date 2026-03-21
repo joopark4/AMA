@@ -78,7 +78,24 @@
 | [#009](./issues/009-cloud-model-list-sync.md) | LLM 모델 목록 동기화 | — |
 | [#010](./issues/010-supertonic-model-multilingual-update.md) | TTS v1.6.0 다국어 업데이트 | — |
 | [#011](./issues/011-updater-resource-fork.md) | 업데이터 tar.gz 리소스 포크 | 2026.02.27 |
+| [#012](./issues/012-edge-function-jwt-auth.md) | Edge Function JWT 인증 실패 | 2026.02.28 |
+| [#013](./issues/013-tauri-webview-external-audio.md) | Tauri WebView 외부 오디오 재생 차단 | 2026.02.28 |
+| [#014](./issues/014-dev-oauth-and-session-restore.md) | 개발 모드 OAuth 콜백 + 세션 복원 안정화 | — |
 | [#015](./issues/015-premium-tts-fallback-to-local.md) | 프리미엄 TTS 기본 음성 폴백 (3가지 복합 원인) | 2026.03.21 |
+| [#016](./issues/016-channels-port-conflict.md) | Channels 포트 충돌로 응답 멈춤 | 2026.03.21 |
+
+---
+
+## v0.8.0 작업 이력 (2026.03.21)
+
+- main → develop 기능 통합 (About 모달, 멀티모니터 보정, ORT import, capabilities 보안 강화)
+- 기본 VRM 아바타 바이너리 임베딩 파이프라인 (AES-128-GCM 암호화)
+- 프리미엄 음성 모듈화 (`src/features/premium-voice/`)
+- About 모달 분리 (`aboutStore` + `useMenuListeners` 훅)
+- Channels 포트 충돌 해결 + 응답 타임아웃 추가 (#016)
+- 코드 리뷰 P2 수정 (AES 키 통합, barrel export, static import 통일)
+- ja.json 누락 4키 추가 (ko/en/ja 359키 일치)
+- docs 폴더 기능별 재구성 (9개 하위 폴더)
 
 ---
 
