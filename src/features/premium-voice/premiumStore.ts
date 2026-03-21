@@ -2,9 +2,9 @@
  * 프리미엄 상태/음성목록/사용량/할당량 관리 스토어
  */
 import { create } from 'zustand';
-import { callEdgeFunction, ensureSession } from '../services/auth/edgeFunctionClient';
-import { useAuthStore } from './authStore';
-import { supabase } from '../services/auth/supabaseClient';
+import { callEdgeFunction, ensureSession } from '../../services/auth/edgeFunctionClient';
+import { useAuthStore } from '../../stores/authStore';
+import { supabase } from '../../services/auth/supabaseClient';
 
 export interface SupertoneSample {
   language: string;

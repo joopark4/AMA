@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
@@ -18,9 +17,10 @@ import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useAuthStore } from './stores/authStore';
 import { useModelDownloadStore } from './stores/modelDownloadStore';
-import { useAutoUpdateStore } from './hooks/useAutoUpdate';
 import { useClickThrough } from './hooks/useClickThrough';
+import { useMenuListeners } from './hooks/useMenuListeners';
 import { useMonitorStore } from './stores/monitorStore';
+import { useAboutStore } from './stores/aboutStore';
 import { useMcpSpeakListener } from './features/channels';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
@@ -39,7 +39,7 @@ function App() {
     setPendingProvider,
   } = useAuthStore();
   const [initialAvatarName, setInitialAvatarName] = useState('');
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const { isOpen: isAboutOpen, close: closeAbout } = useAboutStore();
   const { status: modelStatus, isChecking: isCheckingModels, checkModelStatus } = useModelDownloadStore();
 
   // Enable click-through for transparent window (except on interactive elements)
@@ -47,6 +47,9 @@ function App() {
 
   // MCP 채널 speak 이벤트 리스너
   useMcpSpeakListener();
+
+  // macOS 네이티브 메뉴 이벤트 리스너
+  useMenuListeners();
 
   useEffect(() => {
     i18n.changeLanguage(settings.language);
@@ -129,29 +132,6 @@ function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  // Listen for native menu events
-  useEffect(() => {
-    const unlistenUpdate = listen('menu-check-update', () => {
-      useAutoUpdateStore.getState().checkForUpdate();
-    });
-    const unlistenSettings = listen('menu-open-settings', () => {
-      useSettingsStore.getState().openSettings();
-    });
-    const unlistenMonitor = listen('menu-move-monitor-next', () => {
-      useMonitorStore.getState().moveToNextMonitor();
-    });
-    const unlistenAbout = listen('menu-about', () => {
-      setIsAboutOpen(true);
-    });
-
-    return () => {
-      unlistenUpdate.then((fn) => fn());
-      unlistenSettings.then((fn) => fn());
-      unlistenMonitor.then((fn) => fn());
-      unlistenAbout.then((fn) => fn());
-    };
   }, []);
 
   // Restore preferred monitor on startup
@@ -244,7 +224,7 @@ function App() {
       </ErrorBoundary>
 
       {/* About modal */}
-      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+      <AboutModal isOpen={isAboutOpen} onClose={closeAbout} />
 
       {/* Model download modal (shown before onboarding) */}
       {requiresModelDownload && (
