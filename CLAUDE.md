@@ -245,6 +245,7 @@ const { t } = useTranslation();
 | [인증](docs/auth/auth-supabase.md) | Supabase OAuth 연동 |
 | [DB 스키마](docs/infrastructure/db-schema.md) | DB 테이블, RLS, 데이터 정책 |
 | [회원 관리](docs/auth/member-management.md) | 가입/약관/탈퇴 흐름 |
+| [Channels](docs/channels/channels-mcp.md) | Claude Code Channels 연동 |
 
 ### 해결된 이슈
 
@@ -261,6 +262,11 @@ const { t } = useTranslation();
 | [#009 클라우드 모델 목록 동기화](docs/issues/009-cloud-model-list-sync.md) | LLM 모델 목록 동기화 |
 | [#010 Supertonic 다국어 업데이트](docs/issues/010-supertonic-model-multilingual-update.md) | TTS v1.6.0 다국어 업데이트 |
 | [#011 업데이터 리소스 포크](docs/issues/011-updater-resource-fork.md) | tar.gz 리소스 포크로 업데이트 설치 실패 |
+| [#012 Edge Function JWT 인증](docs/issues/012-edge-function-jwt-auth.md) | Edge Function JWT 인증 실패 |
+| [#013 WebView 외부 오디오](docs/issues/013-tauri-webview-external-audio.md) | Tauri WebView 외부 오디오 재생 차단 |
+| [#014 OAuth 콜백 + 세션 복원](docs/issues/014-dev-oauth-and-session-restore.md) | 개발 모드 OAuth 콜백 + 세션 복원 안정화 |
+| [#015 프리미엄 TTS 폴백](docs/issues/015-premium-tts-fallback-to-local.md) | 프리미엄 TTS 기본 음성 폴백 |
+| [#016 Channels 포트 충돌](docs/issues/016-channels-port-conflict.md) | Channels 포트 충돌로 응답 멈춤 |
 
 ## 프로젝트 구조 요약
 
@@ -273,21 +279,22 @@ AMA/
 │   │   ├── settings/      # LLM/Voice/Premium/Avatar/Monitor/Update/Licenses + SettingsSection
 │   │   └── ui/            # SettingsPanel, AboutModal, StatusIndicator, HistoryPanel 등
 │   ├── features/
-│   │   └── channels/      # Claude Code Channels 독립 모듈 (클라이언트/훅/UI/상수)
+│   │   ├── channels/      # Claude Code Channels 독립 모듈 (클라이언트/훅/UI/상수)
+│   │   └── premium-voice/ # 프리미엄 음성 모듈 (premiumStore/supertoneApiClient/UI)
 │   ├── hooks/             # useAutoUpdate, useConversation, useVRM 등
 │   ├── services/
 │   │   ├── ai/            # llmRouter, claude/openai/gemini/ollama 클라이언트
 │   │   ├── audio/         # rhythmAnalyzer (댄스용)
 │   │   ├── auth/          # authService, oauthClient, supabaseClient, edgeFunctionClient
 │   │   ├── avatar/        # motionLibrary, motionSelector, motionNarration
-│   │   ├── voice/         # supertonicClient, supertoneApiClient, ttsRouter, audioProcessor
+│   │   ├── voice/         # supertonicClient, ttsRouter, audioProcessor
 │   │   └── tauri/         # permissions, globalShortcutUtils, windowManager
-│   ├── stores/            # settingsStore, authStore, premiumStore, modelDownloadStore, monitorStore 등
-│   └── i18n/              # ko.json, en.json
+│   ├── stores/            # settingsStore, authStore, aboutStore, modelDownloadStore, monitorStore 등
+│   └── i18n/              # ko.json, en.json, ja.json
 ├── src-tauri/
 │   ├── src/
 │   │   ├── main.rs        # 앱 엔트리 + macOS 네이티브 메뉴바
-│   │   └── commands/      # window, voice, settings, auth, models, screenshot, http
+│   │   └── commands/      # window, voice, settings, auth, models, screenshot, http, mcp, vrm
 │   └── capabilities/      # Tauri 권한 설정
 ├── models/
 │   ├── whisper/           # Whisper STT 모델
@@ -320,9 +327,10 @@ AMA/
 | `conversationStore` | 대화 기록/상태, persist |
 | `avatarStore` | VRM 제어 상태 (위치/애니메이션) |
 | `appStatusStore` | 앱 실행 상태 |
-| `premiumStore` | 프리미엄 상태/Supertone 음성목록/할당량/사용량 |
+| `premiumStore` | 프리미엄 상태/Supertone 음성목록/할당량/사용량 (`features/premium-voice/`) |
 | `modelDownloadStore` | 모델 다운로드 상태/진행도 |
 | `monitorStore` | 모니터/디스플레이 상태 |
+| `aboutStore` | About 모달 열림/닫힘 상태 |
 | `useAutoUpdateStore` | 앱 업데이트 확인/다운로드/설치 상태 |
 
 ## 주요 명령어
