@@ -23,7 +23,7 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
-function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
+export function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
   const normalizedName = avatarName.trim() || '아바타';
   const basePrompt = `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
