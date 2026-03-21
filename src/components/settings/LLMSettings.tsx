@@ -626,8 +626,9 @@ export default function LLMSettings() {
             {visibleModels.length > 0 ? (
               <select
                 value={settings.llm.model}
+                disabled={mcpLocked}
                 onChange={(e) => setLLMSettings({ model: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${mcpLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
               >
                 {visibleModels.map((model) => {
                   const status = modelStatuses[model] || 'unknown';
@@ -691,6 +692,7 @@ export default function LLMSettings() {
               <input
                 type="text"
                 value={settings.llm.endpoint || ''}
+                disabled={mcpLocked}
                 onChange={(e) => setLLMSettings({ endpoint: e.target.value })}
                 placeholder={
                   currentProvider === 'ollama' ? 'http://localhost:11434'

@@ -154,12 +154,12 @@ export async function processExternalResponse(options: ProcessResponseOptions): 
   const avatarStore = useAvatarStore.getState();
 
   // 감정 결정: 명시적 지정 우선, 없으면 텍스트 분석
+  const emotionMatch = analyzeEmotion(text);
   let emotion: Emotion = 'neutral';
   if (options.emotion && isValidEmotion(options.emotion)) {
     emotion = options.emotion as Emotion;
-  } else {
-    const match = analyzeEmotion(text);
-    if (match.score > 0) emotion = match.emotion;
+  } else if (emotionMatch.score > 0) {
+    emotion = emotionMatch.emotion;
   }
 
   log(`Processing ${source} response:`, text.substring(0, 50), `emotion=${emotion}`);
@@ -173,7 +173,6 @@ export async function processExternalResponse(options: ProcessResponseOptions): 
 
   // 3. 감정 설정 + 모션 트리거
   avatarStore.setEmotion(emotion);
-  const emotionMatch = analyzeEmotion(text);
   if (emotionMatch.score > 0 || emotion !== 'neutral') {
     triggerEmotionMotion(emotion, Math.max(emotionMatch.score, 1), text, true);
 
