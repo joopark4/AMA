@@ -143,6 +143,14 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
     return;
   }
 
+  // 다른 인스턴스가 포트를 인수받기 위한 종료 요청
+  if (req.method === 'POST' && req.url === '/shutdown') {
+    console.error('[ama-bridge] Shutdown requested by new instance — exiting');
+    res.writeHead(200).end('ok');
+    setTimeout(() => process.exit(0), 200);
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.writeHead(405).end('Method Not Allowed');
     return;
@@ -203,11 +211,41 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
   }
 });
 
-// --- 시작 ---
+// --- 시작 (포트 충돌 시 기존 서버 종료 후 재바인딩) ---
 const port = PORTS.DEV_BRIDGE;
-httpServer.listen(port, '127.0.0.1', () => {
-  console.error(`[ama-bridge] HTTP server listening on 127.0.0.1:${port}`);
-});
+
+async function tryListen(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    httpServer.once('error', async (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`[ama-bridge] Port ${port} in use — killing old server and retrying...`);
+        try {
+          // 기존 서버에 종료 요청
+          const res = await fetch(`http://127.0.0.1:${port}/shutdown`, { method: 'POST' }).catch(() => null);
+          if (!res) {
+            await new Promise(r => setTimeout(r, 1000));
+          }
+          // 재시도
+          httpServer.listen(port, '127.0.0.1', () => {
+            console.error(`[ama-bridge] HTTP server listening on 127.0.0.1:${port} (after retry)`);
+            resolve();
+          });
+        } catch {
+          reject(new Error(`Port ${port} still in use after retry`));
+        }
+      } else {
+        reject(err);
+      }
+    });
+
+    httpServer.listen(port, '127.0.0.1', () => {
+      console.error(`[ama-bridge] HTTP server listening on 127.0.0.1:${port}`);
+      resolve();
+    });
+  });
+}
+
+await tryListen();
 
 await mcp.connect(new StdioServerTransport());
 console.error('[ama-bridge] Channel connected via stdio');
