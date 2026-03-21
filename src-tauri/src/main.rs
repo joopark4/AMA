@@ -54,6 +54,8 @@ fn main() {
             commands::mcp::check_channel_registered,
             commands::mcp::check_bridge_health,
             commands::mcp::send_to_bridge,
+            commands::vrm::load_default_vrm,
+            commands::vrm::is_default_vrm_available,
         ])
         .on_menu_event(|app, event| {
             if let Some(window) = app.get_webview_window("main") {

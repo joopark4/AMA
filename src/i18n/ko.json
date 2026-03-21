@@ -221,7 +221,10 @@
         "exceededDesc": "로컬 음성(Supertonic)으로 자동 전환됨",
         "resetInfo": "다음 달 1일에 초기화됩니다",
         "fallbackToast": "월간 할당량이 소진되어 로컬 음성으로 전환합니다."
-      }
+      },
+      "defaultVrmLabel": "기본 내장 아바타 사용 중",
+      "useDefaultVrm": "기본 아바타로 초기화",
+      "info": "지원 형식: VRM 0.x 및 1.0 모델. 원활한 성능을 위해 30MB 이하의 파일을 권장합니다."
     },
     "save": "저장",
     "cancel": "취소",
