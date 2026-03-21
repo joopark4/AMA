@@ -8,6 +8,7 @@ import { DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR } from '../../services/tauri/global
 import { llmRouter } from '../../services/ai/llmRouter';
 import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
+import { CLAUDE_CODE_PROVIDER } from '../../features/channels';
 import { permissions } from '../../services/tauri/permissions';
 import VoiceWaveform from './VoiceWaveform';
 
@@ -28,6 +29,7 @@ const PROVIDER_LABELS: Record<LLMProvider, string> = {
   claude: 'Claude',
   openai: 'OpenAI',
   gemini: 'Gemini',
+  claude_code: 'Claude Code',
 };
 
 const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string> = {
@@ -556,7 +558,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
           />
           <button
             type="submit"
-            disabled={!textInput.trim() || status === 'processing'}
+            disabled={!textInput.trim() || (status === 'processing' && settings.llm.provider !== CLAUDE_CODE_PROVIDER)}
             className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
           >
             {t('chat.send')}

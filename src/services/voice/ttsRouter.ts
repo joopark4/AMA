@@ -30,15 +30,7 @@ class TTSRouter {
   /** 현재 설정 + 할당량 상태에 따라 적절한 클라이언트 선택 */
   private getActiveClient(): TTSClient {
     const { settings } = useSettingsStore.getState();
-
     if (settings.tts.engine === 'supertone_api') {
-      // 할당량 소진 시 로컬 폴백
-      const { isQuotaExceeded } = usePremiumStore.getState();
-      if (isQuotaExceeded) {
-        log('Quota exceeded, falling back to local Supertonic');
-        return this.supertonicClient;
-      }
-
       return getSupertoneApiClient();
     }
 
@@ -109,7 +101,9 @@ class TTSRouter {
     };
 
     try {
+      console.log('[TTSRouter] Calling synthesize with engine:', settings.tts.engine);
       const result = await this.synthesize(text, ttsOptions);
+      console.log('[TTSRouter] Synthesize OK, size:', result.audioData.byteLength);
       log('Synthesize complete, audioData size:', result.audioData.byteLength);
 
       try {
@@ -120,6 +114,7 @@ class TTSRouter {
         await this.playViaWebAudio(result.audioData);
       }
     } catch (error) {
+      console.error('[TTSRouter] Synthesize FAILED:', error);
       // 할당량 소진 시 로컬 폴백 + 토스트 알림
       if (error instanceof QuotaExceededError) {
         log('Quota exceeded, falling back to local Supertonic');
