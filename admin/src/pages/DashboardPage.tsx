@@ -6,17 +6,16 @@ import UserTable from '../components/UserTable';
 interface Stats {
   totalUsers: number;
   premiumUsers: number;
-  monthlyUsage: number;
-  activeUsers: number;
-  planDistribution: { plan_name: string; count: number }[];
-  dailyUsage: { date: string; count: number }[];
+  monthlyUsage: { totalSeconds: number; totalRequests: number; activeUsers: number };
+  planDistribution: Record<string, number>;
+  dailyStats: { date: string; seconds: number; requests: number; users: number }[];
   topUsers: {
-    id: string;
+    userId: string;
     email: string;
     nickname: string | null;
-    plan_name: string;
-    credits_used: number;
-    credit_limit: number;
+    planId: string;
+    totalSeconds: number;
+    totalRequests: number;
   }[];
 }
 
@@ -50,8 +49,8 @@ export default function DashboardPage() {
   const statCards = [
     { label: 'Total Users', value: stats.totalUsers.toLocaleString(), color: 'bg-blue-500' },
     { label: 'Premium Users', value: stats.premiumUsers.toLocaleString(), color: 'bg-purple-500' },
-    { label: 'Monthly Usage', value: stats.monthlyUsage.toLocaleString(), color: 'bg-green-500' },
-    { label: 'Active Users (30d)', value: stats.activeUsers.toLocaleString(), color: 'bg-orange-500' },
+    { label: 'Monthly Requests', value: stats.monthlyUsage.totalRequests.toLocaleString(), color: 'bg-green-500' },
+    { label: 'Active Users (Month)', value: stats.monthlyUsage.activeUsers.toLocaleString(), color: 'bg-orange-500' },
   ];
 
   return (
@@ -76,15 +75,15 @@ export default function DashboardPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-sm font-medium text-gray-700 mb-4">Plan Distribution</h2>
           <div className="space-y-3">
-            {stats.planDistribution.map((item) => {
+            {Object.entries(stats.planDistribution).map(([planId, count]) => {
               const total = stats.totalUsers || 1;
-              const pct = Math.round((item.count / total) * 100);
+              const pct = Math.round((count / total) * 100);
               return (
-                <div key={item.plan_name}>
+                <div key={planId}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="capitalize text-gray-700">{item.plan_name}</span>
+                    <span className="capitalize text-gray-700">{planId}</span>
                     <span className="text-gray-400">
-                      {item.count} ({pct}%)
+                      {count} ({pct}%)
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -101,14 +100,14 @@ export default function DashboardPage() {
 
         {/* Daily Usage Chart */}
         <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-          <UsageChart data={stats.dailyUsage} label="Daily Usage (Last 30 days)" />
+          <UsageChart data={stats.dailyStats.map(d => ({ date: d.date, count: d.requests }))} label="Daily Usage (Last 30 days)" />
         </div>
       </div>
 
       {/* Top Users */}
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Top Users</h2>
-        <UserTable users={stats.topUsers} />
+        <UserTable users={stats.topUsers.map(u => ({ id: u.userId, email: u.email ?? '', nickname: u.nickname, planId: u.planId, totalSeconds: u.totalSeconds }))} />
       </div>
     </div>
   );

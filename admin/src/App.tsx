@@ -45,7 +45,11 @@ export default function App() {
 
   async function checkAdmin(userId: string) {
     try {
-      const { data } = await supabase!
+      if (!supabase) {
+        setIsAdmin(false);
+        return;
+      }
+      const { data } = await supabase
         .from('profiles')
         .select('is_admin')
         .eq('id', userId)
@@ -96,7 +100,7 @@ export default function App() {
             Your account does not have admin privileges.
           </p>
           <button
-            onClick={() => supabase!.auth.signOut()}
+            onClick={() => supabase?.auth.signOut()}
             className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
           >
             Sign Out

@@ -4,29 +4,39 @@ import { adminApi } from '../services/adminApi';
 import PlanBadge from '../components/PlanBadge';
 import QuotaBar from '../components/QuotaBar';
 
-interface UserDetail {
+interface UserProfile {
   id: string;
   email: string;
   nickname: string | null;
   avatar_url: string | null;
   is_admin: boolean;
+  is_premium: boolean;
+  plan_id: string;
+  monthly_credit_limit_override: number | null;
   created_at: string;
-  last_sign_in_at: string | null;
-  subscription: {
-    plan_id: string;
-    plan_name: string;
-    credits_used: number;
-    credit_limit: number;
-    quota_override: number | null;
-    started_at: string;
-  };
-  history: {
-    id: string;
-    plan_name: string;
-    action: string;
-    reason: string | null;
-    created_at: string;
-  }[];
+  last_sign_in_at?: string | null;
+}
+
+interface UserUsage {
+  monthlyUsed: number;
+  monthlySeconds: number;
+  monthlyCharacters: number;
+  monthlyRequests: number;
+}
+
+interface HistoryEntry {
+  id: string;
+  old_plan_id: string | null;
+  new_plan_id: string;
+  changed_by: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+interface UserDetailResponse {
+  user: UserProfile;
+  usage: UserUsage;
+  history: HistoryEntry[];
 }
 
 interface PlanOption {
@@ -37,7 +47,7 @@ interface PlanOption {
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [user, setUser] = useState<UserDetail | null>(null);
+  const [detail, setDetail] = useState<UserDetailResponse | null>(null);
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,12 +62,12 @@ export default function UserDetailPage() {
     if (!id) return;
     Promise.all([adminApi.getUserDetail(id), adminApi.getPlans()])
       .then(([userData, plansData]) => {
-        setUser(userData);
+        setDetail(userData);
         setPlans(plansData.plans || []);
-        setSelectedPlan(userData.subscription.plan_id);
+        setSelectedPlan(userData.user.plan_id);
         setQuotaOverride(
-          userData.subscription.quota_override != null
-            ? String(userData.subscription.quota_override)
+          userData.user.monthly_credit_limit_override != null
+            ? String(userData.user.monthly_credit_limit_override)
             : '',
         );
       })
@@ -72,7 +82,7 @@ export default function UserDetailPage() {
     try {
       await adminApi.changePlan(id, selectedPlan, planReason || undefined);
       const updated = await adminApi.getUserDetail(id);
-      setUser(updated);
+      setDetail(updated);
       setPlanReason('');
       setSaveMsg('Plan updated successfully');
     } catch (err) {
@@ -90,7 +100,7 @@ export default function UserDetailPage() {
       const value = quotaOverride.trim() === '' ? null : Number(quotaOverride);
       await adminApi.setQuotaOverride(id, value);
       const updated = await adminApi.getUserDetail(id);
-      setUser(updated);
+      setDetail(updated);
       setSaveMsg('Quota override updated');
     } catch (err) {
       setSaveMsg(err instanceof Error ? err.message : 'Failed to update quota');
@@ -100,14 +110,14 @@ export default function UserDetailPage() {
   };
 
   const handleToggleAdmin = async () => {
-    if (!id || !user) return;
+    if (!id || !detail) return;
     setSaving(true);
     setSaveMsg(null);
     try {
-      await adminApi.toggleAdmin(id, !user.is_admin);
+      await adminApi.toggleAdmin(id, !detail.user.is_admin);
       const updated = await adminApi.getUserDetail(id);
-      setUser(updated);
-      setSaveMsg(`Admin ${updated.is_admin ? 'granted' : 'revoked'}`);
+      setDetail(updated);
+      setSaveMsg(`Admin ${updated.user.is_admin ? 'granted' : 'revoked'}`);
     } catch (err) {
       setSaveMsg(err instanceof Error ? err.message : 'Failed to toggle admin');
     } finally {
@@ -119,7 +129,7 @@ export default function UserDetailPage() {
     return <div className="text-gray-400 text-center py-12">Loading user details...</div>;
   }
 
-  if (error || !user) {
+  if (error || !detail) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
         {error || 'User not found'}
@@ -132,6 +142,8 @@ export default function UserDetailPage() {
       </div>
     );
   }
+
+  const { user, usage, history } = detail;
 
   return (
     <div>
@@ -216,11 +228,11 @@ export default function UserDetailPage() {
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm text-gray-500">Current Plan:</span>
-              <PlanBadge plan={user.subscription.plan_name} />
+              <PlanBadge plan={user.plan_id} />
             </div>
             <QuotaBar
-              used={user.subscription.credits_used}
-              limit={user.subscription.credit_limit}
+              used={usage.monthlyUsed}
+              limit={user.monthly_credit_limit_override ?? 0}
               label="Credit Usage"
             />
           </div>
@@ -245,7 +257,7 @@ export default function UserDetailPage() {
                 </select>
                 <button
                   onClick={handleChangePlan}
-                  disabled={saving || selectedPlan === user.subscription.plan_id}
+                  disabled={saving || selectedPlan === user.plan_id}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Apply
@@ -288,7 +300,7 @@ export default function UserDetailPage() {
         {/* Subscription History */}
         <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Subscription History</h2>
-          {user.history.length === 0 ? (
+          {history.length === 0 ? (
             <p className="text-gray-400 text-sm">No subscription history.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -299,10 +311,10 @@ export default function UserDetailPage() {
                       Date
                     </th>
                     <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">
-                      Action
+                      Change
                     </th>
                     <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">
-                      Plan
+                      New Plan
                     </th>
                     <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase">
                       Reason
@@ -310,14 +322,16 @@ export default function UserDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {user.history.map((h) => (
+                  {history.map((h) => (
                     <tr key={h.id} className="text-sm">
                       <td className="py-2 px-3 text-gray-500">
                         {new Date(h.created_at).toLocaleString()}
                       </td>
-                      <td className="py-2 px-3 text-gray-900 capitalize">{h.action}</td>
+                      <td className="py-2 px-3 text-gray-900">
+                        {h.old_plan_id ?? '-'} &rarr; {h.new_plan_id}
+                      </td>
                       <td className="py-2 px-3">
-                        <PlanBadge plan={h.plan_name} />
+                        <PlanBadge plan={h.new_plan_id} />
                       </td>
                       <td className="py-2 px-3 text-gray-500">{h.reason || '-'}</td>
                     </tr>

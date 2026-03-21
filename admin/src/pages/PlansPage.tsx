@@ -4,7 +4,7 @@ import { adminApi } from '../services/adminApi';
 interface Plan {
   id: string;
   name: string;
-  monthly_credits: number;
+  monthly_credit_limit: number;
   is_active: boolean;
 }
 
@@ -29,7 +29,7 @@ export default function PlansPage() {
     setEditingId(plan.id);
     setEditForm({
       name: plan.name,
-      monthlyCredits: plan.monthly_credits,
+      monthlyCredits: plan.monthly_credit_limit,
       isActive: plan.is_active,
     });
     setSaveMsg(null);
@@ -136,7 +136,7 @@ export default function PlansPage() {
                       />
                     ) : (
                       <span className="text-sm text-gray-700">
-                        {plan.monthly_credits.toLocaleString()}
+                        {plan.monthly_credit_limit.toLocaleString()}
                       </span>
                     )}
                   </td>

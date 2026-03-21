@@ -6,9 +6,8 @@ interface UserRow {
   id: string;
   email: string;
   nickname: string | null;
-  plan_name: string;
-  credits_used: number;
-  credit_limit: number;
+  plan_id?: string;
+  monthlyUsed?: number;
 }
 
 const PAGE_SIZE = 20;

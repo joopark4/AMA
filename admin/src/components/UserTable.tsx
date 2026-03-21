@@ -5,9 +5,13 @@ interface UserRow {
   id: string;
   email: string;
   nickname: string | null;
-  plan_name: string;
-  credits_used: number;
-  credit_limit: number;
+  plan_id?: string;
+  plan_name?: string;
+  planId?: string;
+  credits_used?: number;
+  credit_limit?: number;
+  monthlyUsed?: number;
+  totalSeconds?: number;
 }
 
 interface UserTableProps {
@@ -58,10 +62,10 @@ export default function UserTable({ users, loading }: UserTableProps) {
         </thead>
         <tbody className="divide-y divide-gray-200">
           {users.map((user) => {
-            const pct =
-              user.credit_limit > 0
-                ? Math.round((user.credits_used / user.credit_limit) * 100)
-                : 0;
+            const planLabel = user.plan_name ?? user.planId ?? user.plan_id ?? 'free';
+            const used = user.credits_used ?? user.monthlyUsed ?? user.totalSeconds ?? 0;
+            const limit = user.credit_limit ?? 0;
+            const pct = limit > 0 ? Math.round((used / limit) * 100) : 0;
             return (
               <tr
                 key={user.id}
@@ -73,11 +77,11 @@ export default function UserTable({ users, loading }: UserTableProps) {
                   {user.nickname || '-'}
                 </td>
                 <td className="px-6 py-4">
-                  <PlanBadge plan={user.plan_name} />
+                  <PlanBadge plan={planLabel} />
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500">
-                  {user.credits_used.toLocaleString()} / {user.credit_limit.toLocaleString()}{' '}
-                  <span className="text-gray-400">({pct}%)</span>
+                  {used.toLocaleString()}{limit > 0 ? ` / ${limit.toLocaleString()}` : ''}{' '}
+                  {limit > 0 && <span className="text-gray-400">({pct}%)</span>}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <button
