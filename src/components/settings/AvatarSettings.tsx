@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
 import { pickVrmFile } from '../../services/tauri/fileDialog';
 import { getMotionManifest } from '../../services/avatar/motionLibrary';
+import { isDefaultVrmAvailable } from '../../services/tauri/defaultVrm';
 
 export default function AvatarSettings() {
   const { t } = useTranslation();
@@ -35,6 +37,12 @@ export default function AvatarSettings() {
   const isDevBuild = import.meta.env.DEV;
   const totalMotionCount = getMotionManifest().length;
   const faceOnlyModeEnabled = settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
+  const [hasDefaultVrm, setHasDefaultVrm] = useState(false);
+  const isUsingDefaultVrm = !settings.vrmModelPath?.trim() && hasDefaultVrm;
+
+  useEffect(() => {
+    isDefaultVrmAvailable().then(setHasDefaultVrm).catch(() => setHasDefaultVrm(false));
+  }, []);
 
   const formatDegrees = (radian: number) => `${(radian * 180 / Math.PI).toFixed(1)}°`;
 
@@ -69,11 +77,16 @@ export default function AvatarSettings() {
         <label className="block text-sm font-medium text-gray-700">
           {t('settings.avatar.model')}
         </label>
+        {isUsingDefaultVrm && (
+          <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+            {t('settings.avatar.defaultVrmLabel')}
+          </div>
+        )}
         <div className="flex gap-2">
           <input
             type="text"
             value={settings.vrmModelPath}
-            placeholder={t('settings.avatar.vrmPlaceholder')}
+            placeholder={isUsingDefaultVrm ? t('settings.avatar.defaultVrmLabel') : t('settings.avatar.vrmPlaceholder')}
             readOnly
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 text-sm"
           />
@@ -84,6 +97,14 @@ export default function AvatarSettings() {
             {t('settings.avatar.select')}
           </button>
         </div>
+        {settings.vrmModelPath?.trim() && hasDefaultVrm && (
+          <button
+            onClick={() => setVrmModelPath('')}
+            className="w-full px-3 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+          >
+            {t('settings.avatar.useDefaultVrm')}
+          </button>
+        )}
       </div>
 
       {/* Avatar Name */}
