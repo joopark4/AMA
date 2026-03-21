@@ -221,7 +221,10 @@
         "exceededDesc": "Automatically switched to local voice (Supertonic)",
         "resetInfo": "Resets on the 1st of next month",
         "fallbackToast": "Monthly quota exceeded. Switching to local voice."
-      }
+      },
+      "defaultVrmLabel": "Using built-in default avatar",
+      "useDefaultVrm": "Reset to default avatar",
+      "info": "Supported format: VRM 0.x and 1.0 models. Recommended file size: under 30MB for smooth performance."
     },
     "save": "Save",
     "cancel": "Cancel",

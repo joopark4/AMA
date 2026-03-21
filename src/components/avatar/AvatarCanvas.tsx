@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as THREE from 'three';
 import VRMAvatar from './VRMAvatar';
@@ -8,6 +8,7 @@ import AnimationManager from './AnimationManager';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { pickVrmFile } from '../../services/tauri/fileDialog';
+import { isDefaultVrmAvailable } from '../../services/tauri/defaultVrm';
 
 // Enable legacy color management for VRM compatibility
 THREE.ColorManagement.enabled = true;
@@ -67,6 +68,11 @@ export default function AvatarCanvas() {
   const [pickerError, setPickerError] = useState<string | null>(null);
 
   const vrmPathConfigured = Boolean(settings.vrmModelPath?.trim());
+  const [hasDefaultVrm, setHasDefaultVrm] = useState(false);
+
+  useEffect(() => {
+    isDefaultVrmAvailable().then(setHasDefaultVrm).catch(() => setHasDefaultVrm(false));
+  }, []);
 
   const handleSelectVRM = useCallback(async () => {
     try {
@@ -86,7 +92,7 @@ export default function AvatarCanvas() {
 
   return (
     <div className="w-full h-full absolute inset-0">
-      {!vrmPathConfigured && (
+      {!vrmPathConfigured && !hasDefaultVrm && (
         <div className="absolute inset-0 flex items-center justify-center z-20" data-interactive="true">
           <div className="max-w-sm bg-slate-900/85 backdrop-blur-sm rounded-xl px-5 py-4 text-white border border-white/20 shadow-xl">
             <p className="text-sm font-semibold">{t('avatar.selectVrm.title')}</p>
@@ -121,7 +127,7 @@ export default function AvatarCanvas() {
       )}
 
       {/* Error display */}
-      {loadError && vrmPathConfigured && (
+      {loadError && (vrmPathConfigured || hasDefaultVrm) && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="bg-red-500/85 rounded-lg px-4 py-3 text-white text-sm max-w-xs" data-interactive="true">
             <div>{loadError}</div>
