@@ -153,7 +153,10 @@
       "speechBubble": {
         "title": "吹き出し",
         "description": "AIの応答をアバターの上に吹き出しで表示します。"
-      }
+      },
+      "defaultVrmLabel": "デフォルト内蔵アバター使用中",
+      "useDefaultVrm": "デフォルトアバターに初期化",
+      "info": "対応形式：VRM 0.xおよび1.0モデル。スムーズな動作のため、30MB以下のファイルを推奨します。"
     },
     "premium": {
       "title": "プレミアム音声",
@@ -221,10 +224,7 @@
         "exceededDesc": "ローカル音声（Supertonic）に自動切替されました",
         "resetInfo": "翌月1日にリセットされます",
         "fallbackToast": "月間割り当てを超過したため、ローカル音声に切り替えます。"
-      },
-      "defaultVrmLabel": "デフォルト内蔵アバター使用中",
-      "useDefaultVrm": "デフォルトアバターに初期化",
-      "info": "対応形式：VRM 0.xおよび1.0モデル。スムーズな動作のため、30MB以下のファイルを推奨します。"
+      }
     },
     "save": "保存",
     "cancel": "キャンセル",
