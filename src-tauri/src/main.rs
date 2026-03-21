@@ -53,6 +53,7 @@ fn main() {
             commands::mcp::unregister_channel_global,
             commands::mcp::check_channel_registered,
             commands::mcp::check_bridge_health,
+            commands::mcp::check_bridge_channel,
             commands::mcp::send_to_bridge,
             commands::vrm::load_default_vrm,
             commands::vrm::is_default_vrm_available,

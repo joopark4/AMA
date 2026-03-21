@@ -143,6 +143,40 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
     return;
   }
 
+  // 채널 연결 테스트: 테스트 알림 → reply 대기 (5초 타임아웃)
+  if (req.method === 'POST' && req.url === '/channel-test') {
+    const { id, promise } = createPendingReply();
+
+    await mcp.notification({
+      method: 'notifications/claude/channel',
+      params: {
+        content: '[channel-test] ping',
+        meta: { question_id: id },
+      },
+    });
+
+    try {
+      const reply = await Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 5000)
+        ),
+      ]);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ channel: true, reply }));
+    } catch {
+      // 타임아웃 — pending 정리
+      const pending = pendingReplies.get(id);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingReplies.delete(id);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ channel: false }));
+    }
+    return;
+  }
+
   // 다른 인스턴스가 포트를 인수받기 위한 종료 요청
   if (req.method === 'POST' && req.url === '/shutdown') {
     console.error('[ama-bridge] Shutdown requested by new instance — exiting');

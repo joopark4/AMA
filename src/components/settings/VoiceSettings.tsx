@@ -11,6 +11,7 @@ import {
 } from '../../services/tauri/globalShortcutUtils';
 import { useAppStatusStore } from '../../stores/appStatusStore';
 import { useModelDownloadStore } from '../../stores/modelDownloadStore';
+import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
 
 // Whisper 모델 목록 (배포 기본 포함 모델)
 const WHISPER_MODELS = [
@@ -57,6 +58,9 @@ export default function VoiceSettings() {
     downloadModel,
     checkModelStatus,
   } = useModelDownloadStore();
+  const { speak, isSpeaking, stop, error: ttsError } = useSpeechSynthesis();
+  const avatarName = settings.avatarName?.trim() || t('settings.avatar.defaultName');
+  const ttsSample = t('settings.avatar.ttsTest.sample', { name: avatarName });
   const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
   const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
   const shortcutRegisterError = useAppStatusStore(
@@ -272,6 +276,39 @@ export default function VoiceSettings() {
             </optgroup>
           </select>
         </div>
+      </div>
+
+      {/* TTS Test */}
+      <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('settings.avatar.ttsTest.title')}
+        </h4>
+        <p className="text-xs text-gray-500">
+          {t('settings.avatar.ttsTest.description')}
+        </p>
+        <button
+          onClick={() => {
+            if (isSpeaking) {
+              stop();
+            } else {
+              speak(ttsSample);
+            }
+          }}
+          className={`w-full px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            isSpeaking
+              ? 'bg-red-500 text-white hover:bg-red-600'
+              : 'bg-green-500 text-white hover:bg-green-600'
+          }`}
+        >
+          {isSpeaking
+            ? t('settings.avatar.ttsTest.stop')
+            : t('settings.avatar.ttsTest.speak', { text: ttsSample })}
+        </button>
+        {ttsError && (
+          <p className="text-xs text-red-600 break-all">
+            {t('settings.avatar.ttsTest.error', { error: ttsError })}
+          </p>
+        )}
       </div>
 
       {/* Global Shortcut */}
