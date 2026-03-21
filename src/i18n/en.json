@@ -286,7 +286,16 @@
       "notRegistered": "Not registered (auto-registers when turned ON)",
       "llmLocked": "Claude Code Channels is active. AI model is locked to Claude Code. Turn off Channels to restore previous settings.",
       "testHint": "Channels are a research preview feature. Testing requires the claude --dangerously-load-development-channels flag.",
-      "bridgeNoChannel": "Channel inactive (run Claude Code with --dangerously-load-development-channels flag)"
+      "bridgeNoChannel": "Channel inactive (run Claude Code with --dangerously-load-development-channels flag)",
+      "researchPreview": "Research Preview",
+      "researchPreviewDesc": "Channels is a research preview feature. A development flag is required until official marketplace submission.",
+      "step1Title": "Step 1: Claude Code CLI",
+      "step1Desc": "Claude Code CLI must be installed.",
+      "step2Title": "Step 2: Run in Terminal",
+      "step2Desc": "Run the following command in the AMA project directory.",
+      "step3Title": "Step 3: Enable in AMA",
+      "copy": "Copy",
+      "copied": "Copied"
     }
   },
   "status": {

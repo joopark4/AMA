@@ -1,10 +1,9 @@
 #!/usr/bin/env tsx
 /**
- * 양방향 개발 브리지 채널 — Claude Code Channels 스펙 준수
+ * AMA Bridge — Claude Code Channel Plugin
  *
- * NOTE: Canonical source is `claude-plugin/ama-bridge/server.ts`.
- * This file is kept for backward compatibility with existing installations.
- * When making changes, update the canonical source first.
+ * Canonical source for the ama-bridge channel server.
+ * Connects Claude Code to the AMA AI avatar app via bidirectional channel.
  *
  * AMA 또는 외부에서 질문을 보내면 Claude Code에 채널 알림으로 전달되고,
  * Claude가 reply 도구로 응답하면 HTTP 응답 + AMA TTS로 출력된다.
@@ -18,7 +17,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { PORTS } from './shared/config.mts';
-// speak import 제거 — AMA가 HTTP 응답으로 직접 TTS 처리
 
 // --- Pending reply 관리 (24시간 타임아웃, 새 입력 시 전체 갱신, 최대 50개) ---
 import { randomUUID } from 'node:crypto';
