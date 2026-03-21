@@ -77,14 +77,10 @@ export default function MCPSettings() {
     // 등록 시도
     await ensureRegistered();
 
-    // bridge 서버 + 채널 연결 확인
+    // bridge 서버 실행 확인 (토글 ON은 서버 실행만 확인, 채널 테스트는 "연결 확인" 버튼에서)
     let serverOk = false;
-    let channelOk = false;
     try {
       serverOk = await invoke<boolean>('check_bridge_health');
-      if (serverOk) {
-        channelOk = await invoke<boolean>('check_bridge_channel');
-      }
     } catch {
       serverOk = false;
     }
@@ -94,15 +90,6 @@ export default function MCPSettings() {
       setToggling(false);
       window.dispatchEvent(new CustomEvent('ama-toast', {
         detail: { type: 'error', messageKey: 'settings.mcp.bridgeOffline' },
-      }));
-      return;
-    }
-
-    if (!channelOk) {
-      setBridgeStatus('no-channel');
-      setToggling(false);
-      window.dispatchEvent(new CustomEvent('ama-toast', {
-        detail: { type: 'error', messageKey: 'settings.mcp.bridgeNoChannel' },
       }));
       return;
     }
