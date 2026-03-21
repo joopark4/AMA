@@ -5,12 +5,12 @@
  * 하나의 함수로 통합하여, useConversation과 MCP 리스너 모두에서 사용한다.
  */
 
-import { useConversationStore } from '../stores/conversationStore';
-import { useAvatarStore, type Emotion } from '../stores/avatarStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import { ttsRouter } from '../services/voice/ttsRouter';
-import { selectMotionClip } from '../services/avatar/motionSelector';
-import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
+import { useConversationStore } from '../../stores/conversationStore';
+import { useAvatarStore, type Emotion } from '../../stores/avatarStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { ttsRouter } from '../../services/voice/ttsRouter';
+import { selectMotionClip } from '../../services/avatar/motionSelector';
+import { emotionTuningGlobal, getEmotionTuning } from '../../config/emotionTuning';
 import { invoke } from '@tauri-apps/api/core';
 
 const log = (...args: unknown[]) => {

@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
+import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from './constants';
 
 export default function MCPSettings() {
   const { t } = useTranslation();
@@ -70,16 +71,16 @@ export default function MCPSettings() {
 
     // 현재 LLM 설정 백업 (이미 claude_code가 아닐 때만)
     const currentLlm = useSettingsStore.getState().settings.llm;
-    const prevLlm = currentLlm.provider !== 'claude_code' ? { ...currentLlm } : settings.mcpPreviousLlm;
+    const prevLlm = currentLlm.provider !== CLAUDE_CODE_PROVIDER ? { ...currentLlm } : settings.mcpPreviousLlm;
 
     setSettings({
       mcpEnabled: true,
       mcpPreviousLlm: prevLlm,
     });
     setLLMSettings({
-      provider: 'claude_code',
-      model: 'dev-bridge',
-      endpoint: 'http://127.0.0.1:8790',
+      provider: CLAUDE_CODE_PROVIDER,
+      model: BRIDGE_DEFAULT_MODEL,
+      endpoint: BRIDGE_DEFAULT_ENDPOINT,
     });
 
     setToggling(false);
@@ -90,7 +91,7 @@ export default function MCPSettings() {
     const prev = settings.mcpPreviousLlm;
     setSettings({ mcpEnabled: false });
 
-    if (prev && prev.provider !== 'claude_code') {
+    if (prev && prev.provider !== CLAUDE_CODE_PROVIDER) {
       setLLMSettings(prev);
     }
   };

@@ -10,7 +10,7 @@
  * AMA → invoke('send_to_bridge') → Rust → POST 127.0.0.1:8790 → dev-bridge → Claude Code → reply → AMA
  */
 
-import type { Message, LLMResponse, StreamCallbacks, ChatOptions, LLMClient } from './types';
+import type { Message, LLMResponse, StreamCallbacks, ChatOptions, LLMClient } from '../../services/ai/types';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
 
