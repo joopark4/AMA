@@ -221,7 +221,10 @@
         "exceededDesc": "ローカル音声（Supertonic）に自動切替されました",
         "resetInfo": "翌月1日にリセットされます",
         "fallbackToast": "月間割り当てを超過したため、ローカル音声に切り替えます。"
-      }
+      },
+      "defaultVrmLabel": "デフォルト内蔵アバター使用中",
+      "useDefaultVrm": "デフォルトアバターに初期化",
+      "info": "対応形式：VRM 0.xおよび1.0モデル。スムーズな動作のため、30MB以下のファイルを推奨します。"
     },
     "save": "保存",
     "cancel": "キャンセル",
@@ -394,6 +397,7 @@
     "loginWith": "{{provider}}で続行",
     "mockModeNotice": "テストモード — OAuthキー未設定、クリックでモックログインを実行",
     "loading": "認証中...",
+    "cancelLogin": "ログインをキャンセル",
     "success": "ログイン成功",
     "logout": "ログアウト",
     "logoutConfirm": "ログアウトしますか？",

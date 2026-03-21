@@ -8,8 +8,9 @@ fn main() {
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
     let vrm_source = Path::new("assets/default.vrm");
 
-    // Rerun if the VRM asset changes (or appears/disappears)
+    // Rerun if the VRM asset or shared key changes
     println!("cargo:rerun-if-changed=assets/default.vrm");
+    println!("cargo:rerun-if-changed=src/commands/vrm_consts.rs");
 
     if vrm_source.exists() {
         // AES-128-GCM encryption
@@ -17,15 +18,9 @@ fn main() {
         use aes_gcm::Nonce;
         use rand::RngCore;
 
-        // Deterministic key derived from a project-specific seed.
-        // This is NOT a security boundary against a determined reverse-engineer;
-        // it prevents casual extraction via `strings` / `hexdump`.
-        let key_bytes: [u8; 16] = [
-            0x4d, 0x50, 0x41, 0x49, // MPAI
-            0x56, 0x52, 0x4d, 0x4b, // VRMK
-            0x32, 0x30, 0x32, 0x36, // 2026
-            0xde, 0xad, 0xbe, 0xef,
-        ];
+        // Include the shared key definition (same file used by vrm.rs at runtime)
+        include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/commands/vrm_consts.rs"));
+        let key_bytes = DEFAULT_VRM_KEY;
 
         let plain = fs::read(vrm_source).expect("Failed to read default.vrm");
         let cipher = aes_gcm::Aes128Gcm::new_from_slice(&key_bytes)

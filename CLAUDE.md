@@ -231,20 +231,20 @@ const { t } = useTranslation();
 
 | 문서 | 설명 |
 |------|------|
-| [아키텍처](docs/architecture.md) | 시스템 구조와 데이터 흐름 |
-| [기능 명세서](docs/feature-spec.md) | 전체 기능 명세 |
-| [기술 스택](docs/tech-stack.md) | 최신 의존성과 역할 |
-| [프로젝트 구조](docs/project-structure.md) | 디렉터리/핵심 파일 맵 |
-| [AI 서비스](docs/ai-services.md) | LLM 라우팅, Vision 분석 |
-| [음성 서비스](docs/voice-services.md) | Whisper/Supertonic 구현 상세 |
-| [아바타 시스템](docs/avatar-system.md) | VRM 로딩, 이동/회전, 상호작용 |
-| [설정 시스템](docs/settings-system.md) | Zustand 설정/마이그레이션 |
-| [Tauri 백엔드](docs/tauri-backend.md) | Rust 명령/권한/단일 인스턴스 |
-| [개발 가이드](docs/development-guide.md) | 기능 추가/디버깅 체크리스트 |
-| [배포](docs/deployment.md) | macOS 빌드/서명/노타라이즈 |
-| [인증](docs/auth-supabase.md) | Supabase OAuth 연동 |
-| [DB 스키마](docs/db-schema.md) | DB 테이블, RLS, 데이터 정책 |
-| [회원 관리](docs/member-management.md) | 가입/약관/탈퇴 흐름 |
+| [아키텍처](docs/fundamentals/architecture.md) | 시스템 구조와 데이터 흐름 |
+| [기능 명세서](docs/features/feature-spec.md) | 전체 기능 명세 |
+| [기술 스택](docs/fundamentals/tech-stack.md) | 최신 의존성과 역할 |
+| [프로젝트 구조](docs/fundamentals/project-structure.md) | 디렉터리/핵심 파일 맵 |
+| [AI 서비스](docs/ai/ai-services.md) | LLM 라우팅, Vision 분석 |
+| [음성 서비스](docs/voice/voice-services.md) | Whisper/Supertonic 구현 상세 |
+| [아바타 시스템](docs/avatar/avatar-system.md) | VRM 로딩, 이동/회전, 상호작용 |
+| [설정 시스템](docs/settings/settings-system.md) | Zustand 설정/마이그레이션 |
+| [Tauri 백엔드](docs/infrastructure/tauri-backend.md) | Rust 명령/권한/단일 인스턴스 |
+| [개발 가이드](docs/fundamentals/development-guide.md) | 기능 추가/디버깅 체크리스트 |
+| [배포](docs/infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈 |
+| [인증](docs/auth/auth-supabase.md) | Supabase OAuth 연동 |
+| [DB 스키마](docs/infrastructure/db-schema.md) | DB 테이블, RLS, 데이터 정책 |
+| [회원 관리](docs/auth/member-management.md) | 가입/약관/탈퇴 흐름 |
 
 ### 해결된 이슈
 

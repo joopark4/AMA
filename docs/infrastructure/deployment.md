@@ -204,7 +204,7 @@ ls src-tauri/target/release/bundle/macos/AMA.app/Contents/Resources/lib
 1. tar 생성 시 `COPYFILE_DISABLE=1` 환경변수 필수 적용
 2. `release-local.mjs`가 자동 검증 수행 (리소스 포크 감지 시 빌드 중단)
 3. 수동 검증: `tar -tzf AMA.app.tar.gz | grep '\._'` → 결과 없어야 정상
-4. 관련 이슈: [#011 업데이터 리소스 포크](issues/011-updater-resource-fork.md)
+4. 관련 이슈: [#011 업데이터 리소스 포크](../issues/011-updater-resource-fork.md)
 
 ## 릴리즈 체크리스트
 

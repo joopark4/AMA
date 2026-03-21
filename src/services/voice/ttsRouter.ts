@@ -1,8 +1,7 @@
 import type { TTSResult, TTSClient, TTSOptions } from './types';
 import { getSupertonicClient } from './supertonicClient';
-import { getSupertoneApiClient } from '../../features/premium-voice/supertoneApiClient';
+import { getSupertoneApiClient, usePremiumStore } from '../../features/premium-voice';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { usePremiumStore } from '../../features/premium-voice/premiumStore';
 import { QuotaExceededError } from '../auth/edgeFunctionClient';
 import { invoke } from '@tauri-apps/api/core';
 
