@@ -6,6 +6,8 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  /** 외부 알림(ci-webhook, monitor-alert)은 'external' — LLM 프롬프트에서 제외 */
+  source?: 'internal' | 'external';
 }
 
 export type ConversationStatus = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';

@@ -669,13 +669,15 @@ export function useConversation(): UseConversationReturn {
         settings.avatarPersonalityPrompt || ''
       );
 
-      // Prepare messages for LLM (convert conversation store format to LLM format)
+      // Prepare messages for LLM (외부 알림은 프롬프트에서 제외)
       const llmMessages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },
-        ...currentMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant' | 'system',
-          content: m.content,
-        })),
+        ...currentMessages
+          .filter((m) => m.source !== 'external')
+          .map((m) => ({
+            role: m.role as 'user' | 'assistant' | 'system',
+            content: m.content,
+          })),
       ];
 
       log('Sending to LLM:', llmMessages.length, 'messages');
