@@ -283,37 +283,58 @@ pub fn register_channel_global(project_dir: Option<String>) -> Result<String, St
     let shared_dir = install_dir.join("shared");
     let mcp_json_path = home.join(".claude.json");
 
-    // 1. 소스 디렉토리: 명시적 지정 > CWD
-    let source_dir = project_dir
+    // 1. 소스 디렉토리: claude-plugin/ama-bridge/ (우선) > mcp-channels/ (fallback)
+    let base_dir = project_dir
         .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default())
-        .join("mcp-channels");
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    // 경로 탐색 방지: 정규화 후 mcp-channels로 끝나는지 검증
-    let canonical = source_dir.canonicalize().unwrap_or_else(|_| source_dir.clone());
-    if !canonical.ends_with("mcp-channels") {
-        return Err("Invalid source directory".to_string());
-    }
-    if !source_dir.join("package.json").exists() {
+    let plugin_dir = base_dir.join("claude-plugin").join("ama-bridge");
+    let legacy_dir = base_dir.join("mcp-channels");
+
+    let (source_dir, use_plugin_layout) = if plugin_dir.join("package.json").exists() {
+        (plugin_dir, true)
+    } else if legacy_dir.join("package.json").exists() {
+        (legacy_dir, false)
+    } else {
         return Err(format!(
-            "mcp-channels/package.json not found in {}",
-            source_dir.display()
+            "Neither claude-plugin/ama-bridge/ nor mcp-channels/ found in {}",
+            base_dir.display()
         ));
+    };
+
+    // 경로 탐색 방지: 정규화 후 유효한 디렉토리인지 검증
+    let canonical = source_dir.canonicalize().unwrap_or_else(|_| source_dir.clone());
+    if use_plugin_layout {
+        if !canonical.ends_with("ama-bridge") {
+            return Err("Invalid source directory".to_string());
+        }
+    } else if !canonical.ends_with("mcp-channels") {
+        return Err("Invalid source directory".to_string());
     }
 
     // 2. 대상 디렉토리 생성 + 파일 복사
     std::fs::create_dir_all(&shared_dir)
         .map_err(|e| format!("Failed to create {}: {}", shared_dir.display(), e))?;
 
-    let files = [
-        "package.json",
-        "tsconfig.json",
-        "dev-bridge.mts",
-        "shared/config.mts",
-        "shared/ama-client.mts",
-    ];
+    let files: &[&str] = if use_plugin_layout {
+        &[
+            "package.json",
+            "tsconfig.json",
+            "server.ts",
+            "shared/config.mts",
+        ]
+    } else {
+        // Legacy: mcp-channels layout
+        &[
+            "package.json",
+            "tsconfig.json",
+            "dev-bridge.mts",
+            "shared/config.mts",
+            "shared/ama-client.mts",
+        ]
+    };
 
-    for file in &files {
+    for file in files {
         let src = source_dir.join(file);
         let dst = install_dir.join(file);
         if src.exists() {
@@ -339,7 +360,8 @@ pub fn register_channel_global(project_dir: Option<String>) -> Result<String, St
         serde_json::json!({})
     };
 
-    let bridge_path = install_dir.join("dev-bridge.mts").to_string_lossy().to_string();
+    let bridge_file = if use_plugin_layout { "server.ts" } else { "dev-bridge.mts" };
+    let bridge_path = install_dir.join(bridge_file).to_string_lossy().to_string();
     let install_dir_str = install_dir.to_string_lossy().to_string();
 
     if settings.get("mcpServers").is_none() {

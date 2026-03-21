@@ -10,6 +10,25 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
 import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from './constants';
 
+/** 복사 가능한 터미널 명령어 블록 */
+function CopyableCommand({ command }: { command: string }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(command);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="flex items-center gap-2 bg-gray-900 rounded-lg p-3">
+      <code className="flex-1 text-xs text-green-400 font-mono select-all break-all">{command}</code>
+      <button onClick={handleCopy} className="shrink-0 px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600">
+        {copied ? t('settings.mcp.copied') : t('settings.mcp.copy')}
+      </button>
+    </div>
+  );
+}
+
 export default function MCPSettings() {
   const { t } = useTranslation();
   const { settings, setSettings, setLLMSettings } = useSettingsStore();
@@ -145,36 +164,71 @@ export default function MCPSettings() {
 
   return (
     <div className="space-y-4">
+      {/* 리서치 프리뷰 배너 */}
+      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <span className="text-amber-500 mt-0.5">&#9888;</span>
+        <div>
+          <span className="text-xs font-semibold text-amber-700">{t('settings.mcp.researchPreview')}</span>
+          <p className="text-xs text-amber-600 mt-0.5">{t('settings.mcp.researchPreviewDesc')}</p>
+        </div>
+      </div>
+
       <p className="text-xs text-gray-500">
         {t('settings.mcp.description')}
       </p>
 
-      {/* Channels 토글 */}
-      <label className="flex items-center justify-between gap-3">
-        <div className="flex-1">
-          <span className="text-sm font-medium text-gray-700">
-            {t('settings.mcp.enabled')}
-          </span>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {t('settings.mcp.portInfo', { port: '8791' })}
-          </p>
-        </div>
-        <button
-          onClick={handleToggle}
-          disabled={toggling}
-          className={`relative w-10 h-5 rounded-full transition-colors ${
-            settings.mcpEnabled ? 'bg-blue-500' : 'bg-gray-300'
-          } ${toggling ? 'opacity-50' : ''}`}
-          role="switch"
-          aria-checked={settings.mcpEnabled}
-        >
-          <div
-            className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-              settings.mcpEnabled ? 'translate-x-5' : 'translate-x-0.5'
-            }`}
-          />
-        </button>
-      </label>
+      {/* Step 1: Claude Code 설치 확인 */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold text-gray-700">{t('settings.mcp.step1Title')}</p>
+        <p className="text-xs text-gray-500">
+          {t('settings.mcp.step1Desc')}{' '}
+          <a
+            href="https://docs.anthropic.com/en/docs/claude-code/overview"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-700 underline"
+          >
+            Install Guide &rarr;
+          </a>
+        </p>
+      </div>
+
+      {/* Step 2: 터미널에서 실행 */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold text-gray-700">{t('settings.mcp.step2Title')}</p>
+        <CopyableCommand command="claude --dangerously-load-development-channels server:ama-bridge" />
+        <p className="text-xs text-gray-400 mt-1">{t('settings.mcp.step2Desc')}</p>
+      </div>
+
+      {/* Step 3: AMA에서 활성화 */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold text-gray-700">{t('settings.mcp.step3Title')}</p>
+        <label className="flex items-center justify-between gap-3">
+          <div className="flex-1">
+            <span className="text-sm font-medium text-gray-700">
+              {t('settings.mcp.enabled')}
+            </span>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {t('settings.mcp.portInfo', { port: '8791' })}
+            </p>
+          </div>
+          <button
+            onClick={handleToggle}
+            disabled={toggling}
+            className={`relative w-10 h-5 rounded-full transition-colors ${
+              settings.mcpEnabled ? 'bg-blue-500' : 'bg-gray-300'
+            } ${toggling ? 'opacity-50' : ''}`}
+            role="switch"
+            aria-checked={settings.mcpEnabled}
+          >
+            <div
+              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                settings.mcpEnabled ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </label>
+      </div>
 
       {/* 상태 표시 */}
       <div className="p-3 bg-gray-50 rounded-lg space-y-2">

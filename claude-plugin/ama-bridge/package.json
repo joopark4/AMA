@@ -1,0 +1,19 @@
+{
+  "name": "ama-bridge",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "AMA avatar bridge channel for Claude Code",
+  "main": "server.ts",
+  "scripts": {
+    "start": "tsx server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
