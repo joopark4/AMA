@@ -7,8 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore, type SupertoneApiSettings } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
-import { usePremiumStore, type SupertoneVoice } from '../../stores/premiumStore';
-import { getModelLanguages } from '../../services/voice/supertoneApiClient';
+import { usePremiumStore, type SupertoneVoice } from './premiumStore';
+import { getModelLanguages } from './supertoneApiClient';
 
 const SUPERTONE_MODELS = [
   { id: 'sona_speech_1', labelKey: 'settings.premium.models.sona_speech_1' },
