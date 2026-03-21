@@ -13,7 +13,7 @@
 import type { Message, LLMResponse, StreamCallbacks, ChatOptions, LLMClient } from '../../services/ai/types';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
-import { BRIDGE_DEFAULT_ENDPOINT } from './constants';
+import { BRIDGE_DEFAULT_ENDPOINT, BRIDGE_RESPONSE_TIMEOUT_MS } from './constants';
 
 const log = (...args: unknown[]) => {
   const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
@@ -57,10 +57,15 @@ export class ClaudeCodeClient implements LLMClient {
 
     log('Sending to dev-bridge:', bridgeUrl, 'message:', lastUserMessage.substring(0, 50));
 
-    const responseText = await invoke<string>('send_to_bridge', {
-      endpoint: bridgeUrl,
-      body: payload,
-    });
+    const responseText = await Promise.race([
+      invoke<string>('send_to_bridge', {
+        endpoint: bridgeUrl,
+        body: payload,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Claude Code 응답 시간 초과 (3분). 채널 연결 상태를 확인해주세요.')), BRIDGE_RESPONSE_TIMEOUT_MS)
+      ),
+    ]);
 
     const data = JSON.parse(responseText) as { id?: string; reply?: string; error?: string };
 
