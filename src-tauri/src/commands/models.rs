@@ -315,6 +315,20 @@ pub async fn get_models_dir() -> Result<String, String> {
     Ok(root.to_string_lossy().to_string())
 }
 
+/// 로컬 폴더를 macOS Finder에서 열기
+#[tauri::command]
+pub async fn open_folder_in_finder(path: String) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+    std::process::Command::new("open")
+        .arg(&path)
+        .spawn()
+        .map_err(|e| format!("Failed to open folder: {}", e))?;
+    Ok(())
+}
+
 fn dir_size(path: &PathBuf) -> u64 {
     if path.is_file() {
         return path.metadata().map(|m| m.len()).unwrap_or(0);

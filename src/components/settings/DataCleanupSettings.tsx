@@ -20,7 +20,7 @@ export default function DataCleanupSettings() {
   const handleOpenFolder = async () => {
     try {
       const modelPath = await invoke<string>('get_models_dir');
-      await invoke('plugin:shell|open', { path: modelPath });
+      await invoke('open_folder_in_finder', { path: modelPath });
     } catch (e) {
       console.error('Failed to open model folder:', e);
     }
