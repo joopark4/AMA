@@ -9,7 +9,7 @@ import {
   normalizeGlobalShortcutAccelerator,
 } from '../services/tauri/globalShortcutUtils';
 
-export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini';
+export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code';
 
 // STT 엔진: whisper (로컬 whisper-cli)
 export type STTEngine = 'whisper';
@@ -116,6 +116,9 @@ export interface Settings {
   avatar: AvatarSettings;
   historyPanel: HistoryPanelSettings;
   preferredMonitorName: string;
+  mcpEnabled: boolean;
+  /** Channels ON 전의 LLM 설정 (OFF 시 복원용) */
+  mcpPreviousLlm: LLMSettings | null;
 }
 
 interface SettingsState {
@@ -304,6 +307,8 @@ const defaultSettings: Settings = {
     fontSize: 14,
   },
   preferredMonitorName: '',
+  mcpEnabled: false,
+  mcpPreviousLlm: null,
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -397,6 +402,14 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       typeof source.preferredMonitorName === 'string'
         ? source.preferredMonitorName
         : defaultSettings.preferredMonitorName,
+    mcpEnabled:
+      typeof source.mcpEnabled === 'boolean'
+        ? source.mcpEnabled
+        : defaultSettings.mcpEnabled,
+    mcpPreviousLlm:
+      source.mcpPreviousLlm && typeof source.mcpPreviousLlm === 'object'
+        ? source.mcpPreviousLlm as LLMSettings
+        : null,
   };
 }
 

@@ -72,47 +72,55 @@ Deno.serve(async (req) => {
     // Check premium status and quota
     const { data: profile } = await supabaseUser
       .from('profiles')
-      .select('plan_id, monthly_credit_limit_override, is_premium')
+      .select('plan_id, monthly_credit_limit_override, is_premium, is_admin')
       .eq('id', user.id)
       .single();
 
-    if (!profile?.is_premium) {
+    const isAdmin = profile?.is_admin === true;
+
+    // 관리자는 프리미엄/할당량 체크 건너뛰기
+    if (!isAdmin && !profile?.is_premium) {
       return new Response(JSON.stringify({ error: 'premium_required', message: 'Premium subscription required' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { data: plan } = await supabaseUser
-      .from('subscription_plans')
-      .select('monthly_credit_limit')
-      .eq('id', profile.plan_id)
-      .single();
+    let usedCredits = 0;
+    let creditLimit = 0;
 
-    const creditLimit = profile.monthly_credit_limit_override ?? plan?.monthly_credit_limit ?? 0;
+    if (!isAdmin) {
+      const { data: plan } = await supabaseUser
+        .from('subscription_plans')
+        .select('monthly_credit_limit')
+        .eq('id', profile.plan_id)
+        .single();
 
-    // Check monthly usage
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const { data: usageData } = await supabaseUser
-      .from('tts_usage')
-      .select('credits_used')
-      .eq('user_id', user.id)
-      .gte('created_at', monthStart);
+      creditLimit = profile.monthly_credit_limit_override ?? plan?.monthly_credit_limit ?? 0;
 
-    const usedCredits = usageData?.reduce((sum: number, r: { credits_used: number | null }) => sum + (r.credits_used || 0), 0) ?? 0;
+      // Check monthly usage
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const { data: usageData } = await supabaseUser
+        .from('tts_usage')
+        .select('credits_used')
+        .eq('user_id', user.id)
+        .gte('created_at', monthStart);
 
-    if (usedCredits >= creditLimit) {
-      return new Response(JSON.stringify({
-        error: 'quota_exceeded',
-        message: 'Monthly credit limit exceeded',
-        used: usedCredits,
-        limit: creditLimit,
-        plan: profile.plan_id,
-      }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      usedCredits = usageData?.reduce((sum: number, r: { credits_used: number | null }) => sum + (r.credits_used || 0), 0) ?? 0;
+
+      if (usedCredits >= creditLimit) {
+        return new Response(JSON.stringify({
+          error: 'quota_exceeded',
+          message: 'Monthly credit limit exceeded',
+          used: usedCredits,
+          limit: creditLimit,
+          plan: profile.plan_id,
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Call Supertone API
