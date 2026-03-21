@@ -16,8 +16,11 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { PORTS } from './shared/config.mts';
 import { speak } from './shared/ama-client.mts';
 
-// --- Pending reply 관리 (24시간 타임아웃, 새 입력 시 전체 갱신) ---
+// --- Pending reply 관리 (24시간 타임아웃, 새 입력 시 전체 갱신, 최대 50개) ---
+import { randomUUID } from 'node:crypto';
+
 const TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24시간
+const MAX_PENDING = 50;
 
 interface PendingReply {
   resolve: (value: string) => void;
@@ -26,7 +29,6 @@ interface PendingReply {
 }
 
 const pendingReplies = new Map<string, PendingReply>();
-let nextId = 1;
 
 /** 모든 대기 중인 요청의 타임아웃을 24시간으로 갱신 */
 function refreshAllTimeouts(): void {
@@ -40,7 +42,20 @@ function refreshAllTimeouts(): void {
 }
 
 function createPendingReply(): { id: string; promise: Promise<string> } {
-  const id = String(nextId++);
+  // 최대 개수 제한 — 가장 오래된 것부터 제거
+  if (pendingReplies.size >= MAX_PENDING) {
+    const oldest = pendingReplies.keys().next().value;
+    if (oldest) {
+      const old = pendingReplies.get(oldest);
+      if (old) {
+        clearTimeout(old.timer);
+        old.reject(new Error('Queue full'));
+      }
+      pendingReplies.delete(oldest);
+    }
+  }
+
+  const id = randomUUID(); // 예측 불가능한 ID
   const promise = new Promise<string>((resolve, reject) => {
     const timer = setTimeout(() => {
       pendingReplies.delete(id);
@@ -49,7 +64,7 @@ function createPendingReply(): { id: string; promise: Promise<string> } {
     pendingReplies.set(id, { resolve, reject, timer });
   });
 
-  // 새 입력이 들어왔으므로 기존 대기 중인 요청들의 타임아웃도 갱신
+  // 새 입력 → 기존 대기 요청 타임아웃 갱신
   refreshAllTimeouts();
 
   return { id, promise };
