@@ -33,7 +33,7 @@
         "openai": "OpenAI",
         "gemini": "Google Gemini",
         "claude_code": "Claude Code (External)",
-        "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the dev-bridge."
+        "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the ama-bridge."
       },
       "expand": "Expand",
       "collapse": "Collapse"
@@ -271,12 +271,12 @@
       "portInfo": "Listening on port {{port}}",
       "statusOn": "Active — receiving Claude Code messages",
       "statusOff": "Inactive — messages ignored",
-      "bridgeConnected": "dev-bridge connected (Claude Code running)",
-      "bridgeOffline": "dev-bridge offline (start Claude Code first)",
-      "bridgeUnknown": "dev-bridge status unknown",
+      "bridgeConnected": "ama-bridge connected (Claude Code running)",
+      "bridgeOffline": "ama-bridge offline (start Claude Code first)",
+      "bridgeUnknown": "ama-bridge status unknown",
       "checkConnection": "Check connection",
       "globalSetupTitle": "Global Registration (use from any directory)",
-      "globalSetupDesc": "Run the command below once in the AMA project to auto-start the dev-bridge channel from any Claude Code session in any directory.",
+      "globalSetupDesc": "Run the command below once in the AMA project to auto-start the ama-bridge channel from any Claude Code session in any directory.",
       "registerButton": "Register with Claude Code",
       "registered": "Registered",
       "unregister": "Unregister",
@@ -285,7 +285,8 @@
       "unregisterSuccess": "Registration removed",
       "notRegistered": "Not registered (auto-registers when turned ON)",
       "llmLocked": "Claude Code Channels is active. AI model is locked to Claude Code. Turn off Channels to restore previous settings.",
-      "testHint": "Channels are a research preview feature. Testing requires the claude --dangerously-load-development-channels flag."
+      "testHint": "Channels are a research preview feature. Testing requires the claude --dangerously-load-development-channels flag.",
+      "bridgeNoChannel": "Channel inactive (run Claude Code with --dangerously-load-development-channels flag)"
     }
   },
   "status": {

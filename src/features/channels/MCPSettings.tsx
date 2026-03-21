@@ -13,7 +13,7 @@ import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } f
 export default function MCPSettings() {
   const { t } = useTranslation();
   const { settings, setSettings, setLLMSettings } = useSettingsStore();
-  const [bridgeStatus, setBridgeStatus] = useState<'unknown' | 'ok' | 'offline'>('unknown');
+  const [bridgeStatus, setBridgeStatus] = useState<'unknown' | 'ok' | 'no-channel' | 'offline'>('unknown');
   const [checking, setChecking] = useState(false);
   const [registered, setRegistered] = useState<boolean | null>(null);
   const [toggling, setToggling] = useState(false);
@@ -28,8 +28,16 @@ export default function MCPSettings() {
   const checkBridgeStatus = async () => {
     setChecking(true);
     try {
-      const ok = await invoke<boolean>('check_bridge_health');
-      setBridgeStatus(ok ? 'ok' : 'offline');
+      // 1. 서버 실행 확인
+      const serverOk = await invoke<boolean>('check_bridge_health');
+      if (!serverOk) {
+        setBridgeStatus('offline');
+        setChecking(false);
+        return;
+      }
+      // 2. 채널 연결 테스트 (5초 타임아웃)
+      const channelOk = await invoke<boolean>('check_bridge_channel');
+      setBridgeStatus(channelOk ? 'ok' : 'no-channel');
     } catch {
       setBridgeStatus('offline');
     }
@@ -69,19 +77,32 @@ export default function MCPSettings() {
     // 등록 시도
     await ensureRegistered();
 
-    // bridge 연결 확인 — 미연결이면 토글 중단
-    let bridgeOk = false;
+    // bridge 서버 + 채널 연결 확인
+    let serverOk = false;
+    let channelOk = false;
     try {
-      bridgeOk = await invoke<boolean>('check_bridge_health');
+      serverOk = await invoke<boolean>('check_bridge_health');
+      if (serverOk) {
+        channelOk = await invoke<boolean>('check_bridge_channel');
+      }
     } catch {
-      bridgeOk = false;
+      serverOk = false;
     }
 
-    if (!bridgeOk) {
+    if (!serverOk) {
       setBridgeStatus('offline');
       setToggling(false);
       window.dispatchEvent(new CustomEvent('ama-toast', {
         detail: { type: 'error', messageKey: 'settings.mcp.bridgeOffline' },
+      }));
+      return;
+    }
+
+    if (!channelOk) {
+      setBridgeStatus('no-channel');
+      setToggling(false);
+      window.dispatchEvent(new CustomEvent('ama-toast', {
+        detail: { type: 'error', messageKey: 'settings.mcp.bridgeNoChannel' },
       }));
       return;
     }
@@ -184,16 +205,20 @@ export default function MCPSettings() {
           </p>
         )}
 
-        {/* dev-bridge 연결 확인 */}
+        {/* ama-bridge 연결 확인 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${
-              bridgeStatus === 'ok' ? 'bg-green-400' : bridgeStatus === 'offline' ? 'bg-red-400' : 'bg-gray-300'
+              bridgeStatus === 'ok' ? 'bg-green-400'
+                : bridgeStatus === 'no-channel' ? 'bg-amber-400'
+                  : bridgeStatus === 'offline' ? 'bg-red-400'
+                    : 'bg-gray-300'
             }`} />
             <span className="text-xs text-gray-600">
               {bridgeStatus === 'ok' ? t('settings.mcp.bridgeConnected')
-                : bridgeStatus === 'offline' ? t('settings.mcp.bridgeOffline')
-                  : t('settings.mcp.bridgeUnknown')}
+                : bridgeStatus === 'no-channel' ? t('settings.mcp.bridgeNoChannel')
+                  : bridgeStatus === 'offline' ? t('settings.mcp.bridgeOffline')
+                    : t('settings.mcp.bridgeUnknown')}
             </span>
           </div>
           <button

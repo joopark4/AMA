@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
-import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
 import { pickVrmFile } from '../../services/tauri/fileDialog';
 import { getMotionManifest } from '../../services/avatar/motionLibrary';
 import { isDefaultVrmAvailable } from '../../services/tauri/defaultVrm';
@@ -28,12 +27,8 @@ export default function AvatarSettings() {
     startMotionSequenceDemo,
     stopMotionSequenceDemo,
   } = useAvatarStore();
-  const { speak, isSpeaking, stop, error: ttsError } = useSpeechSynthesis();
-
   const savedInitialView = settings.avatar?.initialViewRotation || { x: 0, y: 0 };
-  const avatarName = settings.avatarName?.trim() || t('settings.avatar.defaultName');
   const avatarPersonalityPrompt = settings.avatarPersonalityPrompt ?? '';
-  const ttsSample = t('settings.avatar.ttsTest.sample', { name: avatarName });
   const isDevBuild = import.meta.env.DEV;
   const totalMotionCount = getMotionManifest().length;
   const faceOnlyModeEnabled = settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
@@ -287,40 +282,6 @@ export default function AvatarSettings() {
             })}
           </p>
         </div>
-      </div>
-
-      {/* TTS Test */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
-          {t('settings.avatar.ttsTest.title')}
-        </h4>
-        <p className="text-xs text-gray-500">
-          {t('settings.avatar.ttsTest.description')}
-        </p>
-        <button
-          onClick={() => {
-            if (isSpeaking) {
-              stop();
-            } else {
-              speak(ttsSample);
-            }
-          }}
-          disabled={false}
-          className={`w-full px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-            isSpeaking
-              ? 'bg-red-500 text-white hover:bg-red-600'
-              : 'bg-green-500 text-white hover:bg-green-600'
-          }`}
-        >
-          {isSpeaking
-            ? t('settings.avatar.ttsTest.stop')
-            : t('settings.avatar.ttsTest.speak', { text: ttsSample })}
-        </button>
-        {ttsError && (
-          <p className="text-xs text-red-600 break-all">
-            {t('settings.avatar.ttsTest.error', { error: ttsError })}
-          </p>
-        )}
       </div>
 
       {/* Animation Settings */}

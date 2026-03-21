@@ -1,13 +1,13 @@
 /**
  * Claude Code 클라이언트
  *
- * 외부에서 실행 중인 Claude Code 세션의 dev-bridge(채널)를 통해
+ * 외부에서 실행 중인 Claude Code 세션의 ama-bridge(채널)를 통해
  * 메시지를 전달하고 응답을 받는다.
  *
  * Tauri invoke로 Rust 사이드에서 HTTP 요청 (WebView CORS 우회)
  *
  * 흐름:
- * AMA → invoke('send_to_bridge') → Rust → POST 127.0.0.1:8790 → dev-bridge → Claude Code → reply → AMA
+ * AMA → invoke('send_to_bridge') → Rust → POST 127.0.0.1:8790 → ama-bridge → Claude Code → reply → AMA
  */
 
 import type { Message, LLMResponse, StreamCallbacks, ChatOptions, LLMClient } from '../../services/ai/types';
@@ -55,7 +55,7 @@ export class ClaudeCodeClient implements LLMClient {
       context: context + recentHistory,
     });
 
-    log('Sending to dev-bridge:', bridgeUrl, 'message:', lastUserMessage.substring(0, 50));
+    log('Sending to ama-bridge:', bridgeUrl, 'message:', lastUserMessage.substring(0, 50));
 
     const responseText = await Promise.race([
       invoke<string>('send_to_bridge', {
