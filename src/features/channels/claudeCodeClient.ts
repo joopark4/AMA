@@ -13,6 +13,7 @@
 import type { Message, LLMResponse, StreamCallbacks, ChatOptions, LLMClient } from '../../services/ai/types';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
+import { BRIDGE_DEFAULT_ENDPOINT } from './constants';
 
 const log = (...args: unknown[]) => {
   const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
@@ -20,14 +21,12 @@ const log = (...args: unknown[]) => {
   invoke('log_to_terminal', { message: `[ClaudeCodeClient] ${message}` }).catch(() => {});
 };
 
-const DEFAULT_BRIDGE_PORT = 8790;
-
 export class ClaudeCodeClient implements LLMClient {
   private getBridgeUrl(): string {
     const { settings } = useSettingsStore.getState();
     const endpoint = settings.llm.endpoint?.trim();
     if (endpoint) return endpoint;
-    return `http://127.0.0.1:${DEFAULT_BRIDGE_PORT}`;
+    return BRIDGE_DEFAULT_ENDPOINT;
   }
 
   async chat(messages: Message[], _options?: ChatOptions): Promise<LLMResponse> {
