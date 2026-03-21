@@ -10,7 +10,7 @@ fn main() {
 
     // Rerun if the VRM asset or shared key changes
     println!("cargo:rerun-if-changed=assets/default.vrm");
-    println!("cargo:rerun-if-changed=src/commands/vrm_consts.rs");
+    println!("cargo:rerun-if-changed=src/commands/vrm_key.bin");
 
     if vrm_source.exists() {
         // AES-128-GCM encryption
@@ -18,9 +18,8 @@ fn main() {
         use aes_gcm::Nonce;
         use rand::RngCore;
 
-        // Include the shared key definition (same file used by vrm.rs at runtime)
-        include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/commands/vrm_consts.rs"));
-        let key_bytes = DEFAULT_VRM_KEY;
+        // Same key as vrm_consts.rs — shared via vrm_key.bin
+        let key_bytes: [u8; 16] = include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/commands/vrm_key.bin"));
 
         let plain = fs::read(vrm_source).expect("Failed to read default.vrm");
         let cipher = aes_gcm::Aes128Gcm::new_from_slice(&key_bytes)
