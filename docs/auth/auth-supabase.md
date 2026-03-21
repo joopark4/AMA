@@ -1,6 +1,6 @@
 # Supabase OAuth 연동 가이드
 
-> 관련 문서: [DB 스키마](./db-schema.md) · [회원 관리](./member-management.md)
+> 관련 문서: [DB 스키마](../infrastructure/db-schema.md) · [회원 관리](./member-management.md)
 
 ## 선택 이유
 

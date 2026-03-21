@@ -1,23 +1,67 @@
 # 문서 목차
 
+### fundamentals/ — 기초
+
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [feature-spec.md](./feature-spec.md) | 전체 기능 명세서 + 정책 | 2026.02.27 |
-| [architecture.md](./architecture.md) | 시스템 구조와 데이터 흐름 | 2026.02.26 |
-| [project-structure.md](./project-structure.md) | 디렉터리/핵심 파일 맵 | 2026.02.27 |
-| [tech-stack.md](./tech-stack.md) | 최신 의존성과 역할 | 2026.02.26 |
-| [avatar-system.md](./avatar-system.md) | 아바타 시스템 (렌더링/이동/회전/클릭스루) | 2026.02.26 |
-| [ai-services.md](./ai-services.md) | LLM 라우팅, Vision 분석 | 2026.02.26 |
-| [voice-services.md](./voice-services.md) | Whisper/Supertonic 구현 상세 | 2026.02.26 |
-| [settings-system.md](./settings-system.md) | 설정 시스템 (Zustand/마이그레이션) | 2026.02.26 |
-| [tauri-backend.md](./tauri-backend.md) | Rust 명령/권한/단일 인스턴스 | 2026.02.26 |
-| [deployment.md](./deployment.md) | macOS 빌드/서명/노타라이즈/릴리즈 파이프라인 | 2026.02.27 |
-| [development-guide.md](./development-guide.md) | 기능 추가/디버깅 체크리스트 | 2026.02.26 |
-| [auth-supabase.md](./auth-supabase.md) | Supabase OAuth 연동, 환경변수, 트러블슈팅 | 2026.02.23 |
-| [db-schema.md](./db-schema.md) | DB 테이블 구조, RLS 정책, 데이터 저장 정책 | 2026.02.23 |
-| [member-management.md](./member-management.md) | 가입 흐름, 약관 동의, 계정 탈퇴, Edge Function | 2026.02.23 |
-| [channels-mcp.md](./channels-mcp.md) | Claude Code Channels — 아바타 ↔ Claude Code 연동 | 2026.03.21 |
-| [admin-management.md](./admin-management.md) | 관리자 계정 관리, Edge Function 권한 우회 | 2026.03.21 |
+| [architecture.md](./fundamentals/architecture.md) | 시스템 구조와 데이터 흐름 | 2026.02.26 |
+| [project-structure.md](./fundamentals/project-structure.md) | 디렉터리/핵심 파일 맵 | 2026.02.27 |
+| [tech-stack.md](./fundamentals/tech-stack.md) | 최신 의존성과 역할 | 2026.02.26 |
+| [development-guide.md](./fundamentals/development-guide.md) | 기능 추가/디버깅 체크리스트 | 2026.02.26 |
+
+### features/ — 기능 명세
+
+| 문서 | 설명 | 최종 수정 |
+|------|------|----------|
+| [feature-spec.md](./features/feature-spec.md) | 전체 기능 명세서 + 정책 | 2026.02.27 |
+
+### auth/ — 인증/회원
+
+| 문서 | 설명 | 최종 수정 |
+|------|------|----------|
+| [auth-supabase.md](./auth/auth-supabase.md) | Supabase OAuth 연동, 환경변수, 트러블슈팅 | 2026.02.23 |
+| [member-management.md](./auth/member-management.md) | 가입 흐름, 약관 동의, 계정 탈퇴, Edge Function | 2026.02.23 |
+| [admin-management.md](./auth/admin-management.md) | 관리자 계정 관리, Edge Function 권한 우회 | 2026.03.21 |
+
+### voice/ — 음성 시스템
+
+| 문서 | 설명 | 최종 수정 |
+|------|------|----------|
+| [voice-services.md](./voice/voice-services.md) | Whisper/Supertonic 구현 상세 | 2026.02.26 |
+
+### avatar/ — 아바타
+
+| 문서 | 설명 | 최종 수정 |
+|------|------|----------|
+| [avatar-system.md](./avatar/avatar-system.md) | 아바타 시스템 (렌더링/이동/회전/클릭스루) | 2026.02.26 |
+| [motion-team-plan.md](./avatar/motion-team-plan.md) | 모션 팀 계획 | — |
+
+### ai/ — AI 서비스
+
+| 문서 | 설명 | 최종 수정 |
+|------|------|----------|
+| [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 | 2026.02.26 |
+
+### settings/ — 설정
+
+| 문서 | 설명 | 최종 수정 |
+|------|------|----------|
+| [settings-system.md](./settings/settings-system.md) | 설정 시스템 (Zustand/마이그레이션) | 2026.02.26 |
+
+### channels/ — Claude Code Channels
+
+| 문서 | 설명 | 최종 수정 |
+|------|------|----------|
+| [channels-mcp.md](./channels/channels-mcp.md) | Claude Code Channels — 아바타 ↔ Claude Code 연동 | 2026.03.21 |
+| [claude-code-channels-reference.md](./channels/claude-code-channels-reference.md) | Claude Code Channels 공식 스펙 레퍼런스 | 2026.03.20 |
+
+### infrastructure/ — Tauri/배포/DB
+
+| 문서 | 설명 | 최종 수정 |
+|------|------|----------|
+| [tauri-backend.md](./infrastructure/tauri-backend.md) | Rust 명령/권한/단일 인스턴스 | 2026.02.26 |
+| [db-schema.md](./infrastructure/db-schema.md) | DB 테이블 구조, RLS 정책, 데이터 저장 정책 | 2026.02.23 |
+| [deployment.md](./infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈/릴리즈 파이프라인 | 2026.02.27 |
 
 ### 해결된 이슈
 
