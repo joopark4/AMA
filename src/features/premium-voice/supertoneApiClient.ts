@@ -3,6 +3,8 @@
  */
 import type { TTSClient, TTSResult, TTSOptions } from '../../services/voice/types';
 import type { SupertoneVoice } from './premiumStore';
+import { usePremiumStore } from './premiumStore';
+import { useAuthStore } from '../../stores/authStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { callEdgeFunction } from '../../services/auth/edgeFunctionClient';
 import { invoke } from '@tauri-apps/api/core';
@@ -160,7 +162,6 @@ export class SupertoneApiClient implements TTSClient {
     if (apiSettings.autoEmotionStyle && options?.emotion) {
       const mappedStyle = EMOTION_STYLE_MAP[options.emotion] || 'neutral';
       // 선택된 음성이 해당 스타일을 지원하는지 확인
-      const { usePremiumStore } = await import('./premiumStore');
       const voices = usePremiumStore.getState().voices;
       const selectedVoice = voices.find(v => v.voice_id === apiSettings.voiceId);
       const supportedStyles = selectedVoice?.styles || [];
@@ -210,7 +211,6 @@ export class SupertoneApiClient implements TTSClient {
 
       // 할당량 정보 업데이트 (마지막 청크에서)
       if (response.headers) {
-        const { usePremiumStore } = await import('./premiumStore');
         usePremiumStore.getState().updateQuotaFromTtsResponse(response.headers);
 
         const audioLength = parseFloat(response.headers.get('X-Audio-Length') || '0');
@@ -238,11 +238,9 @@ export class SupertoneApiClient implements TTSClient {
   }
 
   async isAvailable(): Promise<boolean> {
-    const { useAuthStore } = await import('../../stores/authStore');
     const { isAuthenticated } = useAuthStore.getState();
     if (!isAuthenticated) return false;
 
-    const { usePremiumStore } = await import('./premiumStore');
     const { isPremium } = usePremiumStore.getState();
     return isPremium;
   }

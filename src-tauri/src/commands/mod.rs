@@ -7,3 +7,4 @@ pub mod models;
 pub mod http;
 pub mod mcp;
 pub mod vrm;
+pub mod vrm_consts;
