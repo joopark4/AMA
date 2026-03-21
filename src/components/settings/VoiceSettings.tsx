@@ -84,12 +84,13 @@ export default function VoiceSettings() {
     if (settings.stt.engine !== 'whisper' || !WHISPER_MODELS.includes(settings.stt.model)) {
       setSTTSettings({ engine: 'whisper', model: 'base' });
     }
-    // TTS는 supertonic만 지원하므로 항상 supertonic으로 설정
+    // 로컬 TTS(supertonic) 사용 시 voice 값 정규화
+    // supertone_api 사용 중이면 건드리지 않음
     if (
-      settings.tts.engine !== 'supertonic' ||
+      settings.tts.engine === 'supertonic' &&
       !SUPERTONIC_VOICE_KEYS.includes(settings.tts.voice || '')
     ) {
-      setTTSSettings({ engine: 'supertonic', voice: 'F1' });
+      setTTSSettings({ voice: 'F1' });
     }
   }, []);
 
@@ -220,10 +221,25 @@ export default function VoiceSettings() {
 
         {/* TTS Engine Info */}
         <div className="flex items-center gap-2 text-xs mb-3">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-            Supertonic
-          </span>
-          <span className="text-gray-500">{t('settings.voice.tts.supertonicInfo')}</span>
+          {settings.tts.engine === 'supertone_api' ? (
+            <>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                Supertone API
+              </span>
+              <span className="text-purple-600">
+                {settings.tts.supertoneApi?.voiceName
+                  ? `${settings.tts.supertoneApi.voiceName} (${t('settings.premium.badge')})`
+                  : t('settings.premium.badge')}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                Supertonic
+              </span>
+              <span className="text-gray-500">{t('settings.voice.tts.supertonicInfo')}</span>
+            </>
+          )}
         </div>
 
         {/* Supertonic Voice Selection */}

@@ -49,6 +49,11 @@ fn main() {
             commands::window::move_to_monitor,
             commands::window::get_current_monitor,
             commands::http::fetch_url_bytes,
+            commands::mcp::register_channel_global,
+            commands::mcp::unregister_channel_global,
+            commands::mcp::check_channel_registered,
+            commands::mcp::check_bridge_health,
+            commands::mcp::send_to_bridge,
         ])
         .on_menu_event(|app, event| {
             if let Some(window) = app.get_webview_window("main") {
@@ -139,6 +144,9 @@ fn main() {
                 .build()?;
 
             app.set_menu(menu)?;
+
+            // MCP HTTP 리스너 시작 (127.0.0.1:8791)
+            commands::mcp::start_mcp_listener(app.handle().clone());
 
             // Window setup: full-screen overlay
             if let Some(window) = app.get_webview_window("main") {

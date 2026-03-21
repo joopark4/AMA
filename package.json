@@ -33,6 +33,8 @@
     "build:mac-app": "npm run motion:validate && npm run tauri build -- --bundles app && node scripts/stage-bundled-models.mjs && node scripts/sign-macos-app.mjs",
     "build:mac-release": "npm run build:mac-app && node scripts/notarize-macos-app.mjs",
     "release:local": "node scripts/release-local.mjs",
+    "mcp:install": "node mcp-channels/install-global.mjs",
+    "mcp:uninstall": "node mcp-channels/install-global.mjs --uninstall",
     "preview": "vite preview",
     "clean:dotfiles": "find . -name '._*' -not -path './.git/*' -not -path './node_modules/*' -not -path './.build/*' -delete",
     "tauri": "COPYFILE_DISABLE=1 CARGO_TARGET_DIR=$HOME/Library/Caches/mypartnerai-build tauri",
