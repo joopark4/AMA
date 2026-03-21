@@ -128,6 +128,17 @@ fn ensure_token() -> Result<String, String> {
     std::fs::write(&token_path, &token)
         .map_err(|e| format!("Failed to write token file: {}", e))?;
 
+    // 토큰 파일 퍼미션 600 (소유자만 읽기/쓰기)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&token_path, std::fs::Permissions::from_mode(0o600));
+        // 디렉토리도 700
+        if let Some(parent) = token_path.parent() {
+            let _ = std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700));
+        }
+    }
+
     eprintln!("[MCP] Token generated at {:?}", token_path);
     Ok(token)
 }
@@ -272,11 +283,17 @@ pub fn register_channel_global(project_dir: Option<String>) -> Result<String, St
     let shared_dir = install_dir.join("shared");
     let mcp_json_path = home.join(".claude.json");
 
-    // 1. 소스 디렉토리: 명시적 지정 > CWD > 환경변수
+    // 1. 소스 디렉토리: 명시적 지정 > CWD
     let source_dir = project_dir
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default())
         .join("mcp-channels");
+
+    // 경로 탐색 방지: 정규화 후 mcp-channels로 끝나는지 검증
+    let canonical = source_dir.canonicalize().unwrap_or_else(|_| source_dir.clone());
+    if !canonical.ends_with("mcp-channels") {
+        return Err("Invalid source directory".to_string());
+    }
     if !source_dir.join("package.json").exists() {
         return Err(format!(
             "mcp-channels/package.json not found in {}",
@@ -391,9 +408,20 @@ pub fn check_channel_registered() -> bool {
     false
 }
 
-/// dev-bridge에 메시지 전송 (WebView CORS 우회, 타임아웃 없음 — Claude Code 응답 대기)
+/// dev-bridge에 메시지 전송 (localhost만 허용, 24시간 타임아웃)
 #[tauri::command]
 pub async fn send_to_bridge(endpoint: String, body: String) -> Result<String, String> {
+    // SSRF 방지: localhost만 허용
+    let parsed = reqwest::Url::parse(&endpoint)
+        .map_err(|e| format!("Invalid endpoint URL: {}", e))?;
+    match parsed.host_str() {
+        Some("127.0.0.1") | Some("localhost") => {}
+        _ => return Err("Only localhost endpoints are allowed".to_string()),
+    }
+    if parsed.scheme() != "http" {
+        return Err("Only http scheme is allowed for bridge".to_string());
+    }
+
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(86400)) // 24시간
         .build()
