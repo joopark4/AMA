@@ -21,7 +21,7 @@ import { useModelDownloadStore } from './stores/modelDownloadStore';
 import { useAutoUpdateStore } from './hooks/useAutoUpdate';
 import { useClickThrough } from './hooks/useClickThrough';
 import { useMonitorStore } from './stores/monitorStore';
-import { useMcpSpeakListener } from './hooks/useMcpSpeakListener';
+import { useMcpSpeakListener } from './features/channels';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
 import { authService } from './services/auth/authService';

@@ -14,6 +14,7 @@ import type { Message as LLMMessage } from '../services/ai/types';
 import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
+import { useClaudeCodeChat } from '../features/channels';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -305,6 +306,7 @@ export function useConversation(): UseConversationReturn {
     stopDancing,
   } = useAvatarStore();
   const { speak, stop: stopSpeaking } = useSpeechSynthesis();
+  const { sendToClaudeCode, isClaudeCodeProvider } = useClaudeCodeChat();
   const runtimeVoiceInputBlockReason = getRuntimeVoiceInputBlockReason(
     isRemoteSession
   );
@@ -620,86 +622,6 @@ export function useConversation(): UseConversationReturn {
     showVoiceCommandFeedback,
   ]);
 
-  // Claude Code 응답을 비동기로 처리 (입력 비차단)
-  const handleClaudeCodeResponse = useCallback(async (text: string) => {
-    log('handleClaudeCodeResponse: sending to Claude Code');
-    setError(null); // 이전 에러 클리어
-    addMessage({ role: 'user', content: text });
-    // processing 상태로 설정하지 않음 — 입력 비차단
-    setEmotion('thinking');
-
-    try {
-      const currentMessages = useConversationStore.getState().messages;
-      const systemPrompt = buildSystemPrompt(
-        settings.avatarName || '',
-        settings.avatarPersonalityPrompt || ''
-      );
-      const llmMessages: LLMMessage[] = [
-        { role: 'system', content: systemPrompt },
-        ...currentMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant' | 'system',
-          content: m.content,
-        })),
-      ];
-
-      const response = await llmRouter.chat(llmMessages, {
-        temperature: 0.7,
-        maxTokens: 1024,
-      });
-      const responseText = response.content;
-      log('Claude Code response received:', responseText?.substring(0, 50) + '...');
-
-      const responseEmotionMatch = analyzeEmotion(responseText);
-      const responseEmotion =
-        responseEmotionMatch.score > 0 ? responseEmotionMatch.emotion : 'neutral';
-      const faceOnlyModeEnabled =
-        useSettingsStore.getState().settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
-
-      if (responseEmotionMatch.score > 0) {
-        setEmotion(responseEmotionMatch.emotion);
-        triggerEmotionMotion(responseEmotionMatch.emotion, responseEmotionMatch.score, responseText, true);
-        if (!faceOnlyModeEnabled && responseEmotionMatch.emotion === 'happy') {
-          startDancing();
-          setTimeout(() => stopDancing(), emotionTuningGlobal.happyDanceMs);
-        }
-      } else {
-        stopDancing();
-      }
-
-      addMessage({ role: 'assistant', content: responseText });
-      setCurrentResponse(responseText);
-      setStatus('speaking');
-
-      await new Promise(resolve => setTimeout(resolve, 50));
-      try {
-        await speak(responseText, { emotion: responseEmotion });
-      } catch (ttsErr) {
-        log('TTS error:', ttsErr);
-      }
-
-      setStatus('idle');
-      const responseHoldMs = Math.max(
-        emotionTuningGlobal.responseClearMs,
-        getEmotionTuning(responseEmotion).expressionHoldMs
-      );
-      setTimeout(() => {
-        setEmotion('neutral');
-        clearCurrentResponse();
-      }, responseHoldMs);
-    } catch (err) {
-      log('Claude Code error:', err);
-      setError(err instanceof Error ? err.message : 'Claude Code 응답 실패');
-      setStatus('error');
-      setEmotion('sad');
-      // 5초 후 에러 상태 자동 해제
-      setTimeout(() => {
-        setError(null);
-        setStatus('idle');
-        setEmotion('neutral');
-      }, 5000);
-    }
-  }, [addMessage, settings.avatarName, settings.avatarPersonalityPrompt, setCurrentResponse, clearCurrentResponse, setStatus, setEmotion, speak, triggerEmotionMotion, startDancing, stopDancing]);
-
   // Send message to LLM and get response
   const sendMessage = useCallback(async (text: string) => {
     log('sendMessage called with:', text);
@@ -710,10 +632,10 @@ export function useConversation(): UseConversationReturn {
     }
 
     // Claude Code 모드: 비동기 처리 (입력 비차단, 타임아웃 없음)
-    const currentProvider = useSettingsStore.getState().settings.llm.provider;
-    if (currentProvider === 'claude_code') {
+    if (isClaudeCodeProvider()) {
       // fire-and-forget: 응답 대기 중에도 새 입력 가능
-      handleClaudeCodeResponse(text);
+      setError(null);
+      sendToClaudeCode(text, (errMsg) => setError(errMsg));
       return;
     }
 
@@ -873,7 +795,8 @@ export function useConversation(): UseConversationReturn {
     triggerEmotionMotion,
     startDancing,
     stopDancing,
-    handleClaudeCodeResponse,
+    sendToClaudeCode,
+    isClaudeCodeProvider,
   ]);
 
   const handleRecognizedInput = useCallback(async (text: string) => {
