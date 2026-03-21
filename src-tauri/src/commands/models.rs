@@ -315,15 +315,24 @@ pub async fn get_models_dir() -> Result<String, String> {
     Ok(root.to_string_lossy().to_string())
 }
 
-/// 로컬 폴더를 macOS Finder에서 열기
+/// 로컬 폴더를 macOS Finder에서 열기 (~/.mypartnerai/ 하위만 허용)
 #[tauri::command]
 pub async fn open_folder_in_finder(path: String) -> Result<(), String> {
     let p = std::path::Path::new(&path);
     if !p.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
+    // 경로 화이트리스트: ~/.mypartnerai/ 하위만 허용
+    let canonical = p.canonicalize()
+        .map_err(|e| format!("Failed to resolve path: {}", e))?;
+    let allowed_root = dirs::home_dir()
+        .ok_or("Cannot find home directory")?
+        .join(".mypartnerai");
+    if !canonical.starts_with(&allowed_root) {
+        return Err(format!("Access denied: only paths under ~/.mypartnerai/ are allowed"));
+    }
     std::process::Command::new("open")
-        .arg(&path)
+        .arg(canonical.to_string_lossy().as_ref())
         .spawn()
         .map_err(|e| format!("Failed to open folder: {}", e))?;
     Ok(())

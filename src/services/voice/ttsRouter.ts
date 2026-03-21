@@ -100,9 +100,8 @@ class TTSRouter {
     };
 
     try {
-      console.log('[TTSRouter] Calling synthesize with engine:', settings.tts.engine);
+      log('Calling synthesize with engine:', settings.tts.engine);
       const result = await this.synthesize(text, ttsOptions);
-      console.log('[TTSRouter] Synthesize OK, size:', result.audioData.byteLength);
       log('Synthesize complete, audioData size:', result.audioData.byteLength);
 
       try {
