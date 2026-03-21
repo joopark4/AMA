@@ -14,6 +14,7 @@ import type { Message as LLMMessage } from '../services/ai/types';
 import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
+import { useClaudeCodeChat } from '../features/channels';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -22,7 +23,7 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
-function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
+export function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
   const normalizedName = avatarName.trim() || '아바타';
   const basePrompt = `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
@@ -305,6 +306,7 @@ export function useConversation(): UseConversationReturn {
     stopDancing,
   } = useAvatarStore();
   const { speak, stop: stopSpeaking } = useSpeechSynthesis();
+  const { sendToClaudeCode, isClaudeCodeProvider } = useClaudeCodeChat();
   const runtimeVoiceInputBlockReason = getRuntimeVoiceInputBlockReason(
     isRemoteSession
   );
@@ -629,6 +631,14 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
+    // Claude Code 모드: 비동기 처리 (입력 비차단, 타임아웃 없음)
+    if (isClaudeCodeProvider()) {
+      // fire-and-forget: 응답 대기 중에도 새 입력 가능
+      setError(null);
+      sendToClaudeCode(text, (errMsg) => setError(errMsg));
+      return;
+    }
+
     if (isProcessingRef.current) {
       log('Already processing, returning');
       return;
@@ -659,13 +669,15 @@ export function useConversation(): UseConversationReturn {
         settings.avatarPersonalityPrompt || ''
       );
 
-      // Prepare messages for LLM (convert conversation store format to LLM format)
+      // Prepare messages for LLM (외부 알림은 프롬프트에서 제외)
       const llmMessages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },
-        ...currentMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant' | 'system',
-          content: m.content,
-        })),
+        ...currentMessages
+          .filter((m) => m.source !== 'external')
+          .map((m) => ({
+            role: m.role as 'user' | 'assistant' | 'system',
+            content: m.content,
+          })),
       ];
 
       log('Sending to LLM:', llmMessages.length, 'messages');
@@ -785,6 +797,8 @@ export function useConversation(): UseConversationReturn {
     triggerEmotionMotion,
     startDancing,
     stopDancing,
+    sendToClaudeCode,
+    isClaudeCodeProvider,
   ]);
 
   const handleRecognizedInput = useCallback(async (text: string) => {

@@ -155,10 +155,23 @@ export class SupertoneApiClient implements TTSClient {
     }
 
     // 스타일 결정: 감정 자동 매핑 또는 수동 선택
-    let style = apiSettings.style || 'neutral';
+    const baseStyle = apiSettings.style || 'neutral';
+    let style = baseStyle;
     if (apiSettings.autoEmotionStyle && options?.emotion) {
       const mappedStyle = EMOTION_STYLE_MAP[options.emotion] || 'neutral';
-      style = mappedStyle;
+      // 선택된 음성이 해당 스타일을 지원하는지 확인
+      const { usePremiumStore } = await import('../../stores/premiumStore');
+      const voices = usePremiumStore.getState().voices;
+      const selectedVoice = voices.find(v => v.voice_id === apiSettings.voiceId);
+      const supportedStyles = selectedVoice?.styles || [];
+
+      if (supportedStyles.length === 0 || supportedStyles.includes(mappedStyle)) {
+        style = mappedStyle;
+      } else {
+        // 지원하지 않는 스타일이면 사용자 설정 스타일로 폴백
+        log(`Style '${mappedStyle}' not supported by voice '${apiSettings.voiceName}', using '${baseStyle}'`);
+        style = supportedStyles.includes(baseStyle) ? baseStyle : (supportedStyles[0] || 'neutral');
+      }
       log(`Emotion '${options.emotion}' → style '${style}'`);
     }
     if (options?.style) {

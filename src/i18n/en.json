@@ -31,7 +31,9 @@
         "localai": "LocalAI (Local)",
         "claude": "Claude (Anthropic)",
         "openai": "OpenAI",
-        "gemini": "Google Gemini"
+        "gemini": "Google Gemini",
+        "claude_code": "Claude Code (External)",
+        "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the dev-bridge."
       },
       "expand": "Expand",
       "collapse": "Collapse"
@@ -258,6 +260,29 @@
       "note": "This information is for reference. Always verify the latest LICENSE and terms before redistribution or production use.",
       "expand": "Expand",
       "collapse": "Collapse"
+    },
+    "mcp": {
+      "title": "Claude Code Channels",
+      "description": "Connect the avatar to an external Claude Code session. User input is sent to Claude Code, and responses are spoken aloud by the avatar.",
+      "enabled": "Channels Listener",
+      "portInfo": "Listening on port {{port}}",
+      "statusOn": "Active — receiving Claude Code messages",
+      "statusOff": "Inactive — messages ignored",
+      "bridgeConnected": "dev-bridge connected (Claude Code running)",
+      "bridgeOffline": "dev-bridge offline (start Claude Code first)",
+      "bridgeUnknown": "dev-bridge status unknown",
+      "checkConnection": "Check connection",
+      "globalSetupTitle": "Global Registration (use from any directory)",
+      "globalSetupDesc": "Run the command below once in the AMA project to auto-start the dev-bridge channel from any Claude Code session in any directory.",
+      "registerButton": "Register with Claude Code",
+      "registered": "Registered",
+      "unregister": "Unregister",
+      "registerSuccess": "Registered in Claude Code global settings",
+      "registerFail": "Registration failed",
+      "unregisterSuccess": "Registration removed",
+      "notRegistered": "Not registered (auto-registers when turned ON)",
+      "llmLocked": "Claude Code Channels is active. AI model is locked to Claude Code. Turn off Channels to restore previous settings.",
+      "testHint": "Channels are a research preview feature. Testing requires the claude --dangerously-load-development-channels flag."
     }
   },
   "status": {
@@ -415,6 +440,11 @@
       "processing": "Processing sign-in...",
       "redirecting": "Redirecting automatically..."
     }
+  },
+  "mcp": {
+    "receivedMessage": "External channel message received",
+    "speakError": "MCP voice output failed: {{error}}",
+    "queueFull": "Voice queue is full. Some messages were skipped."
   },
   "terms": {
     "version": "2026.02",
