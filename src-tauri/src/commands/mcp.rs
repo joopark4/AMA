@@ -469,6 +469,30 @@ pub async fn check_bridge_health() -> Result<bool, String> {
     }
 }
 
+/// dev-bridge 채널 연결 테스트 (5초 타임아웃으로 실제 채널 동작 확인)
+#[tauri::command]
+pub async fn check_bridge_channel() -> Result<bool, String> {
+    let port_str = std::env::var("BRIDGE_PORT").unwrap_or_else(|_| "8790".to_string());
+    let url = format!("http://127.0.0.1:{}/channel-test", port_str);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(8)) // 5초 채널 테스트 + 여유
+        .build()
+        .map_err(|e| format!("Client build failed: {}", e))?;
+
+    match client.post(&url).send().await {
+        Ok(res) => {
+            if !res.status().is_success() {
+                return Ok(false);
+            }
+            let text = res.text().await.unwrap_or_default();
+            // { "channel": true/false }
+            Ok(text.contains("\"channel\":true") || text.contains("\"channel\": true"))
+        }
+        Err(_) => Ok(false),
+    }
+}
+
 fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
