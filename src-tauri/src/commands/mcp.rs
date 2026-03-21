@@ -388,7 +388,7 @@ pub fn unregister_channel_global() -> Result<String, String> {
     Ok("Unregistered ama-bridge".to_string())
 }
 
-/// ~/.claude.json 또는 프로젝트 .mcp.json에서 등록 상태를 확인한다.
+/// ~/.claude.json, ~/.mcp.json, CWD/.mcp.json에서 등록 상태를 확인한다.
 #[tauri::command]
 pub fn check_channel_registered() -> bool {
     let home = match dirs::home_dir() {
@@ -396,7 +396,14 @@ pub fn check_channel_registered() -> bool {
         None => return false,
     };
 
-    for path in [home.join(".claude.json"), home.join(".mcp.json")] {
+    let mut paths = vec![home.join(".claude.json"), home.join(".mcp.json")];
+
+    // 프로젝트 스코프 .mcp.json
+    if let Ok(cwd) = std::env::current_dir() {
+        paths.push(cwd.join(".mcp.json"));
+    }
+
+    for path in paths {
         if let Ok(content) = std::fs::read_to_string(&path) {
             if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
                 if v.get("mcpServers").and_then(|s| s.get("ama-bridge")).is_some() {
