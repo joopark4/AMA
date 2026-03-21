@@ -6,3 +6,4 @@ pub mod auth;
 pub mod models;
 pub mod http;
 pub mod mcp;
+pub mod vrm;
