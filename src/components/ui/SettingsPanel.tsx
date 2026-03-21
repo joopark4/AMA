@@ -5,7 +5,7 @@ import SettingsSection from '../settings/SettingsSection';
 import UserProfile from '../auth/UserProfile';
 import LLMSettings from '../settings/LLMSettings';
 import VoiceSettings from '../settings/VoiceSettings';
-import PremiumVoiceSettings from '../settings/PremiumVoiceSettings';
+import { PremiumVoiceSettings } from '../../features/premium-voice';
 import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
