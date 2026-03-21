@@ -62,12 +62,31 @@ export default function MCPSettings() {
     }
   };
 
-  /** ON: 등록 확인 → LLM을 claude_code로 전환 */
+  /** ON: 등록 확인 → bridge 연결 확인 → LLM을 claude_code로 전환 */
   const handleToggleOn = async () => {
     setToggling(true);
 
-    // 등록 시도 (실패해도 토글은 진행 — 이미 등록됐을 수 있음)
+    // 등록 시도
     await ensureRegistered();
+
+    // bridge 연결 확인 — 미연결이면 토글 중단
+    let bridgeOk = false;
+    try {
+      bridgeOk = await invoke<boolean>('check_bridge_health');
+    } catch {
+      bridgeOk = false;
+    }
+
+    if (!bridgeOk) {
+      setBridgeStatus('offline');
+      setToggling(false);
+      window.dispatchEvent(new CustomEvent('ama-toast', {
+        detail: { type: 'error', messageKey: 'settings.mcp.bridgeOffline' },
+      }));
+      return;
+    }
+
+    setBridgeStatus('ok');
 
     // 현재 LLM 설정 백업 (이미 claude_code가 아닐 때만)
     const currentLlm = useSettingsStore.getState().settings.llm;
