@@ -14,7 +14,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { PORTS } from './shared/config.mts';
-import { speak } from './shared/ama-client.mts';
+// speak import 제거 — AMA가 HTTP 응답으로 직접 TTS 처리
 
 // --- Pending reply 관리 (24시간 타임아웃, 새 입력 시 전체 갱신, 최대 50개) ---
 import { randomUUID } from 'node:crypto';
