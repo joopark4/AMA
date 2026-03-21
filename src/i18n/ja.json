@@ -295,7 +295,8 @@
       "step2Desc": "AMAプロジェクトディレクトリで以下のコマンドを実行してください。",
       "step3Title": "Step 3: AMAで有効化",
       "copy": "コピー",
-      "copied": "コピー済み"
+      "copied": "コピー済み",
+      "step2Caution": "--permission-mode acceptEdits: ファイル編集時の権限確認をスキップします。信頼できるプロジェクトでのみ使用してください。"
     }
   },
   "status": {

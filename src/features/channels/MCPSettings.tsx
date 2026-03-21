@@ -196,8 +196,9 @@ export default function MCPSettings() {
       {/* Step 2: 터미널에서 실행 */}
       <div className="space-y-1.5">
         <p className="text-xs font-semibold text-gray-700">{t('settings.mcp.step2Title')}</p>
-        <CopyableCommand command="claude --dangerously-load-development-channels server:ama-bridge" />
+        <CopyableCommand command="claude --dangerously-load-development-channels server:ama-bridge --permission-mode acceptEdits" />
         <p className="text-xs text-gray-400 mt-1">{t('settings.mcp.step2Desc')}</p>
+        <p className="text-xs text-amber-600 mt-1">{t('settings.mcp.step2Caution')}</p>
       </div>
 
       {/* Step 3: AMA에서 활성화 */}

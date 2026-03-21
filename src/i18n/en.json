@@ -295,7 +295,8 @@
       "step2Desc": "Run the following command in the AMA project directory.",
       "step3Title": "Step 3: Enable in AMA",
       "copy": "Copy",
-      "copied": "Copied"
+      "copied": "Copied",
+      "step2Caution": "--permission-mode acceptEdits: Skips permission prompts for file edits. Use only in trusted projects."
     }
   },
   "status": {
