@@ -10,6 +10,7 @@ import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
 import DataCleanupSettings from '../settings/DataCleanupSettings';
+import { MCPSettings } from '../../features/channels';
 import MonitorSettings from '../settings/MonitorSettings';
 export default function SettingsPanel() {
   const { t } = useTranslation();
@@ -105,6 +106,11 @@ export default function SettingsPanel() {
           {/* Avatar Settings */}
           <SettingsSection title={t('settings.avatar.title')}>
             <AvatarSettings />
+          </SettingsSection>
+
+          {/* Claude Code Channels */}
+          <SettingsSection title={t('settings.mcp.title')}>
+            <MCPSettings />
           </SettingsSection>
 
           {/* Update Settings */}
