@@ -10,7 +10,7 @@ import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
 import DataCleanupSettings from '../settings/DataCleanupSettings';
-import MCPSettings from '../settings/MCPSettings';
+import { MCPSettings } from '../../features/channels';
 import MonitorSettings from '../settings/MonitorSettings';
 export default function SettingsPanel() {
   const { t } = useTranslation();

@@ -4,7 +4,7 @@ import { LocalAIClient } from './localAiClient';
 import { ClaudeClient } from './claudeClient';
 import { OpenAIClient } from './openaiClient';
 import { GeminiClient } from './geminiClient';
-import { ClaudeCodeClient } from './claudeCodeClient';
+import { ClaudeCodeClient } from '../../features/channels';
 import { useSettingsStore, LLMProvider } from '../../stores/settingsStore';
 
 class LLMRouter {

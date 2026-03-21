@@ -6,6 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 import { useSettingsStore, LLMProvider } from '../../stores/settingsStore';
 import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
+import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from '../../features/channels';
 
 const CLOUD_MODELS: Record<'claude' | 'openai' | 'gemini', string[]> = {
   claude: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-6'],
@@ -452,7 +453,7 @@ export default function LLMSettings() {
   const currentProvider = settings.llm.provider;
   const isCloudProvider = isCloudProviderValue(currentProvider);
   const isLocalProvider = currentProvider === 'ollama' || currentProvider === 'localai';
-  const isClaudeCode = currentProvider === 'claude_code';
+  const isClaudeCode = currentProvider === CLAUDE_CODE_PROVIDER;
 
   // Load local provider models (Ollama / LocalAI)
   useEffect(() => {
@@ -549,7 +550,7 @@ export default function LLMSettings() {
   }, [isCloudProvider, currentProvider, settings.llm.apiKey, settings.llm.model, setLLMSettings]);
 
   const getModelsForProvider = (provider: LLMProvider): string[] => {
-    if (provider === 'claude_code') return ['dev-bridge'];
+    if (provider === CLAUDE_CODE_PROVIDER) return [BRIDGE_DEFAULT_MODEL];
     if (provider === 'ollama' || provider === 'localai') {
       return localModels;
     }
@@ -564,7 +565,7 @@ export default function LLMSettings() {
   const getDefaultEndpoint = (provider: LLMProvider): string | undefined => {
     if (provider === 'ollama') return 'http://localhost:11434';
     if (provider === 'localai') return 'http://localhost:8080';
-    if (provider === 'claude_code') return 'http://127.0.0.1:8790';
+    if (provider === CLAUDE_CODE_PROVIDER) return BRIDGE_DEFAULT_ENDPOINT;
     return undefined;
   };
 
@@ -593,8 +594,8 @@ export default function LLMSettings() {
               disabled={mcpLocked}
               onChange={(e) => {
                 const provider = e.target.value as LLMProvider;
-                const models = provider === 'claude_code'
-                  ? ['dev-bridge']
+                const models = provider === CLAUDE_CODE_PROVIDER
+                  ? [BRIDGE_DEFAULT_MODEL]
                   : provider === 'ollama' || provider === 'localai'
                     ? localModels
                     : buildCloudCandidateModels(provider, '', cloudModels[provider]);
@@ -612,7 +613,7 @@ export default function LLMSettings() {
               <option value="claude">{t('settings.llm.providers.claude')}</option>
               <option value="openai">{t('settings.llm.providers.openai')}</option>
               <option value="gemini">{t('settings.llm.providers.gemini')}</option>
-              <option value="claude_code">{t('settings.llm.providers.claude_code')}</option>
+              <option value={CLAUDE_CODE_PROVIDER}>{t('settings.llm.providers.claude_code')}</option>
             </select>
           </div>
 
@@ -696,7 +697,7 @@ export default function LLMSettings() {
                 onChange={(e) => setLLMSettings({ endpoint: e.target.value })}
                 placeholder={
                   currentProvider === 'ollama' ? 'http://localhost:11434'
-                    : currentProvider === 'claude_code' ? 'http://127.0.0.1:8790'
+                    : currentProvider === CLAUDE_CODE_PROVIDER ? BRIDGE_DEFAULT_ENDPOINT
                       : 'http://localhost:8080'
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
