@@ -15,7 +15,7 @@ function CopyableCommand({ command }: { command: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
-    navigator.clipboard.writeText(command);
+    navigator.clipboard.writeText(command).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
