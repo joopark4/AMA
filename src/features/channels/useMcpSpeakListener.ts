@@ -13,10 +13,10 @@
 
 import { useEffect, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { useConversationStore } from '../stores/conversationStore';
-import { useSettingsStore } from '../stores/settingsStore';
-import { processExternalResponse } from '../utils/responseProcessor';
-import { ttsRouter } from '../services/voice/ttsRouter';
+import { useConversationStore } from '../../stores/conversationStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { processExternalResponse } from './responseProcessor';
+import { ttsRouter } from '../../services/voice/ttsRouter';
 import { invoke } from '@tauri-apps/api/core';
 
 const log = (...args: unknown[]) => {
