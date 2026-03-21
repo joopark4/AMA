@@ -2,7 +2,7 @@
  * 프리미엄 상태/음성목록/사용량/할당량 관리 스토어
  */
 import { create } from 'zustand';
-import { callEdgeFunction } from '../services/auth/edgeFunctionClient';
+import { callEdgeFunction, ensureSession } from '../services/auth/edgeFunctionClient';
 import { useAuthStore } from './authStore';
 import { supabase } from '../services/auth/supabaseClient';
 
@@ -105,32 +105,15 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 
     set({ isChecking: true });
     try {
-      // Restore session on Supabase client (persistSession: false loses it on reload/HMR)
-      // 먼저 기존 세션이 있는지 확인 — setSession 반복 호출로 refresh token 소진 방지
-      const { data: { session: existingSession } } = await supabase.auth.getSession();
-      if (!existingSession && tokens?.accessToken && tokens?.refreshToken) {
-        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-          access_token: tokens.accessToken,
-          refresh_token: tokens.refreshToken,
-        });
-        if (sessionError) {
-          // refresh token 만료/소진 시 로그아웃 → 재로그인 유도
-          if (sessionError.message.includes('Invalid Refresh Token')) {
-            useAuthStore.getState().logout();
-            set({ isPremium: false, isChecking: false });
-            return;
-          }
-        }
-
-        // setSession이 refresh token을 소비할 수 있으므로 항상 새 토큰 저장
-        if (sessionData?.session) {
-          useAuthStore.getState().setTokens({
-            accessToken: sessionData.session.access_token,
-            refreshToken: sessionData.session.refresh_token,
-            expiresAt: sessionData.session.expires_at
-              ? sessionData.session.expires_at * 1000
-              : Date.now() + 3600_000,
-          });
+      // 세션 복원을 edgeFunctionClient와 동일한 경로로 통일
+      // (동시 호출 시 refresh token 경합 방지)
+      try {
+        await ensureSession();
+      } catch (sessionErr) {
+        const msg = sessionErr instanceof Error ? sessionErr.message : String(sessionErr);
+        if (msg.includes('Not authenticated') || msg.includes('Session restore failed')) {
+          set({ isPremium: false, isChecking: false });
+          return;
         }
       }
 
