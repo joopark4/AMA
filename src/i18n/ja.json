@@ -286,7 +286,16 @@
       "notRegistered": "未登録（ON時に自動登録されます）",
       "llmLocked": "Claude Code Channelsが有効です。AIモデルはClaude Codeに固定され、Channelsをオフにすると以前の設定に復元されます。",
       "testHint": "Channelsはリサーチプレビュー機能です。テストにはclaude --dangerously-load-development-channelsフラグが必要です。",
-      "bridgeNoChannel": "チャンネル未接続 (Claude Codeを --dangerously-load-development-channels フラグで実行してください)"
+      "bridgeNoChannel": "チャンネル未接続 (Claude Codeを --dangerously-load-development-channels フラグで実行してください)",
+      "researchPreview": "リサーチプレビュー",
+      "researchPreviewDesc": "Channelsはリサーチプレビュー機能です。公式マーケットプレイス提出まで開発フラグが必要です。",
+      "step1Title": "Step 1: Claude Code CLI",
+      "step1Desc": "Claude Code CLIがインストールされている必要があります。",
+      "step2Title": "Step 2: ターミナルで実行",
+      "step2Desc": "AMAプロジェクトディレクトリで以下のコマンドを実行してください。",
+      "step3Title": "Step 3: AMAで有効化",
+      "copy": "コピー",
+      "copied": "コピー済み"
     }
   },
   "status": {
