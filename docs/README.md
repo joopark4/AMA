@@ -93,8 +93,12 @@
 - 프리미엄 음성 모듈화 (`src/features/premium-voice/`)
 - About 모달 분리 (`aboutStore` + `useMenuListeners` 훅)
 - Channels 포트 충돌 해결 + 응답 타임아웃 추가 (#016)
+- Claude Code 플러그인 구조 준비 (`claude-plugin/ama-bridge/`) — 공식 마켓플레이스 제출용
+- TTS 테스트 위치 변경 (아바타 설정 → 음성 설정)
+- 일본어 (ja) 지원 추가 (ko/en/ja 359키 일치)
+- 모델/데이터 폴더 Finder 열기 (`open_folder_in_finder` Rust 커맨드)
+- MCPSettings UX 개선 (복사 가능한 터미널 명령어 블록)
 - 코드 리뷰 P2 수정 (AES 키 통합, barrel export, static import 통일)
-- ja.json 누락 4키 추가 (ko/en/ja 359키 일치)
 - docs 폴더 기능별 재구성 (9개 하위 폴더)
 
 ---

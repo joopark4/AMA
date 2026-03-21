@@ -64,6 +64,7 @@ npm run build:mac-release
 |------|------|------|
 | `ko` | 한국어 (기본/폴백) | `src/i18n/ko.json` |
 | `en` | 영어 | `src/i18n/en.json` |
+| `ja` | 일본어 | `src/i18n/ja.json` |
 
 ### 언어 초기화 흐름
 
@@ -101,7 +102,7 @@ npm run build:mac-release
 
 ### 신규 번역 키 추가 방법
 
-1. `src/i18n/ko.json` 과 `src/i18n/en.json` 양쪽에 **같은 키**를 동시에 추가
+1. `src/i18n/ko.json`, `src/i18n/en.json`, `src/i18n/ja.json` 세 파일에 **같은 키**를 동시에 추가
 2. 동적 값은 `{{변수명}}` 보간 사용: `"error": "실패: {{error}}"`
 3. 컴포넌트에서 `useTranslation()` 훅으로 `t('키')` 호출
 4. 번역 키 누락 시 폴백 언어(`ko`)로 자동 대체
@@ -120,12 +121,12 @@ const { t } = useTranslation();
 ### 주의사항
 
 - 하드코딩 문자열 금지: 사용자에게 노출되는 모든 텍스트는 반드시 `t()` 호출로 처리
-- ko/en 키 개수 항상 일치 유지
+- ko/en/ja 키 개수 항상 일치 유지
 - 새 언어 추가 시: `src/i18n/index.ts` 리소스 등록 + `settingsStore.ts`의 `Language` 타입 확장 + `SettingsPanel.tsx` 드롭다운 옵션 추가
 
 ---
 
-## 현재 구현 요약 (v0.4.2)
+## 현재 구현 요약 (v0.8.0)
 
 ### 음성 파이프라인
 - STT: `Whisper(whisper-cli)` 단일 경로
@@ -136,9 +137,10 @@ const { t } = useTranslation();
 - 클라우드 TTS 실패/할당량 소진 시 로컬 자동 폴백
 - 프런트 녹음(`16kHz mono WAV`) → Tauri `transcribe_audio` → `whisper-cli`
 - 원격 세션 감지 시 음성 인식 차단 (텍스트 입력은 사용 가능)
+- TTS 테스트 버튼: 음성 설정 섹션에 위치 (아바타 섹션에서 이동)
 
 ### 아바타/UI
-- 기본 VRM 비동봉: 설치 후 첫 실행 시 VRM 파일 선택 필요
+- 기본 VRM 아바타 바이너리 임베딩: AES-128-GCM 암호화하여 앱 번들에 포함, 첫 실행 시 VRM 선택 불필요
 - 옵션 패널에서 VRM 파일 변경 가능
 - 기능 버튼/옵션 버튼 우하단 고정 (상태/텍스트/음성/히스토리/설정)
 - 아바타 마우스 선택/드래그 이동/회전 지원
@@ -146,7 +148,8 @@ const { t } = useTranslation();
 - 말풍선 위치를 아바타 상단 기준으로 동적 계산 (표시/숨김 토글 가능)
 - 클릭스루 + 인터랙티브 영역 보호(버튼/아바타/설정 패널) + 멀티 모니터 대응
 - 모션 클립/제스처/댄스/표정 시스템
-- 커스텀 About 모달 (`AboutModal.tsx`) — 네이티브 About 다이얼로그 대체
+- 커스텀 About 모달 (`AboutModal.tsx`) — `aboutStore` + `useMenuListeners` 훅으로 분리
+- 모델/데이터 폴더 Finder 열기: Rust `open_folder_in_finder` 커맨드
 
 ### macOS 네이티브 메뉴바
 - **AMA 메뉴**: About AMA / Check for Updates... / Settings... (Cmd+,) / Hide / Hide Others / Show All / Quit
@@ -180,6 +183,7 @@ const { t } = useTranslation();
 - 계정 삭제: Supabase Edge Function (`delete-account`)
 
 ### 프리미엄 음성 (Supertone API)
+- **모듈화**: `src/features/premium-voice/`에 독립 모듈로 응집 (premiumStore/supertoneApiClient/UI)
 - 프리미엄 구독 사용자 전용 클라우드 TTS
 - 앱 → `edgeFunctionClient` → Supabase Edge Function → Supertone API
 - Edge Functions: `supertone-tts` (TTS 프록시), `supertone-voices` (음성 목록), `supertone-usage` (사용량)
@@ -200,15 +204,18 @@ const { t } = useTranslation();
 - 설정 토글 OFF 시: 이전 AI 모델 자동 복원
 - 리서치 프리뷰: `claude --dangerously-load-development-channels server:ama-bridge` 필요
 - **모듈화**: `src/features/channels/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수/유틸)
+- **플러그인 구조**: `claude-plugin/ama-bridge/`에 공식 마켓플레이스 제출용 플러그인 준비
+  - `.claude-plugin/plugin.json` 메타데이터 + `.mcp.json` 서버 설정
+  - `server.ts`: 채널 서버 canonical source (mcp-channels/dev-bridge.mts와 동일 로직)
 
 ### 설정 패널 구성
 1. **UserProfile** — 계정 정보 (OAuth)
-2. **Language** — 한국어/영어 선택
+2. **Language** — 한국어/영어/일본어 선택
 3. **LLMSettings** — AI 모델 Provider/Model/API Key/Endpoint (Channels ON 시 잠금)
-4. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + 글로벌 단축키
+4. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + TTS 테스트 + 글로벌 단축키
 5. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량
-6. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/TTS 테스트/애니메이션/물리/조명
-7. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인)
+6. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
+7. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
 8. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
 9. **LicensesSettings** — 오픈소스/모델 라이선스
 - 각 섹션은 `SettingsSection.tsx` 공통 접을 수 있는 카드 UI 사용
@@ -296,6 +303,8 @@ AMA/
 │   │   ├── main.rs        # 앱 엔트리 + macOS 네이티브 메뉴바
 │   │   └── commands/      # window, voice, settings, auth, models, screenshot, http, mcp, vrm
 │   └── capabilities/      # Tauri 권한 설정
+├── claude-plugin/
+│   └── ama-bridge/        # Claude Code 공식 플러그인 구조 (.claude-plugin/ + server.ts)
 ├── models/
 │   ├── whisper/           # Whisper STT 모델
 │   └── supertonic/        # Supertonic TTS 모델

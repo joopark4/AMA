@@ -236,6 +236,44 @@ src/hooks/useMcpSpeakListener.ts  # Tauri 이벤트 리스너 + 큐
 src/components/settings/MCPSettings.tsx  # Claude Code Channels 설정 UI
 ```
 
+## Claude Code 플러그인 구조
+
+공식 마켓플레이스 제출을 위해 `claude-plugin/ama-bridge/` 디렉토리에 플러그인 패키지를 준비하였습니다.
+
+### 디렉토리 구조
+
+```
+claude-plugin/ama-bridge/
+├── .claude-plugin/
+│   └── plugin.json        # 플러그인 메타데이터 (이름/설명/작성자/키워드)
+├── .mcp.json              # MCP 서버 설정 (실행 커맨드/인자)
+├── server.ts              # 채널 서버 canonical source
+├── shared/
+│   └── config.mts         # 포트 설정
+├── package.json
+├── tsconfig.json
+└── README.md              # 플러그인 사용법
+```
+
+### 실행 방법
+
+```bash
+# 방법 1: 플러그인 설치 (향후 공식 마켓플레이스)
+claude /plugin install /path/to/claude-plugin/ama-bridge
+
+# 방법 2: 개발 모드 직접 실행 (리서치 프리뷰)
+cd claude-plugin/ama-bridge && npm install
+claude --dangerously-load-development-channels server:ama-bridge
+
+# 방법 3: AMA 앱 설정에서 자동 등록
+# 설정 패널 > Claude Code Channels 토글 ON
+```
+
+### 마켓플레이스 제출
+
+- 리서치 프리뷰 종료 후 공식 Claude Code 플러그인 마켓플레이스에 제출 예정
+- 제출 시 `--dangerously-load-development-channels` 플래그 없이 `claude --channels plugin:ama-bridge` 형태로 사용 가능
+
 ## 제한사항
 
 - **로컬 전용**: AMA와 Claude Code가 같은 머신에서 실행되어야 함
