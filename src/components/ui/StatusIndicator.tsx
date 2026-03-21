@@ -28,6 +28,7 @@ const PROVIDER_LABELS: Record<LLMProvider, string> = {
   claude: 'Claude',
   openai: 'OpenAI',
   gemini: 'Gemini',
+  claude_code: 'Claude Code',
 };
 
 const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string> = {
@@ -556,7 +557,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
           />
           <button
             type="submit"
-            disabled={!textInput.trim() || status === 'processing'}
+            disabled={!textInput.trim() || (status === 'processing' && useSettingsStore.getState().settings.llm.provider !== 'claude_code')}
             className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
           >
             {t('chat.send')}

@@ -452,6 +452,7 @@ export default function LLMSettings() {
   const currentProvider = settings.llm.provider;
   const isCloudProvider = isCloudProviderValue(currentProvider);
   const isLocalProvider = currentProvider === 'ollama' || currentProvider === 'localai';
+  const isClaudeCode = currentProvider === 'claude_code';
 
   // Load local provider models (Ollama / LocalAI)
   useEffect(() => {
@@ -548,6 +549,7 @@ export default function LLMSettings() {
   }, [isCloudProvider, currentProvider, settings.llm.apiKey, settings.llm.model, setLLMSettings]);
 
   const getModelsForProvider = (provider: LLMProvider): string[] => {
+    if (provider === 'claude_code') return ['dev-bridge'];
     if (provider === 'ollama' || provider === 'localai') {
       return localModels;
     }
@@ -562,13 +564,25 @@ export default function LLMSettings() {
   const getDefaultEndpoint = (provider: LLMProvider): string | undefined => {
     if (provider === 'ollama') return 'http://localhost:11434';
     if (provider === 'localai') return 'http://localhost:8080';
+    if (provider === 'claude_code') return 'http://127.0.0.1:8790';
     return undefined;
   };
 
   const visibleModels = getModelsForProvider(currentProvider);
 
+  const mcpLocked = settings.mcpEnabled;
+
   return (
     <div className="space-y-4">
+          {/* Channels 활성 시 잠금 안내 */}
+          {mcpLocked && (
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <p className="text-xs text-blue-700">
+                {t('settings.mcp.llmLocked')}
+              </p>
+            </div>
+          )}
+
           {/* Provider Selection */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
@@ -576,11 +590,14 @@ export default function LLMSettings() {
             </label>
             <select
               value={currentProvider}
+              disabled={mcpLocked}
               onChange={(e) => {
                 const provider = e.target.value as LLMProvider;
-                const models = provider === 'ollama' || provider === 'localai'
-                  ? localModels
-                  : buildCloudCandidateModels(provider, '', cloudModels[provider]);
+                const models = provider === 'claude_code'
+                  ? ['dev-bridge']
+                  : provider === 'ollama' || provider === 'localai'
+                    ? localModels
+                    : buildCloudCandidateModels(provider, '', cloudModels[provider]);
                 const endpoint = getDefaultEndpoint(provider);
                 setLLMSettings({
                   provider,
@@ -588,13 +605,14 @@ export default function LLMSettings() {
                   endpoint,
                 });
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${mcpLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
             >
               <option value="ollama">{t('settings.llm.providers.ollama')}</option>
               <option value="localai">{t('settings.llm.providers.localai')}</option>
               <option value="claude">{t('settings.llm.providers.claude')}</option>
               <option value="openai">{t('settings.llm.providers.openai')}</option>
               <option value="gemini">{t('settings.llm.providers.gemini')}</option>
+              <option value="claude_code">{t('settings.llm.providers.claude_code')}</option>
             </select>
           </div>
 
@@ -664,8 +682,8 @@ export default function LLMSettings() {
             </div>
           )}
 
-          {/* Endpoint (for local providers) */}
-          {isLocalProvider && (
+          {/* Endpoint (for local providers + Claude Code) */}
+          {(isLocalProvider || isClaudeCode) && (
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
                 {t('settings.llm.endpoint')}
@@ -674,9 +692,22 @@ export default function LLMSettings() {
                 type="text"
                 value={settings.llm.endpoint || ''}
                 onChange={(e) => setLLMSettings({ endpoint: e.target.value })}
-                placeholder={currentProvider === 'ollama' ? 'http://localhost:11434' : 'http://localhost:8080'}
+                placeholder={
+                  currentProvider === 'ollama' ? 'http://localhost:11434'
+                    : currentProvider === 'claude_code' ? 'http://127.0.0.1:8790'
+                      : 'http://localhost:8080'
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+          )}
+
+          {/* Claude Code info */}
+          {isClaudeCode && (
+            <div className="p-3 bg-purple-50 rounded-lg">
+              <p className="text-xs text-purple-700">
+                {t('settings.llm.providers.claudeCodeInfo')}
+              </p>
             </div>
           )}
 
