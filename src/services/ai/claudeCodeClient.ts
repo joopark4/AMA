@@ -58,25 +58,21 @@ export class ClaudeCodeClient implements LLMClient {
 
     log('Sending to dev-bridge:', bridgeUrl, 'message:', lastUserMessage.substring(0, 50));
 
-    try {
-      const responseText = await invoke<string>('send_to_bridge', {
-        endpoint: bridgeUrl,
-        body: payload,
-      });
+    const responseText = await invoke<string>('send_to_bridge', {
+      endpoint: bridgeUrl,
+      body: payload,
+    });
 
-      const data = JSON.parse(responseText) as { id?: string; reply?: string; error?: string };
+    const data = JSON.parse(responseText) as { id?: string; reply?: string; error?: string };
 
-      if (data.error) {
-        throw new Error(`Claude Code: ${data.error}`);
-      }
-
-      const content = data.reply ?? '';
-      log('Response received:', content.substring(0, 50));
-
-      return { content, finishReason: 'stop' };
-    } catch (err) {
-      throw err;
+    if (data.error) {
+      throw new Error(`Claude Code: ${data.error}`);
     }
+
+    const content = data.reply ?? '';
+    log('Response received:', content.substring(0, 50));
+
+    return { content, finishReason: 'stop' };
   }
 
   async chatStream(

@@ -177,7 +177,7 @@ async fn handle_speak(
 
     // Rate Limiting
     {
-        let mut limiter = state.rate_limiter.lock().unwrap();
+        let mut limiter = state.rate_limiter.lock().expect("rate limiter mutex poisoned");
         if !limiter.check_and_record() {
             return Err(StatusCode::TOO_MANY_REQUESTS);
         }
@@ -275,7 +275,7 @@ pub fn start_mcp_listener(app_handle: AppHandle) {
 // ─── Claude Code 글로벌 채널 등록/해제 ───
 
 /// ~/.mypartnerai/mcp-channels/ 에 dev-bridge 파일을 복사하고
-/// ~/.claude.json (user scope) に ama-bridge 서버를 등록한다.
+/// ~/.claude.json (user scope)에 ama-bridge 서버를 등록한다.
 #[tauri::command]
 pub fn register_channel_global(project_dir: Option<String>) -> Result<String, String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;

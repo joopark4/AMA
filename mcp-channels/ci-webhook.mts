@@ -98,7 +98,15 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
   }
 
   const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
+  let totalSize = 0;
+  for await (const chunk of req) {
+    totalSize += (chunk as Buffer).length;
+    if (totalSize > 1_048_576) { // 1MB 제한
+      res.writeHead(413).end('Payload Too Large');
+      return;
+    }
+    chunks.push(chunk as Buffer);
+  }
   const rawBody = Buffer.concat(chunks).toString('utf-8');
 
   const sig = req.headers['x-hub-signature-256'] as string | undefined;
