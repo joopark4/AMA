@@ -272,6 +272,22 @@ pub fn start_mcp_listener(app_handle: AppHandle) {
     });
 }
 
+/// 디렉토리를 재귀적으로 복사
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 // ─── Node.js 경로 탐색 ───
 
 /// macOS 앱 번들에서는 셸 PATH가 제한되므로 npm/npx를 직접 탐색한다.
@@ -398,30 +414,18 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
         ));
     }
 
-    // 3. npm install (node_modules가 없거나 package.json이 더 새로운 경우)
-    let nm_dir = target_dir.join("node_modules");
-    let pkg_path = target_dir.join("package.json");
-    let needs_install = if !nm_dir.exists() {
-        true
-    } else if let (Ok(pkg_meta), Ok(nm_meta)) = (
-        std::fs::metadata(&pkg_path),
-        std::fs::metadata(&nm_dir),
-    ) {
-        pkg_meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-            > nm_meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-    } else {
-        true
-    };
-
-    if needs_install {
-        let target_dir_str = target_dir.to_string_lossy().to_string();
-        eprintln!("[MCP] Running npm install in {}", target_dir_str);
-
+    // 3. node_modules 복사 (번들 리소스에 포함됨 — npm install 불필요)
+    let nm_src = bridge_resource.join("node_modules");
+    let nm_dst = target_dir.join("node_modules");
+    if nm_src.exists() && !nm_dst.exists() {
+        eprintln!("[MCP] Copying node_modules from bundle resources...");
+        copy_dir_recursive(&nm_src, &nm_dst)
+            .map_err(|e| format!("Failed to copy node_modules: {}", e))?;
+        eprintln!("[MCP] node_modules copied successfully");
+    } else if !nm_src.exists() && !nm_dst.exists() {
+        // 번들에 node_modules가 없고 타겟에도 없으면 npm install 시도 (개발 환경)
         let npm_cmd = find_node_bin("npm")?;
-        eprintln!("[MCP] Using npm at: {}", npm_cmd);
-
-        // macOS 앱 번들(Dock/Launchpad)에서는 PATH가 제한적이므로
-        // npm/node가 있는 디렉토리를 PATH에 추가하여 실행
+        let target_dir_str = target_dir.to_string_lossy().to_string();
         let npm_parent = std::path::Path::new(&npm_cmd)
             .parent()
             .map(|p| p.to_string_lossy().to_string())
@@ -430,8 +434,7 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
             "{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
             npm_parent
         );
-        eprintln!("[MCP] Extended PATH: {}", extended_path);
-
+        eprintln!("[MCP] node_modules not in bundle, running npm install...");
         let output = tokio::task::spawn_blocking(move || {
             std::process::Command::new(&npm_cmd)
                 .args(["install", "--prefix", &target_dir_str])
@@ -441,7 +444,6 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
         .await
         .map_err(|e| format!("Task join error: {}", e))?
         .map_err(|e| format!("npm install failed to start: {}", e))?;
-
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(format!("npm install failed: {}", stderr));
