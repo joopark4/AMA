@@ -718,4 +718,3 @@ pub async fn check_bridge_channel() -> Result<bool, String> {
         Err(_) => Ok(false),
     }
 }
-}
