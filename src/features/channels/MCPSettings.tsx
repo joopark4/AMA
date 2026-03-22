@@ -87,11 +87,17 @@ export default function MCPSettings() {
 
     // bridge 플러그인 추출 (번들 리소스 → ~/.mypartnerai/ama-bridge/)
     try {
-      await invoke<string>('setup_bridge_plugin');
+      const result = await invoke<string>('setup_bridge_plugin');
+      console.log('[MCPSettings] setup_bridge_plugin:', result);
+      window.dispatchEvent(new CustomEvent('ama-toast', {
+        detail: { type: 'info', message: t('settings.mcp.setupSuccess') },
+      }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn('[MCPSettings] setup_bridge_plugin failed:', msg);
-      // 개발 환경에서는 리소스가 없을 수 있으므로 경고만 출력
+      console.error('[MCPSettings] setup_bridge_plugin failed:', msg);
+      window.dispatchEvent(new CustomEvent('ama-toast', {
+        detail: { type: 'error', message: `Bridge setup: ${msg}` },
+      }));
     }
 
     // 등록 시도
