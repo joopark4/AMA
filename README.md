@@ -152,50 +152,15 @@ npm run tauri build
 - Supertonic 모델: `onnx`, `voice_styles`
 - VRM 파일은 기본 포함하지 않으며, 첫 실행 시 사용자가 직접 선택합니다.
 
-## 모션 데이터 파이프라인
+## 모션 데이터
 
-- `motions/raw/` : 원본 모션 소스(수집/캡처)
-- `motions/clean/` : 리타게팅/정제 중간 산출물
-- `public/motions/` : 런타임에서 사용하는 최종 클립
-- `src/config/motionManifest.json` : 모션 메타데이터 단일 소스
+- `public/motions/clips/` : 런타임에서 사용하는 모션 클립
+- `src/config/motionManifest.json` : 모션 메타데이터
 
-실데이터 교체:
-
-```bash
-# catalog 파일 준비 (motions/clean/catalog.example.json 참고)
-npm run motion:catalog:auto
-npm run motion:import:dry
-npm run motion:import
-```
-
-외부 정제 클립 동기화:
-
-```bash
-MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:clean
-MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips npm run motion:sync:external
-npm run motion:refresh
-```
-
-외부 정제 경로 alias 사용(`MOTION_CLEAN_SOURCE` 필요):
-
-```bash
-MOTION_CLEAN_SOURCE=/absolute/path/to/clean/clips \
-npm run motion:refresh:external
-```
-
-커스텀 catalog 경로:
-
-```bash
-MOTION_CATALOG=motions/clean/my-catalog.json npm run motion:import
-```
-
-검증:
+모션 에셋 검증:
 
 ```bash
 npm run motion:validate
-npm run motion:qa:team10
-npm run motion:collect:index -- --source "<path/to/your/motions/raw>"
-npm run motion:collect:metadata -- --source "<path/to/your/motions/raw>" --checklist "motions/raw/raw-intake-checklist.json"
 ```
 
 ## 환경 변수 (선택)
@@ -267,14 +232,13 @@ VITE_GOOGLE_API_KEY=발급받은_키
 
 응답이 안 나오는 경우, 설정 화면의 Provider/Model/Endpoint/API Key 값이 모두 올바른지 먼저 확인하세요.
 
-## Claude Code Channels (아바타 ↔ Claude Code 연동)
+## Claude Code Channels 사용 방법
 
-외부 터미널에서 실행 중인 Claude Code와 AMA 아바타를 연결합니다.
-사용자의 텍스트/음성 입력이 Claude Code로 전달되고, 응답을 아바타가 TTS로 읽어줍니다.
+AMA 아바타를 Claude Code와 연결하여 양방향 대화가 가능합니다.
 
 ### 사전 요구사항
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 설치
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI 설치
 - [Node.js](https://nodejs.org/) 18+ 설치
 - claude.ai 계정 로그인 (`claude login`)
 
@@ -282,9 +246,10 @@ VITE_GOOGLE_API_KEY=발급받은_키
 
 1. AMA 앱 실행
 2. `설정 > Claude Code Channels > 토글 ON`
-   - 자동으로 bridge 플러그인 설치 (`~/.mypartnerai/ama-bridge/`)
-   - 자동으로 Claude Code에 MCP 서버 등록 (`~/.claude.json`)
-3. 별도 터미널에서 실행:
+   - Bridge 플러그인 자동 설치 (`~/.mypartnerai/ama-bridge/`)
+   - Claude Code에 MCP 서버 자동 등록 (`~/.claude.json`)
+   - 자동 설치 실패 시: `cd ~/.mypartnerai/ama-bridge && npm install`
+3. 별도 터미널에서 Claude Code 실행:
    ```bash
    claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
    ```
@@ -298,7 +263,6 @@ VITE_GOOGLE_API_KEY=발급받은_키
 - Channels는 **리서치 프리뷰** 기능입니다. `--dangerously-load-development-channels` 플래그가 필수이며, 세션 시작 시 보안 확인 프롬프트가 1회 표시됩니다.
 - `--permission-mode bypassPermissions`는 도구 실행 권한을 자동 수락합니다. **신뢰할 수 있는 로컬 환경에서만 사용**하세요.
 - AMA와 Claude Code는 **같은 머신**(localhost)에서 실행되어야 합니다.
-- `server:ama-bridge`는 `~/.claude.json`의 `mcpServers`에 등록된 이름을 참조합니다. 토글 ON 시 자동 등록됩니다.
 
 ---
 

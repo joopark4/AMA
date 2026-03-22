@@ -214,14 +214,13 @@ In app settings:
 
 If replies fail, verify provider/model/endpoint/API key first.
 
-## Claude Code Channels (Avatar ↔ Claude Code)
+## How to Use Claude Code Channels
 
-Connect the AMA avatar to an external Claude Code session running in a separate terminal.
-User text/voice input is sent to Claude Code, and responses are spoken aloud by the avatar via TTS.
+Connect your AMA avatar to Claude Code for two-way conversations.
 
 ### Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
 - [Node.js](https://nodejs.org/) 18+ installed
 - Logged in to claude.ai (`claude login`)
 
@@ -229,9 +228,10 @@ User text/voice input is sent to Claude Code, and responses are spoken aloud by 
 
 1. Launch AMA app
 2. `Settings > Claude Code Channels > Toggle ON`
-   - Automatically installs bridge plugin (`~/.mypartnerai/ama-bridge/`)
-   - Automatically registers MCP server with Claude Code (`~/.claude.json`)
-3. In a separate terminal, run:
+   - Bridge plugin auto-installs to `~/.mypartnerai/ama-bridge/`
+   - MCP server auto-registers in Claude Code (`~/.claude.json`)
+   - If auto-install fails: `cd ~/.mypartnerai/ama-bridge && npm install`
+3. In a separate terminal, run Claude Code:
    ```bash
    claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
    ```
@@ -245,7 +245,6 @@ Toggling OFF automatically restores your previous AI model settings.
 - Channels is a **research preview** feature. The `--dangerously-load-development-channels` flag is required, and a security confirmation prompt appears once per session.
 - `--permission-mode bypassPermissions` auto-accepts tool execution permissions. **Use only in trusted local environments.**
 - AMA and Claude Code must run on the **same machine** (localhost).
-- `server:ama-bridge` references the name registered in `~/.claude.json` under `mcpServers`. It is auto-registered when the toggle is turned ON.
 
 ---
 
