@@ -40,7 +40,7 @@ English version: [README.en.md](README.en.md)
 
 ### 설치
 
-1. [Releases](https://github.com/joopark4/AMA/releases)에서 최신 `AMA_x.x.x_aarch64.dmg` 다운로드
+1. [최신 릴리스](https://github.com/joopark4/AMA/releases/latest)에서 `AMA_x.x.x_aarch64.dmg` 다운로드 — [v0.8.0 바로가기](https://github.com/joopark4/AMA/releases/tag/v0.8.0)
 2. DMG를 열고 `AMA.app`을 `Applications` 폴더로 드래그
 3. Launchpad 또는 Applications에서 AMA 실행
 
