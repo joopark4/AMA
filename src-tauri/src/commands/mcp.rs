@@ -420,9 +420,22 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
         let npm_cmd = find_node_bin("npm")?;
         eprintln!("[MCP] Using npm at: {}", npm_cmd);
 
+        // macOS 앱 번들(Dock/Launchpad)에서는 PATH가 제한적이므로
+        // npm/node가 있는 디렉토리를 PATH에 추가하여 실행
+        let npm_parent = std::path::Path::new(&npm_cmd)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let extended_path = format!(
+            "{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+            npm_parent
+        );
+        eprintln!("[MCP] Extended PATH: {}", extended_path);
+
         let output = tokio::task::spawn_blocking(move || {
             std::process::Command::new(&npm_cmd)
                 .args(["install", "--prefix", &target_dir_str])
+                .env("PATH", &extended_path)
                 .output()
         })
         .await
