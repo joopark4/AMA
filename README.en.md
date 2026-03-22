@@ -341,6 +341,14 @@ To completely remove AMA from macOS:
 
 > Cloud AI services (Claude/OpenAI/Gemini) are governed by service terms, not open-source licenses. Always verify the latest LICENSE before redistributing models/runtime assets.
 
+## Default Avatar Copyright
+
+The default VRM avatar bundled in the DMG release is the property of the project author and is **NOT covered by the MIT License.**
+
+- Use is permitted only within this app.
+- Extraction, redistribution, or use in other apps/services is prohibited.
+- The source code repository does not include the default avatar.
+
 ## License
 
-MIT
+MIT — Applies to the source code, excluding the default avatar.
