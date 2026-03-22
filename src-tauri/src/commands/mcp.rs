@@ -361,6 +361,8 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
     let resource_dir = app.path().resource_dir()
         .map_err(|e| format!("Failed to get resource dir: {}", e))?;
     let bridge_resource = resource_dir.join("ama-bridge");
+    eprintln!("[MCP] Resource dir: {}", resource_dir.display());
+    eprintln!("[MCP] Bridge resource: {} (exists: {})", bridge_resource.display(), bridge_resource.exists());
 
     let files: &[&str] = &[
         "server.ts",
