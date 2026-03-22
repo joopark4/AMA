@@ -22,7 +22,7 @@ claude /plugin install /path/to/claude-plugin/ama-bridge
 ```bash
 cd claude-plugin/ama-bridge
 npm install
-claude --dangerously-load-development-channels server:ama-bridge
+claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
 ```
 
 ### 방법 3: AMA 앱 설정에서 등록
@@ -36,7 +36,7 @@ AMA 앱의 설정 패널 > Claude Code Channels 섹션에서 토글을 켜면
 
 ```bash
 # 개발 모드 (리서치 프리뷰)
-claude --dangerously-load-development-channels server:ama-bridge
+claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
 ```
 
 ## AMA 앱 연동
