@@ -96,7 +96,7 @@ export default function MCPSettings() {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[MCPSettings] setup_bridge_plugin failed:', msg);
       window.dispatchEvent(new CustomEvent('ama-toast', {
-        detail: { type: 'error', message: `Bridge setup: ${msg}` },
+        detail: { type: 'error', message: t('settings.mcp.setupFailManual') },
       }));
     }
 

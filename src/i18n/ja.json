@@ -212,6 +212,7 @@
       "researchPreviewDesc": "Channelsはリサーチプレビュー機能です。公式リリースまで --dangerously-load-development-channels フラグが必要です。",
       "setupSuccess": "Bridgeプラグインがインストールされました",
       "setupFail": "Bridgeプラグインのインストールに失敗しました",
+      "setupFailManual": "自動インストールに失敗しました。ターミナルで実行: cd ~/.mypartnerai/ama-bridge && npm install",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLIとNode.jsがインストールされている必要があります。",
       "step2Title": "Step 2: ターミナルで実行",

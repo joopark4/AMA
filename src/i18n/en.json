@@ -212,6 +212,7 @@
       "researchPreviewDesc": "Channels is a research preview feature. The --dangerously-load-development-channels flag is required until official release.",
       "setupSuccess": "Bridge plugin has been installed",
       "setupFail": "Bridge plugin installation failed",
+      "setupFailManual": "Auto-install failed. Run in terminal: cd ~/.mypartnerai/ama-bridge && npm install",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLI and Node.js must be installed.",
       "step2Title": "Step 2: Run in Terminal",
