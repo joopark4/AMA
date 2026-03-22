@@ -4,6 +4,8 @@ An AI avatar desktop app that moves freely on your screen and interacts with you
 
 Korean version: [README.md](README.md)
 
+> For bug reports, feature requests, or any feedback, please email [jooparkhappy4@gmail.com](mailto:jooparkhappy4@gmail.com).
+
 ![Platform](https://img.shields.io/badge/platform-macOS-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-orange)

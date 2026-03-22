@@ -5,6 +5,8 @@
 
 English version: [README.en.md](README.en.md)
 
+> 버그 리포트, 기능 제안 등 피드백은 [jooparkhappy4@gmail.com](mailto:jooparkhappy4@gmail.com)으로 보내주세요.
+
 ![Platform](https://img.shields.io/badge/platform-macOS-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-orange)
