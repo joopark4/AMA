@@ -39,7 +39,7 @@ Korean version: [README.md](README.md)
 
 ### Installation
 
-1. Download the latest `AMA_x.x.x_aarch64.dmg` from [Releases](https://github.com/joopark4/AMA/releases)
+1. Download `AMA_x.x.x_aarch64.dmg` from [Latest Release](https://github.com/joopark4/AMA/releases/latest) — [v0.8.0 direct link](https://github.com/joopark4/AMA/releases/tag/v0.8.0)
 2. Open the DMG and drag `AMA.app` to the `Applications` folder
 3. Launch AMA from Launchpad or Applications
 
