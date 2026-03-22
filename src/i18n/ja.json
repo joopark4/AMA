@@ -6,9 +6,6 @@
   "settings": {
     "title": "設定",
     "language": "言語",
-    "account": {
-      "title": "アカウント"
-    },
     "general": {
       "title": "一般"
     },
@@ -117,14 +114,6 @@
       },
       "animation": {
         "title": "アニメーション",
-        "motionSequenceDemo": "モーションシーケンスデモ",
-        "sequenceStop": "停止",
-        "sequenceStart": "シーケンス実行",
-        "sequenceDevOnly": "開発ビルド専用機能: 各モーション実行前に吹き出し/音声案内の後、順次再生します。",
-        "sequenceProgress": "実行中: {{current}}/{{total}}",
-        "sequenceWaiting": "待機中: 全{{count}}モーション",
-        "motionClipsWarning": "モーションクリップが無効の場合、デモを開始できません。",
-        "faceOnlyWarning": "表情専用モードではデモを実行できません。",
         "faceOnlyMode": "表情専用モード",
         "faceOnlyDescription": "全身モーション（クリップ/ジェスチャー/ダンス）を無効にし、表情、顔の向き、視線のみを維持します。",
         "enableMotionClips": "モーションクリップを使用",
@@ -157,74 +146,6 @@
       "defaultVrmLabel": "デフォルト内蔵アバター使用中",
       "useDefaultVrm": "デフォルトアバターに初期化",
       "info": "対応形式：VRM 0.xおよび1.0モデル。スムーズな動作のため、30MB以下のファイルを推奨します。"
-    },
-    "premium": {
-      "title": "プレミアム音声",
-      "locked": "プレミアム機能です",
-      "lockedDesc": "プレミアムサブスクリプションを有効にすると、さまざまなクラウド音声を利用できます。",
-      "loginRequired": "プレミアム機能を利用するにはログインしてください。",
-      "badge": "Premium",
-      "active": "プレミアム有効",
-      "engineSelect": "TTSエンジン",
-      "engineLocal": "ローカル（Supertonic）",
-      "engineCloud": "Supertone API（クラウド）",
-      "voiceSelect": "音声を選択",
-      "voiceRefresh": "更新",
-      "voiceSearch": "音声を検索...",
-      "voiceGender": "性別",
-      "voiceGenderAll": "すべて",
-      "voiceGenderFemale": "女性",
-      "voiceGenderFemaleShort": "女",
-      "voiceGenderMale": "男性",
-      "voiceGenderMaleShort": "男",
-      "voiceLanguage": "音声フィルター言語",
-      "voiceLanguageAll": "すべて",
-      "ttsLanguage": "音声出力言語",
-      "ttsLanguageDesc": "TTS音声の出力言語です。アプリのUI言語とは別に設定されます。",
-      "ttsLanguageUnsupported": "選択したモデルはこの言語に対応していません。英語に切り替わります。",
-      "modelSelect": "モデル",
-      "models": {
-        "sona_speech_1": "Sona Speech 1（標準）",
-        "sona_speech_2": "Sona Speech 2（最高品質）",
-        "sona_speech_2_flash": "Sona Speech 2 Flash（高速応答）"
-      },
-      "styleSelect": "スタイル",
-      "styleAuto": "自動（感情ベース）",
-      "autoEmotion": "会話の感情に応じてスタイルを自動切替",
-      "autoEmotionDesc": "AI応答の感情を分析し、音声スタイルを自動的に変更します。対応していないスタイルはデフォルトのトーンに切り替わります。",
-      "voiceSettings": "音声微調整",
-      "pitchShift": "ピッチ: {{value}}",
-      "pitchVariance": "抑揚変化: {{value}}",
-      "speed": "速度: {{value}}x",
-      "preview": "プレビュー",
-      "previewPlaying": "再生中...",
-      "noVoicesFound": "音声が見つかりません",
-      "loadingVoices": "音声リストを読み込み中...",
-      "voiceInfo": "{{name}} · {{gender}} · {{languages}}",
-      "usage": {
-        "title": "使用量",
-        "refresh": "更新",
-        "thisMonth": "今月",
-        "seconds": "{{value}}秒",
-        "characters": "{{value}}文字",
-        "requests": "{{value}}回",
-        "summary": "{{seconds}}秒 · {{characters}}文字 · {{requests}}回",
-        "credits": "推定クレジット: {{value}}",
-        "recent7days": "直近7日間",
-        "noUsage": "使用履歴がありません",
-        "loading": "使用量を確認中..."
-      },
-      "quota": {
-        "title": "月間割り当て",
-        "used": "{{used}} / {{limit}} クレジット",
-        "percent": "{{value}}% 使用済み",
-        "remaining": "残りクレジット: {{value}}（約{{minutes}}分{{seconds}}秒）",
-        "warning": "割り当てがほぼ使い切られています",
-        "exceeded": "月間割り当て超過",
-        "exceededDesc": "ローカル音声（Supertonic）に自動切替されました",
-        "resetInfo": "翌月1日にリセットされます",
-        "fallbackToast": "月間割り当てを超過したため、ローカル音声に切り替えます。"
-      }
     },
     "save": "保存",
     "cancel": "キャンセル",
@@ -395,132 +316,11 @@
   "errors": {
     "llmConnection": "AIサーバーに接続できません",
     "microphoneAccess": "マイクへのアクセス許可が必要です",
-    "vrmLoad": "VRMモデルを読み込めません",
-    "premiumRequired": "プレミアムサブスクリプションが必要です",
-    "supertoneApiFail": "音声合成に失敗しました: {{error}}",
-    "supertoneVoiceLoadFail": "音声リストの読み込みに失敗しました: {{error}}",
-    "supertoneUsageLoadFail": "使用量の読み込みに失敗しました: {{error}}",
-    "quotaExceeded": "月間割り当てを超過しました。ローカル音声に切り替えます。"
-  },
-  "auth": {
-    "title": "AMAへようこそ",
-    "subtitle": "続けるにはログインしてください",
-    "loginWith": "{{provider}}で続行",
-    "mockModeNotice": "テストモード — OAuthキー未設定、クリックでモックログインを実行",
-    "loading": "認証中...",
-    "cancelLogin": "ログインをキャンセル",
-    "success": "ログイン成功",
-    "logout": "ログアウト",
-    "logoutConfirm": "ログアウトしますか？",
-    "termsNotice": "ログインすることで、利用規約およびプライバシーポリシーに同意したことになります。",
-    "termsLink": "利用規約",
-    "privacyLink": "プライバシーポリシー",
-    "providers": {
-      "google": "Google",
-      "apple": "Apple",
-      "meta": "Meta（Facebook）",
-      "x": "X（Twitter）"
-    },
-    "profile": {
-      "title": "アカウント",
-      "email": "メールアドレス",
-      "nickname": "ニックネーム",
-      "provider": "ログイン方法",
-      "joinedAt": "登録日"
-    },
-    "deleteAccount": "アカウント削除",
-    "deleteAccountWarning": "アカウントを削除すると、すべてのクラウドデータが永久に削除されます。",
-    "deleteAccountConfirm": "本当に削除しますか？",
-    "deleteAccountFinal": "完全に削除",
-    "deleteAccountCancel": "キャンセル",
-    "termsAgreement": "規約への同意",
-    "agreeToTerms": "利用規約に同意します",
-    "agreeToPrivacy": "プライバシーポリシーに同意します",
-    "viewTerms": "表示",
-    "termsModalTitle": "利用規約",
-    "privacyModalTitle": "プライバシーポリシー",
-    "termsVersion": "バージョン {{version}}",
-    "errors": {
-      "cancelled": "ログインがキャンセルされました",
-      "failed": "ログインに失敗しました",
-      "networkError": "ネットワークエラーが発生しました",
-      "tokenExpired": "セッションが期限切れです。再度ログインしてください",
-      "stateMismatch": "セキュリティ検証に失敗しました。もう一度お試しください",
-      "providerError": "{{provider}}認証中にエラーが発生しました: {{error}}",
-      "timeout": "ログインがタイムアウトしました。もう一度お試しください",
-      "deleteAccountFailed": "アカウントの削除に失敗しました。もう一度お試しください。"
-    },
-    "callback": {
-      "processing": "ログイン処理中...",
-      "redirecting": "まもなく自動的に移動します"
-    }
+    "vrmLoad": "VRMモデルを読み込めません"
   },
   "mcp": {
     "receivedMessage": "外部チャンネルメッセージ受信",
     "speakError": "MCP音声出力失敗: {{error}}",
     "queueFull": "音声キューがいっぱいです。一部のメッセージがスキップされました。"
-  },
-  "terms": {
-    "version": "2026.02",
-    "service": {
-      "title": "利用規約",
-      "lastUpdated": "最終更新日: 2026年2月",
-      "sections": [
-        {
-          "heading": "第1条（目的）",
-          "body": "本規約は、AMA（以下「本サービス」）の利用条件および手続きを定めることを目的とします。"
-        },
-        {
-          "heading": "第2条（サービスの説明）",
-          "body": "AMAは、ローカル環境で動作するAIアバターデスクトップアプリです。会話内容はユーザーのデバイスにのみ保存され、サーバーには送信されません。"
-        },
-        {
-          "heading": "第3条（収集する情報）",
-          "body": "本サービスの利用にあたり、OAuthログインを通じてメールアドレス、ニックネーム、プロフィール画像URLを収集します。APIキーおよび会話内容は収集しません。"
-        },
-        {
-          "heading": "第4条（禁止行為）",
-          "body": "違法目的での使用、他人の情報の盗用、サービス運営の妨害行為を禁止します。"
-        },
-        {
-          "heading": "第5条（免責事項）",
-          "body": "AIの応答の正確性を保証するものではありません。本サービスの利用により生じた損害について、当社は責任を負いません。"
-        },
-        {
-          "heading": "第6条（アカウントの削除）",
-          "body": "ユーザーはアプリ内の設定からいつでもアカウントを削除できます。削除時、すべてのサーバーデータは直ちに消去されます。"
-        }
-      ]
-    },
-    "privacy": {
-      "title": "プライバシーポリシー",
-      "lastUpdated": "最終更新日: 2026年2月",
-      "sections": [
-        {
-          "heading": "収集する項目",
-          "body": "メールアドレス、ニックネーム、OAuthプロバイダー（Google・Apple・Meta・X）、プロフィール画像URL、規約同意日時"
-        },
-        {
-          "heading": "収集しない項目",
-          "body": "会話内容（デバイスのローカルに保存）、LLM APIキー（デバイスのローカルに保存）、音声データ"
-        },
-        {
-          "heading": "保管場所",
-          "body": "Supabase（米国所在のサーバー、supabase.com）。詳細はSupabaseのプライバシーポリシーをご参照ください。"
-        },
-        {
-          "heading": "保管期間",
-          "body": "アカウント削除時に直ちに削除されます。"
-        },
-        {
-          "heading": "第三者への提供",
-          "body": "収集した個人情報を第三者に提供することはありません。"
-        },
-        {
-          "heading": "お問い合わせ",
-          "body": "個人情報に関するお問い合わせは、GitHub Issuesよりお寄せください。"
-        }
-      ]
-    }
   }
 }

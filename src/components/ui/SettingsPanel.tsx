@@ -2,10 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import SettingsSection from '../settings/SettingsSection';
-import UserProfile from '../auth/UserProfile';
 import LLMSettings from '../settings/LLMSettings';
 import VoiceSettings from '../settings/VoiceSettings';
-import { PremiumVoiceSettings } from '../../features/premium-voice';
 import AvatarSettings from '../settings/AvatarSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
@@ -64,11 +62,6 @@ export default function SettingsPanel() {
 
         {/* Content */}
         <div className="px-4 py-4 overflow-y-auto max-h-[calc(80vh-140px)] custom-scrollbar space-y-3">
-          {/* Account */}
-          <SettingsSection title={t('settings.account.title')}>
-            <UserProfile />
-          </SettingsSection>
-
           {/* General: Language + Monitor */}
           <SettingsSection title={t('settings.general.title')} defaultOpen>
             <div className="space-y-2">
@@ -96,11 +89,6 @@ export default function SettingsPanel() {
           {/* Voice Settings */}
           <SettingsSection title={t('settings.voice.title')}>
             <VoiceSettings />
-          </SettingsSection>
-
-          {/* Premium Voice Settings */}
-          <SettingsSection title={t('settings.premium.title')}>
-            <PremiumVoiceSettings />
           </SettingsSection>
 
           {/* Avatar Settings */}

@@ -1,12 +1,12 @@
-# MyPartnerAI
+# AMA
 
-화면 위를 자유롭게 이동하는 AI 아바타 데스크톱 앱입니다.  
+화면 위를 자유롭게 이동하는 AI 아바타 데스크톱 앱입니다.
 대화 입력(텍스트/음성), 음성 답변(TTS), VRM 아바타 상호작용을 제공합니다.
 
 English version: [README.en.md](README.en.md)
 
 ![Platform](https://img.shields.io/badge/platform-macOS-blue)
-![License](https://img.shields.io/badge/license-BSD--2--Clause-green)
+![License](https://img.shields.io/badge/license-MIT-green)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-orange)
 ![React](https://img.shields.io/badge/React-18-blue)
 
@@ -103,8 +103,8 @@ models/
 
 ```bash
 # 1) 저장소 클론
-git clone https://github.com/joopark4/MyPartnerAI.git
-cd MyPartnerAI
+git clone https://github.com/joopark4/AMA.git
+cd AMA
 
 # 2) 의존성 설치
 npm install
@@ -120,10 +120,15 @@ npm run tauri dev
 npm run tauri build
 ```
 
+## 자동 업데이트
+
+빌드된 앱은 GitHub Releases를 통해 자동 업데이트를 지원합니다.
+설정 패널 또는 macOS 메뉴바 "Check for Updates..."에서 업데이트를 확인할 수 있습니다.
+
 ## 최초 실행 가이드
 
 1. 앱 실행
-2. VRM 미선택 상태면 중앙 안내창에서 `.vrm` 파일 선택
+2. 첫 실행 시 중앙 안내창에서 `.vrm` 파일 선택 (기본 VRM은 포함되지 않음)
 3. 우하단 설정 버튼에서:
    - LLM Provider/Model 설정
    - Whisper 모델(`base/small/medium`) 선택
@@ -287,8 +292,6 @@ VITE_GOOGLE_API_KEY=발급받은_키
 - `--permission-mode bypassPermissions`는 도구 실행 권한을 자동 수락합니다. **신뢰할 수 있는 로컬 환경에서만 사용**하세요.
 - AMA와 Claude Code는 **같은 머신**(localhost)에서 실행되어야 합니다.
 
-자세한 내용은 [Claude Code Channels 가이드](docs/channels-mcp.md)를 참조하세요.
-
 ---
 
 ## 사용 AI/모델 라이선스 및 링크
@@ -375,7 +378,7 @@ macOS에서 AMA를 완전히 제거하려면:
 
 1. [BOOTH VRM 검색](https://booth.pm/en/search/VRM)에서 모델 탐색
 2. 가격, 미리보기, 업데이트 이력 확인
-3. 상품 설명의 라이선스/이용약관 확인  
+3. 상품 설명의 라이선스/이용약관 확인
    (상업 이용 가능 여부, 크레딧 표기, 재배포 금지 여부 등)
 4. 결제 후 다운로드 파일(`.zip`/`.vrm`) 받기
 5. 압축 해제 후 `.vrm` 파일을 앱에서 선택
@@ -397,15 +400,6 @@ macOS에서 AMA를 완전히 제거하려면:
 
 참고: 위 VRM 구하기/구매 가이드는 참고용이며, 실제 사용 전 각 모델의 최신 라이선스와 이용약관을 반드시 확인하세요.
 
-## 기본 아바타 저작권 고지
-
-본 앱에 내장된 기본 VRM 아바타는 저작권이 있는 자산입니다.
-
-- 무단 복제, 추출, 재배포, 2차 가공을 금지합니다.
-- 앱 내부에서만 사용 가능하며, 별도 이용은 불가합니다.
-- 바이너리에 암호화되어 임베딩되어 있으며, 역공학을 통한 추출을 시도하지 마십시오.
-- 위반 시 관련 법령에 따라 법적 조치가 가능합니다.
-
 ## 라이선스
 
-BSD 2-Clause
+MIT

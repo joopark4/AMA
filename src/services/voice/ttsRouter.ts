@@ -1,8 +1,6 @@
 import type { TTSResult, TTSClient, TTSOptions } from './types';
 import { getSupertonicClient } from './supertonicClient';
-import { getSupertoneApiClient, usePremiumStore } from '../../features/premium-voice';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { QuotaExceededError } from '../auth/edgeFunctionClient';
 import { invoke } from '@tauri-apps/api/core';
 
 const log = (...args: unknown[]) => {
@@ -26,13 +24,8 @@ class TTSRouter {
     return this.audioContext;
   }
 
-  /** 현재 설정 + 할당량 상태에 따라 적절한 클라이언트 선택 */
+  /** 항상 로컬 Supertonic 클라이언트 반환 */
   private getActiveClient(): TTSClient {
-    const { settings } = useSettingsStore.getState();
-    if (settings.tts.engine === 'supertone_api') {
-      return getSupertoneApiClient();
-    }
-
     return this.supertonicClient;
   }
 
@@ -113,46 +106,6 @@ class TTSRouter {
       }
     } catch (error) {
       console.error('[TTSRouter] Synthesize FAILED:', error);
-      // 할당량 소진 시 로컬 폴백 + 토스트 알림
-      if (error instanceof QuotaExceededError) {
-        log('Quota exceeded, falling back to local Supertonic');
-        usePremiumStore.getState().updateQuotaFromTtsResponse(error.headers);
-
-        // 토스트 이벤트 발행
-        window.dispatchEvent(new CustomEvent('ama-toast', {
-          detail: { type: 'warning', messageKey: 'settings.premium.quota.fallbackToast' },
-        }));
-
-        // 로컬 폴백
-        const fallbackResult = await this.supertonicClient.synthesize(text, ttsOptions);
-        try {
-          await this.playViaHtmlAudio(fallbackResult.audioData);
-        } catch {
-          await this.playViaWebAudio(fallbackResult.audioData);
-        }
-        return;
-      }
-
-      // 네트워크/서버 에러 시 로컬 폴백
-      if (settings.tts.engine === 'supertone_api') {
-        log('Supertone API error, falling back to local:', error);
-        window.dispatchEvent(new CustomEvent('ama-toast', {
-          detail: { type: 'error', messageKey: 'errors.supertoneApiFail' },
-        }));
-
-        try {
-          const fallbackResult = await this.supertonicClient.synthesize(text, ttsOptions);
-          try {
-            await this.playViaHtmlAudio(fallbackResult.audioData);
-          } catch {
-            await this.playViaWebAudio(fallbackResult.audioData);
-          }
-          return;
-        } catch (localError) {
-          log('Local fallback also failed:', localError);
-        }
-      }
-
       throw error;
     }
   }

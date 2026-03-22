@@ -51,10 +51,6 @@ interface AvatarState {
   motionQueue: MotionClipId[];
   recentMotionIds: MotionClipId[];
   motionCooldownMap: Record<string, number>;
-  isMotionSequenceActive: boolean;
-  motionSequenceIndex: number;
-  motionSequenceTotal: number;
-
   // Dance state
   isDancing: boolean;
   danceEnergy: number;
@@ -101,9 +97,6 @@ interface AvatarState {
   clearMotionClip: () => void;
   registerMotionSelection: (motionId: MotionClipId, cooldownMs: number) => void;
   resetMotionState: () => void;
-  startMotionSequenceDemo: (total: number) => void;
-  setMotionSequenceIndex: (index: number) => void;
-  stopMotionSequenceDemo: () => void;
 
   // Dance actions
   startDancing: () => void;
@@ -179,9 +172,6 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
   motionQueue: [],
   recentMotionIds: [],
   motionCooldownMap: {},
-  isMotionSequenceActive: false,
-  motionSequenceIndex: -1,
-  motionSequenceTotal: 0,
 
   // Dance state
   isDancing: false,
@@ -213,9 +203,6 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
       currentMotionClip: null,
       motionProgress: 0,
       motionQueue: [],
-      isMotionSequenceActive: false,
-      motionSequenceIndex: -1,
-      motionSequenceTotal: 0,
     }),
   setIsLoaded: (isLoaded) => set({ isLoaded }),
   setIsLoading: (isLoading) => set({ isLoading }),
@@ -298,25 +285,6 @@ export const useAvatarStore = create<AvatarState>((set, get) => ({
       motionQueue: [],
       recentMotionIds: [],
       motionCooldownMap: {},
-    }),
-  startMotionSequenceDemo: (total) =>
-    set({
-      isMotionSequenceActive: true,
-      motionSequenceIndex: 0,
-      motionSequenceTotal: Math.max(0, Math.floor(total)),
-    }),
-  setMotionSequenceIndex: (index) =>
-    set((state) => ({
-      motionSequenceIndex: Math.max(-1, Math.min(index, Math.max(0, state.motionSequenceTotal - 1))),
-    })),
-  stopMotionSequenceDemo: () =>
-    set({
-      isMotionSequenceActive: false,
-      motionSequenceIndex: -1,
-      motionSequenceTotal: 0,
-      currentMotionClip: null,
-      motionProgress: 0,
-      motionQueue: [],
     }),
 
   // Dance actions

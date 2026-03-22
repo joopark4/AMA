@@ -46,7 +46,6 @@ export default function GestureController() {
   const {
     currentGesture,
     currentMotionClip,
-    isMotionSequenceActive,
     emotion,
     animationState,
     isMoving,
@@ -66,13 +65,6 @@ export default function GestureController() {
 
   // Stop emotion-loop gestures when emotion/state no longer matches.
   useEffect(() => {
-    if (isMotionSequenceActive) {
-      if (currentGesture) {
-        resetGestures();
-      }
-      return;
-    }
-
     if (isMoving) {
       if (currentGesture) {
         resetGestures();
@@ -106,7 +98,6 @@ export default function GestureController() {
     emotion,
     animationState,
     isMoving,
-    isMotionSequenceActive,
     clearGesture,
     resetGestures,
   ]);
@@ -114,7 +105,6 @@ export default function GestureController() {
   // Detect gestures from conversation
   useEffect(() => {
     if (!settings.avatar?.animation?.enableGestures) return;
-    if (isMotionSequenceActive) return;
     if (currentMotionClip) return;
     if (isMoving) return;
     if (!currentResponse || currentResponse === lastResponseRef.current) return;
@@ -132,14 +122,12 @@ export default function GestureController() {
     currentMotionClip,
     triggerGesture,
     isMoving,
-    isMotionSequenceActive,
     settings.avatar?.animation?.enableGestures,
   ]);
 
   // Detect gestures from emotion (like thinking pose)
   useEffect(() => {
     if (!settings.avatar?.animation?.enableGestures) return;
-    if (isMotionSequenceActive) return;
     if (currentMotionClip) return;
     if (isMoving) return;
 
@@ -154,7 +142,6 @@ export default function GestureController() {
     currentMotionClip,
     animationState,
     isMoving,
-    isMotionSequenceActive,
     triggerGesture,
     settings.avatar?.animation?.enableGestures,
   ]);
@@ -184,7 +171,6 @@ export default function GestureController() {
   // Animate gesture
   useFrame(() => {
     if (!vrm?.humanoid || !currentGesture) return;
-    if (isMotionSequenceActive) return;
     if (currentMotionClip) return;
     if (!settings.avatar?.animation?.enableGestures) return;
 
