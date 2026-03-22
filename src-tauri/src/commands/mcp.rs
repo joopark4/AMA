@@ -718,18 +718,4 @@ pub async fn check_bridge_channel() -> Result<bool, String> {
         Err(_) => Ok(false),
     }
 }
-
-fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(dst)?;
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        let dst_path = dst.join(entry.file_name());
-        if ty.is_dir() {
-            copy_dir_recursive(&entry.path(), &dst_path)?;
-        } else {
-            std::fs::copy(entry.path(), &dst_path)?;
-        }
-    }
-    Ok(())
 }
