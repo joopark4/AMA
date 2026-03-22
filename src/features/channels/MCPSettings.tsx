@@ -74,10 +74,8 @@ export default function MCPSettings() {
       window.dispatchEvent(new CustomEvent('ama-toast', {
         detail: { type: 'info', message: t('settings.mcp.registerSuccess') },
       }));
-    } catch (err) {
+    } catch {
       // 등록 실패해도 토글은 진행 (수동 등록 안내)
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn('[MCPSettings] Auto-register failed:', msg);
     }
   };
 
@@ -87,14 +85,11 @@ export default function MCPSettings() {
 
     // bridge 플러그인 추출 (번들 리소스 → ~/.mypartnerai/ama-bridge/)
     try {
-      const result = await invoke<string>('setup_bridge_plugin');
-      console.log('[MCPSettings] setup_bridge_plugin:', result);
+      await invoke<string>('setup_bridge_plugin');
       window.dispatchEvent(new CustomEvent('ama-toast', {
         detail: { type: 'info', message: t('settings.mcp.setupSuccess') },
       }));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[MCPSettings] setup_bridge_plugin failed:', msg);
+    } catch {
       window.dispatchEvent(new CustomEvent('ama-toast', {
         detail: { type: 'error', message: t('settings.mcp.setupFailManual') },
       }));
