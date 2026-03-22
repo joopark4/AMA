@@ -316,7 +316,7 @@ fn find_node_bin(name: &str) -> Result<String, String> {
     // 3. nvm — 현재 default alias 또는 최신 설치 버전
     let nvm_dir = home.join(".nvm/versions/node");
     if nvm_dir.exists() {
-        if let Ok(mut entries) = std::fs::read_dir(&nvm_dir) {
+        if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
             let mut versions: Vec<std::path::PathBuf> = entries
                 .filter_map(|e| e.ok())
                 .map(|e| e.path())
@@ -377,8 +377,6 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
     let resource_dir = app.path().resource_dir()
         .map_err(|e| format!("Failed to get resource dir: {}", e))?;
     let bridge_resource = resource_dir.join("ama-bridge");
-    eprintln!("[MCP] Resource dir: {}", resource_dir.display());
-    eprintln!("[MCP] Bridge resource: {} (exists: {})", bridge_resource.display(), bridge_resource.exists());
 
     let files: &[&str] = &[
         "server.ts",
@@ -420,8 +418,6 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
     let nm_dst = target_dir.join("node_modules");
     if !nm_dst.exists() {
         let target_dir_str = target_dir.to_string_lossy().to_string();
-        eprintln!("[MCP] Running npm install via login shell in {}", target_dir_str);
-
         let output = tokio::task::spawn_blocking(move || {
             std::process::Command::new("/bin/sh")
                 .args(["-l", "-c", &format!("cd '{}' && npm install", target_dir_str)])
@@ -433,12 +429,8 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            eprintln!("[MCP] npm install stderr: {}", stderr);
-            eprintln!("[MCP] npm install stdout: {}", stdout);
             return Err(format!("npm install failed: {}", stderr));
         }
-        eprintln!("[MCP] npm install completed successfully");
     }
 
     Ok(format!(
