@@ -296,7 +296,7 @@
       "step3Title": "Step 3: AMAで有効化",
       "copy": "コピー",
       "copied": "コピー済み",
-      "step2Caution": "--permission-mode acceptEdits: ファイル編集時の権限確認をスキップします。信頼できるプロジェクトでのみ使用してください。"
+      "step2Caution": "--permission-mode bypassPermissions: ツール実行権限を自動的に承認します。信頼できるローカル環境でのみ使用してください。"
     }
   },
   "status": {
