@@ -33,16 +33,90 @@ Korean version: [README.md](README.md)
 | MacBook Pro | Apple M1 Max | 32 GB |
 | Mac mini | Apple M4 | 24 GB |
 
-## Requirements
+---
+
+## Option 1: DMG Install (Regular Users)
+
+### Installation
+
+1. Download the latest `AMA_x.x.x_aarch64.dmg` from [Releases](https://github.com/joopark4/AMA/releases)
+2. Open the DMG and drag `AMA.app` to the `Applications` folder
+3. Launch AMA from Launchpad or Applications
+
+### First Run
+
+1. On first launch, the app prompts to download required models (TTS/STT)
+2. After model download, enter your avatar name
+3. Select a `.vrm` avatar file (can be changed later in Settings > Avatar)
+4. Configure AI model in the bottom-right Settings button, then start chatting
+
+### AI Setup
+
+Configure `LLM Provider`, `Model`, `Endpoint`, and `API Key` in the in-app settings.
+
+#### Ollama (local, recommended default)
+
+```bash
+# install on macOS
+brew install ollama
+
+# start server
+ollama serve
+
+# pull a model (example)
+ollama pull deepseek-v3
+```
+
+In app settings:
+
+- `LLM Provider`: `ollama`
+- `Endpoint`: `http://localhost:11434`
+- `Model`: `deepseek-v3` (or your pulled model)
+
+#### Gemini (cloud)
+
+1. Issue an API key from Google AI Studio
+2. Enter it directly in the app settings API Key field
+
+In app settings:
+
+- `LLM Provider`: `gemini`
+- `Model`: e.g. `gemini-2.0-flash`
+
+#### OpenAI / Claude (cloud)
+
+- Select Provider in app settings, then enter your API key
+- Select provider/model in app settings
+
+#### LocalAI (local server)
+
+- Run LocalAI with an OpenAI-compatible endpoint
+- In app settings:
+  - `LLM Provider`: `localai`
+  - `Endpoint`: e.g. `http://localhost:8080`
+  - `Model`: loaded LocalAI model id
+
+> If replies fail, verify provider/model/endpoint/API key first.
+
+### Auto Update
+
+Check for updates in the settings panel or from the macOS menu bar "Check for Updates...".
+When a new version is available, it downloads automatically and restarts.
+
+---
+
+## Option 2: Build from Source (Developers)
+
+### Requirements
 
 - Node.js 20+
 - Rust 1.75+ ([rustup](https://rustup.rs/))
 
-## Download Models (Required)
+### Download Models (Required)
 
 Model files are too large to include in the repository. Place them manually before running the app.
 
-### TTS Model (Supertonic)
+#### TTS Model (Supertonic)
 
 Git LFS is required:
 
@@ -59,7 +133,7 @@ git clone https://huggingface.co/Supertone/supertonic models/supertonic
 
 > ~250 MB total. After cloning, `models/supertonic/onnx/` and `models/supertonic/voice_styles/` must exist.
 
-### STT Model (Whisper)
+#### STT Model (Whisper)
 
 Only one model is needed. Start with `base`:
 
@@ -79,7 +153,7 @@ curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bi
   -o models/whisper/ggml-medium.bin
 ```
 
-### Expected Directory Structure
+#### Expected Directory Structure
 
 ```
 models/
@@ -90,9 +164,28 @@ models/
     └── ggml-base.bin      ← (or small / medium)
 ```
 
----
+### AI Setup
 
-## Development Run
+Configure `LLM Provider`, `Model`, `Endpoint`, and `API Key` in the in-app settings.
+Setup is the same as [Option 1 AI Setup](#ai-setup).
+
+For development, you can also use a `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+```env
+# Cloud LLM API keys (if used)
+VITE_ANTHROPIC_API_KEY=
+VITE_OPENAI_API_KEY=
+VITE_GOOGLE_API_KEY=
+
+# Local LLM endpoint (default)
+VITE_OLLAMA_ENDPOINT=http://localhost:11434
+```
+
+### Development Run
 
 ```bash
 # 1) Clone
@@ -106,30 +199,18 @@ npm install
 npm run tauri dev
 ```
 
-## Build
+### Build
 
 ```bash
 # Standard production build
 npm run tauri build
 ```
 
-## Auto Update
+---
 
-The built app supports automatic updates via GitHub Releases.
-You can check for updates in the settings panel or from the macOS menu bar "Check for Updates...".
+## Common Guide
 
-## First-Run Guide
-
-1. Launch the app
-2. On first run, choose a `.vrm` file in the center prompt (no default VRM is bundled)
-3. Open Settings (bottom-right) and configure:
-   - LLM provider/model
-   - Whisper model (`base/small/medium`)
-   - Supertonic voice
-   - Global voice shortcut on/off and key binding
-4. Start chatting via microphone or text input
-
-## Global Voice Shortcut
+### Global Voice Shortcut
 
 - Default: `Cmd+Shift+Space`
 - Behavior: press once to start voice input, press again to stop
@@ -139,92 +220,17 @@ You can check for updates in the settings panel or from the macOS menu bar "Chec
   - Use the in-app warning toast action to open Accessibility settings
   - Switch to a different combo if another app/system shortcut conflicts
 
-## Models / Runtime
-
-- Whisper models: `base`, `small`, `medium`
-- Supertonic models: `onnx`, `voice_styles`
-- VRM is not bundled by default; user selects a local file on first run.
-
-## Optional Environment Variables
-
-Copy `.env.example` to `.env` and set values as needed:
-
-```env
-# Cloud LLM API keys (if used)
-VITE_ANTHROPIC_API_KEY=
-VITE_OPENAI_API_KEY=
-VITE_GOOGLE_API_KEY=
-
-# Local LLM endpoint (default)
-VITE_OLLAMA_ENDPOINT=http://localhost:11434
-```
-
-## AI Setup (Ollama / Gemini / etc.)
-
-Configure `LLM Provider`, `Model`, `Endpoint`, and `API Key` in the in-app settings.
-
-### 1) Ollama (local, recommended default)
-
-```bash
-# install on macOS
-brew install ollama
-
-# start server
-ollama serve
-
-# pull a model (example)
-ollama pull deepseek-v3
-```
-
-In app settings:
-
-- `LLM Provider`: `ollama`
-- `Endpoint`: `http://localhost:11434`
-- `Model`: `deepseek-v3` (or your pulled model)
-
-### 2) Gemini (cloud)
-
-1. Issue an API key from Google AI Studio
-2. Set either:
-
-```env
-VITE_GOOGLE_API_KEY=your_key
-```
-
-or enter it directly in the app settings API Key field.
-
-In app settings:
-
-- `LLM Provider`: `gemini`
-- `Model`: e.g. `gemini-2.0-flash`
-
-### 3) OpenAI / Claude (cloud)
-
-- OpenAI: `VITE_OPENAI_API_KEY` or app settings API key field
-- Claude: `VITE_ANTHROPIC_API_KEY` or app settings API key field
-- Select provider/model in app settings
-
-### 4) LocalAI (local server)
-
-- Run LocalAI with an OpenAI-compatible endpoint
-- In app settings:
-  - `LLM Provider`: `localai`
-  - `Endpoint`: e.g. `http://localhost:8080`
-  - `Model`: loaded LocalAI model id
-
-If replies fail, verify provider/model/endpoint/API key first.
-
-## How to Use Claude Code Channels
+### How to Use Claude Code Channels
 
 Connect your AMA avatar to Claude Code for two-way conversations.
 
-### Prerequisites
+#### Prerequisites
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
 - [Node.js](https://nodejs.org/) 18+ installed
 - Logged in to claude.ai (`claude login`)
 
-### Setup Steps
+#### Setup Steps
 
 1. Launch AMA app
 2. `Settings > Claude Code Channels > Toggle ON`
@@ -240,53 +246,13 @@ Connect your AMA avatar to Claude Code for two-way conversations.
 
 Toggling OFF automatically restores your previous AI model settings.
 
-### Important Notes
+#### Important Notes
 
 - Channels is a **research preview** feature. The `--dangerously-load-development-channels` flag is required, and a security confirmation prompt appears once per session.
 - `--permission-mode bypassPermissions` auto-accepts tool execution permissions. **Use only in trusted local environments.**
 - AMA and Claude Code must run on the **same machine** (localhost).
 
 ---
-
-## AI/Model Licenses and Links
-
-### 1) AI Services / Runtime
-
-| Item | Usage | License/Terms | Link |
-|------|------|---------------|------|
-| Ollama | Local LLM server | MIT License | [github.com/ollama/ollama](https://github.com/ollama/ollama) |
-| LocalAI | Local OpenAI-compatible server | MIT License | [github.com/mudler/LocalAI](https://github.com/mudler/LocalAI) |
-| Claude API | Cloud LLM | Anthropic Terms | [anthropic.com/claude](https://www.anthropic.com/claude) |
-| OpenAI API | Cloud LLM | OpenAI Terms | [platform.openai.com](https://platform.openai.com/) |
-| Gemini API | Cloud LLM | Google Terms | [ai.google.dev](https://ai.google.dev/) |
-| ONNX Runtime Web | Supertonic inference runtime | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
-
-### 2) Voice Models / Engines
-
-| Item | Usage | License | Link |
-|------|------|----------|------|
-| whisper.cpp | STT engine (`whisper-cli`) | MIT License | [github.com/ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) |
-| Whisper (OpenAI) | Base STT model family | MIT License (OpenAI Whisper repo) | [github.com/openai/whisper](https://github.com/openai/whisper) |
-| GGML Whisper models (`ggml-base/small/medium`) | Local STT models | Follow upstream/distributor license | [huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) |
-| Supertonic code | TTS engine implementation | MIT License | [github.com/supertone-inc/supertonic](https://github.com/supertone-inc/supertonic) |
-| Supertonic models | Local TTS models | BigScience Open RAIL-M (`models/supertonic/LICENSE`) | [huggingface.co/Supertone/supertonic](https://huggingface.co/Supertone/supertonic) |
-
-Notes:
-
-- Cloud AI services (Claude/OpenAI/Gemini) are governed by service terms, not open-source licenses.
-- Always verify the latest LICENSE/terms before redistributing models/runtime assets.
-
-## Uninstalling
-
-To completely remove AMA from macOS:
-
-1. Delete `AMA.app` from the `Applications` folder
-2. Remove downloaded model data:
-   ```bash
-   rm -rf ~/.mypartnerai
-   ```
-
-> You can also delete model data from `Settings > Data Management` within the app.
 
 ## Troubleshooting
 
@@ -307,6 +273,8 @@ To completely remove AMA from macOS:
 - Confirm `.vrm` file validity
 - Re-select VRM in avatar settings
 
+---
+
 ## How to Get or Buy VRM Files
 
 ### Recommended Sources
@@ -317,33 +285,6 @@ To completely remove AMA from macOS:
 | [BOOTH (VRM search)](https://booth.pm/en/search/VRM) | Free + paid | Largest marketplace for creator-made VRM assets |
 | [VRoid Studio](https://vroid.com/en/studio/) | Create your own (free) | Build your own avatar and export as `.vrm` |
 
-### 1) Get Free VRM Files (VRoid Hub)
-
-1. Sign in to VRoid Hub
-2. Open a model page and check whether download/use is allowed
-3. Review usage terms (personal/commercial/edit/redistribution/credit)
-4. Download the `.vrm` file and select it in the app
-
-Notes:
-- Not every model is downloadable.
-- Usage permissions vary by creator/model.
-
-### 2) Buy VRM Files (BOOTH)
-
-1. Browse [BOOTH VRM search](https://booth.pm/en/search/VRM)
-2. Check price, previews, and update history
-3. Read license/usage terms carefully
-   (commercial use, credit requirement, redistribution prohibition, etc.)
-4. Purchase and download (`.zip` / `.vrm`)
-5. Extract if needed, then select the `.vrm` file in the app
-
-### 3) Create Your Own (VRoid Studio)
-
-1. Install [VRoid Studio](https://vroid.com/en/studio/)
-2. Create or edit your character
-3. Export via `Export VRM`
-4. Select the exported `.vrm` in the app
-
 ### VRM License Checklist
 
 - Commercial use allowed?
@@ -352,7 +293,47 @@ Notes:
 - Redistribution prohibited?
 - Credit attribution required?
 
-Note: This VRM get/buy guide is for reference only. Always verify the latest license and usage terms for each model before use.
+> This VRM guide is for reference only. Always verify the latest license and usage terms for each model before use.
+
+---
+
+## Uninstalling
+
+To completely remove AMA from macOS:
+
+1. Delete `AMA.app` from the `Applications` folder
+2. Remove downloaded model data:
+   ```bash
+   rm -rf ~/.mypartnerai
+   ```
+
+> You can also delete model data from `Settings > Data Management` within the app.
+
+---
+
+## AI/Model Licenses and Links
+
+### AI Services / Runtime
+
+| Item | Usage | License/Terms | Link |
+|------|------|---------------|------|
+| Ollama | Local LLM server | MIT License | [github.com/ollama/ollama](https://github.com/ollama/ollama) |
+| LocalAI | Local OpenAI-compatible server | MIT License | [github.com/mudler/LocalAI](https://github.com/mudler/LocalAI) |
+| Claude API | Cloud LLM | Anthropic Terms | [anthropic.com/claude](https://www.anthropic.com/claude) |
+| OpenAI API | Cloud LLM | OpenAI Terms | [platform.openai.com](https://platform.openai.com/) |
+| Gemini API | Cloud LLM | Google Terms | [ai.google.dev](https://ai.google.dev/) |
+| ONNX Runtime Web | Supertonic inference runtime | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
+
+### Voice Models / Engines
+
+| Item | Usage | License | Link |
+|------|------|----------|------|
+| whisper.cpp | STT engine | MIT License | [github.com/ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) |
+| Whisper (OpenAI) | Base STT model | MIT License | [github.com/openai/whisper](https://github.com/openai/whisper) |
+| Supertonic code | TTS engine | MIT License | [github.com/supertone-inc/supertonic](https://github.com/supertone-inc/supertonic) |
+| Supertonic models | Local TTS models | BigScience Open RAIL-M | [huggingface.co/Supertone/supertonic](https://huggingface.co/Supertone/supertonic) |
+
+> Cloud AI services (Claude/OpenAI/Gemini) are governed by service terms, not open-source licenses. Always verify the latest LICENSE before redistributing models/runtime assets.
 
 ## License
 
