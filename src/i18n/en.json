@@ -6,9 +6,6 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
-    "account": {
-      "title": "Account"
-    },
     "general": {
       "title": "General"
     },
@@ -117,14 +114,6 @@
       },
       "animation": {
         "title": "Animation",
-        "motionSequenceDemo": "Motion Sequence Demo",
-        "sequenceStop": "Stop",
-        "sequenceStart": "Run Sequence",
-        "sequenceDevOnly": "Dev build only: Announces each motion via speech bubble before sequential playback.",
-        "sequenceProgress": "Running: {{current}}/{{total}}",
-        "sequenceWaiting": "Waiting: {{count}} motions total",
-        "motionClipsWarning": "Cannot start demo while Motion Clips is disabled.",
-        "faceOnlyWarning": "Cannot run demo in Face/Expression Only mode.",
         "faceOnlyMode": "Face/Expression Only Mode",
         "faceOnlyDescription": "Disables full-body motions (clips/gestures/dance) and keeps only facial expressions, head direction, and gaze.",
         "enableMotionClips": "Enable Motion Clips",
@@ -157,74 +146,6 @@
       "defaultVrmLabel": "Using built-in default avatar",
       "useDefaultVrm": "Reset to default avatar",
       "info": "Supported format: VRM 0.x and 1.0 models. Recommended file size: under 30MB for smooth performance."
-    },
-    "premium": {
-      "title": "Premium Voice",
-      "locked": "Premium Feature",
-      "lockedDesc": "Unlock diverse cloud voices with a premium subscription.",
-      "loginRequired": "Sign in to use premium features.",
-      "badge": "Premium",
-      "active": "Premium Active",
-      "engineSelect": "TTS Engine",
-      "engineLocal": "Local (Supertonic)",
-      "engineCloud": "Supertone API (Cloud)",
-      "voiceSelect": "Select Voice",
-      "voiceRefresh": "Refresh",
-      "voiceSearch": "Search voices...",
-      "voiceGender": "Gender",
-      "voiceGenderAll": "All",
-      "voiceGenderFemale": "Female",
-      "voiceGenderFemaleShort": "F",
-      "voiceGenderMale": "Male",
-      "voiceGenderMaleShort": "M",
-      "voiceLanguage": "Voice Filter Language",
-      "voiceLanguageAll": "All",
-      "ttsLanguage": "Voice Output Language",
-      "ttsLanguageDesc": "The language for TTS voice output. Set independently from the app UI language.",
-      "ttsLanguageUnsupported": "Selected model doesn't support this language. Falling back to English.",
-      "modelSelect": "Model",
-      "models": {
-        "sona_speech_1": "Sona Speech 1 (Standard)",
-        "sona_speech_2": "Sona Speech 2 (Best Quality)",
-        "sona_speech_2_flash": "Sona Speech 2 Flash (Fast)"
-      },
-      "styleSelect": "Style",
-      "styleAuto": "Auto (emotion-based)",
-      "autoEmotion": "Auto-switch style based on conversation emotion",
-      "autoEmotionDesc": "Analyzes AI response emotion and adjusts voice style automatically. Unsupported styles fall back to default tone.",
-      "voiceSettings": "Voice Fine-tuning",
-      "pitchShift": "Pitch: {{value}}",
-      "pitchVariance": "Intonation: {{value}}",
-      "speed": "Speed: {{value}}x",
-      "preview": "Preview",
-      "previewPlaying": "Playing...",
-      "noVoicesFound": "No voices found",
-      "loadingVoices": "Loading voices...",
-      "voiceInfo": "{{name}} · {{gender}} · {{languages}}",
-      "usage": {
-        "title": "My Usage",
-        "refresh": "Refresh",
-        "thisMonth": "This Month",
-        "seconds": "{{value}} sec",
-        "characters": "{{value}} chars",
-        "requests": "{{value}} requests",
-        "summary": "{{seconds}} sec · {{characters}} chars · {{requests}} requests",
-        "credits": "Est. Credits: {{value}}",
-        "recent7days": "Last 7 Days",
-        "noUsage": "No usage history",
-        "loading": "Loading usage..."
-      },
-      "quota": {
-        "title": "Monthly Quota",
-        "used": "{{used}} / {{limit}} credits",
-        "percent": "{{value}}% used",
-        "remaining": "Remaining: {{value}} credits (~{{minutes}}m {{seconds}}s)",
-        "warning": "Quota almost exhausted",
-        "exceeded": "Monthly Quota Exceeded",
-        "exceededDesc": "Automatically switched to local voice (Supertonic)",
-        "resetInfo": "Resets on the 1st of next month",
-        "fallbackToast": "Monthly quota exceeded. Switching to local voice."
-      }
     },
     "save": "Save",
     "cancel": "Cancel",
@@ -395,132 +316,11 @@
   "errors": {
     "llmConnection": "Cannot connect to AI server",
     "microphoneAccess": "Microphone access required",
-    "vrmLoad": "Cannot load VRM model",
-    "premiumRequired": "Premium subscription required",
-    "supertoneApiFail": "Voice synthesis failed: {{error}}",
-    "supertoneVoiceLoadFail": "Failed to load voice list: {{error}}",
-    "supertoneUsageLoadFail": "Failed to load usage data: {{error}}",
-    "quotaExceeded": "Monthly quota exceeded. Switching to local voice."
-  },
-  "auth": {
-    "title": "Welcome to AMA",
-    "subtitle": "Sign in to continue",
-    "loginWith": "Continue with {{provider}}",
-    "mockModeNotice": "Test mode — OAuth keys not set, click to proceed with mock login",
-    "loading": "Authenticating...",
-    "cancelLogin": "Cancel Login",
-    "success": "Signed in successfully",
-    "logout": "Sign Out",
-    "logoutConfirm": "Are you sure you want to sign out?",
-    "termsNotice": "By signing in, you agree to our Terms of Service and Privacy Policy.",
-    "termsLink": "Terms of Service",
-    "privacyLink": "Privacy Policy",
-    "providers": {
-      "google": "Google",
-      "apple": "Apple",
-      "meta": "Meta (Facebook)",
-      "x": "X (Twitter)"
-    },
-    "profile": {
-      "title": "Account",
-      "email": "Email",
-      "nickname": "Nickname",
-      "provider": "Sign-in method",
-      "joinedAt": "Joined"
-    },
-    "deleteAccount": "Delete Account",
-    "deleteAccountWarning": "Deleting your account will permanently remove all cloud data.",
-    "deleteAccountConfirm": "Are you sure you want to delete your account?",
-    "deleteAccountFinal": "Delete Permanently",
-    "deleteAccountCancel": "Cancel",
-    "termsAgreement": "Terms Agreement",
-    "agreeToTerms": "I agree to the Terms of Service",
-    "agreeToPrivacy": "I agree to the Privacy Policy",
-    "viewTerms": "View",
-    "termsModalTitle": "Terms of Service",
-    "privacyModalTitle": "Privacy Policy",
-    "termsVersion": "Version {{version}}",
-    "errors": {
-      "cancelled": "Sign-in was cancelled",
-      "failed": "Sign-in failed",
-      "networkError": "A network error occurred",
-      "tokenExpired": "Session expired. Please sign in again",
-      "stateMismatch": "Security verification failed. Please try again",
-      "providerError": "Error with {{provider}} authentication: {{error}}",
-      "timeout": "Sign-in timed out. Please try again",
-      "deleteAccountFailed": "Failed to delete account. Please try again."
-    },
-    "callback": {
-      "processing": "Processing sign-in...",
-      "redirecting": "Redirecting automatically..."
-    }
+    "vrmLoad": "Cannot load VRM model"
   },
   "mcp": {
     "receivedMessage": "External channel message received",
     "speakError": "MCP voice output failed: {{error}}",
     "queueFull": "Voice queue is full. Some messages were skipped."
-  },
-  "terms": {
-    "version": "2026.02",
-    "service": {
-      "title": "Terms of Service",
-      "lastUpdated": "Last updated: February 2026",
-      "sections": [
-        {
-          "heading": "1. Purpose",
-          "body": "These terms define the conditions and procedures for using AMA (the 'Service')."
-        },
-        {
-          "heading": "2. Service Description",
-          "body": "AMA is an AI avatar desktop app that runs locally. Conversation history is stored only on your device and is never sent to our servers."
-        },
-        {
-          "heading": "3. Data Collection",
-          "body": "Upon signing in via OAuth, we collect your email address, display name, and profile picture URL. API keys and conversation content are never collected."
-        },
-        {
-          "heading": "4. Prohibited Use",
-          "body": "You may not use the Service for illegal purposes, impersonate others, or interfere with service operations."
-        },
-        {
-          "heading": "5. Disclaimer",
-          "body": "We do not guarantee the accuracy of AI responses. We are not liable for any damages arising from your use of the Service."
-        },
-        {
-          "heading": "6. Account Deletion",
-          "body": "You may delete your account at any time from the app settings. All server-side data is permanently deleted immediately upon account deletion."
-        }
-      ]
-    },
-    "privacy": {
-      "title": "Privacy Policy",
-      "lastUpdated": "Last updated: February 2026",
-      "sections": [
-        {
-          "heading": "Data Collected",
-          "body": "Email address, display name, OAuth provider (Google, Apple, Meta, X), profile picture URL, and terms agreement timestamp."
-        },
-        {
-          "heading": "Data NOT Collected",
-          "body": "Conversation history (stored locally on device), LLM API keys (stored locally on device), and voice data."
-        },
-        {
-          "heading": "Storage Location",
-          "body": "Supabase (servers located in the United States, supabase.com). See Supabase's Privacy Policy for details."
-        },
-        {
-          "heading": "Retention Period",
-          "body": "All data is permanently deleted immediately upon account deletion."
-        },
-        {
-          "heading": "Third-Party Sharing",
-          "body": "We do not share your personal information with third parties."
-        },
-        {
-          "heading": "Contact",
-          "body": "For privacy-related inquiries, please open an issue on GitHub."
-        }
-      ]
-    }
   }
 }

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { pickVrmFile } from '../../services/tauri/fileDialog';
-import { getMotionManifest } from '../../services/avatar/motionLibrary';
 import { isDefaultVrmAvailable } from '../../services/tauri/defaultVrm';
 
 export default function AvatarSettings() {
@@ -20,17 +19,9 @@ export default function AvatarSettings() {
     emotion,
     manualRotation,
     setManualRotation,
-    isLoaded,
-    isMotionSequenceActive,
-    motionSequenceIndex,
-    motionSequenceTotal,
-    startMotionSequenceDemo,
-    stopMotionSequenceDemo,
   } = useAvatarStore();
   const savedInitialView = settings.avatar?.initialViewRotation || { x: 0, y: 0 };
   const avatarPersonalityPrompt = settings.avatarPersonalityPrompt ?? '';
-  const isDevBuild = import.meta.env.DEV;
-  const totalMotionCount = getMotionManifest().length;
   const faceOnlyModeEnabled = settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
   const [hasDefaultVrm, setHasDefaultVrm] = useState(false);
   const isUsingDefaultVrm = !settings.vrmModelPath?.trim() && hasDefaultVrm;
@@ -40,17 +31,6 @@ export default function AvatarSettings() {
   }, []);
 
   const formatDegrees = (radian: number) => `${(radian * 180 / Math.PI).toFixed(1)}°`;
-
-  const handleMotionSequenceToggle = () => {
-    if (faceOnlyModeEnabled) return;
-
-    if (isMotionSequenceActive) {
-      stopMotionSequenceDemo();
-      return;
-    }
-
-    startMotionSequenceDemo(totalMotionCount);
-  };
 
   const handleSelectVRM = async () => {
     try {
@@ -289,56 +269,6 @@ export default function AvatarSettings() {
         <h4 className="text-sm font-medium text-gray-700">
           {t('settings.avatar.animation.title')}
         </h4>
-
-        {isDevBuild && (
-          <div className="space-y-2 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-blue-900">
-                {t('settings.avatar.animation.motionSequenceDemo')}
-              </label>
-              <button
-                type="button"
-                onClick={handleMotionSequenceToggle}
-                disabled={
-                  !isLoaded ||
-                  totalMotionCount === 0 ||
-                  faceOnlyModeEnabled ||
-                  !(settings.avatar?.animation?.enableMotionClips ?? true)
-                }
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  isMotionSequenceActive
-                    ? 'bg-red-500 text-white hover:bg-red-600'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                } disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed`}
-              >
-                {isMotionSequenceActive
-                  ? t('settings.avatar.animation.sequenceStop')
-                  : t('settings.avatar.animation.sequenceStart')}
-              </button>
-            </div>
-            <p className="text-xs text-blue-900/90">
-              {t('settings.avatar.animation.sequenceDevOnly')}
-            </p>
-            <p className="text-xs text-blue-900/80">
-              {isMotionSequenceActive
-                ? t('settings.avatar.animation.sequenceProgress', {
-                    current: Math.max(1, motionSequenceIndex + 1),
-                    total: Math.max(1, motionSequenceTotal),
-                  })
-                : t('settings.avatar.animation.sequenceWaiting', { count: totalMotionCount })}
-            </p>
-            {!(settings.avatar?.animation?.enableMotionClips ?? true) && (
-              <p className="text-xs text-amber-700">
-                {t('settings.avatar.animation.motionClipsWarning')}
-              </p>
-            )}
-            {faceOnlyModeEnabled && (
-              <p className="text-xs text-amber-700">
-                {t('settings.avatar.animation.faceOnlyWarning')}
-              </p>
-            )}
-          </div>
-        )}
 
         <div className="flex items-center justify-between">
           <label className="text-sm text-gray-600">

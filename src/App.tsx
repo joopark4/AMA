@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
-import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
@@ -15,7 +13,6 @@ import UpdateNotification from './components/ui/UpdateNotification';
 import AboutModal from './components/ui/AboutModal';
 import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
-import { useAuthStore } from './stores/authStore';
 import { useModelDownloadStore } from './stores/modelDownloadStore';
 import { useClickThrough } from './hooks/useClickThrough';
 import { useMenuListeners } from './hooks/useMenuListeners';
@@ -24,20 +21,11 @@ import { useAboutStore } from './stores/aboutStore';
 import { useMcpSpeakListener } from './features/channels';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
-import { authService } from './services/auth/authService';
 
 function App() {
   const { i18n, t } = useTranslation();
   const { settings, isSettingsOpen, isHistoryOpen, setLLMSettings, setAvatarName } = useSettingsStore();
   const { currentResponse, isProcessing } = useConversationStore();
-  const {
-    pendingProvider,
-    setUser,
-    setTokens,
-    setLoading,
-    setError,
-    setPendingProvider,
-  } = useAuthStore();
   const [initialAvatarName, setInitialAvatarName] = useState('');
   const { isOpen: isAboutOpen, close: closeAbout } = useAboutStore();
   const { status: modelStatus, isChecking: isCheckingModels, checkModelStatus } = useModelDownloadStore();
@@ -60,59 +48,6 @@ function App() {
       setInitialAvatarName(settings.avatarName);
     }
   }, [settings.avatarName, initialAvatarName]);
-
-  // Deep-link OAuth 콜백 처리 (인증 기능 미완성 — 개발 환경에서만 활성화)
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-
-    let unlisten: (() => void) | undefined;
-
-    onOpenUrl(async (urls) => {
-      const callbackUrl = urls.find((u) => u.includes('auth/callback'));
-      if (!callbackUrl) return;
-
-      try {
-        const params: { code?: string; state?: string; error?: string } =
-          await invoke('parse_auth_callback', { url: callbackUrl });
-
-        if (params.error) {
-          setError(t('auth.errors.cancelled'));
-          setLoading(false);
-          return;
-        }
-
-        if (!params.code) {
-          setError(t('auth.errors.failed'));
-          setLoading(false);
-          return;
-        }
-
-        if (!pendingProvider) {
-          setLoading(false);
-          return;
-        }
-
-        const result = await authService.handleCallback(params.code, params.state ?? '', '');
-
-        setUser(result.user);
-        setTokens(result.tokens);
-
-        // OAuth 닉네임을 아바타 이름 초기값으로 연동
-        if (result.user.nickname && !(settings.avatarName || '').trim()) {
-          setAvatarName(result.user.nickname);
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        setError(t('auth.errors.networkError') + ': ' + message);
-      } finally {
-        setLoading(false);
-        setPendingProvider(null);
-      }
-    }).then((fn) => { unlisten = fn; });
-
-    return () => { unlisten?.(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingProvider]);
 
   // Check model download status on startup (production only)
   useEffect(() => {

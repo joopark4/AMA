@@ -1,11 +1,11 @@
-# MyPartnerAI
+# AMA
 
 An AI avatar desktop app that moves freely on your screen and interacts with you through text and voice.
 
 Korean version: [README.md](README.md)
 
 ![Platform](https://img.shields.io/badge/platform-macOS-blue)
-![License](https://img.shields.io/badge/license-BSD--2--Clause-green)
+![License](https://img.shields.io/badge/license-MIT-green)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-orange)
 ![React](https://img.shields.io/badge/React-18-blue)
 
@@ -96,8 +96,8 @@ models/
 
 ```bash
 # 1) Clone
-git clone https://github.com/joopark4/MyPartnerAI.git
-cd MyPartnerAI
+git clone https://github.com/joopark4/AMA.git
+cd AMA
 
 # 2) Install dependencies
 npm install
@@ -113,10 +113,15 @@ npm run tauri dev
 npm run tauri build
 ```
 
+## Auto Update
+
+The built app supports automatic updates via GitHub Releases.
+You can check for updates in the settings panel or from the macOS menu bar "Check for Updates...".
+
 ## First-Run Guide
 
 1. Launch the app
-2. If no VRM is selected, choose a `.vrm` file in the center prompt
+2. On first run, choose a `.vrm` file in the center prompt (no default VRM is bundled)
 3. Open Settings (bottom-right) and configure:
    - LLM provider/model
    - Whisper model (`base/small/medium`)
@@ -234,8 +239,6 @@ Toggling OFF automatically restores your previous AI model settings.
 - `--permission-mode bypassPermissions` auto-accepts tool execution permissions. **Use only in trusted local environments.**
 - AMA and Claude Code must run on the **same machine** (localhost).
 
-See [Claude Code Channels Guide](docs/channels-mcp.md) for details.
-
 ---
 
 ## AI/Model Licenses and Links
@@ -322,7 +325,7 @@ Notes:
 
 1. Browse [BOOTH VRM search](https://booth.pm/en/search/VRM)
 2. Check price, previews, and update history
-3. Read license/usage terms carefully  
+3. Read license/usage terms carefully
    (commercial use, credit requirement, redistribution prohibition, etc.)
 4. Purchase and download (`.zip` / `.vrm`)
 5. Extract if needed, then select the `.vrm` file in the app
@@ -346,4 +349,4 @@ Note: This VRM get/buy guide is for reference only. Always verify the latest lic
 
 ## License
 
-BSD 2-Clause
+MIT
