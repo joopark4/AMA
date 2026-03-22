@@ -37,7 +37,8 @@
     "createUpdaterArtifacts": true,
     "resources": {
       "resources/bin/": "bin/",
-      "resources/lib/": "lib/"
+      "resources/lib/": "lib/",
+      "resources/ama-bridge/": "ama-bridge/"
     },
     "icon": [
       "icons/32x32.png",
@@ -75,7 +76,7 @@
       "endpoints": [
         "https://github.com/joopark4/AMA/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE4MzY5NThGOTZBOTNDODEKUldTQlBLbVdqNVUyR0w0eTdEcXMvTktNMW84cGdoK202ZTJSeXpsU2FkZkhUbjZoU1hIM1hkdHQK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM2Q0I4QkIxQ0VENzAwQTkKUldTcEFOZk9zWXZMTnFNOWxXUUtuNThqTVRoSDRrcGhQS250QWdUaUcvR1pZZ05paU5oOGJuM0UK",
       "dialog": false
     }
   }

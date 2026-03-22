@@ -219,17 +219,24 @@ If replies fail, verify provider/model/endpoint/API key first.
 Connect the AMA avatar to an external Claude Code session running in a separate terminal.
 User text/voice input is sent to Claude Code, and responses are spoken aloud by the avatar via TTS.
 
-### Usage
+### Prerequisites
 
-1. Install channel dependencies (one-time): `cd mcp-channels && npm install && cd ..`
-2. Run AMA: `npm run tauri dev`
-3. `Settings > Claude Code Channels > Toggle ON` (auto-registers with Claude Code + switches AI model)
-4. In a separate terminal, start Claude Code:
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
+- [Node.js](https://nodejs.org/) 18+ installed
+- Logged in to claude.ai (`claude login`)
+
+### Setup Steps
+
+1. Launch AMA app
+2. `Settings > Claude Code Channels > Toggle ON`
+   - Automatically installs bridge plugin (`~/.mypartnerai/ama-bridge/`)
+   - Automatically registers MCP server with Claude Code (`~/.claude.json`)
+3. In a separate terminal, run:
    ```bash
    claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
    ```
-5. Select `Yes` at the initial confirmation prompt (once per session)
-6. Chat via AMA → Claude Code responds → avatar speaks via TTS
+4. Select `Yes` at the initial confirmation prompt (once per session)
+5. Chat via AMA → Claude Code responds → avatar speaks via TTS
 
 Toggling OFF automatically restores your previous AI model settings.
 
@@ -238,6 +245,7 @@ Toggling OFF automatically restores your previous AI model settings.
 - Channels is a **research preview** feature. The `--dangerously-load-development-channels` flag is required, and a security confirmation prompt appears once per session.
 - `--permission-mode bypassPermissions` auto-accepts tool execution permissions. **Use only in trusted local environments.**
 - AMA and Claude Code must run on the **same machine** (localhost).
+- `server:ama-bridge` references the name registered in `~/.claude.json` under `mcpServers`. It is auto-registered when the toggle is turned ON.
 
 ---
 
