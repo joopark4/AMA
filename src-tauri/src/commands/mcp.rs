@@ -272,6 +272,72 @@ pub fn start_mcp_listener(app_handle: AppHandle) {
     });
 }
 
+// ─── Node.js 경로 탐색 ───
+
+/// macOS 앱 번들에서는 셸 PATH가 제한되므로 npm/npx를 직접 탐색한다.
+/// Homebrew(ARM/Intel), nvm, fnm, volta, 시스템 경로를 모두 확인.
+fn find_node_bin(name: &str) -> Result<String, String> {
+    // 1. PATH에서 직접 찾기 (개발 환경, 터미널에서 실행 시)
+    if let Ok(output) = std::process::Command::new(name).arg("--version").output() {
+        if output.status.success() {
+            return Ok(name.to_string());
+        }
+    }
+
+    // 2. 잘 알려진 경로 후보
+    let home = dirs::home_dir().unwrap_or_default();
+    let mut candidates: Vec<std::path::PathBuf> = vec![
+        // Homebrew (Apple Silicon)
+        std::path::PathBuf::from(format!("/opt/homebrew/bin/{}", name)),
+        // Homebrew (Intel)
+        std::path::PathBuf::from(format!("/usr/local/bin/{}", name)),
+        // 시스템
+        std::path::PathBuf::from(format!("/usr/bin/{}", name)),
+        // volta
+        home.join(format!(".volta/bin/{}", name)),
+    ];
+
+    // 3. nvm — 현재 default alias 또는 최신 설치 버전
+    let nvm_dir = home.join(".nvm/versions/node");
+    if nvm_dir.exists() {
+        if let Ok(mut entries) = std::fs::read_dir(&nvm_dir) {
+            let mut versions: Vec<std::path::PathBuf> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| p.is_dir())
+                .collect();
+            // 최신 버전 우선 (역순 정렬)
+            versions.sort();
+            versions.reverse();
+            for v in versions {
+                candidates.push(v.join(format!("bin/{}", name)));
+            }
+        }
+    }
+
+    // 4. fnm
+    let fnm_dir = home.join(".fnm/aliases/default");
+    if fnm_dir.exists() {
+        candidates.push(fnm_dir.join(format!("bin/{}", name)));
+    }
+
+    for candidate in &candidates {
+        if candidate.exists() {
+            if let Ok(output) = std::process::Command::new(candidate).arg("--version").output() {
+                if output.status.success() {
+                    return Ok(candidate.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    Err(format!(
+        "{} not found. Please install Node.js (https://nodejs.org). Checked: PATH, {}",
+        name,
+        candidates.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<_>>().join(", ")
+    ))
+}
+
 // ─── Claude Code 글로벌 채널 등록/해제 ───
 
 /// 앱 번들 리소스에서 ama-bridge 플러그인 파일을 ~/.mypartnerai/ama-bridge/에 추출하고
@@ -349,8 +415,11 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
         let target_dir_str = target_dir.to_string_lossy().to_string();
         eprintln!("[MCP] Running npm install in {}", target_dir_str);
 
+        let npm_cmd = find_node_bin("npm")?;
+        eprintln!("[MCP] Using npm at: {}", npm_cmd);
+
         let output = tokio::task::spawn_blocking(move || {
-            std::process::Command::new("npm")
+            std::process::Command::new(&npm_cmd)
                 .args(["install", "--prefix", &target_dir_str])
                 .output()
         })
@@ -481,9 +550,12 @@ pub fn register_channel_global(project_dir: Option<String>) -> Result<String, St
         settings["mcpServers"] = serde_json::json!({});
     }
 
+    // npx 전체 경로를 사용 (macOS 앱 번들에서 PATH가 제한될 수 있음)
+    let npx_cmd = find_node_bin("npx").unwrap_or_else(|_| "npx".to_string());
+
     settings["mcpServers"]["ama-bridge"] = serde_json::json!({
         "type": "stdio",
-        "command": "npx",
+        "command": npx_cmd,
         "args": ["--prefix", install_dir_str, "tsx", bridge_path],
         "env": {
             "BRIDGE_PORT": "8790"
