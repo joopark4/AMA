@@ -63,7 +63,7 @@ export class ClaudeCodeClient implements LLMClient {
         body: payload,
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Claude Code 응답 시간 초과. 채널 연결 상태를 확인해주세요.')), BRIDGE_RESPONSE_TIMEOUT_MS)
+        setTimeout(() => reject(new Error('Claude Code 응답 시간 초과 (24시간). 채널 연결 상태를 확인해주세요.')), BRIDGE_RESPONSE_TIMEOUT_MS)
       ),
     ]);
 

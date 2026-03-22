@@ -47,16 +47,8 @@ export default function MCPSettings() {
   const checkBridgeStatus = async () => {
     setChecking(true);
     try {
-      // 1. 서버 실행 확인
       const serverOk = await invoke<boolean>('check_bridge_health');
-      if (!serverOk) {
-        setBridgeStatus('offline');
-        setChecking(false);
-        return;
-      }
-      // 2. 채널 연결 테스트 (5초 타임아웃)
-      const channelOk = await invoke<boolean>('check_bridge_channel');
-      setBridgeStatus(channelOk ? 'ok' : 'no-channel');
+      setBridgeStatus(serverOk ? 'ok' : 'offline');
     } catch {
       setBridgeStatus('offline');
     }
@@ -89,31 +81,33 @@ export default function MCPSettings() {
     }
   };
 
-  /** ON: 등록 확인 → bridge 연결 확인 → LLM을 claude_code로 전환 */
+  /** ON: bridge 추출 → 등록 확인 → LLM을 claude_code로 전환 (bridge 서버는 나중에 실행해도 됨) */
   const handleToggleOn = async () => {
     setToggling(true);
+
+    // bridge 플러그인 추출 (번들 리소스 → ~/.mypartnerai/ama-bridge/)
+    try {
+      await invoke<string>('setup_bridge_plugin');
+      window.dispatchEvent(new CustomEvent('ama-toast', {
+        detail: { type: 'info', message: t('settings.mcp.setupSuccess') },
+      }));
+    } catch {
+      window.dispatchEvent(new CustomEvent('ama-toast', {
+        detail: { type: 'error', message: t('settings.mcp.setupFailManual') },
+      }));
+    }
 
     // 등록 시도
     await ensureRegistered();
 
-    // bridge 서버 실행 확인 (토글 ON은 서버 실행만 확인, 채널 테스트는 "연결 확인" 버튼에서)
+    // bridge 서버 상태 확인 (비차단 — 미실행이어도 토글 ON 허용)
     let serverOk = false;
     try {
       serverOk = await invoke<boolean>('check_bridge_health');
     } catch {
       serverOk = false;
     }
-
-    if (!serverOk) {
-      setBridgeStatus('offline');
-      setToggling(false);
-      window.dispatchEvent(new CustomEvent('ama-toast', {
-        detail: { type: 'error', messageKey: 'settings.mcp.bridgeOffline' },
-      }));
-      return;
-    }
-
-    setBridgeStatus('ok');
+    setBridgeStatus(serverOk ? 'ok' : 'offline');
 
     // 현재 LLM 설정 백업 (이미 claude_code가 아닐 때만)
     const currentLlm = useSettingsStore.getState().settings.llm;

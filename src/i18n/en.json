@@ -296,7 +296,10 @@
       "step3Title": "Step 3: Enable in AMA",
       "copy": "Copy",
       "copied": "Copied",
-      "step2Caution": "--permission-mode bypassPermissions: Auto-accepts tool execution permissions. Use only in trusted local environments."
+      "setupSuccess": "Bridge plugin has been installed",
+      "setupFail": "Bridge plugin installation failed",
+      "setupFailManual": "Auto-install failed. Run in terminal: cd ~/.mypartnerai/ama-bridge && npm install",
+      "step2Caution": "--dangerously-load-development-channels is required during the research preview period. --permission-mode bypassPermissions skips all permission prompts."
     }
   },
   "status": {
