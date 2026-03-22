@@ -6,6 +6,7 @@ import { isMockMode, ENABLED_PROVIDERS, PROVIDER_ICONS, PROVIDER_COLORS } from '
 import { useAuthStore } from '../../stores/authStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { usePremiumStore } from '../../features/premium-voice';
 import TermsModal from './TermsModal';
 import type { OAuthProvider } from '../../services/auth/types';
 
@@ -69,6 +70,12 @@ export default function UserProfile() {
       // 로그아웃 API 실패해도 로컬 상태는 초기화
     } finally {
       logout();
+      usePremiumStore.getState().reset();
+      // 프리미엄 TTS 사용 중이었으면 로컬 엔진으로 복원
+      const settingsState = useSettingsStore.getState();
+      if (settingsState.settings.tts.engine === 'supertone_api') {
+        settingsState.setTTSSettings({ engine: 'supertonic' });
+      }
       setLoading(false);
     }
   };
@@ -85,6 +92,12 @@ export default function UserProfile() {
       // 로컬 대화 기록도 삭제
       clearMessages();
       logout();
+      usePremiumStore.getState().reset();
+      // 프리미엄 TTS 사용 중이었으면 로컬 엔진으로 복원
+      const settingsState = useSettingsStore.getState();
+      if (settingsState.settings.tts.engine === 'supertone_api') {
+        settingsState.setTTSSettings({ engine: 'supertonic' });
+      }
     } catch {
       setDeleteError(t('auth.errors.deleteAccountFailed'));
     } finally {

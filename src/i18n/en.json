@@ -296,7 +296,7 @@
       "step3Title": "Step 3: Enable in AMA",
       "copy": "Copy",
       "copied": "Copied",
-      "step2Caution": "--permission-mode acceptEdits: Skips permission prompts for file edits. Use only in trusted projects."
+      "step2Caution": "--permission-mode bypassPermissions: Skips all permission prompts. Use only in trusted projects."
     }
   },
   "status": {
