@@ -414,38 +414,28 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
         ));
     }
 
-    // 3. node_modules 복사 (번들 리소스에 포함됨 — npm install 불필요)
-    let nm_src = bridge_resource.join("node_modules");
+    // 3. node_modules가 없으면 로그인 셸로 npm install 실행
+    //    /bin/sh -l -c 로 실행하면 ~/.zshrc/.bashrc에서 PATH가 로드됨
+    //    (Homebrew, nvm, fnm, volta 등 모든 Node.js 설치 방식 대응)
     let nm_dst = target_dir.join("node_modules");
-    if nm_src.exists() && !nm_dst.exists() {
-        eprintln!("[MCP] Copying node_modules from bundle resources...");
-        copy_dir_recursive(&nm_src, &nm_dst)
-            .map_err(|e| format!("Failed to copy node_modules: {}", e))?;
-        eprintln!("[MCP] node_modules copied successfully");
-    } else if !nm_src.exists() && !nm_dst.exists() {
-        // 번들에 node_modules가 없고 타겟에도 없으면 npm install 시도 (개발 환경)
-        let npm_cmd = find_node_bin("npm")?;
+    if !nm_dst.exists() {
         let target_dir_str = target_dir.to_string_lossy().to_string();
-        let npm_parent = std::path::Path::new(&npm_cmd)
-            .parent()
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let extended_path = format!(
-            "{}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
-            npm_parent
-        );
-        eprintln!("[MCP] node_modules not in bundle, running npm install...");
+        eprintln!("[MCP] Running npm install via login shell in {}", target_dir_str);
+
         let output = tokio::task::spawn_blocking(move || {
-            std::process::Command::new(&npm_cmd)
-                .args(["install", "--prefix", &target_dir_str])
-                .env("PATH", &extended_path)
+            std::process::Command::new("/bin/sh")
+                .args(["-l", "-c", &format!("cd '{}' && npm install", target_dir_str)])
                 .output()
         })
         .await
         .map_err(|e| format!("Task join error: {}", e))?
         .map_err(|e| format!("npm install failed to start: {}", e))?;
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            eprintln!("[MCP] npm install stderr: {}", stderr);
+            eprintln!("[MCP] npm install stdout: {}", stdout);
             return Err(format!("npm install failed: {}", stderr));
         }
         eprintln!("[MCP] npm install completed successfully");
