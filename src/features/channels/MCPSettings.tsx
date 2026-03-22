@@ -47,16 +47,8 @@ export default function MCPSettings() {
   const checkBridgeStatus = async () => {
     setChecking(true);
     try {
-      // 1. 서버 실행 확인
       const serverOk = await invoke<boolean>('check_bridge_health');
-      if (!serverOk) {
-        setBridgeStatus('offline');
-        setChecking(false);
-        return;
-      }
-      // 2. 채널 연결 테스트 (5초 타임아웃)
-      const channelOk = await invoke<boolean>('check_bridge_channel');
-      setBridgeStatus(channelOk ? 'ok' : 'no-channel');
+      setBridgeStatus(serverOk ? 'ok' : 'offline');
     } catch {
       setBridgeStatus('offline');
     }
@@ -89,31 +81,21 @@ export default function MCPSettings() {
     }
   };
 
-  /** ON: 등록 확인 → bridge 연결 확인 → LLM을 claude_code로 전환 */
+  /** ON: 등록 확인 → LLM을 claude_code로 전환 (bridge 서버는 나중에 실행해도 됨) */
   const handleToggleOn = async () => {
     setToggling(true);
 
     // 등록 시도
     await ensureRegistered();
 
-    // bridge 서버 실행 확인 (토글 ON은 서버 실행만 확인, 채널 테스트는 "연결 확인" 버튼에서)
+    // bridge 서버 상태 확인 (비차단 — 미실행이어도 토글 ON 허용)
     let serverOk = false;
     try {
       serverOk = await invoke<boolean>('check_bridge_health');
     } catch {
       serverOk = false;
     }
-
-    if (!serverOk) {
-      setBridgeStatus('offline');
-      setToggling(false);
-      window.dispatchEvent(new CustomEvent('ama-toast', {
-        detail: { type: 'error', messageKey: 'settings.mcp.bridgeOffline' },
-      }));
-      return;
-    }
-
-    setBridgeStatus('ok');
+    setBridgeStatus(serverOk ? 'ok' : 'offline');
 
     // 현재 LLM 설정 백업 (이미 claude_code가 아닐 때만)
     const currentLlm = useSettingsStore.getState().settings.llm;
@@ -196,7 +178,7 @@ export default function MCPSettings() {
       {/* Step 2: 터미널에서 실행 */}
       <div className="space-y-1.5">
         <p className="text-xs font-semibold text-gray-700">{t('settings.mcp.step2Title')}</p>
-        <CopyableCommand command="claude --dangerously-load-development-channels server:ama-bridge --permission-mode acceptEdits" />
+        <CopyableCommand command="claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions" />
         <p className="text-xs text-gray-400 mt-1">{t('settings.mcp.step2Desc')}</p>
         <p className="text-xs text-amber-600 mt-1">{t('settings.mcp.step2Caution')}</p>
       </div>
