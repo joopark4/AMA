@@ -81,9 +81,18 @@ export default function MCPSettings() {
     }
   };
 
-  /** ON: 등록 확인 → LLM을 claude_code로 전환 (bridge 서버는 나중에 실행해도 됨) */
+  /** ON: bridge 추출 → 등록 확인 → LLM을 claude_code로 전환 (bridge 서버는 나중에 실행해도 됨) */
   const handleToggleOn = async () => {
     setToggling(true);
+
+    // bridge 플러그인 추출 (번들 리소스 → ~/.mypartnerai/ama-bridge/)
+    try {
+      await invoke<string>('setup_bridge_plugin');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[MCPSettings] setup_bridge_plugin failed:', msg);
+      // 개발 환경에서는 리소스가 없을 수 있으므로 경고만 출력
+    }
 
     // 등록 시도
     await ensureRegistered();
