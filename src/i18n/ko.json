@@ -296,7 +296,10 @@
       "step3Title": "Step 3: AMA에서 활성화",
       "copy": "복사",
       "copied": "복사됨",
-      "step2Caution": "--permission-mode bypassPermissions: 도구 실행 권한을 자동 수락합니다. 신뢰할 수 있는 로컬 환경에서만 사용하세요."
+      "setupSuccess": "Bridge 플러그인이 설치되었습니다",
+      "setupFail": "Bridge 플러그인 설치 실패",
+      "setupFailManual": "자동 설치 실패. 터미널에서 실행: cd ~/.mypartnerai/ama-bridge && npm install",
+      "step2Caution": "--dangerously-load-development-channels는 리서치 프리뷰 기간에 필요한 플래그입니다. --permission-mode bypassPermissions는 모든 권한 확인을 건너뜁니다."
     }
   },
   "status": {

@@ -50,6 +50,7 @@ fn main() {
             commands::window::move_to_monitor,
             commands::window::get_current_monitor,
             commands::http::fetch_url_bytes,
+            commands::mcp::setup_bridge_plugin,
             commands::mcp::register_channel_global,
             commands::mcp::unregister_channel_global,
             commands::mcp::check_channel_registered,

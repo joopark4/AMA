@@ -296,7 +296,10 @@
       "step3Title": "Step 3: AMAで有効化",
       "copy": "コピー",
       "copied": "コピー済み",
-      "step2Caution": "--permission-mode bypassPermissions: ツール実行権限を自動的に承認します。信頼できるローカル環境でのみ使用してください。"
+      "setupSuccess": "Bridgeプラグインがインストールされました",
+      "setupFail": "Bridgeプラグインのインストールに失敗しました",
+      "setupFailManual": "自動インストールに失敗しました。ターミナルで実行: cd ~/.mypartnerai/ama-bridge && npm install",
+      "step2Caution": "--dangerously-load-development-channelsはリサーチプレビュー期間中に必要なフラグです。--permission-mode bypassPermissionsはすべての権限確認をスキップします。"
     }
   },
   "status": {
