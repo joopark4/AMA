@@ -10,7 +10,6 @@ use tauri::menu::{MenuBuilder, MenuItem, SubmenuBuilder};
 
 fn main() {
     let app = tauri::Builder::default()
-        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -39,8 +38,6 @@ fn main() {
             commands::settings::open_accessibility_settings,
             commands::settings::open_screen_recording_settings,
             commands::settings::pick_vrm_file,
-            commands::auth::open_oauth_url,
-            commands::auth::parse_auth_callback,
             commands::models::check_model_status,
             commands::models::download_model,
             commands::models::get_models_dir,

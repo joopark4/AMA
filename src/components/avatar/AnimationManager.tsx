@@ -7,7 +7,6 @@ import EyeController from './EyeController';
 import LookAtController from './LookAtController';
 import GestureController from './GestureController';
 import ClipMotionController from './ClipMotionController';
-import MotionSequenceDemoController from './MotionSequenceDemoController';
 import DanceController from './DanceController';
 import HumanoidSyncController from './HumanoidSyncController';
 
@@ -30,9 +29,7 @@ export default function AnimationManager() {
   const { settings } = useSettingsStore();
   const resetGestures = useAvatarStore((state) => state.resetGestures);
   const resetMotionState = useAvatarStore((state) => state.resetMotionState);
-  const stopMotionSequenceDemo = useAvatarStore((state) => state.stopMotionSequenceDemo);
   const stopDancing = useAvatarStore((state) => state.stopDancing);
-  const isDevBuild = import.meta.env.DEV;
 
   const physicsEnabled = settings.avatar?.physics?.enabled ?? true;
   const animationEnabled = settings.avatar?.animation?.enableGestures ?? true;
@@ -46,13 +43,11 @@ export default function AnimationManager() {
 
     resetGestures();
     resetMotionState();
-    stopMotionSequenceDemo();
     stopDancing();
   }, [
     faceOnlyModeEnabled,
     resetGestures,
     resetMotionState,
-    stopMotionSequenceDemo,
     stopDancing,
   ]);
 
@@ -60,8 +55,7 @@ export default function AnimationManager() {
     if (clipMotionEnabled) return;
 
     resetMotionState();
-    stopMotionSequenceDemo();
-  }, [clipMotionEnabled, resetMotionState, stopMotionSequenceDemo]);
+  }, [clipMotionEnabled, resetMotionState]);
 
   // Don't render anything if VRM isn't loaded
   if (!vrm) return null;
@@ -82,7 +76,6 @@ export default function AnimationManager() {
 
       {/* Layer 3: Manifest-driven clip motions */}
       {!faceOnlyModeEnabled && clipMotionEnabled && <ClipMotionController />}
-      {!faceOnlyModeEnabled && isDevBuild && <MotionSequenceDemoController />}
 
       {/* Layer 4: Fallback gesture system - Hand waves, nods, etc. */}
       {!faceOnlyModeEnabled && animationEnabled && <GestureController />}

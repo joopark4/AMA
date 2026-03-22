@@ -4,8 +4,8 @@
   "description": "Connect Claude Code to the AMA AI avatar app. Send messages through Claude Code and hear them spoken by your avatar via TTS.",
   "author": {
     "name": "AMA",
-    "email": "jooparkhappy4@gmail.com"
+    "email": ""
   },
-  "homepage": "https://github.com/joopark4/MyPartnerAI",
+  "homepage": "https://github.com/joopark4/AMA",
   "keywords": ["channel", "avatar", "tts", "mcp"]
 }

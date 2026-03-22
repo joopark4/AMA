@@ -43,7 +43,7 @@ npm run build:mac-release
   - AI 설정 방법(Ollama, Gemini, OpenAI, Claude, LocalAI)
   - 테스트 사양(검증된 하드웨어)
   - 사용 AI/모델의 라이선스와 공식 링크
-  - 프로젝트 라이선스 표기(`BSD 2-Clause`)
+  - 프로젝트 라이선스 표기(`MIT`)
 - 작성 스타일:
   - 내부 구현 세부보다 사용자 행동 기준(무엇을 눌러서 어떻게 쓰는지)으로 설명
   - 명령어는 복사-실행 가능한 형태로 유지
@@ -92,8 +92,6 @@ npm run build:mac-release
 | `onboarding` | 초기 설정 | `onboarding.avatarNameTitle` |
 | `history` | 대화 기록 | `history.title`, `history.empty` |
 | `errors` | 에러 메시지 | `errors.llmConnection` |
-| `auth` | 인증/로그인 | `auth.title`, `auth.loginWith` |
-| `terms` | 이용약관/개인정보 | `terms.service.title`, `terms.privacy.title` |
 | `avatar` | 아바타 캔버스 UI | `avatar.selectVrm.title`, `avatar.loading` |
 | `update` | 업데이트 알림 | `update.available`, `update.downloading` |
 | `modelDownload` | 모델 다운로드 | `modelDownload.title`, `modelDownload.ready` |
@@ -131,16 +129,13 @@ const { t } = useTranslation();
 ### 음성 파이프라인
 - STT: `Whisper(whisper-cli)` 단일 경로
 - STT 모델: `base`, `small`, `medium` (온디맨드 다운로드)
-- TTS (로컬): `Supertonic` ONNX 기반 로컬 추론, 음성 `F1~F5`, `M1~M5`
-- TTS (클라우드): `Supertone API` Edge Function 프록시 기반 (프리미엄)
-- TTS 엔진 선택: `supertonic`(기본) / `supertone_api`(프리미엄)
-- 클라우드 TTS 실패/할당량 소진 시 로컬 자동 폴백
+- TTS: `Supertonic` ONNX 기반 로컬 추론, 음성 `F1~F5`, `M1~M5`
 - 프런트 녹음(`16kHz mono WAV`) → Tauri `transcribe_audio` → `whisper-cli`
 - 원격 세션 감지 시 음성 인식 차단 (텍스트 입력은 사용 가능)
 - TTS 테스트 버튼: 음성 설정 섹션에 위치 (아바타 섹션에서 이동)
 
 ### 아바타/UI
-- 기본 VRM 아바타 바이너리 임베딩: AES-128-GCM 암호화하여 앱 번들에 포함, 첫 실행 시 VRM 선택 불필요
+- VRM 파일은 기본 포함하지 않으며, 첫 실행 시 사용자가 직접 `.vrm` 파일 선택
 - 옵션 패널에서 VRM 파일 변경 가능
 - 기능 버튼/옵션 버튼 우하단 고정 (상태/텍스트/음성/히스토리/설정)
 - 아바타 마우스 선택/드래그 이동/회전 지원
@@ -163,7 +158,7 @@ const { t } = useTranslation();
 - `useAutoUpdateStore` (Zustand): 업데이트 확인 → 다운로드(바이트 누적 프로그레스) → 설치 → 앱 재시작
 - `UpdateNotification` (상단 알림) + `UpdateSettings` (설정 패널 섹션)
 - macOS 메뉴바 "Check for Updates..."에서도 트리거 가능
-- 업데이터 엔드포인트: GitHub Pages (`joopark4.github.io/apps/ama/latest.json`)
+- 업데이터 엔드포인트: GitHub Releases (`https://github.com/joopark4/AMA/releases/latest/download/latest.json`)
 - 대상 플랫폼: Apple Silicon (`darwin-aarch64`) only
 
 ### 온디맨드 모델 다운로드
@@ -173,27 +168,6 @@ const { t } = useTranslation();
 - Supertonic TTS + Whisper 모델 개별 다운로드
 - `ModelDownloadModal`: 첫 실행 시 필수 모델 다운로드 UI
 - `VoiceSettings`: 모델별 크기 표시, 미다운로드 모델 선택 시 자동 다운로드
-
-### 인증 시스템
-- Supabase OAuth (Google 활성화)
-- `ENABLED_PROVIDERS` 상수로 활성화된 provider 중앙 관리
-- Mock 모드: `VITE_SUPABASE_*` 환경변수 미설정 시
-- `tauri-plugin-deep-link`: `mypartnerai://auth/callback` 콜백 처리
-- 약관 동의: TermsModal (이용약관 + 개인정보처리방침)
-- 계정 삭제: Supabase Edge Function (`delete-account`)
-
-### 프리미엄 음성 (Supertone API)
-- **모듈화**: `src/features/premium-voice/`에 독립 모듈로 응집 (premiumStore/supertoneApiClient/UI)
-- 프리미엄 구독 사용자 전용 클라우드 TTS
-- 앱 → `edgeFunctionClient` → Supabase Edge Function → Supertone API
-- Edge Functions: `supertone-tts` (TTS 프록시), `supertone-voices` (음성 목록), `supertone-usage` (사용량)
-- `premiumStore` (Zustand): 프리미엄 상태/음성 목록/할당량/사용량 관리
-- `supertoneApiClient`: 텍스트 300자 청크 분할 + WAV 결합 + 할당량 업데이트
-- 구독 플랜: free(0) / basic(300크레딧, 5분) / pro(1200크레딧, 20분)
-- 할당량 소진 시 로컬 Supertonic 자동 폴백 + 토스트 알림
-- 감정 자동 매핑: AI 응답 감정 → Supertone 스타일 자동 변환
-- 음성 미리듣기: Rust `fetch_url_bytes` 커맨드로 외부 URL fetch
-- DB: `subscription_plans`, `tts_usage`, `subscription_history` + `profiles` 확장
 
 ### Claude Code Channels
 - 외부 Claude Code 세션과 아바타를 양방향 연결
@@ -209,15 +183,13 @@ const { t } = useTranslation();
   - `server.ts`: 채널 서버 canonical source (mcp-channels/dev-bridge.mts와 동일 로직)
 
 ### 설정 패널 구성
-1. **UserProfile** — 계정 정보 (OAuth)
-2. **Language** — 한국어/영어/일본어 선택
-3. **LLMSettings** — AI 모델 Provider/Model/API Key/Endpoint (Channels ON 시 잠금)
-4. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + TTS 테스트 + 글로벌 단축키
-5. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량
-6. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
-7. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
-8. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
-9. **LicensesSettings** — 오픈소스/모델 라이선스
+1. **Language** — 한국어/영어/일본어 선택
+2. **LLMSettings** — AI 모델 Provider/Model/API Key/Endpoint (Channels ON 시 잠금)
+3. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + TTS 테스트 + 글로벌 단축키
+4. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
+5. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
+6. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
+7. **LicensesSettings** — 오픈소스/모델 라이선스
 - 각 섹션은 `SettingsSection.tsx` 공통 접을 수 있는 카드 UI 사용
 
 ### 로컬 배포 파이프라인
@@ -234,83 +206,34 @@ const { t } = useTranslation();
 - 실행 시 의존성 상태 점검 및 설치 안내 모달 제공
 - 코드사인 + 노타라이즈 지원
 
-## 문서 목차
-
-| 문서 | 설명 |
-|------|------|
-| [아키텍처](docs/fundamentals/architecture.md) | 시스템 구조와 데이터 흐름 |
-| [기능 명세서](docs/features/feature-spec.md) | 전체 기능 명세 |
-| [기술 스택](docs/fundamentals/tech-stack.md) | 최신 의존성과 역할 |
-| [프로젝트 구조](docs/fundamentals/project-structure.md) | 디렉터리/핵심 파일 맵 |
-| [AI 서비스](docs/ai/ai-services.md) | LLM 라우팅, Vision 분석 |
-| [음성 서비스](docs/voice/voice-services.md) | Whisper/Supertonic 구현 상세 |
-| [아바타 시스템](docs/avatar/avatar-system.md) | VRM 로딩, 이동/회전, 상호작용 |
-| [설정 시스템](docs/settings/settings-system.md) | Zustand 설정/마이그레이션 |
-| [Tauri 백엔드](docs/infrastructure/tauri-backend.md) | Rust 명령/권한/단일 인스턴스 |
-| [개발 가이드](docs/fundamentals/development-guide.md) | 기능 추가/디버깅 체크리스트 |
-| [배포](docs/infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈 |
-| [인증](docs/auth/auth-supabase.md) | Supabase OAuth 연동 |
-| [DB 스키마](docs/infrastructure/db-schema.md) | DB 테이블, RLS, 데이터 정책 |
-| [회원 관리](docs/auth/member-management.md) | 가입/약관/탈퇴 흐름 |
-| [Channels](docs/channels/channels-mcp.md) | Claude Code Channels 연동 |
-
-### 해결된 이슈
-
-| 이슈 | 설명 |
-|------|------|
-| [#001 VRM 색상 문제](docs/issues/001-vrm-color-issue.md) | VRM 렌더 색상 왜곡 해결 |
-| [#002 VRM 눈동자 문제](docs/issues/002-vrm-eye-rendering-issue.md) | 눈동자 렌더 순서 이슈 해결 |
-| [#003 VoiceSettings 렌더링 오류](docs/issues/003-voicesettings-render-error.md) | persisted 설정 불일치 해결 |
-| [#004 Supertonic ONNX 로딩 문제](docs/issues/004-supertonic-onnx-vite-issue.md) | Vite/onnxruntime 충돌 대응 |
-| [#005 마이크 권한 요청](docs/issues/005-microphone-permission.md) | macOS 권한 요청/설정 이동 |
-| [#006 Supertonic 모델 버전 불일치](docs/issues/006-supertonic-model-version-mismatch.md) | TTS 품질 문제 해결 |
-| [#007 음성/아바타/UI 통합 안정화](docs/issues/007-voice-avatar-ui-stability.md) | STT 단일화/원격 차단/UI 안정화 |
-| [#008 클릭스루 상단 차단](docs/issues/008-clickthrough-upper-blocked-area.md) | 클릭스루 상단 영역 차단 해결 |
-| [#009 클라우드 모델 목록 동기화](docs/issues/009-cloud-model-list-sync.md) | LLM 모델 목록 동기화 |
-| [#010 Supertonic 다국어 업데이트](docs/issues/010-supertonic-model-multilingual-update.md) | TTS v1.6.0 다국어 업데이트 |
-| [#011 업데이터 리소스 포크](docs/issues/011-updater-resource-fork.md) | tar.gz 리소스 포크로 업데이트 설치 실패 |
-| [#012 Edge Function JWT 인증](docs/issues/012-edge-function-jwt-auth.md) | Edge Function JWT 인증 실패 |
-| [#013 WebView 외부 오디오](docs/issues/013-tauri-webview-external-audio.md) | Tauri WebView 외부 오디오 재생 차단 |
-| [#014 OAuth 콜백 + 세션 복원](docs/issues/014-dev-oauth-and-session-restore.md) | 개발 모드 OAuth 콜백 + 세션 복원 안정화 |
-| [#015 프리미엄 TTS 폴백](docs/issues/015-premium-tts-fallback-to-local.md) | 프리미엄 TTS 기본 음성 폴백 |
-| [#016 Channels 포트 충돌](docs/issues/016-channels-port-conflict.md) | Channels 포트 충돌로 응답 멈춤 |
-
 ## 프로젝트 구조 요약
 
 ```text
 AMA/
 ├── src/
 │   ├── components/
-│   │   ├── auth/          # AuthScreen, TermsModal, UserProfile
 │   │   ├── avatar/        # AvatarCanvas, VRMAvatar, 14개 컨트롤러
-│   │   ├── settings/      # LLM/Voice/Premium/Avatar/Monitor/Update/Licenses + SettingsSection
+│   │   ├── settings/      # LLM/Voice/Avatar/Monitor/Update/Licenses + SettingsSection
 │   │   └── ui/            # SettingsPanel, AboutModal, StatusIndicator, HistoryPanel 등
 │   ├── features/
-│   │   ├── channels/      # Claude Code Channels 독립 모듈 (클라이언트/훅/UI/상수)
-│   │   └── premium-voice/ # 프리미엄 음성 모듈 (premiumStore/supertoneApiClient/UI)
+│   │   └── channels/      # Claude Code Channels 독립 모듈 (클라이언트/훅/UI/상수)
 │   ├── hooks/             # useAutoUpdate, useConversation, useVRM 등
 │   ├── services/
 │   │   ├── ai/            # llmRouter, claude/openai/gemini/ollama 클라이언트
 │   │   ├── audio/         # rhythmAnalyzer (댄스용)
-│   │   ├── auth/          # authService, oauthClient, supabaseClient, edgeFunctionClient
 │   │   ├── avatar/        # motionLibrary, motionSelector, motionNarration
 │   │   ├── voice/         # supertonicClient, ttsRouter, audioProcessor
 │   │   └── tauri/         # permissions, globalShortcutUtils, windowManager
-│   ├── stores/            # settingsStore, authStore, aboutStore, modelDownloadStore, monitorStore 등
+│   ├── stores/            # settingsStore, aboutStore, modelDownloadStore, monitorStore 등
 │   └── i18n/              # ko.json, en.json, ja.json
 ├── src-tauri/
 │   ├── src/
 │   │   ├── main.rs        # 앱 엔트리 + macOS 네이티브 메뉴바
-│   │   └── commands/      # window, voice, settings, auth, models, screenshot, http, mcp, vrm
+│   │   └── commands/      # window, voice, settings, models, screenshot, http, mcp, vrm
 │   └── capabilities/      # Tauri 권한 설정
 ├── claude-plugin/
 │   └── ama-bridge/        # Claude Code 공식 플러그인 구조 (.claude-plugin/ + server.ts)
-├── models/
-│   ├── whisper/           # Whisper STT 모델
-│   └── supertonic/        # Supertonic TTS 모델
-├── motions/clean/         # 모션 클립/카탈로그
 ├── scripts/               # release-local, prepare-assets, stage/sign/notarize
-├── docs/                  # 프로젝트 문서
 └── .github/workflows/     # release.yml (GitHub Actions 배포)
 ```
 
@@ -332,11 +255,9 @@ AMA/
 | 스토어 | 용도 |
 |--------|------|
 | `settingsStore` | 전역 설정 (LLM/STT/TTS/아바타/UI), persist (version 13) |
-| `authStore` | OAuth 사용자/토큰/약관 동의, persist |
 | `conversationStore` | 대화 기록/상태, persist |
 | `avatarStore` | VRM 제어 상태 (위치/애니메이션) |
 | `appStatusStore` | 앱 실행 상태 |
-| `premiumStore` | 프리미엄 상태/Supertone 음성목록/할당량/사용량 (`features/premium-voice/`) |
 | `modelDownloadStore` | 모델 다운로드 상태/진행도 |
 | `monitorStore` | 모니터/디스플레이 상태 |
 | `aboutStore` | About 모달 열림/닫힘 상태 |
@@ -358,10 +279,6 @@ npx tsc --noEmit            # 타입 체크
 ## 환경 변수
 
 ```env
-# Supabase (OAuth)
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-
 # LLM
 VITE_ANTHROPIC_API_KEY=
 VITE_OPENAI_API_KEY=
@@ -382,14 +299,6 @@ PREPARE_DOWNLOAD_WHISPER=1
 PREPARE_PUBLIC_MODELS=1
 PREPARE_VRM=0
 
-# 코드사인/노타라이즈
-APPLE_CODESIGN_IDENTITY=
-APPLE_NOTARY_PROFILE=
-# 또는
-APPLE_ID=
-APPLE_TEAM_ID=
-APPLE_APP_PASSWORD=
-
 # 업데이터 서명
 TAURI_SIGNING_PRIVATE_KEY=
 TAURI_SIGNING_PRIVATE_KEY_PASSWORD=
@@ -397,4 +306,4 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD=
 
 ## 라이선스
 
-프로젝트 라이선스: `BSD 2-Clause`. 주요 의존성은 상업적 사용 가능한 라이선스(MIT/Apache-2.0) 기반입니다.
+프로젝트 라이선스: `MIT`. 주요 의존성은 상업적 사용 가능한 라이선스(MIT/Apache-2.0) 기반입니다.

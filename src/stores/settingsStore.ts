@@ -14,8 +14,8 @@ export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' 
 // STT 엔진: whisper (로컬 whisper-cli)
 export type STTEngine = 'whisper';
 
-// TTS 엔진: supertonic (로컬 ONNX) | supertone_api (클라우드)
-export type TTSEngine = 'supertonic' | 'supertone_api';
+// TTS 엔진: supertonic (로컬 ONNX)
+export type TTSEngine = 'supertonic';
 export type Language = 'ko' | 'en' | 'ja';
 
 export interface LLMSettings {
@@ -30,26 +30,9 @@ export interface STTSettings {
   model: string;
 }
 
-export interface SupertoneApiVoiceSettings {
-  pitchShift: number;      // -24 ~ 24
-  pitchVariance: number;   // 0 ~ 2
-  speed: number;           // 0.5 ~ 2
-}
-
-export interface SupertoneApiSettings {
-  voiceId: string;
-  voiceName: string;
-  model: 'sona_speech_1' | 'sona_speech_2' | 'sona_speech_2_flash';
-  language: string;
-  style: string;
-  autoEmotionStyle: boolean;
-  voiceSettings: SupertoneApiVoiceSettings;
-}
-
 export interface TTSSettings {
   engine: TTSEngine;
   voice?: string;                       // supertonic용 (F1-M5)
-  supertoneApi?: SupertoneApiSettings;  // supertone_api용
 }
 
 export interface GlobalShortcutSettings {
@@ -232,8 +215,7 @@ function normalizeLanguage(language: unknown): Language {
   return 'ko';
 }
 
-function normalizeTTSEngine(engine: unknown): TTSEngine {
-  if (engine === 'supertonic' || engine === 'supertone_api') return engine;
+function normalizeTTSEngine(_engine: unknown): TTSEngine {
   return 'supertonic';
 }
 
@@ -531,7 +513,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 13,
+      version: 14,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
