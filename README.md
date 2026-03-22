@@ -34,22 +34,90 @@ English version: [README.en.md](README.en.md)
 | MacBook Pro | Apple M1 Max | 32 GB |
 | Mac mini | Apple M4 | 24 GB |
 
-## 요구사항
+---
+
+## 방법 1: DMG 설치 (일반 사용자)
+
+### 설치
+
+1. [Releases](https://github.com/joopark4/AMA/releases)에서 최신 `AMA_x.x.x_aarch64.dmg` 다운로드
+2. DMG를 열고 `AMA.app`을 `Applications` 폴더로 드래그
+3. Launchpad 또는 Applications에서 AMA 실행
+
+### 최초 실행
+
+1. 첫 실행 시 필수 모델(TTS/STT) 자동 다운로드 안내
+2. 모델 다운로드 완료 후 아바타 이름 입력
+3. `.vrm` 아바타 파일 선택 (설정 > 아바타에서 변경 가능)
+4. 우하단 설정 버튼에서 AI 모델 설정 후 대화 시작
+
+### AI 설정 방법
+
+앱 실행 후 우하단 설정 버튼에서 `LLM Provider`, `Model`, `Endpoint`, `API Key`를 설정합니다.
+
+#### Ollama (로컬, 기본 추천)
+
+```bash
+# macOS 설치
+brew install ollama
+
+# 서버 실행
+ollama serve
+
+# 모델 다운로드 예시
+ollama pull deepseek-v3
+```
+
+설정 화면에서:
+
+- `LLM Provider`: `ollama`
+- `Endpoint`: `http://localhost:11434`
+- `Model`: `deepseek-v3` (또는 다운로드한 모델명)
+
+#### Gemini (클라우드)
+
+1. Google AI Studio에서 API Key 발급
+2. 앱 설정의 `API Key` 입력란에 직접 입력
+
+설정 화면에서:
+
+- `LLM Provider`: `gemini`
+- `Model`: 예) `gemini-2.0-flash`
+
+#### OpenAI / Claude (클라우드)
+
+- 앱 설정 화면에서 Provider 선택 후 API Key 입력
+- Provider/Model은 설정 화면에서 선택
+
+#### LocalAI (로컬 서버)
+
+- LocalAI 서버 실행 후 OpenAI 호환 endpoint 준비
+- 설정 화면에서:
+  - `LLM Provider`: `localai`
+  - `Endpoint`: LocalAI 주소 (예: `http://localhost:8080`)
+  - `Model`: LocalAI에 로드된 모델 id
+
+> 응답이 안 나오는 경우, Provider/Model/Endpoint/API Key 값이 올바른지 먼저 확인하세요.
+
+### 자동 업데이트
+
+설정 패널 또는 macOS 메뉴바 "Check for Updates..."에서 업데이트를 확인할 수 있습니다.
+새 버전이 있으면 자동으로 다운로드 후 재시작됩니다.
+
+---
+
+## 방법 2: 소스 빌드 (개발자)
+
+### 요구사항
 
 - Node.js 20+
 - Rust 1.75+ ([rustup](https://rustup.rs/))
 
-## 모델 다운로드 (필수)
+### 모델 다운로드 (필수)
 
 AI 모델 파일은 용량이 크므로 저장소에 포함되지 않습니다. 실행 전 아래 경로에 직접 배치해야 합니다.
 
-외부 모델 경로를 사용할 경우:
-
-```bash
-PREPARE_MODELS_DIR="/absolute/path/to/models" npm run build
-```
-
-### TTS 모델 (Supertonic)
+#### TTS 모델 (Supertonic)
 
 Git LFS가 설치되어 있어야 합니다:
 
@@ -66,7 +134,7 @@ git clone https://huggingface.co/Supertone/supertonic models/supertonic
 
 > 총 약 250MB. 다운로드 후 `models/supertonic/onnx/`와 `models/supertonic/voice_styles/`가 있어야 합니다.
 
-### STT 모델 (Whisper)
+#### STT 모델 (Whisper)
 
 모델 1개만 있어도 됩니다. base를 먼저 내려받기를 권장합니다:
 
@@ -86,7 +154,7 @@ curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bi
   -o models/whisper/ggml-medium.bin
 ```
 
-### 최종 디렉터리 구조
+#### 최종 디렉터리 구조
 
 ```
 models/
@@ -97,9 +165,28 @@ models/
     └── ggml-base.bin      ← (또는 small / medium)
 ```
 
----
+### AI 설정 방법
 
-## 개발 실행
+앱 실행 후 우하단 설정 버튼에서 `LLM Provider`, `Model`, `Endpoint`, `API Key`를 설정합니다.
+설정 방법은 [방법 1의 AI 설정 방법](#ai-설정-방법)과 동일합니다.
+
+개발 환경에서는 `.env` 파일로도 설정 가능합니다:
+
+```bash
+cp .env.example .env
+```
+
+```env
+# Cloud LLM API Key (해당 provider 사용 시)
+VITE_ANTHROPIC_API_KEY=
+VITE_OPENAI_API_KEY=
+VITE_GOOGLE_API_KEY=
+
+# Local LLM endpoint (기본값)
+VITE_OLLAMA_ENDPOINT=http://localhost:11434
+```
+
+### 개발 실행
 
 ```bash
 # 1) 저장소 클론
@@ -113,30 +200,18 @@ npm install
 npm run tauri dev
 ```
 
-## 빌드
+### 빌드
 
 ```bash
 # 일반 프로덕션 빌드
 npm run tauri build
 ```
 
-## 자동 업데이트
+---
 
-빌드된 앱은 GitHub Releases를 통해 자동 업데이트를 지원합니다.
-설정 패널 또는 macOS 메뉴바 "Check for Updates..."에서 업데이트를 확인할 수 있습니다.
+## 공통 가이드
 
-## 최초 실행 가이드
-
-1. 앱 실행
-2. 첫 실행 시 중앙 안내창에서 `.vrm` 파일 선택 (기본 VRM은 포함되지 않음)
-3. 우하단 설정 버튼에서:
-   - LLM Provider/Model 설정
-   - Whisper 모델(`base/small/medium`) 선택
-   - Supertonic 보이스 선택
-   - 글로벌 음성 단축키 ON/OFF 및 키 조합 설정
-4. 마이크 버튼 또는 텍스트 입력으로 대화 시작
-
-## 글로벌 음성 단축키
+### 글로벌 음성 단축키
 
 - 기본값: `Cmd+Shift+Space`
 - 동작: 단축키 1회 입력 시 음성 입력 시작, 다시 입력 시 종료
@@ -146,103 +221,17 @@ npm run tauri build
   - 앱 내 경고 토스트에서 접근성 설정 열기 버튼 사용
   - 다른 앱/시스템 단축키와 충돌 시 다른 조합으로 변경
 
-## 모델/런타임
-
-- Whisper 모델: `base`, `small`, `medium`
-- Supertonic 모델: `onnx`, `voice_styles`
-- VRM 파일은 기본 포함하지 않으며, 첫 실행 시 사용자가 직접 선택합니다.
-
-## 모션 데이터
-
-- `public/motions/clips/` : 런타임에서 사용하는 모션 클립
-- `src/config/motionManifest.json` : 모션 메타데이터
-
-모션 에셋 검증:
-
-```bash
-npm run motion:validate
-```
-
-## 환경 변수 (선택)
-
-`cp .env.example .env` 후 필요 시 설정:
-
-```env
-# Cloud LLM API Key (해당 provider 사용 시)
-VITE_ANTHROPIC_API_KEY=
-VITE_OPENAI_API_KEY=
-VITE_GOOGLE_API_KEY=
-
-# Local LLM endpoint (기본값)
-VITE_OLLAMA_ENDPOINT=http://localhost:11434
-```
-
-## AI 설정 방법 (Ollama / Gemini 등)
-
-앱 실행 후 우하단 설정 버튼에서 `LLM Provider`, `Model`, `Endpoint`, `API Key`를 설정합니다.
-
-### 1) Ollama (로컬, 기본 추천)
-
-```bash
-# macOS 설치
-brew install ollama
-
-# 서버 실행
-ollama serve
-
-# 모델 다운로드 예시
-ollama pull deepseek-v3
-```
-
-설정 화면에서:
-
-- `LLM Provider`: `ollama`
-- `Endpoint`: `http://localhost:11434`
-- `Model`: `deepseek-v3` (또는 다운로드한 모델명)
-
-### 2) Gemini (클라우드)
-
-1. Google AI Studio에서 API Key 발급
-2. 아래 둘 중 하나로 키 설정
-
-```env
-VITE_GOOGLE_API_KEY=발급받은_키
-```
-
-또는 앱 설정의 `API Key` 입력란에 직접 입력
-
-설정 화면에서:
-
-- `LLM Provider`: `gemini`
-- `Model`: 예) `gemini-2.0-flash`
-
-### 3) OpenAI / Claude (클라우드)
-
-- OpenAI: `VITE_OPENAI_API_KEY` 또는 설정 화면 API Key 입력
-- Claude: `VITE_ANTHROPIC_API_KEY` 또는 설정 화면 API Key 입력
-- Provider/Model은 설정 화면에서 선택
-
-### 4) LocalAI (로컬 서버)
-
-- LocalAI 서버 실행 후 OpenAI 호환 endpoint 준비
-- 설정 화면에서:
-  - `LLM Provider`: `localai`
-  - `Endpoint`: LocalAI 주소 (예: `http://localhost:8080`)
-  - `Model`: LocalAI에 로드된 모델 id
-
-응답이 안 나오는 경우, 설정 화면의 Provider/Model/Endpoint/API Key 값이 모두 올바른지 먼저 확인하세요.
-
-## Claude Code Channels 사용 방법
+### Claude Code Channels 사용 방법
 
 AMA 아바타를 Claude Code와 연결하여 양방향 대화가 가능합니다.
 
-### 사전 요구사항
+#### 사전 요구사항
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI 설치
 - [Node.js](https://nodejs.org/) 18+ 설치
 - claude.ai 계정 로그인 (`claude login`)
 
-### 설정 단계
+#### 설정 단계
 
 1. AMA 앱 실행
 2. `설정 > Claude Code Channels > 토글 ON`
@@ -258,53 +247,13 @@ AMA 아바타를 Claude Code와 연결하여 양방향 대화가 가능합니다
 
 토글 OFF 시 이전 AI 모델 설정으로 자동 복원됩니다.
 
-### 주의사항
+#### 주의사항
 
 - Channels는 **리서치 프리뷰** 기능입니다. `--dangerously-load-development-channels` 플래그가 필수이며, 세션 시작 시 보안 확인 프롬프트가 1회 표시됩니다.
 - `--permission-mode bypassPermissions`는 도구 실행 권한을 자동 수락합니다. **신뢰할 수 있는 로컬 환경에서만 사용**하세요.
 - AMA와 Claude Code는 **같은 머신**(localhost)에서 실행되어야 합니다.
 
 ---
-
-## 사용 AI/모델 라이선스 및 링크
-
-### 1) AI 서비스/런타임
-
-| 항목 | 용도 | 라이선스/약관 | 링크 |
-|------|------|---------------|------|
-| Ollama | 로컬 LLM 서버 | MIT License | [github.com/ollama/ollama](https://github.com/ollama/ollama) |
-| LocalAI | 로컬 OpenAI 호환 서버 | MIT License | [github.com/mudler/LocalAI](https://github.com/mudler/LocalAI) |
-| Claude API | 클라우드 LLM | Anthropic 서비스 약관 | [anthropic.com/claude](https://www.anthropic.com/claude) |
-| OpenAI API | 클라우드 LLM | OpenAI 서비스 약관 | [platform.openai.com](https://platform.openai.com/) |
-| Gemini API | 클라우드 LLM | Google 서비스 약관 | [ai.google.dev](https://ai.google.dev/) |
-| ONNX Runtime Web | Supertonic 추론 런타임 | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
-
-### 2) 음성 모델/엔진
-
-| 항목 | 용도 | 라이선스 | 링크 |
-|------|------|----------|------|
-| whisper.cpp | STT 실행 엔진(`whisper-cli`) | MIT License | [github.com/ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) |
-| Whisper (OpenAI) | STT 모델 원본 계열 | MIT License (OpenAI Whisper 저장소 기준) | [github.com/openai/whisper](https://github.com/openai/whisper) |
-| GGML Whisper 모델(`ggml-base/small/medium`) | 앱 로컬 STT 모델 | 원본/배포처 라이선스 준수 | [huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) |
-| Supertonic 코드 | TTS 엔진 구현 | MIT License | [github.com/supertone-inc/supertonic](https://github.com/supertone-inc/supertonic) |
-| Supertonic 모델 | 앱 로컬 TTS 모델 | BigScience Open RAIL-M (`models/supertonic/LICENSE`) | [huggingface.co/Supertone/supertonic](https://huggingface.co/Supertone/supertonic) |
-
-참고:
-
-- 클라우드 AI(Claude/OpenAI/Gemini)는 오픈소스 라이선스가 아니라 각 서비스 이용약관을 따릅니다.
-- 모델/런타임 재배포 시에는 반드시 각 프로젝트의 최신 LICENSE/약관을 우선 확인하세요.
-
-## 앱 제거
-
-macOS에서 AMA를 완전히 제거하려면:
-
-1. `Applications` 폴더에서 `AMA.app` 삭제
-2. 다운로드된 모델 데이터 삭제:
-   ```bash
-   rm -rf ~/.mypartnerai
-   ```
-
-> 앱 내 `설정 > 데이터 관리`에서도 모델 데이터를 삭제할 수 있습니다.
 
 ## 자주 겪는 문제
 
@@ -325,6 +274,8 @@ macOS에서 AMA를 완전히 제거하려면:
 - 유효한 `.vrm` 파일인지 확인
 - 설정 > 아바타에서 다시 파일 선택
 
+---
+
 ## VRM 파일 구하기/구매 가이드
 
 ### 대표 사이트
@@ -335,33 +286,6 @@ macOS에서 AMA를 완전히 제거하려면:
 | [BOOTH (VRM 검색)](https://booth.pm/en/search/VRM) | 무료 + 유료 | 개인 창작자 모델 판매/배포가 가장 활발한 마켓 |
 | [VRoid Studio](https://vroid.com/en/studio/) | 직접 제작(무료) | 직접 캐릭터 제작 후 `.vrm`으로 내보내기 가능 |
 
-### 1) 무료 VRM 받기 (VRoid Hub)
-
-1. VRoid Hub 로그인
-2. 원하는 모델 페이지에서 **다운로드/이용 허용 조건** 확인
-3. 사용 범위(개인/상업/수정/재배포/크레딧) 확인
-4. `.vrm` 파일을 내려받아 앱에서 선택
-
-참고:
-- 모든 모델이 다운로드 가능한 것은 아닙니다.
-- 모델별 이용 조건이 다르므로 반드시 각 모델 정책을 확인하세요.
-
-### 2) 유료 VRM 구매하기 (BOOTH)
-
-1. [BOOTH VRM 검색](https://booth.pm/en/search/VRM)에서 모델 탐색
-2. 가격, 미리보기, 업데이트 이력 확인
-3. 상품 설명의 라이선스/이용약관 확인
-   (상업 이용 가능 여부, 크레딧 표기, 재배포 금지 여부 등)
-4. 결제 후 다운로드 파일(`.zip`/`.vrm`) 받기
-5. 압축 해제 후 `.vrm` 파일을 앱에서 선택
-
-### 3) 직접 만들기 (VRoid Studio)
-
-1. [VRoid Studio](https://vroid.com/en/studio/) 설치
-2. 캐릭터 제작/수정
-3. `Export VRM`으로 `.vrm` 내보내기
-4. 앱에서 해당 `.vrm` 파일 선택
-
 ### VRM 사용 전 체크리스트
 
 - 상업 이용 가능 여부
@@ -370,7 +294,47 @@ macOS에서 AMA를 완전히 제거하려면:
 - 재배포 금지 조건
 - 크레딧 표기 조건
 
-참고: 위 VRM 구하기/구매 가이드는 참고용이며, 실제 사용 전 각 모델의 최신 라이선스와 이용약관을 반드시 확인하세요.
+> 위 VRM 가이드는 참고용이며, 실제 사용 전 각 모델의 최신 라이선스와 이용약관을 반드시 확인하세요.
+
+---
+
+## 앱 제거
+
+macOS에서 AMA를 완전히 제거하려면:
+
+1. `Applications` 폴더에서 `AMA.app` 삭제
+2. 다운로드된 모델 데이터 삭제:
+   ```bash
+   rm -rf ~/.mypartnerai
+   ```
+
+> 앱 내 `설정 > 데이터 관리`에서도 모델 데이터를 삭제할 수 있습니다.
+
+---
+
+## 사용 AI/모델 라이선스 및 링크
+
+### AI 서비스/런타임
+
+| 항목 | 용도 | 라이선스/약관 | 링크 |
+|------|------|---------------|------|
+| Ollama | 로컬 LLM 서버 | MIT License | [github.com/ollama/ollama](https://github.com/ollama/ollama) |
+| LocalAI | 로컬 OpenAI 호환 서버 | MIT License | [github.com/mudler/LocalAI](https://github.com/mudler/LocalAI) |
+| Claude API | 클라우드 LLM | Anthropic 서비스 약관 | [anthropic.com/claude](https://www.anthropic.com/claude) |
+| OpenAI API | 클라우드 LLM | OpenAI 서비스 약관 | [platform.openai.com](https://platform.openai.com/) |
+| Gemini API | 클라우드 LLM | Google 서비스 약관 | [ai.google.dev](https://ai.google.dev/) |
+| ONNX Runtime Web | Supertonic 추론 런타임 | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
+
+### 음성 모델/엔진
+
+| 항목 | 용도 | 라이선스 | 링크 |
+|------|------|----------|------|
+| whisper.cpp | STT 실행 엔진 | MIT License | [github.com/ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) |
+| Whisper (OpenAI) | STT 모델 원본 | MIT License | [github.com/openai/whisper](https://github.com/openai/whisper) |
+| Supertonic 코드 | TTS 엔진 구현 | MIT License | [github.com/supertone-inc/supertonic](https://github.com/supertone-inc/supertonic) |
+| Supertonic 모델 | 로컬 TTS 모델 | BigScience Open RAIL-M | [huggingface.co/Supertone/supertonic](https://huggingface.co/Supertone/supertonic) |
+
+> 클라우드 AI(Claude/OpenAI/Gemini)는 각 서비스 이용약관을 따릅니다. 모델/런타임 재배포 시 각 프로젝트의 최신 LICENSE를 확인하세요.
 
 ## 라이선스
 
