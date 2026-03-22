@@ -263,7 +263,7 @@ claude /plugin install /path/to/claude-plugin/ama-bridge
 
 # 방법 2: 개발 모드 직접 실행 (리서치 프리뷰)
 cd claude-plugin/ama-bridge && npm install
-claude --dangerously-load-development-channels server:ama-bridge
+claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
 
 # 방법 3: AMA 앱 설정에서 자동 등록
 # 설정 패널 > Claude Code Channels 토글 ON
