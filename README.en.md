@@ -1,4 +1,4 @@
-# AMA
+# AMA - AI My Avatar
 
 An AI avatar desktop app that moves freely on your screen and interacts with you through text and voice.
 
