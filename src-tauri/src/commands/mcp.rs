@@ -677,25 +677,25 @@ pub async fn check_bridge_health() -> Result<bool, String> {
     }
 }
 
-/// dev-bridge 채널 연결 테스트 (5초 타임아웃으로 실제 채널 동작 확인)
+/// dev-bridge 채널 연결 확인 (/health 의 mcpConnected 필드로 즉시 판별)
 #[tauri::command]
 pub async fn check_bridge_channel() -> Result<bool, String> {
     let port_str = std::env::var("BRIDGE_PORT").unwrap_or_else(|_| "8790".to_string());
-    let url = format!("http://127.0.0.1:{}/channel-test", port_str);
+    let url = format!("http://127.0.0.1:{}/health", port_str);
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(8)) // 5초 채널 테스트 + 여유
-        .build()
-        .map_err(|e| format!("Client build failed: {}", e))?;
-
-    match client.post(&url).send().await {
+    match reqwest::Client::new()
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(3))
+        .send()
+        .await
+    {
         Ok(res) => {
             if !res.status().is_success() {
                 return Ok(false);
             }
             let text = res.text().await.unwrap_or_default();
-            // { "channel": true/false }
-            Ok(text.contains("\"channel\":true") || text.contains("\"channel\": true"))
+            // { "status": "ok", "pending": 0, "mcpConnected": true/false }
+            Ok(text.contains("\"mcpConnected\":true") || text.contains("\"mcpConnected\": true"))
         }
         Err(_) => Ok(false),
     }
