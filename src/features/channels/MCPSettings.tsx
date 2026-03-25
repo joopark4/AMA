@@ -81,49 +81,44 @@ export default function MCPSettings() {
     }
   };
 
-  /** ON: bridge 추출 → 등록 확인 → LLM을 claude_code로 전환 (bridge 서버는 나중에 실행해도 됨) */
+  /** ON: bridge 추출 → 등록 확인 → LLM을 claude_code로 전환 + bridge 상태 확인 */
   const handleToggleOn = async () => {
     setToggling(true);
-
-    // bridge 플러그인 추출 (번들 리소스 → ~/.mypartnerai/ama-bridge/)
     try {
-      await invoke<string>('setup_bridge_plugin');
-      window.dispatchEvent(new CustomEvent('ama-toast', {
-        detail: { type: 'info', message: t('settings.mcp.setupSuccess') },
-      }));
-    } catch {
-      window.dispatchEvent(new CustomEvent('ama-toast', {
-        detail: { type: 'error', message: t('settings.mcp.setupFailManual') },
-      }));
+      // bridge 플러그인 추출 (번들 리소스 → ~/.mypartnerai/ama-bridge/)
+      try {
+        await invoke<string>('setup_bridge_plugin');
+        window.dispatchEvent(new CustomEvent('ama-toast', {
+          detail: { type: 'info', message: t('settings.mcp.setupSuccess') },
+        }));
+      } catch {
+        window.dispatchEvent(new CustomEvent('ama-toast', {
+          detail: { type: 'error', message: t('settings.mcp.setupFailManual') },
+        }));
+      }
+
+      // 등록 시도
+      await ensureRegistered();
+
+      // 현재 LLM 설정 백업 (이미 claude_code가 아닐 때만)
+      const currentLlm = useSettingsStore.getState().settings.llm;
+      const prevLlm = currentLlm.provider !== CLAUDE_CODE_PROVIDER ? { ...currentLlm } : settings.mcpPreviousLlm;
+
+      setSettings({
+        mcpEnabled: true,
+        mcpPreviousLlm: prevLlm,
+      });
+      setLLMSettings({
+        provider: CLAUDE_CODE_PROVIDER,
+        model: BRIDGE_DEFAULT_MODEL,
+        endpoint: BRIDGE_DEFAULT_ENDPOINT,
+      });
+
+      // bridge 상태 비동기 확인 (토글은 즉시 완료, 결과는 UI에 반영)
+      checkBridgeStatus();
+    } finally {
+      setToggling(false);
     }
-
-    // 등록 시도
-    await ensureRegistered();
-
-    // bridge 서버 상태 확인 (비차단 — 미실행이어도 토글 ON 허용)
-    let serverOk = false;
-    try {
-      serverOk = await invoke<boolean>('check_bridge_health');
-    } catch {
-      serverOk = false;
-    }
-    setBridgeStatus(serverOk ? 'ok' : 'offline');
-
-    // 현재 LLM 설정 백업 (이미 claude_code가 아닐 때만)
-    const currentLlm = useSettingsStore.getState().settings.llm;
-    const prevLlm = currentLlm.provider !== CLAUDE_CODE_PROVIDER ? { ...currentLlm } : settings.mcpPreviousLlm;
-
-    setSettings({
-      mcpEnabled: true,
-      mcpPreviousLlm: prevLlm,
-    });
-    setLLMSettings({
-      provider: CLAUDE_CODE_PROVIDER,
-      model: BRIDGE_DEFAULT_MODEL,
-      endpoint: BRIDGE_DEFAULT_ENDPOINT,
-    });
-
-    setToggling(false);
   };
 
   /** OFF: 이전 LLM 설정으로 복원 */

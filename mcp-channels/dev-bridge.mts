@@ -139,11 +139,14 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   };
 });
 
+// --- MCP 접속 상태 추적 ---
+let mcpConnected = false;
+
 // --- HTTP 서버 ---
 const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
   if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', pending: pendingReplies.size }));
+    res.end(JSON.stringify({ status: 'ok', pending: pendingReplies.size, mcpConnected }));
     return;
   }
 
@@ -285,5 +288,17 @@ async function tryListen(): Promise<void> {
 
 await tryListen();
 
-await mcp.connect(new StdioServerTransport());
+const transport = new StdioServerTransport();
+await mcp.connect(transport);
+mcpConnected = true;
 console.error('[ama-bridge] Channel connected via stdio');
+
+// stdio 종료 감지
+transport.onclose = () => {
+  mcpConnected = false;
+  console.error('[ama-bridge] Channel disconnected (stdio closed)');
+};
+mcp.onclose = () => {
+  mcpConnected = false;
+  console.error('[ama-bridge] MCP server closed');
+};
