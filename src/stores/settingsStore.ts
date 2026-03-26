@@ -91,6 +91,7 @@ export interface AvatarSettings {
   scale: number;
   movementSpeed: number;
   freeMovement: boolean;
+  autoRoam: boolean;
   showSpeechBubble: boolean;
   physics: PhysicsSettings;
   animation: AnimationSettings;
@@ -273,6 +274,7 @@ const defaultSettings: Settings = {
     scale: 1.0,
     movementSpeed: 50,
     freeMovement: false,
+    autoRoam: false,
     showSpeechBubble: true,
     physics: {
       enabled: true,
@@ -320,6 +322,9 @@ function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): A
     freeMovement: typeof legacyAvatar.freeMovement === 'boolean'
       ? legacyAvatar.freeMovement
       : defaultSettings.avatar.freeMovement,
+    autoRoam: typeof (legacyAvatar as any).autoRoam === 'boolean'
+      ? (legacyAvatar as any).autoRoam
+      : defaultSettings.avatar.autoRoam,
     showSpeechBubble: typeof legacyAvatar.showSpeechBubble === 'boolean'
       ? legacyAvatar.showSpeechBubble
       : defaultSettings.avatar.showSpeechBubble,
