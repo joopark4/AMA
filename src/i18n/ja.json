@@ -131,7 +131,18 @@
         "dynamicMotionBoost": "ダイナミックモーションブースト",
         "dynamicBoostStrength": "ブースト強度: {{value}}%",
         "motionDiversity": "モーション多様性: {{value}}%",
-        "enableGestureFallback": "ジェスチャーフォールバックを使用"
+        "enableGestureFallback": "ジェスチャーフォールバックを使用",
+        "walkingTitle": "歩行",
+        "enableWalkClips": "Mixamo歩行クリップ",
+        "enableWalkClipsDesc": "自然な関節動作の歩行アニメーション（無効時はプロシージャル歩行）",
+        "autoRoam": "自動散歩",
+        "autoRoamDesc": "アバターが画面内を自動的に歩き回ります",
+        "autoRoamDisabledByFreeMove": "自由移動中は使用できません",
+        "idleTitle": "待機動作",
+        "enableBreathing": "呼吸アニメーション",
+        "enableBreathingDesc": "待機中の微細な呼吸動作",
+        "enableEyeDrift": "視線移動",
+        "enableEyeDriftDesc": "自然な目の微細な動き"
       },
       "physics": {
         "title": "物理エンジン",
