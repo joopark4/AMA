@@ -214,6 +214,14 @@ If replies fail, verify provider/model/endpoint/API key first.
 Connect the AMA avatar to an external Claude Code session running in a separate terminal.
 User text/voice input is sent to Claude Code, and responses are spoken aloud by the avatar via TTS.
 
+### Demo
+
+<video src="docs/movie/ccc-01.mp4" controls width="720">
+  Claude Code Channels integration demo
+</video>
+
+> Claude Code Channels demo — the user asks a question via voice, Claude Code analyzes/executes code, and the avatar delivers the response with TTS and facial expressions.
+
 ### Usage
 
 1. Install channel dependencies (one-time): `cd mcp-channels && npm install && cd ..`
