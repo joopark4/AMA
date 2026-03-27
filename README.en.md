@@ -32,6 +32,14 @@ Korean version: [README.md](README.md)
   - Voice input (STT) is blocked
   - Text chat remains available
 
+## Demo
+
+> A live demo of two-way conversation between the AMA avatar and Claude Code via Claude Code Channels. The user asks a question in AMA, Claude Code responds, and the avatar delivers the answer via TTS.
+
+<video src="etc/demo/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
+  Your browser does not support the video tag.
+</video>
+
 ## Tested Hardware
 
 | Device | CPU/SoC | Memory |
@@ -229,14 +237,6 @@ npm run tauri build
 ### How to Use Claude Code Channels
 
 Connect your AMA avatar to Claude Code for two-way conversations.
-
-#### Demo
-
-<video src="etc/demo/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
-  Your browser does not support the video tag.
-</video>
-
-> A live demo of two-way conversation between the AMA avatar and Claude Code. The user asks a question in AMA, Claude Code responds, and the avatar delivers the answer via TTS.
 
 #### Prerequisites
 
