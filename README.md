@@ -231,6 +231,14 @@ npm run tauri build
 
 AMA 아바타를 Claude Code와 연결하여 양방향 대화가 가능합니다.
 
+#### 데모
+
+<video src="etc/demo/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
+  브라우저가 비디오를 지원하지 않습니다.
+</video>
+
+> AMA 아바타와 Claude Code 간 실시간 양방향 대화 데모입니다. 사용자가 AMA에서 질문하면 Claude Code가 응답하고, 아바타가 TTS로 음성 답변을 제공합니다.
+
 #### 사전 요구사항
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI 설치
