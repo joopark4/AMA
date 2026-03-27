@@ -33,6 +33,14 @@ English version: [README.en.md](README.en.md)
   - 음성 인식(STT)은 차단
   - 텍스트 대화는 계속 사용 가능
 
+## 데모
+
+> Claude Code Channels를 통한 AMA 아바타와 Claude Code 간 실시간 양방향 대화 데모입니다. 사용자가 AMA에서 질문하면 Claude Code가 응답하고, 아바타가 TTS로 음성 답변을 제공합니다.
+
+<video src="etc/demo/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
+  브라우저가 비디오를 지원하지 않습니다.
+</video>
+
 ## 테스트 사양
 
 | 장비 | CPU/SoC | 메모리 |
@@ -230,14 +238,6 @@ npm run tauri build
 ### Claude Code Channels 사용 방법
 
 AMA 아바타를 Claude Code와 연결하여 양방향 대화가 가능합니다.
-
-#### 데모
-
-<video src="etc/demo/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
-  브라우저가 비디오를 지원하지 않습니다.
-</video>
-
-> AMA 아바타와 Claude Code 간 실시간 양방향 대화 데모입니다. 사용자가 AMA에서 질문하면 Claude Code가 응답하고, 아바타가 TTS로 음성 답변을 제공합니다.
 
 #### 사전 요구사항
 
