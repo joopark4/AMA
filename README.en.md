@@ -36,7 +36,7 @@ Korean version: [README.md](README.md)
 
 > A live demo of two-way conversation between the AMA avatar and Claude Code via Claude Code Channels. The user asks a question in AMA, Claude Code responds, and the avatar delivers the answer via TTS.
 
-<video src="https://joopark4.github.io/ama/etc/demo/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
+<video src="https://raw.githubusercontent.com/joopark4/AMA/main/etc/demo/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
   Your browser does not support the video tag.
 </video>
 
