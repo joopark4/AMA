@@ -267,6 +267,14 @@ VITE_GOOGLE_API_KEY=발급받은_키
 외부 터미널에서 실행 중인 Claude Code와 AMA 아바타를 연결합니다.
 사용자의 텍스트/음성 입력이 Claude Code로 전달되고, 응답을 아바타가 TTS로 읽어줍니다.
 
+### 데모
+
+<video src="docs/movie/ccc-01.mp4" controls width="720">
+  Claude Code Channels 연동 데모 영상
+</video>
+
+> AMA 아바타와 Claude Code Channels 연동 데모 — 사용자가 음성으로 질문하면 Claude Code가 코드를 분석/실행하고, 응답을 아바타가 음성(TTS)과 표정으로 전달합니다.
+
 ### 사용 방법
 
 1. 채널 의존성 설치 (최초 1회): `cd mcp-channels && npm install && cd ..`
