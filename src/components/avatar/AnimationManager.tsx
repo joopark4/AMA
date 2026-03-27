@@ -8,7 +8,6 @@ import LookAtController from './LookAtController';
 import DanceController from './DanceController';
 import HumanoidSyncController from './HumanoidSyncController';
 import IdleFidgetController from './IdleFidgetController';
-import MotionDemoSequence from './MotionDemoSequence';
 
 /**
  * AnimationManager - Orchestrates all animation layers
@@ -25,7 +24,6 @@ export default function AnimationManager() {
   const vrm = useAvatarStore((state) => state.vrm);
   const { settings } = useSettingsStore();
   const stopDancing = useAvatarStore((state) => state.stopDancing);
-  const isDevBuild = import.meta.env.DEV;
 
   const physicsEnabled = settings.avatar?.physics?.enabled ?? true;
   const dancingEnabled = settings.avatar?.animation?.enableDancing ?? true;
@@ -61,9 +59,6 @@ export default function AnimationManager() {
 
       {/* Layer 4: Final normalized->raw humanoid sync for VRM compatibility */}
       <HumanoidSyncController />
-
-      {/* 임시 데모: 모션 순차 시연 (개발 모드만) */}
-      {isDevBuild && <MotionDemoSequence />}
     </>
   );
 }
