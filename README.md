@@ -37,7 +37,9 @@ English version: [README.en.md](README.en.md)
 
 > Claude Code Channels를 통한 AMA 아바타와 Claude Code 간 실시간 양방향 대화 데모입니다. 사용자가 AMA에서 질문하면 Claude Code가 응답하고, 아바타가 TTS로 음성 답변을 제공합니다.
 
-[▶ 데모 영상 보기 (Claude Code Channels)](etc/demo/ccc-01.mp4)
+<video src="https://joopark4.github.io/assets/images/2026-02-28-ama/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
+  브라우저가 비디오를 지원하지 않습니다.
+</video>
 
 ## 테스트 사양
 
