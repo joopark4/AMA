@@ -132,6 +132,22 @@
 
 ## 작업 이력
 
+### 2026.03.27 — Mixamo FBX 모션 시스템 + 자동 배회 + 대기 동작 설정
+
+- 모션 시스템 Mixamo FBX 기반으로 전면 교체 (기존 JSON 클립 25개 삭제 → FBX 20종)
+  - `loadMixamoAnimation.ts`: FBX → VRM 본 리타겟팅
+  - `locomotionClipManager.ts`: Idle/Walk AnimationMixer 관리
+  - `boneUtils.ts`, `mixamoVRMRigMap.ts`, `proceduralGait.ts`: 유틸리티 모듈
+- 자동 배회 기능 추가 (`settings.avatar.autoRoam` 토글)
+  - 감정별 걷기 스타일 자동 선택 (stroll/brisk/sneak/bouncy)
+  - 순환 액션 큐 (walk/gesture/jump/idle)
+  - 자유 이동 모드와 상호 배타
+- 대기 동작 설정 연결 (`IdleFidgetController`)
+  - `enableBreathing`: 호흡 애니메이션 ON/OFF
+  - `enableEyeDrift`: 시선 미세 이동 ON/OFF
+- 모션 시퀀스 데모 제거 (MotionSequenceDemoController, MotionDemoSequence 삭제)
+- 설정 persist 버전 13 → 14
+
 ### 2026.03.21 — Claude Code Channels + 관리자 관리 + 프리미엄 TTS 수정
 
 - Claude Code Channels 구현 (외부 Claude Code 세션 ↔ AMA 아바타 양방향 연동)

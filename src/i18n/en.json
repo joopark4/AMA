@@ -131,7 +131,18 @@
         "dynamicMotionBoost": "Dynamic Motion Boost",
         "dynamicBoostStrength": "Boost Strength: {{value}}%",
         "motionDiversity": "Motion Diversity: {{value}}%",
-        "enableGestureFallback": "Enable Gesture Fallback"
+        "enableGestureFallback": "Enable Gesture Fallback",
+        "walkingTitle": "Walking",
+        "enableWalkClips": "Mixamo Walk Clips",
+        "enableWalkClipsDesc": "Natural joint movement walking animation (procedural walk when disabled)",
+        "autoRoam": "Auto Roam",
+        "autoRoamDesc": "Avatar walks around the screen automatically",
+        "autoRoamDisabledByFreeMove": "Not available during Free Movement",
+        "idleTitle": "Idle Behavior",
+        "enableBreathing": "Breathing Animation",
+        "enableBreathingDesc": "Subtle breathing movement when idle",
+        "enableEyeDrift": "Eye Movement",
+        "enableEyeDriftDesc": "Natural micro eye movements"
       },
       "physics": {
         "title": "Physics",

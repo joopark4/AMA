@@ -73,6 +73,8 @@ export interface AnimationSettings {
   enableDancing: boolean;
   danceIntensity: number;
   motionDiversity: number;
+  enableBreathing: boolean;
+  enableEyeDrift: boolean;
 }
 
 export interface LightingSettings {
@@ -91,6 +93,7 @@ export interface AvatarSettings {
   scale: number;
   movementSpeed: number;
   freeMovement: boolean;
+  autoRoam: boolean;
   showSpeechBubble: boolean;
   physics: PhysicsSettings;
   animation: AnimationSettings;
@@ -273,6 +276,7 @@ const defaultSettings: Settings = {
     scale: 1.0,
     movementSpeed: 50,
     freeMovement: false,
+    autoRoam: false,
     showSpeechBubble: true,
     physics: {
       enabled: true,
@@ -289,6 +293,8 @@ const defaultSettings: Settings = {
       enableDancing: true,
       danceIntensity: 0.7,
       motionDiversity: 1.0,
+      enableBreathing: true,
+      enableEyeDrift: true,
     },
     lighting: {
       ambientIntensity: 1.0,
@@ -320,6 +326,9 @@ function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): A
     freeMovement: typeof legacyAvatar.freeMovement === 'boolean'
       ? legacyAvatar.freeMovement
       : defaultSettings.avatar.freeMovement,
+    autoRoam: typeof (legacyAvatar as any).autoRoam === 'boolean'
+      ? (legacyAvatar as any).autoRoam
+      : defaultSettings.avatar.autoRoam,
     showSpeechBubble: typeof legacyAvatar.showSpeechBubble === 'boolean'
       ? legacyAvatar.showSpeechBubble
       : defaultSettings.avatar.showSpeechBubble,
@@ -531,7 +540,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 13,
+      version: 14,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
