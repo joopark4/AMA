@@ -67,7 +67,7 @@ export class LocomotionClipManager {
   private currentIdleEmotion = '';
   private _isWalking = false;
   private _isIdling = false;
-  private loading = new Set<string>();
+  private loadingPromises = new Map<string, Promise<THREE.AnimationClip | null>>();
   private disposed = false;
 
   constructor(mixer: THREE.AnimationMixer, vrm: VRM) {
@@ -248,6 +248,7 @@ export class LocomotionClipManager {
     this.clipCache.clear();
     this.clipAccessOrder = [];
     this.actionCache.clear();
+    this.loadingPromises.clear();
   }
 
   /** neutral 걷기 + idle만 빠르게 로드 */
@@ -319,9 +320,18 @@ export class LocomotionClipManager {
       return cached;
     }
 
-    if (this.loading.has(fbxPath)) return null;
-    this.loading.add(fbxPath);
+    const inflight = this.loadingPromises.get(fbxPath);
+    if (inflight) return inflight;
 
+    const promise = this.loadClip(fbxPath, clipName);
+    this.loadingPromises.set(fbxPath, promise);
+    return promise;
+  }
+
+  private async loadClip(
+    fbxPath: string,
+    clipName: string,
+  ): Promise<THREE.AnimationClip | null> {
     try {
       const clip = await loadMixamoAnimation(fbxPath, this.vrm, {
         clipName,
@@ -335,7 +345,7 @@ export class LocomotionClipManager {
       console.warn(`[ClipManager] Failed to load ${fbxPath}:`, err);
       return null;
     } finally {
-      this.loading.delete(fbxPath);
+      this.loadingPromises.delete(fbxPath);
     }
   }
 
