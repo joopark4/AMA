@@ -73,6 +73,8 @@ export interface AnimationSettings {
   enableDancing: boolean;
   danceIntensity: number;
   motionDiversity: number;
+  enableBreathing: boolean;
+  enableEyeDrift: boolean;
 }
 
 export interface LightingSettings {
@@ -291,6 +293,8 @@ const defaultSettings: Settings = {
       enableDancing: true,
       danceIntensity: 0.7,
       motionDiversity: 1.0,
+      enableBreathing: true,
+      enableEyeDrift: true,
     },
     lighting: {
       ambientIntensity: 1.0,
@@ -536,7 +540,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 13,
+      version: 14,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;

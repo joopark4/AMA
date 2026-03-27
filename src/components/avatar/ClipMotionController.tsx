@@ -239,7 +239,6 @@ export default function ClipMotionController() {
     currentGesture,
     currentMotionClip,
     isMoving,
-    isMotionSequenceActive,
     clearMotionClip,
     setMotionProgress,
     triggerGesture,
@@ -285,7 +284,6 @@ export default function ClipMotionController() {
       return;
     }
 
-    if (isMotionSequenceActive) return;
     if (currentMotionClip || currentGesture || isMoving) return;
     if (emotion === 'neutral') {
       lastEmotionRef.current = 'neutral';
@@ -320,7 +318,6 @@ export default function ClipMotionController() {
     isMoving,
     motionCooldownMap,
     motionEnabled,
-    isMotionSequenceActive,
     recentMotionIds,
     conversationStatus,
     triggerMotionClip,

@@ -327,8 +327,17 @@ export default function AvatarSettings() {
                 <label className="text-sm text-gray-600">{t('settings.avatar.animation.enableBreathing')}</label>
                 <span className="text-xs text-gray-400">{t('settings.avatar.animation.enableBreathingDesc')}</span>
               </div>
-              <button className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0 bg-blue-600">
-                <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform translate-x-5" />
+              <button
+                onClick={() => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, enableBreathing: !(settings.avatar?.animation?.enableBreathing ?? true) },
+                })}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  (settings.avatar?.animation?.enableBreathing ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  (settings.avatar?.animation?.enableBreathing ?? true) ? 'translate-x-5' : ''
+                }`} />
               </button>
             </div>
 
@@ -337,8 +346,17 @@ export default function AvatarSettings() {
                 <label className="text-sm text-gray-600">{t('settings.avatar.animation.enableEyeDrift')}</label>
                 <span className="text-xs text-gray-400">{t('settings.avatar.animation.enableEyeDriftDesc')}</span>
               </div>
-              <button className="relative w-11 h-6 rounded-full transition-colors flex-shrink-0 bg-blue-600">
-                <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform translate-x-5" />
+              <button
+                onClick={() => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, enableEyeDrift: !(settings.avatar?.animation?.enableEyeDrift ?? true) },
+                })}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'translate-x-5' : ''
+                }`} />
               </button>
             </div>
           </div>

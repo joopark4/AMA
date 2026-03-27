@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useAvatarStore } from '../../stores/avatarStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 // Breathing: spine/chest Y-axis ±0.015 rad, cycle 3~4 seconds
 const BREATH_AMPLITUDE = 0.015;
@@ -19,6 +20,8 @@ export default function IdleFidgetController() {
   const currentMotionClip = useAvatarStore((state) => state.currentMotionClip);
   const currentGesture = useAvatarStore((state) => state.currentGesture);
   const isDancing = useAvatarStore((state) => state.isDancing);
+  const enableBreathing = useSettingsStore((s) => s.settings.avatar?.animation?.enableBreathing ?? true);
+  const enableEyeDrift = useSettingsStore((s) => s.settings.avatar?.animation?.enableEyeDrift ?? true);
 
   const breathPhaseRef = useRef(Math.random() * Math.PI * 2);
   const breathPeriodRef = useRef(
@@ -50,28 +53,30 @@ export default function IdleFidgetController() {
     const headScale = isWalking ? 0 : 1.0;
 
     // === Breathing ===
-    const spine = vrm.humanoid.getNormalizedBoneNode('spine' as any);
-    const chest = vrm.humanoid.getNormalizedBoneNode('chest' as any);
+    if (enableBreathing) {
+      const spine = vrm.humanoid.getNormalizedBoneNode('spine' as any);
+      const chest = vrm.humanoid.getNormalizedBoneNode('chest' as any);
 
-    breathPhaseRef.current += (delta / breathPeriodRef.current) * Math.PI * 2;
-    if (breathPhaseRef.current > Math.PI * 2) {
-      breathPhaseRef.current -= Math.PI * 2;
-      // Vary the period slightly each cycle
-      breathPeriodRef.current =
-        BREATH_PERIOD_MIN + Math.random() * (BREATH_PERIOD_MAX - BREATH_PERIOD_MIN);
-    }
+      breathPhaseRef.current += (delta / breathPeriodRef.current) * Math.PI * 2;
+      if (breathPhaseRef.current > Math.PI * 2) {
+        breathPhaseRef.current -= Math.PI * 2;
+        // Vary the period slightly each cycle
+        breathPeriodRef.current =
+          BREATH_PERIOD_MIN + Math.random() * (BREATH_PERIOD_MAX - BREATH_PERIOD_MIN);
+      }
 
-    const breathValue = Math.sin(breathPhaseRef.current) * BREATH_AMPLITUDE * breathScale;
+      const breathValue = Math.sin(breathPhaseRef.current) * BREATH_AMPLITUDE * breathScale;
 
-    if (spine) {
-      spine.rotation.x += breathValue * 0.6;
-    }
-    if (chest) {
-      chest.rotation.x += breathValue;
+      if (spine) {
+        spine.rotation.x += breathValue * 0.6;
+      }
+      if (chest) {
+        chest.rotation.x += breathValue;
+      }
     }
 
     // === Micro head drift ===
-    if (headScale > 0) {
+    if (enableEyeDrift && headScale > 0) {
       const time = performance.now() * 0.001;
       const head = vrm.humanoid.getNormalizedBoneNode('head' as any);
 
