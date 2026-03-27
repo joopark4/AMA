@@ -230,6 +230,14 @@ npm run tauri build
 
 Connect your AMA avatar to Claude Code for two-way conversations.
 
+#### Demo
+
+<video src="etc/demo/ccc-01.mp4" controls playsinline style="max-width:100%;height:auto;" width="600">
+  Your browser does not support the video tag.
+</video>
+
+> A live demo of two-way conversation between the AMA avatar and Claude Code. The user asks a question in AMA, Claude Code responds, and the avatar delivers the answer via TTS.
+
 #### Prerequisites
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
