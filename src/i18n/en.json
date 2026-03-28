@@ -206,8 +206,10 @@
       "voiceInfo": "{{name}} · {{gender}} · {{languages}}",
       "usage": {
         "title": "My Usage",
+        "adminTitle": "API Total Usage",
         "refresh": "Refresh",
         "thisMonth": "This Month",
+        "adminThisMonth": "This Month (All Users)",
         "seconds": "{{value}} sec",
         "characters": "{{value}} chars",
         "requests": "{{value}} requests",
@@ -219,7 +221,12 @@
       },
       "quota": {
         "title": "Monthly Quota",
+        "adminTitle": "API Total Quota",
         "used": "{{used}} / {{limit}} credits",
+        "adminBalanceUnit": "Credits Balance",
+        "adminBalanceDesc": "~{{minutes}}m {{seconds}}s available",
+        "adminTotal": "{{used}} / {{total}} credits used",
+        "adminRemainPercent": "{{value}}% remaining",
         "percent": "{{value}}% used",
         "remaining": "Remaining: {{value}} credits (~{{minutes}}m {{seconds}}s)",
         "warning": "Quota almost exhausted",

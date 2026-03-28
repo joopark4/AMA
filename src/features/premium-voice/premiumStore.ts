@@ -28,6 +28,12 @@ export interface QuotaInfo {
   remaining: number;
 }
 
+export interface ApiCreditsInfo {
+  balance: number;
+  used: number;
+  total: number;
+}
+
 export interface UsageRecord {
   date: string;
   seconds: number;
@@ -53,6 +59,7 @@ const APP_VERSION = __APP_VERSION__;
 
 interface PremiumState {
   isPremium: boolean;
+  isAdmin: boolean;
   isChecking: boolean;
   voices: SupertoneVoice[];
   isLoadingVoices: boolean;
@@ -61,6 +68,7 @@ interface PremiumState {
 
   quota: QuotaInfo | null;
   isQuotaExceeded: boolean;
+  apiCredits: ApiCreditsInfo | null;
 
   usageSummary: UsageSummary | null;
   usageDaily: UsageRecord[] | null;
@@ -80,6 +88,7 @@ let checkingPromise: Promise<void> | null = null;
 
 export const usePremiumStore = create<PremiumState>((set, get) => ({
   isPremium: false,
+  isAdmin: false,
   isChecking: false,
   voices: [],
   isLoadingVoices: false,
@@ -88,6 +97,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 
   quota: null,
   isQuotaExceeded: false,
+  apiCredits: null,
 
   usageSummary: null,
   usageDaily: null,
@@ -119,7 +129,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 
       const { data, error: queryError } = await supabase
         .from('profiles')
-        .select('is_premium, plan_id, monthly_credit_limit_override')
+        .select('is_premium, is_admin, plan_id, monthly_credit_limit_override')
         .eq('id', user.id)
         .single();
 
@@ -141,7 +151,8 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
         }
 
         set({
-          isPremium: data.is_premium,
+          isPremium: data.is_premium || data.is_admin === true,
+          isAdmin: data.is_admin === true,
           quota: get().quota ? { ...get().quota!, limit: creditLimit } : null,
         });
       }
@@ -219,14 +230,16 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       const now = new Date();
       const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const endDate = now.toISOString();
+      const { isAdmin } = get();
 
       const data = await callEdgeFunction<{
         totalSeconds: number;
         totalCharacters: number;
         totalRequests: number;
         quota: QuotaInfo;
+        apiCredits?: ApiCreditsInfo;
       }>('supertone-usage', {
-        body: { type: 'summary', startDate, endDate },
+        body: { type: 'summary', startDate, endDate, ...(isAdmin ? { scope: 'all' } : {}) },
       });
 
       set({
@@ -236,7 +249,8 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
           totalRequests: data.totalRequests,
         },
         quota: data.quota,
-        isQuotaExceeded: data.quota.remaining <= 0,
+        isQuotaExceeded: isAdmin ? false : data.quota.remaining <= 0,
+        apiCredits: data.apiCredits ?? null,
       });
     } catch (err) {
       console.error('[PremiumStore] Failed to fetch usage summary:', err);
@@ -250,9 +264,10 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       const now = new Date();
       const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const endDate = now.toISOString();
+      const { isAdmin } = get();
 
       const data = await callEdgeFunction<{ records: UsageRecord[] }>('supertone-usage', {
-        body: { type: 'daily', startDate, endDate },
+        body: { type: 'daily', startDate, endDate, ...(isAdmin ? { scope: 'all' } : {}) },
       });
 
       set({ usageDaily: data.records });
@@ -276,6 +291,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 
   reset: () => set({
     isPremium: false,
+    isAdmin: false,
     isChecking: false,
     voices: [],
     isLoadingVoices: false,
@@ -283,6 +299,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     voicesFetchedVersion: null,
     quota: null,
     isQuotaExceeded: false,
+    apiCredits: null,
     usageSummary: null,
     usageDaily: null,
     isLoadingUsage: false,

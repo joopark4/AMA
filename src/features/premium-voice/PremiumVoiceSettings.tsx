@@ -29,9 +29,9 @@ export default function PremiumVoiceSettings() {
   const { isAuthenticated } = useAuthStore();
   const { settings, setTTSSettings } = useSettingsStore();
   const {
-    isPremium, isChecking,
+    isPremium, isAdmin, isChecking,
     voices, isLoadingVoices,
-    quota, isQuotaExceeded,
+    quota, isQuotaExceeded, apiCredits,
     usageSummary, usageDaily, isLoadingUsage,
     checkPremiumStatus, fetchVoices, refreshVoices, fetchUsageSummary, fetchUsageDaily,
   } = usePremiumStore();
@@ -445,9 +445,11 @@ export default function PremiumVoiceSettings() {
       <UsageCard
         quota={quota}
         isQuotaExceeded={isQuotaExceeded}
+        apiCredits={apiCredits}
         usageSummary={usageSummary}
         usageDaily={usageDaily}
         isLoading={isLoadingUsage}
+        isAdmin={isAdmin}
         onRefresh={() => { fetchUsageSummary(); fetchUsageDaily(); }}
       />
     </div>
@@ -456,22 +458,33 @@ export default function PremiumVoiceSettings() {
 
 /** 사용량 카드 서브 컴포넌트 */
 function UsageCard({
-  quota, isQuotaExceeded, usageSummary, usageDaily, isLoading, onRefresh,
+  quota, isQuotaExceeded, apiCredits, usageSummary, usageDaily, isLoading, isAdmin, onRefresh,
 }: {
   quota: { limit: number; used: number; remaining: number } | null;
   isQuotaExceeded: boolean;
+  apiCredits: { balance: number; used: number; total: number } | null;
   usageSummary: { totalSeconds: number; totalCharacters: number; totalRequests: number } | null;
   usageDaily: { date: string; seconds: number; characters: number; requests: number }[] | null;
   isLoading: boolean;
+  isAdmin: boolean;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+    <div className={`rounded-lg p-3 space-y-3 ${isAdmin ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">{t('settings.premium.usage.title')}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700">
+            {isAdmin ? t('settings.premium.usage.adminTitle') : t('settings.premium.usage.title')}
+          </span>
+          {isAdmin && (
+            <span className="inline-block px-1.5 py-0.5 bg-amber-200 text-amber-800 rounded text-[10px] font-semibold">
+              Admin
+            </span>
+          )}
+        </div>
         <button
           onClick={onRefresh}
           disabled={isLoading}
@@ -481,12 +494,56 @@ function UsageCard({
         </button>
       </div>
 
-      {isLoading && !quota ? (
+      {isLoading && !quota && !apiCredits ? (
         <div className="text-xs text-gray-400 text-center py-2">{t('settings.premium.usage.loading')}</div>
       ) : (
         <>
-          {/* 할당량 바 */}
-          {quota && (
+          {/* 관리자: Supertone API 크레딧 잔액 + 총 할당량 */}
+          {isAdmin && apiCredits && (
+            <div>
+              <div className="text-xs text-gray-600 mb-1">{t('settings.premium.quota.adminTitle')}</div>
+              {(() => {
+                const { balance, used, total } = apiCredits;
+                const usedPercent = total > 0 ? Math.round((used / total) * 100) : 0;
+                const remainPercent = 100 - usedPercent;
+                return (
+                  <div className="p-2.5 bg-amber-100/60 border border-amber-200 rounded-lg space-y-2">
+                    {/* 잔액 큰 숫자 */}
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-lg font-bold text-amber-800">
+                        {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                      </span>
+                      <span className="text-xs text-amber-600">{t('settings.premium.quota.adminBalanceUnit')}</span>
+                    </div>
+                    <div className="text-xs text-amber-700">
+                      {t('settings.premium.quota.adminBalanceDesc', {
+                        minutes: Math.floor(balance / 60),
+                        seconds: Math.round(balance % 60),
+                      })}
+                    </div>
+                    {/* 프로그레스 바 */}
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="h-2.5 rounded-full transition-all bg-amber-500"
+                        style={{ width: `${usedPercent}%` }}
+                      />
+                    </div>
+                    {/* 총 할당량 / 사용량 / 남은 % */}
+                    <div className="flex justify-between text-xs text-amber-700">
+                      <span>{t('settings.premium.quota.adminTotal', {
+                        used: Math.round(used),
+                        total: Math.round(total),
+                      })}</span>
+                      <span>{t('settings.premium.quota.adminRemainPercent', { value: remainPercent })}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* 일반 사용자: 할당량 바 */}
+          {!isAdmin && quota && (
             <div>
               <div className="text-xs text-gray-600 mb-1">{t('settings.premium.quota.title')}</div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -536,7 +593,9 @@ function UsageCard({
           {/* 이번 달 요약 */}
           {usageSummary && (
             <div className="text-xs text-gray-600">
-              <div className="font-medium mb-0.5">{t('settings.premium.usage.thisMonth')}</div>
+              <div className="font-medium mb-0.5">
+                {isAdmin ? t('settings.premium.usage.adminThisMonth') : t('settings.premium.usage.thisMonth')}
+              </div>
               <div>{t('settings.premium.usage.summary', {
                 seconds: Math.round(usageSummary.totalSeconds),
                 characters: usageSummary.totalCharacters.toLocaleString(),
@@ -558,7 +617,7 @@ function UsageCard({
                       <span className="text-gray-400 w-12 shrink-0">{day.date.slice(5)}</span>
                       <div className="flex-1 bg-gray-200 rounded h-2">
                         <div
-                          className="bg-purple-400 rounded h-2 transition-all"
+                          className={`rounded h-2 transition-all ${isAdmin ? 'bg-amber-400' : 'bg-purple-400'}`}
                           style={{ width: `${barWidth}%` }}
                         />
                       </div>
