@@ -4,6 +4,7 @@ import { getSupertoneApiClient, usePremiumStore } from '../../features/premium-v
 import { useSettingsStore } from '../../stores/settingsStore';
 import { QuotaExceededError } from '../auth/edgeFunctionClient';
 import { invoke } from '@tauri-apps/api/core';
+import { getSharedAudioContext } from '../audio/sharedAudioContext';
 
 const log = (...args: unknown[]) => {
   const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
@@ -12,7 +13,6 @@ const log = (...args: unknown[]) => {
 
 class TTSRouter {
   private supertonicClient: TTSClient;
-  private audioContext: AudioContext | null = null;
   private activePlaybackStopper: (() => void) | null = null;
 
   constructor() {
@@ -20,10 +20,7 @@ class TTSRouter {
   }
 
   private getAudioContext(): AudioContext {
-    if (!this.audioContext) {
-      this.audioContext = new AudioContext();
-    }
-    return this.audioContext;
+    return getSharedAudioContext();
   }
 
   /** 현재 설정 + 할당량 상태에 따라 적절한 클라이언트 선택 */
@@ -237,6 +234,8 @@ class TTSRouter {
       stopCurrent = () => {
         if (settled) return;
         log('HTMLAudio playback cancelled');
+        // handlers를 먼저 제거하여 audio.src='' 시 onerror 발생 방지
+        clearHandlers();
         try {
           audio.pause();
           audio.currentTime = 0;

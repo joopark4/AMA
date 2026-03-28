@@ -2,6 +2,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
+/** 위치를 SNAP_PX 단위로 스냅하여 미세 이동 시 리렌더 방지 */
+const SNAP_PX = 3;
+const snap = (v: number) => Math.round(v / SNAP_PX) * SNAP_PX;
+
 interface SpeechBubbleProps {
   message: string;
   duration?: number;
@@ -18,8 +22,23 @@ export default function SpeechBubble({ message, duration = 10000 }: SpeechBubble
   const [bubbleSize, setBubbleSize] = useState({ width: 260, height: 88 });
   const bubbleRef = useRef<HTMLDivElement>(null);
 
-  const position = useAvatarStore((state) => state.position);
-  const interactionBounds = useAvatarStore((state) => state.interactionBounds);
+  // 스냅된 좌표를 문자열 키로 반환 → 값이 같으면 Zustand가 리렌더를 건너뜀
+  const posKey = useAvatarStore((s) => `${snap(s.position.x)},${snap(s.position.y)}`);
+  const position = useMemo(() => {
+    const [x, y] = posKey.split(',').map(Number);
+    return { x, y };
+  }, [posKey]);
+
+  const boundsKey = useAvatarStore((s) => {
+    const b = s.interactionBounds;
+    if (!b) return '';
+    return `${snap(b.top)},${snap(b.left)},${snap(b.right)},${snap(b.bottom)}`;
+  });
+  const interactionBounds = useMemo(() => {
+    if (!boundsKey) return null;
+    const [top, left, right, bottom] = boundsKey.split(',').map(Number);
+    return { top, left, right, bottom };
+  }, [boundsKey]);
 
   const avatarScale = useSettingsStore((state) => state.settings.avatar?.scale || 1.0);
 
