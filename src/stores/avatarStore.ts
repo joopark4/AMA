@@ -3,7 +3,7 @@ import type { VRM } from '@pixiv/three-vrm';
 
 export type Emotion = 'neutral' | 'happy' | 'sad' | 'angry' | 'surprised' | 'relaxed' | 'thinking';
 export type AnimationState = 'idle' | 'walking' | 'talking' | 'waving' | 'thinking' | 'gesturing' | 'dancing';
-export type GestureType = 'wave' | 'nod' | 'shake' | 'shrug' | 'thinking' | 'celebrate' | null;
+export type GestureType = 'wave' | 'nod' | 'shake' | 'shrug' | 'thinking' | 'celebrate' | 'jump' | null;
 export type MotionClipId = string;
 export type LocomotionStyle = 'stroll' | 'brisk' | 'sneak' | 'bouncy';
 
