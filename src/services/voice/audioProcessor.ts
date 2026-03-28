@@ -1,3 +1,5 @@
+import { getSharedAudioContext } from '../audio/sharedAudioContext';
+
 export interface AudioAnalysis {
   volume: number;
   frequency: number;
@@ -22,7 +24,7 @@ export class AudioProcessor {
     if (this.isInitialized) return;
 
     try {
-      this.audioContext = new AudioContext();
+      this.audioContext = getSharedAudioContext();
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
 
@@ -326,10 +328,8 @@ export class AudioProcessor {
       this.mediaStream = null;
     }
 
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
+    // 공유 AudioContext는 close하지 않음 — 다른 모듈이 사용 중일 수 있음
+    this.audioContext = null;
 
     this.analyser = null;
     this.isInitialized = false;

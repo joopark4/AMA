@@ -1,9 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAvatarStore } from '../stores/avatarStore';
 import { useConversationStore } from '../stores/conversationStore';
+import { getSharedAudioContext } from '../services/audio/sharedAudioContext';
 
 export function useLipSync() {
-  const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -13,9 +13,9 @@ export function useLipSync() {
 
   // Initialize audio context
   const initAudioContext = useCallback(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-      analyserRef.current = audioContextRef.current.createAnalyser();
+    if (!analyserRef.current) {
+      const ctx = getSharedAudioContext();
+      analyserRef.current = ctx.createAnalyser();
       analyserRef.current.fftSize = 256;
     }
   }, []);
@@ -50,16 +50,17 @@ export function useLipSync() {
   // Connect audio element for lip sync analysis
   const connectAudio = useCallback((audioElement: HTMLAudioElement) => {
     initAudioContext();
+    const ctx = getSharedAudioContext();
 
-    if (audioContextRef.current && analyserRef.current) {
+    if (analyserRef.current) {
       // Disconnect previous source if exists
       if (sourceRef.current) {
         sourceRef.current.disconnect();
       }
 
-      sourceRef.current = audioContextRef.current.createMediaElementSource(audioElement);
+      sourceRef.current = ctx.createMediaElementSource(audioElement);
       sourceRef.current.connect(analyserRef.current);
-      analyserRef.current.connect(audioContextRef.current.destination);
+      analyserRef.current.connect(ctx.destination);
     }
   }, [initAudioContext]);
 
@@ -80,7 +81,7 @@ export function useLipSync() {
     setLipSyncValue(0);
   }, [setLipSyncValue]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount — 공유 AudioContext는 close하지 않음
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) {
@@ -89,9 +90,7 @@ export function useLipSync() {
       if (sourceRef.current) {
         sourceRef.current.disconnect();
       }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
+      analyserRef.current = null;
     };
   }, []);
 
