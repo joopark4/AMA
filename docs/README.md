@@ -35,6 +35,7 @@
 |------|------|----------|
 | [avatar-system.md](./avatar/avatar-system.md) | 아바타 시스템 (렌더링/이동/회전/클릭스루) | 2026.02.26 |
 | [motion-team-plan.md](./avatar/motion-team-plan.md) | 모션 팀 계획 | — |
+| [custom-motion-guide.md](./avatar/custom-motion-guide.md) | Mixamo 커스텀 모션 제작 가이드 (5가지 방법 + AMA 통합) | 2026.03.26 |
 
 ### ai/ — AI 서비스
 

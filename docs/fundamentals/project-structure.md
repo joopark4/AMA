@@ -142,7 +142,6 @@ src/services/
 │   └── types.ts
 ├── avatar/
 │   ├── motionLibrary.ts         # 모션 클립 라이브러리
-│   ├── motionNarration.ts       # 모션 나레이션
 │   └── motionSelector.ts        # 모션 선택 알고리즘
 ├── tauri/
 │   ├── fileDialog.ts            # native picker + dialog fallback
