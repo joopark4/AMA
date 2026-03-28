@@ -7,14 +7,10 @@ import { getEmotionTuning } from '../../config/emotionTuning';
 const ARRIVAL_THRESHOLD = 10;
 const AUTO_MOVE_MIN_DELAY = 2000;
 const AUTO_MOVE_MAX_DELAY = 5000;
-const GRAVITY = 1800;
 const GROUND_MARGIN_PX = 8;
 const TURN_PAUSE_DURATION = 0.12;
 const MIN_TURN_DISTANCE = 3;
 const MIN_CRUISE_SPEED = 40;
-
-// 자동 배회 중 랜덤 액션 확률
-const JUMP_IMPULSE = 650;
 
 /** 감정별 자동 배회 제스처 */
 const EMOTION_GESTURES: Record<string, string[]> = {
@@ -112,7 +108,6 @@ export default function AvatarController() {
   const movementSpeed = useSettingsStore((s) => s.settings.avatar?.movementSpeed ?? 120);
 
   const autoMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const verticalVelocityRef = useRef(0);
   const emotionActionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const roamActionIndexRef = useRef(0);
 
@@ -140,12 +135,6 @@ export default function AvatarController() {
   useEffect(() => {
     facingDirectionRef.current = facingRight ? 1 : -1;
   }, [facingRight]);
-
-  const triggerHop = useCallback((impulse = JUMP_IMPULSE) => {
-    if (isDragging) return;
-    if (Math.abs(verticalVelocityRef.current) > 5) return;
-    verticalVelocityRef.current = -impulse;
-  }, [isDragging]);
 
   // ─── 자동 배회 스케줄링 ───
   /** 자동 배회용 화면 bounds — 화면 양 끝까지 이동 */
@@ -197,8 +186,8 @@ export default function AvatarController() {
           break;
         }
         case 'jump': {
-          const impulse = profile.hopImpulse > 0 ? profile.hopImpulse : JUMP_IMPULSE;
-          verticalVelocityRef.current = -impulse;
+          // Jump.fbx 모션에 수직 이동이 포함되어 있으므로 물리 점프 없이 제스처만 실행
+          s.triggerGesture('jump');
           break;
         }
         case 'idle': {
@@ -299,8 +288,8 @@ export default function AvatarController() {
     const profile = getEmotionTuning(emotion);
 
     if (profile.hopImpulse > 0) {
-      // happy/surprised → 점프
-      triggerHop(profile.hopImpulse);
+      // happy/surprised → Jump.fbx 모션 (수직 이동 포함)
+      useAvatarStore.getState().triggerGesture('jump');
     } else if (emotion === 'angry') {
       // angry → 빠른 한걸음
       const state = useAvatarStore.getState();
@@ -317,27 +306,15 @@ export default function AvatarController() {
       state.setIsMoving(false);
       state.setTargetPosition(null);
     }
-  }, [emotion, effectiveAutoRoam, triggerHop]);
+  }, [emotion, effectiveAutoRoam]);
 
   // ─── 프레임 업데이트: 이동 물리 ───
   useFrame((_, delta) => {
     const floorY = bounds.maxY;
 
-    // 중력 (자유 이동/자동 배회 모두 적용)
-    if (!isDragging && !freeMovement) {
-      if (position.y < floorY || Math.abs(verticalVelocityRef.current) > 1) {
-        verticalVelocityRef.current += GRAVITY * delta;
-        let nextY = position.y + verticalVelocityRef.current * delta;
-        if (nextY >= floorY) {
-          nextY = floorY;
-          verticalVelocityRef.current = 0;
-        }
-        if (nextY !== position.y) {
-          setPosition({ x: position.x, y: nextY });
-        }
-      } else if (position.y !== floorY) {
-        setPosition({ x: position.x, y: floorY });
-      }
+    // 바닥 클램핑 (자유 이동 제외)
+    if (!isDragging && !freeMovement && position.y !== floorY) {
+      setPosition({ x: position.x, y: floorY });
     }
 
     // 자동 배회 OFF → 이동 로직 스킵

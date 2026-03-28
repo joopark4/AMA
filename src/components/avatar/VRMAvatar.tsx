@@ -621,6 +621,7 @@ export default function VRMAvatar() {
         logToTerminal(`[VRMAvatar] Walk clip preload warning: ${err}`)
       );
 
+
       // Debug: Log available expressions to terminal
       if (loadedVRM.expressionManager) {
         const expressions = loadedVRM.expressionManager.expressions;
