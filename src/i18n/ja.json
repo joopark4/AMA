@@ -206,8 +206,10 @@
       "voiceInfo": "{{name}} · {{gender}} · {{languages}}",
       "usage": {
         "title": "使用量",
+        "adminTitle": "API全体使用量",
         "refresh": "更新",
         "thisMonth": "今月",
+        "adminThisMonth": "今月（全ユーザー）",
         "seconds": "{{value}}秒",
         "characters": "{{value}}文字",
         "requests": "{{value}}回",
@@ -219,7 +221,12 @@
       },
       "quota": {
         "title": "月間割り当て",
+        "adminTitle": "API総割り当て",
         "used": "{{used}} / {{limit}} クレジット",
+        "adminBalanceUnit": "クレジット残高",
+        "adminBalanceDesc": "約{{minutes}}分{{seconds}}秒使用可能",
+        "adminTotal": "{{used}} / {{total}} クレジット使用",
+        "adminRemainPercent": "{{value}}% 残り",
         "percent": "{{value}}% 使用済み",
         "remaining": "残りクレジット: {{value}}（約{{minutes}}分{{seconds}}秒）",
         "warning": "割り当てがほぼ使い切られています",

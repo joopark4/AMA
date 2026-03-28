@@ -206,8 +206,10 @@
       "voiceInfo": "{{name}} · {{gender}} · {{languages}}",
       "usage": {
         "title": "내 사용량",
+        "adminTitle": "API 전체 사용량",
         "refresh": "새로고침",
         "thisMonth": "이번 달",
+        "adminThisMonth": "이번 달 (전체 사용자)",
         "seconds": "{{value}}초",
         "characters": "{{value}}자",
         "requests": "{{value}}회",
@@ -219,7 +221,12 @@
       },
       "quota": {
         "title": "월간 할당량",
+        "adminTitle": "API 총 할당량",
         "used": "{{used}} / {{limit}} 크레딧",
+        "adminBalanceUnit": "크레딧 잔액",
+        "adminBalanceDesc": "약 {{minutes}}분 {{seconds}}초 사용 가능",
+        "adminTotal": "{{used}} / {{total}} 크레딧 사용",
+        "adminRemainPercent": "{{value}}% 남음",
         "percent": "{{value}}% 사용",
         "remaining": "남은 크레딧: {{value}} (약 {{minutes}}분 {{seconds}}초)",
         "warning": "할당량이 거의 소진되었습니다",

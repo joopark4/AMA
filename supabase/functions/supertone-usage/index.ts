@@ -34,14 +34,17 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { type, startDate, endDate } = body;
+    const { type, startDate, endDate, scope } = body;
 
     // Get profile + plan info for quota
     const { data: profile } = await supabaseUser
       .from('profiles')
-      .select('plan_id, monthly_credit_limit_override')
+      .select('plan_id, monthly_credit_limit_override, is_admin')
       .eq('id', user.id)
       .single();
+
+    const isAdmin = profile?.is_admin === true;
+    const isAllScope = isAdmin && scope === 'all';
 
     const { data: plan } = await supabaseUser
       .from('subscription_plans')
@@ -56,13 +59,18 @@ Deno.serve(async (req) => {
     const defaultEnd = endDate || now.toISOString();
 
     if (type === 'daily') {
-      const { data: records, error } = await supabaseUser
+      let query = supabaseUser
         .from('tts_usage')
         .select('created_at, audio_duration, text_length')
-        .eq('user_id', user.id)
         .gte('created_at', defaultStart)
         .lt('created_at', defaultEnd)
         .order('created_at', { ascending: false });
+
+      if (!isAllScope) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data: records, error } = await query;
 
       if (error) throw error;
 
@@ -88,18 +96,74 @@ Deno.serve(async (req) => {
     }
 
     // Default: summary
-    const { data: usageData, error } = await supabaseUser
+    let summaryQuery = supabaseUser
       .from('tts_usage')
       .select('audio_duration, text_length, credits_used')
-      .eq('user_id', user.id)
       .gte('created_at', defaultStart)
       .lt('created_at', defaultEnd);
+
+    if (!isAllScope) {
+      summaryQuery = summaryQuery.eq('user_id', user.id);
+    }
+
+    const { data: usageData, error } = await summaryQuery;
 
     if (error) throw error;
 
     const totalSeconds = usageData?.reduce((s: number, r: { audio_duration: number | null }) => s + (r.audio_duration || 0), 0) ?? 0;
     const totalCharacters = usageData?.reduce((s: number, r: { text_length: number | null }) => s + (r.text_length || 0), 0) ?? 0;
     const totalRequests = usageData?.length ?? 0;
+
+    // 관리자 전체 조회 시: Supertone API에서 크레딧 잔액 + 사용량 조회
+    let apiCreditsData: { balance: number; used: number; total: number } | null = null;
+    if (isAllScope) {
+      const supertoneApiKey = Deno.env.get('SUPERTONE_API_KEY');
+      if (supertoneApiKey) {
+        try {
+          // 1) 잔액 조회
+          const creditsRes = await fetch('https://supertoneapi.com/v1/credits', {
+            headers: { 'x-sup-api-key': supertoneApiKey },
+          });
+          let balance = 0;
+          if (creditsRes.ok) {
+            const creditsJson = await creditsRes.json();
+            balance = creditsJson.balance ?? 0;
+          }
+
+          // 2) 이번 달 사용량 조회 (Supertone API 기준)
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          const startTime = monthStart.toISOString();
+          const endTime = now.toISOString();
+          const usageUrl = `https://supertoneapi.com/v1/usage?start_time=${encodeURIComponent(startTime)}&end_time=${encodeURIComponent(endTime)}`;
+          const usageRes = await fetch(usageUrl, {
+            headers: { 'x-sup-api-key': supertoneApiKey },
+          });
+          let apiUsedMinutes = 0;
+          if (usageRes.ok) {
+            const usageJson = await usageRes.json();
+            // data[].results[].minutes_used 합산
+            if (Array.isArray(usageJson.data)) {
+              for (const bucket of usageJson.data) {
+                if (Array.isArray(bucket.results)) {
+                  for (const r of bucket.results) {
+                    apiUsedMinutes += r.minutes_used ?? 0;
+                  }
+                }
+              }
+            }
+          }
+
+          const apiUsedSeconds = apiUsedMinutes * 60;
+          apiCreditsData = {
+            balance,
+            used: apiUsedSeconds,
+            total: apiUsedSeconds + balance,
+          };
+        } catch (e) {
+          console.error('[supertone-usage] Failed to fetch API credits/usage:', e);
+        }
+      }
+    }
 
     return new Response(JSON.stringify({
       totalSeconds,
@@ -111,6 +175,7 @@ Deno.serve(async (req) => {
         used: totalSeconds,
         remaining: Math.max(0, creditLimit - totalSeconds),
       },
+      ...(isAllScope && apiCreditsData ? { apiCredits: apiCreditsData } : {}),
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
