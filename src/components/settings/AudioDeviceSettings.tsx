@@ -73,48 +73,12 @@ export default function AudioDeviceSettings() {
   }, [speakers, settings.tts.audioOutputDeviceId, setTTSSettings]);
 
   // --- 마이크 피크 미터 ---
-  const startMicMeter = useCallback(async () => {
-    // 기존 정리
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((t) => t.stop());
-    }
-    cancelAnimationFrame(micRafRef.current);
-
-    try {
-      const constraints: MediaStreamConstraints = {
-        audio: settings.stt.audioInputDeviceId
-          ? { deviceId: { exact: settings.stt.audioInputDeviceId } }
-          : true,
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      micStreamRef.current = stream;
-
-      const ctx = getSharedAudioContext();
-      if (ctx.state === 'suspended') await ctx.resume();
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      micAnalyserRef.current = analyser;
-
-      const METER_SENSITIVITY = 3;
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      const tick = () => {
-        analyser.getByteFrequencyData(data);
-        const sum = data.reduce((a, b) => a + b, 0);
-        setMicLevel(Math.min(1, (sum / data.length / 255) * METER_SENSITIVITY));
-        micRafRef.current = requestAnimationFrame(tick);
-      };
-      tick();
-    } catch {
-      setMicLevel(0);
-    }
-  }, [settings.stt.audioInputDeviceId]);
-
   // 마이크 변경 시 피크 미터 재시작
   useEffect(() => {
-    startMicMeter();
-    return () => {
+    let cancelled = false;
+
+    const stopMeter = () => {
+      cancelled = true;
       cancelAnimationFrame(micRafRef.current);
       if (micStreamRef.current) {
         micStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -123,7 +87,60 @@ export default function AudioDeviceSettings() {
       micAnalyserRef.current = null;
       setMicLevel(0);
     };
-  }, [startMicMeter]);
+
+    (async () => {
+      // 기존 정리
+      stopMeter();
+      cancelled = false;
+
+      try {
+        const constraints: MediaStreamConstraints = {
+          audio: settings.stt.audioInputDeviceId
+            ? { deviceId: { exact: settings.stt.audioInputDeviceId } }
+            : true,
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        // await 후 unmount/재호출 되었으면 스트림 즉시 해제
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        micStreamRef.current = stream;
+
+        const ctx = getSharedAudioContext();
+        if (ctx.state === 'suspended') await ctx.resume();
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        micAnalyserRef.current = analyser;
+
+        const METER_SENSITIVITY = 3;
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          if (cancelled) return;
+          analyser.getByteFrequencyData(data);
+          const sum = data.reduce((a, b) => a + b, 0);
+          setMicLevel(Math.min(1, (sum / data.length / 255) * METER_SENSITIVITY));
+          micRafRef.current = requestAnimationFrame(tick);
+        };
+        tick();
+      } catch {
+        if (!cancelled) setMicLevel(0);
+      }
+    })();
+
+    return () => {
+      stopMeter();
+    };
+  }, [settings.stt.audioInputDeviceId]);
+
 
 
   return (

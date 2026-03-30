@@ -850,6 +850,10 @@ export function useConversation(): UseConversationReturn {
       const selectedDeviceId = useSettingsStore.getState().settings.stt.audioInputDeviceId;
       if (audioProcessor.getDeviceId() !== selectedDeviceId) {
         await audioProcessor.reinitialize(selectedDeviceId);
+        // 폴백 발생 시 (선택 디바이스 분리 등) 설정도 동기화하여 반복 재초기화 방지
+        if (selectedDeviceId && audioProcessor.getDeviceId() !== selectedDeviceId) {
+          useSettingsStore.getState().setSTTSettings({ audioInputDeviceId: audioProcessor.getDeviceId() });
+        }
       }
 
       await audioProcessor.startRecording();
