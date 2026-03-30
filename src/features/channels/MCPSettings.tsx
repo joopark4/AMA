@@ -48,32 +48,23 @@ export default function MCPSettings() {
     setChecking(true);
     try {
       const serverOk = await invoke<boolean>('check_bridge_health');
-      setBridgeStatus(serverOk ? 'ok' : 'offline');
+      if (!serverOk) {
+        setBridgeStatus('offline');
+      } else {
+        const channelOk = await invoke<boolean>('check_bridge_channel');
+        setBridgeStatus(channelOk ? 'ok' : 'no-channel');
+      }
     } catch {
       setBridgeStatus('offline');
     }
     setChecking(false);
   };
 
-  /** 등록 확인 → 미등록이면 자동 등록 시도 (실패해도 계속 진행) */
+  /** 항상 재등록하여 최신 경로 반영 (실패해도 계속 진행) */
   const ensureRegistered = async (): Promise<void> => {
-    try {
-      const isReg = await invoke<boolean>('check_channel_registered');
-      if (isReg) {
-        setRegistered(true);
-        return;
-      }
-    } catch {
-      // check 실패 시 등록 시도
-    }
-
-    // 자동 등록 시도
     try {
       await invoke<string>('register_channel_global', { projectDir: null });
       setRegistered(true);
-      window.dispatchEvent(new CustomEvent('ama-toast', {
-        detail: { type: 'info', message: t('settings.mcp.registerSuccess') },
-      }));
     } catch (err) {
       // 등록 실패해도 토글은 진행 (수동 등록 안내)
       const msg = err instanceof Error ? err.message : String(err);

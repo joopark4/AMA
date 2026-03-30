@@ -362,6 +362,7 @@
     "button": "대화 기록",
     "decreaseFontSize": "글자 크기 줄이기",
     "increaseFontSize": "글자 크기 늘리기",
+    "opacity": "투명도 {{value}}%",
     "close": "닫기"
   },
   "avatar": {

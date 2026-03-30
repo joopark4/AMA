@@ -362,6 +362,7 @@
     "button": "Chat History",
     "decreaseFontSize": "Decrease font size",
     "increaseFontSize": "Increase font size",
+    "opacity": "Opacity {{value}}%",
     "close": "Close"
   },
   "avatar": {

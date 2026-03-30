@@ -293,10 +293,13 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
 /// macOS 앱 번들에서는 셸 PATH가 제한되므로 npm/npx를 직접 탐색한다.
 /// Homebrew(ARM/Intel), nvm, fnm, volta, 시스템 경로를 모두 확인.
 fn find_node_bin(name: &str) -> Result<String, String> {
-    // 1. PATH에서 직접 찾기 (개발 환경, 터미널에서 실행 시)
-    if let Ok(output) = std::process::Command::new(name).arg("--version").output() {
+    // 1. PATH에서 직접 찾기 — which로 절대경로 확보
+    if let Ok(output) = std::process::Command::new("which").arg(name).output() {
         if output.status.success() {
-            return Ok(name.to_string());
+            let abs_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !abs_path.is_empty() && std::path::Path::new(&abs_path).exists() {
+                return Ok(abs_path);
+            }
         }
     }
 
@@ -444,7 +447,7 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
 /// ~/.claude.json (user scope)에 ama-bridge 서버를 등록한다.
 ///
 /// 소스 우선순위:
-/// 1. 개발 환경: project_dir의 claude-plugin/ama-bridge/ 또는 mcp-channels/
+/// 1. 개발 환경: project_dir의 claude-plugin/ama-bridge/
 /// 2. 배포 환경: ~/.mypartnerai/ama-bridge/ (setup_bridge_plugin으로 추출된 파일)
 #[tauri::command]
 pub fn register_channel_global(project_dir: Option<String>) -> Result<String, String> {
@@ -459,52 +462,26 @@ pub fn register_channel_global(project_dir: Option<String>) -> Result<String, St
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
     let plugin_dir = base_dir.join("claude-plugin").join("ama-bridge");
-    let legacy_dir = base_dir.join("mcp-channels");
 
-    // 개발 환경 소스가 있으면 파일 복사, 없으면 배포 환경 (~/.mypartnerai/ama-bridge/) 사용
-    let source_found = if plugin_dir.join("package.json").exists() {
-        Some((plugin_dir, true))
-    } else if legacy_dir.join("package.json").exists() {
-        Some((legacy_dir, false))
-    } else {
-        None
-    };
-
-    if let Some((source_dir, use_plugin_layout)) = source_found {
-        // 경로 탐색 방지: 정규화 후 유효한 디렉토리인지 검증
-        let canonical = source_dir.canonicalize().unwrap_or_else(|_| source_dir.clone());
-        if use_plugin_layout {
-            if !canonical.ends_with("ama-bridge") {
-                return Err("Invalid source directory".to_string());
-            }
-        } else if !canonical.ends_with("mcp-channels") {
+    // 개발 환경: claude-plugin/ama-bridge/ 소스가 있으면 파일 복사
+    if plugin_dir.join("package.json").exists() {
+        let canonical = plugin_dir.canonicalize().unwrap_or_else(|_| plugin_dir.clone());
+        if !canonical.ends_with("ama-bridge") {
             return Err("Invalid source directory".to_string());
         }
 
-        // 2. 대상 디렉토리 생성 + 파일 복사
         std::fs::create_dir_all(&shared_dir)
             .map_err(|e| format!("Failed to create {}: {}", shared_dir.display(), e))?;
 
-        let files: &[&str] = if use_plugin_layout {
-            &[
-                "package.json",
-                "tsconfig.json",
-                "server.ts",
-                "shared/config.mts",
-            ]
-        } else {
-            // Legacy: mcp-channels layout
-            &[
-                "package.json",
-                "tsconfig.json",
-                "dev-bridge.mts",
-                "shared/config.mts",
-                "shared/ama-client.mts",
-            ]
-        };
+        let files: &[&str] = &[
+            "package.json",
+            "tsconfig.json",
+            "server.ts",
+            "shared/config.mts",
+        ];
 
         for file in files {
-            let src = source_dir.join(file);
+            let src = plugin_dir.join(file);
             let dst = install_dir.join(file);
             if src.exists() {
                 std::fs::copy(&src, &dst).map_err(|e| {
@@ -514,7 +491,7 @@ pub fn register_channel_global(project_dir: Option<String>) -> Result<String, St
         }
 
         // node_modules 복사 (없으면)
-        let src_nm = source_dir.join("node_modules");
+        let src_nm = plugin_dir.join("node_modules");
         let dst_nm = install_dir.join("node_modules");
         if src_nm.exists() && !dst_nm.exists() {
             copy_dir_recursive(&src_nm, &dst_nm)

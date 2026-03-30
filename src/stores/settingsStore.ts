@@ -107,6 +107,7 @@ export interface HistoryPanelSettings {
   position: { x: number; y: number } | null;
   size: { width: number; height: number };
   fontSize: number;
+  opacity: number;
 }
 
 export interface Settings {
@@ -313,6 +314,7 @@ const defaultSettings: Settings = {
     position: null,
     size: { width: 320, height: 480 },
     fontSize: 14,
+    opacity: 95,
   },
   preferredMonitorName: '',
   mcpEnabled: false,
@@ -414,6 +416,10 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
         typeof source.historyPanel?.fontSize === 'number' && Number.isFinite(source.historyPanel.fontSize)
           ? source.historyPanel.fontSize
           : defaultSettings.historyPanel.fontSize,
+      opacity:
+        typeof source.historyPanel?.opacity === 'number' && Number.isFinite(source.historyPanel.opacity)
+          ? source.historyPanel.opacity
+          : defaultSettings.historyPanel.opacity,
     },
     preferredMonitorName:
       typeof source.preferredMonitorName === 'string'

@@ -83,6 +83,7 @@ npm run build:mac-release
 | `settings` | 설정 패널 | `settings.llm.title`, `settings.language` |
 | `settings.llm` | AI 모델 설정 | `settings.llm.provider`, `settings.llm.apiKey` |
 | `settings.voice` | STT/TTS 설정 | `settings.voice.stt.title` |
+| `settings.audioDevice` | 오디오 디바이스 설정 | `settings.audioDevice.title`, `settings.audioDevice.microphone` |
 | `settings.avatar` | 아바타 설정 | `settings.avatar.name`, `settings.avatar.emotions.*` |
 | `settings.update` | 앱 업데이트 | `settings.update.checkButton`, `settings.update.checking` |
 | `settings.licenses` | 라이선스 정보 | `settings.licenses.title` |
@@ -138,6 +139,7 @@ const { t } = useTranslation();
 - 프런트 녹음(`16kHz mono WAV`) → Tauri `transcribe_audio` → `whisper-cli`
 - 원격 세션 감지 시 음성 인식 차단 (텍스트 입력은 사용 가능)
 - TTS 테스트 버튼: 음성 설정 섹션에 위치 (아바타 섹션에서 이동)
+- 오디오 디바이스: 마이크 입력/스피커 출력 독립 선택 + 마이크 피크 미터 + setSinkId 기반 출력 라우팅
 
 ### 아바타/UI
 - 기본 VRM 아바타 바이너리 임베딩: AES-128-GCM 암호화하여 앱 번들에 포함, 첫 실행 시 VRM 선택 불필요
@@ -145,6 +147,7 @@ const { t } = useTranslation();
 - 기능 버튼/옵션 버튼 우하단 고정 (상태/텍스트/음성/히스토리/설정)
 - 아바타 마우스 선택/드래그 이동/회전 지원
 - 자유 이동 모드: 화면 어디든 자유 배치, 화면 밖 이동 가능
+- 대화 기록 패널: 드래그 이동/리사이즈/글자 크기 조절/투명도 조절(20~100%) 지원
 - 말풍선 위치를 아바타 상단 기준으로 동적 계산 (표시/숨김 토글 가능)
 - 클릭스루 + 인터랙티브 영역 보호(버튼/아바타/설정 패널) + 멀티 모니터 대응
 - 모션 클립/제스처/댄스/표정 시스템
@@ -206,18 +209,19 @@ const { t } = useTranslation();
 - **모듈화**: `src/features/channels/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수/유틸)
 - **플러그인 구조**: `claude-plugin/ama-bridge/`에 공식 마켓플레이스 제출용 플러그인 준비
   - `.claude-plugin/plugin.json` 메타데이터 + `.mcp.json` 서버 설정
-  - `server.ts`: 채널 서버 canonical source (mcp-channels/dev-bridge.mts와 동일 로직)
+  - `server.ts`: 채널 서버 canonical source
 
 ### 설정 패널 구성
 1. **UserProfile** — 계정 정보 (OAuth)
 2. **Language** — 한국어/영어/일본어 선택
 3. **LLMSettings** — AI 모델 Provider/Model/API Key/Endpoint (Channels ON 시 잠금)
-4. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + TTS 테스트 + 글로벌 단축키
-5. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량
-6. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
-7. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
-8. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
-9. **LicensesSettings** — 오픈소스/모델 라이선스
+4. **AudioDeviceSettings** — 마이크 입력/스피커 출력 디바이스 선택 + 마이크 피크 미터
+5. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + TTS 테스트 + 글로벌 단축키
+6. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량 + 관리자 API 크레딧 대시보드
+7. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
+8. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
+9. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
+10. **LicensesSettings** — 오픈소스/모델 라이선스
 - 각 섹션은 `SettingsSection.tsx` 공통 접을 수 있는 카드 UI 사용
 
 ### 로컬 배포 파이프라인

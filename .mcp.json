@@ -12,7 +12,7 @@
     },
     "ama-bridge": {
       "command": "npx",
-      "args": ["--prefix", "./mcp-channels", "tsx", "./mcp-channels/dev-bridge.mts"],
+      "args": ["--prefix", "./claude-plugin/ama-bridge", "tsx", "./claude-plugin/ama-bridge/server.ts"],
       "env": { "BRIDGE_PORT": "8790" }
     }
   }
