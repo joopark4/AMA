@@ -6,6 +6,18 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
+    "audioDevice": {
+      "title": "Audio & Microphone",
+      "microphone": "Microphone (Input)",
+      "speaker": "Speaker (Output)",
+      "default": "System Default",
+      "micNotFound": "No microphone found",
+      "speakerNotFound": "No output device found",
+      "inputLevel": "Input Level",
+      "outputLevel": "Output Level",
+      "testSpeaker": "Test",
+      "testing": "Playing..."
+    },
     "account": {
       "title": "Account"
     },
@@ -45,6 +57,10 @@
         "engine": "Engine",
         "model": "Model",
         "whisperInfo": "Local whisper-cli speech recognition",
+        "microphone": "Microphone",
+        "micDefault": "System Default",
+        "micNotFound": "No microphone found",
+        "micFallback": "Selected microphone not found, using default",
         "engines": {
           "whisper": "Whisper",
           "moonshine": "Moonshine",
@@ -56,6 +72,9 @@
         "engine": "Engine",
         "voice": "Voice",
         "supertonicInfo": "High-quality local TTS - Korean/English support",
+        "speaker": "Output Device",
+        "speakerDefault": "System Default",
+        "speakerNotFound": "No output device found",
         "engines": {
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",

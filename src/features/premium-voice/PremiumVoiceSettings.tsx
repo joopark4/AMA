@@ -154,6 +154,13 @@ export default function PremiumVoiceSettings() {
       const blobUrl = URL.createObjectURL(blob);
 
       const audio = new Audio(blobUrl);
+
+      // 선택된 출력 디바이스 적용
+      const outputDeviceId = useSettingsStore.getState().settings.tts.audioOutputDeviceId;
+      if (outputDeviceId && 'setSinkId' in audio) {
+        await (audio as any).setSinkId(outputDeviceId).catch(() => {});
+      }
+
       previewAudioRef.current = audio;
 
       audio.onended = () => {
