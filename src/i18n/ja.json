@@ -6,6 +6,18 @@
   "settings": {
     "title": "設定",
     "language": "言語",
+    "audioDevice": {
+      "title": "オーディオ & マイク",
+      "microphone": "マイク（入力）",
+      "speaker": "スピーカー（出力）",
+      "default": "システムデフォルト",
+      "micNotFound": "マイクが見つかりません",
+      "speakerNotFound": "出力デバイスが見つかりません",
+      "inputLevel": "入力レベル",
+      "outputLevel": "出力レベル",
+      "testSpeaker": "テスト",
+      "testing": "再生中..."
+    },
     "account": {
       "title": "アカウント"
     },
@@ -45,6 +57,10 @@
         "engine": "エンジン",
         "model": "モデル",
         "whisperInfo": "ローカルwhisper-cli音声認識を使用",
+        "microphone": "マイク選択",
+        "micDefault": "システムデフォルト",
+        "micNotFound": "マイクが見つかりません",
+        "micFallback": "選択したマイクが見つからないため、デフォルトを使用します",
         "engines": {
           "whisper": "Whisper",
           "moonshine": "Moonshine",
@@ -56,6 +72,9 @@
         "engine": "エンジン",
         "voice": "音声",
         "supertonicInfo": "高品質ローカルTTS - 韓国語/英語対応",
+        "speaker": "出力デバイス",
+        "speakerDefault": "システムデフォルト",
+        "speakerNotFound": "出力デバイスが見つかりません",
         "engines": {
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",
