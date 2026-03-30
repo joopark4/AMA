@@ -6,12 +6,19 @@ export interface AudioAnalysis {
   isSpeaking: boolean;
 }
 
+const BASE_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+};
+
 export class AudioProcessor {
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private mediaStream: MediaStream | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private isInitialized = false;
+  private currentDeviceId?: string;
 
   // Manual recording state
   private isManualRecording = false;
@@ -20,7 +27,7 @@ export class AudioProcessor {
   private silentGain: GainNode | null = null;
   private readonly targetSampleRate = 16000;
 
-  async initialize(): Promise<void> {
+  async initialize(deviceId?: string): Promise<void> {
     if (this.isInitialized) return;
 
     try {
@@ -28,22 +35,54 @@ export class AudioProcessor {
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
 
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      const audioConstraints: MediaTrackConstraints = { ...BASE_AUDIO_CONSTRAINTS };
+      if (deviceId) {
+        audioConstraints.deviceId = { exact: deviceId };
+      }
+
+      let didFallback = false;
+      try {
+        this.mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: audioConstraints,
+        });
+      } catch (deviceError) {
+        // 선택한 마이크를 찾을 수 없으면 기본 마이크로 폴백
+        if (deviceId) {
+          console.warn(`Microphone ${deviceId} not available, falling back to default`);
+          this.mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: BASE_AUDIO_CONSTRAINTS,
+          });
+          didFallback = true;
+        } else {
+          throw deviceError;
+        }
+      }
 
       this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
       this.source.connect(this.analyser);
 
+      this.currentDeviceId = didFallback ? undefined : deviceId;
       this.isInitialized = true;
     } catch (error) {
       console.error('Failed to initialize audio processor:', error);
       throw error;
     }
+  }
+
+  /**
+   * 마이크 디바이스 변경 시 재초기화.
+   * 녹음 중이거나 동일 deviceId면 무시.
+   */
+  async reinitialize(deviceId?: string): Promise<void> {
+    if (this.isManualRecording) return;
+    if (this.isInitialized && this.currentDeviceId === deviceId) return;
+
+    this.dispose();
+    await this.initialize(deviceId);
+  }
+
+  getDeviceId(): string | undefined {
+    return this.currentDeviceId;
   }
 
   analyze(): AudioAnalysis {
@@ -252,7 +291,7 @@ export class AudioProcessor {
     }
 
     if (!this.mediaStream || !this.audioContext || !this.source) {
-      await this.initialize();
+      await this.initialize(this.currentDeviceId);
     }
 
     if (!this.mediaStream || !this.audioContext || !this.source) {
@@ -333,6 +372,7 @@ export class AudioProcessor {
 
     this.analyser = null;
     this.isInitialized = false;
+    this.currentDeviceId = undefined;
   }
 }
 

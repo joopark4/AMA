@@ -846,6 +846,16 @@ export function useConversation(): UseConversationReturn {
     }
 
     try {
+      // 선택된 마이크가 변경되었으면 재초기화
+      const selectedDeviceId = useSettingsStore.getState().settings.stt.audioInputDeviceId;
+      if (audioProcessor.getDeviceId() !== selectedDeviceId) {
+        await audioProcessor.reinitialize(selectedDeviceId);
+        // 폴백 발생 시 (선택 디바이스 분리 등) 설정도 동기화하여 반복 재초기화 방지
+        if (selectedDeviceId && audioProcessor.getDeviceId() !== selectedDeviceId) {
+          useSettingsStore.getState().setSTTSettings({ audioInputDeviceId: audioProcessor.getDeviceId() });
+        }
+      }
+
       await audioProcessor.startRecording();
       localRecordingRef.current = true;
       setTranscript('');
