@@ -176,12 +176,24 @@ class TTSRouter {
     audio.volume = 1.0;
     audio.preload = 'auto';
 
+    // setSinkId await 전에 stopper를 등록하여 대기 중 취소 가능하게 함
+    let cancelled = false;
+    this.activePlaybackStopper = () => {
+      cancelled = true;
+      try { audio.pause(); audio.src = ''; } catch { /* ignore */ }
+    };
+
     if (outputDeviceId && 'setSinkId' in audio) {
       try {
         await (audio as any).setSinkId(outputDeviceId);
       } catch (err) {
         log('setSinkId failed, using default output:', (err as Error).message);
       }
+    }
+
+    if (cancelled) {
+      URL.revokeObjectURL(objectUrl);
+      return;
     }
 
     return new Promise((resolve, reject) => {
