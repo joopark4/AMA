@@ -170,10 +170,33 @@ class TTSRouter {
     const objectUrl = URL.createObjectURL(blob);
     log('Blob URL created for HTMLAudio playback');
 
+    // 선택된 출력 디바이스 적용 — play() 전에 완료되어야 함
+    const outputDeviceId = useSettingsStore.getState().settings.tts.audioOutputDeviceId;
+    const audio = new Audio();
+    audio.volume = 1.0;
+    audio.preload = 'auto';
+
+    // setSinkId await 전에 stopper를 등록하여 대기 중 취소 가능하게 함
+    let cancelled = false;
+    this.activePlaybackStopper = () => {
+      cancelled = true;
+      try { audio.pause(); audio.src = ''; } catch { /* ignore */ }
+    };
+
+    if (outputDeviceId && 'setSinkId' in audio) {
+      try {
+        await (audio as any).setSinkId(outputDeviceId);
+      } catch (err) {
+        log('setSinkId failed, using default output:', (err as Error).message);
+      }
+    }
+
+    if (cancelled) {
+      URL.revokeObjectURL(objectUrl);
+      return;
+    }
+
     return new Promise((resolve, reject) => {
-      const audio = new Audio();
-      audio.volume = 1.0;
-      audio.preload = 'auto';
       let released = false;
       let lastLoggedSecond = -1;
       let settled = false;

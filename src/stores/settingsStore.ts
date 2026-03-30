@@ -28,6 +28,7 @@ export interface LLMSettings {
 export interface STTSettings {
   engine: STTEngine;
   model: string;
+  audioInputDeviceId?: string;
 }
 
 export interface SupertoneApiVoiceSettings {
@@ -50,6 +51,7 @@ export interface TTSSettings {
   engine: TTSEngine;
   voice?: string;                       // supertonic용 (F1-M5)
   supertoneApi?: SupertoneApiSettings;  // supertone_api용
+  audioOutputDeviceId?: string;
 }
 
 export interface GlobalShortcutSettings {
@@ -381,11 +383,17 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       ...(source.stt || defaultSettings.stt),
       engine: 'whisper',
       model: normalizeWhisperModel(source.stt?.model),
+      audioInputDeviceId: typeof source.stt?.audioInputDeviceId === 'string'
+        ? source.stt.audioInputDeviceId
+        : undefined,
     },
     tts: {
       ...(source.tts || defaultSettings.tts),
       engine: normalizeTTSEngine(source.tts?.engine),
       voice: normalizeSupertonicVoice(source.tts?.voice),
+      audioOutputDeviceId: typeof source.tts?.audioOutputDeviceId === 'string'
+        ? source.tts.audioOutputDeviceId
+        : undefined,
     },
     globalShortcut: normalizeGlobalShortcutSettings(
       source.globalShortcut as Partial<GlobalShortcutSettings> | undefined
@@ -451,6 +459,9 @@ export const useSettingsStore = create<SettingsState>()(
               ...stt,
               engine: 'whisper',
               model: normalizeWhisperModel(stt.model ?? state.settings.stt.model),
+              audioInputDeviceId: 'audioInputDeviceId' in stt
+                ? (typeof stt.audioInputDeviceId === 'string' ? stt.audioInputDeviceId : undefined)
+                : state.settings.stt.audioInputDeviceId,
             },
           },
         })),
@@ -464,6 +475,9 @@ export const useSettingsStore = create<SettingsState>()(
               ...tts,
               engine: normalizeTTSEngine(tts.engine ?? state.settings.tts.engine),
               voice: normalizeSupertonicVoice(tts.voice ?? state.settings.tts.voice),
+              audioOutputDeviceId: 'audioOutputDeviceId' in tts
+                ? (typeof tts.audioOutputDeviceId === 'string' ? tts.audioOutputDeviceId : undefined)
+                : state.settings.tts.audioOutputDeviceId,
             },
           },
         })),

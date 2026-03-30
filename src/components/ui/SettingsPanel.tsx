@@ -4,6 +4,7 @@ import { useAvatarStore } from '../../stores/avatarStore';
 import SettingsSection from '../settings/SettingsSection';
 import UserProfile from '../auth/UserProfile';
 import LLMSettings from '../settings/LLMSettings';
+import AudioDeviceSettings from '../settings/AudioDeviceSettings';
 import VoiceSettings from '../settings/VoiceSettings';
 import { PremiumVoiceSettings } from '../../features/premium-voice';
 import AvatarSettings from '../settings/AvatarSettings';
@@ -91,6 +92,11 @@ export default function SettingsPanel() {
           {/* LLM Settings */}
           <SettingsSection title={t('settings.llm.title')}>
             <LLMSettings />
+          </SettingsSection>
+
+          {/* Audio Device Settings */}
+          <SettingsSection title={t('settings.audioDevice.title')}>
+            <AudioDeviceSettings />
           </SettingsSection>
 
           {/* Voice Settings */}
