@@ -167,15 +167,14 @@ export default function AudioDeviceSettings() {
             {Array.from({ length: 20 }, (_, i) => {
               const threshold = (i + 1) / 20;
               const active = micLevel >= threshold;
-              let color: string;
-              if (i >= 16) color = active ? '#ef4444' : '#fecaca';
-              else if (i >= 12) color = active ? '#f59e0b' : '#fef3c7';
-              else color = active ? '#22c55e' : '#e5e7eb';
+              let colorClass: string;
+              if (i >= 16) colorClass = active ? 'bg-red-500' : 'bg-red-200';
+              else if (i >= 12) colorClass = active ? 'bg-amber-500' : 'bg-amber-100';
+              else colorClass = active ? 'bg-green-500' : 'bg-gray-200';
               return (
                 <div
                   key={i}
-                  className="flex-1 rounded-sm transition-colors duration-75"
-                  style={{ backgroundColor: color }}
+                  className={`flex-1 rounded-sm transition-colors duration-75 ${colorClass}`}
                 />
               );
             })}
