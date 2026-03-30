@@ -153,7 +153,9 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
         set({
           isPremium: data.is_premium || data.is_admin === true,
           isAdmin: data.is_admin === true,
-          quota: get().quota ? { ...get().quota!, limit: creditLimit } : null,
+          quota: get().quota
+            ? { ...get().quota!, limit: creditLimit }
+            : { limit: creditLimit, used: 0, remaining: creditLimit },
         });
       }
     } catch (err) {
@@ -284,7 +286,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     if (!isNaN(used) && !isNaN(limit) && !isNaN(remaining)) {
       set({
         quota: { used, limit, remaining },
-        isQuotaExceeded: remaining <= 0,
+        isQuotaExceeded: get().isAdmin ? false : remaining <= 0,
       });
     }
   },

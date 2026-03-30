@@ -166,11 +166,16 @@ export default function AudioDeviceSettings() {
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">{t('settings.audioDevice.default')}</option>
-            {microphones.map((mic) => (
-              <option key={mic.deviceId} value={mic.deviceId}>
-                {mic.label || `Microphone (${mic.deviceId.slice(0, 12)}...)`}
-              </option>
-            ))}
+            {microphones.map((mic, i) => {
+              const isDefault = mic.deviceId === 'default' ||
+                (!microphones.some((d) => d.deviceId === 'default') && i === 0);
+              return (
+                <option key={mic.deviceId} value={mic.deviceId}>
+                  {(mic.label || `Microphone (${mic.deviceId.slice(0, 12)}...)`) +
+                    (isDefault ? ` (${t('settings.audioDevice.default')})` : '')}
+                </option>
+              );
+            })}
           </select>
         )}
         {micFallbackMessage && (
@@ -219,11 +224,16 @@ export default function AudioDeviceSettings() {
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">{t('settings.audioDevice.default')}</option>
-            {speakers.map((spk) => (
-              <option key={spk.deviceId} value={spk.deviceId}>
-                {spk.label || `Speaker (${spk.deviceId.slice(0, 12)}...)`}
-              </option>
-            ))}
+            {speakers.map((spk, i) => {
+              const isDefault = spk.deviceId === 'default' ||
+                (!speakers.some((d) => d.deviceId === 'default') && i === 0);
+              return (
+                <option key={spk.deviceId} value={spk.deviceId}>
+                  {(spk.label || `Speaker (${spk.deviceId.slice(0, 12)}...)`) +
+                    (isDefault ? ` (${t('settings.audioDevice.default')})` : '')}
+                </option>
+              );
+            })}
           </select>
         )}
 

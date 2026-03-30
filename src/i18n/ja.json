@@ -362,6 +362,7 @@
     "button": "会話履歴",
     "decreaseFontSize": "文字サイズを縮小",
     "increaseFontSize": "文字サイズを拡大",
+    "opacity": "不透明度 {{value}}%",
     "close": "閉じる"
   },
   "avatar": {
