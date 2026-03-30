@@ -45,10 +45,12 @@ export default function AudioDeviceSettings() {
 
   useEffect(() => {
     refreshDevices();
-    navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
-    return () => {
-      navigator.mediaDevices.removeEventListener('devicechange', refreshDevices);
-    };
+    if (navigator.mediaDevices?.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
+      return () => {
+        navigator.mediaDevices.removeEventListener('devicechange', refreshDevices);
+      };
+    }
   }, [refreshDevices]);
 
   // 저장된 입력 deviceId 폴백
@@ -95,12 +97,12 @@ export default function AudioDeviceSettings() {
       source.connect(analyser);
       micAnalyserRef.current = analyser;
 
+      const METER_SENSITIVITY = 3;
       const data = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
         analyser.getByteFrequencyData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) sum += data[i];
-        setMicLevel(Math.min(1, (sum / data.length / 255) * 3));
+        const sum = data.reduce((a, b) => a + b, 0);
+        setMicLevel(Math.min(1, (sum / data.length / 255) * METER_SENSITIVITY));
         micRafRef.current = requestAnimationFrame(tick);
       };
       tick();

@@ -6,6 +6,12 @@ export interface AudioAnalysis {
   isSpeaking: boolean;
 }
 
+const BASE_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+};
+
 export class AudioProcessor {
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
@@ -29,11 +35,7 @@ export class AudioProcessor {
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
 
-      const audioConstraints: MediaTrackConstraints = {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      };
+      const audioConstraints: MediaTrackConstraints = { ...BASE_AUDIO_CONSTRAINTS };
       if (deviceId) {
         audioConstraints.deviceId = { exact: deviceId };
       }
@@ -48,11 +50,7 @@ export class AudioProcessor {
         if (deviceId) {
           console.warn(`Microphone ${deviceId} not available, falling back to default`);
           this.mediaStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            },
+            audio: BASE_AUDIO_CONSTRAINTS,
           });
           didFallback = true;
         } else {
