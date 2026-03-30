@@ -31,8 +31,8 @@ export default function AudioDeviceSettings() {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           stream.getTracks().forEach((t) => t.stop());
           devices = await navigator.mediaDevices.enumerateDevices();
-        } catch {
-          // 권한 거부 시 label 없는 목록이라도 사용
+        } catch (err) {
+          console.warn('Failed to get user media for device enumeration:', err);
         }
       }
       setMicrophones(devices.filter((d) => d.kind === 'audioinput'));
@@ -151,7 +151,7 @@ export default function AudioDeviceSettings() {
             <option value="">{t('settings.audioDevice.default')}</option>
             {microphones.map((mic) => (
               <option key={mic.deviceId} value={mic.deviceId}>
-                {mic.label || `Microphone (${mic.deviceId.slice(0, 8)}...)`}
+                {mic.label || `Microphone (${mic.deviceId.slice(0, 12)}...)`}
               </option>
             ))}
           </select>
@@ -204,7 +204,7 @@ export default function AudioDeviceSettings() {
             <option value="">{t('settings.audioDevice.default')}</option>
             {speakers.map((spk) => (
               <option key={spk.deviceId} value={spk.deviceId}>
-                {spk.label || `Speaker (${spk.deviceId.slice(0, 8)}...)`}
+                {spk.label || `Speaker (${spk.deviceId.slice(0, 12)}...)`}
               </option>
             ))}
           </select>
