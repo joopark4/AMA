@@ -1,5 +1,7 @@
 # AMA - AI My Avatar
 
+> **Notice:** Auto-update is currently unavailable. Please download the latest DMG from the [Releases](https://github.com/joopark4/AMA/releases) page to update.
+
 An AI avatar desktop app that moves freely on your screen and interacts with you through text and voice.
 
 Korean version: [README.md](README.md)
