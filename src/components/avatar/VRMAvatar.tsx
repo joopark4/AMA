@@ -1037,10 +1037,10 @@ export default function VRMAvatar() {
           // idle 시 Y 위치를 rest pose 높이로 복원 (클립 내 Y 드리프트 방지)
           const restY = restHipsPositionRef.current?.y ?? hipsBone.position.y;
           hipsBone.position.y = restY;
-          // idle 시 hips 회전 감쇠 (매 프레임 20%씩 정면으로, 자연스러운 복귀)
-          hipsBone.rotation.x *= 0.8;
-          hipsBone.rotation.y *= 0.8;
-          hipsBone.rotation.z *= 0.8;
+          // idle 시 hips 회전 감쇠 (프레임 레이트 독립적)
+          hipsBone.rotation.x = THREE.MathUtils.damp(hipsBone.rotation.x, 0, 10, delta);
+          hipsBone.rotation.y = THREE.MathUtils.damp(hipsBone.rotation.y, 0, 10, delta);
+          hipsBone.rotation.z = THREE.MathUtils.damp(hipsBone.rotation.z, 0, 10, delta);
         }
       }
     }
