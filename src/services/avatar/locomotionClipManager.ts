@@ -44,6 +44,7 @@ const GESTURE_FBX_MAP: Record<string, string> = {
   shrug: '/motions/mixamo/Shrug.fbx',
   celebrate: '/motions/mixamo/Celebrate.fbx',
   jump: '/motions/mixamo/Jump.fbx',
+  thinking: '/motions/mixamo/Thinking.fbx',
 };
 
 const CROSSFADE_DURATION = 0.3;
@@ -194,16 +195,29 @@ export class LocomotionClipManager {
       // 이전 제스처 정리
       this.cleanupGesture();
 
+      // idle 클립과 충돌 방지: 제스처 재생 중 idle 일시 중지
+      const wasIdling = this._isIdling;
+      const prevIdleEmotion = this.currentIdleEmotion;
+      if (this.currentIdleAction) {
+        this.currentIdleAction.fadeOut(GESTURE_FADE_IN);
+      }
+
       const action = this.getOrCreateAction(fbxPath, clip);
       action.setLoop(THREE.LoopOnce, 1);
       action.clampWhenFinished = true;
       action.reset().setEffectiveWeight(1).fadeIn(GESTURE_FADE_IN).play();
       this.currentGestureAction = action;
 
-      // 재생 완료 후 자동 정리
+      // 재생 완료 후 자동 정리 + idle 복원
       this.gestureFinishedHandler = (e) => {
         if (e.action === action) {
           this.cleanupGesture();
+          // 제스처 완료 후 idle 복원
+          if (wasIdling && !this._isWalking) {
+            this._isIdling = false; // playIdle 재진입 허용
+            this.currentIdleEmotion = '';
+            this.playIdle(prevIdleEmotion as Emotion);
+          }
         }
       };
       this.mixer.addEventListener('finished', this.gestureFinishedHandler);

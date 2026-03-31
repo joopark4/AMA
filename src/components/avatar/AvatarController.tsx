@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useAvatarStore } from '../../stores/avatarStore';
+import { useAvatarStore, type GestureType } from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getEmotionTuning } from '../../config/emotionTuning';
 
@@ -12,15 +12,15 @@ const TURN_PAUSE_DURATION = 0.12;
 const MIN_TURN_DISTANCE = 3;
 const MIN_CRUISE_SPEED = 40;
 
-/** 감정별 자동 배회 제스처 */
+/** 감정별 자동 배회 제스처 — 모든 제스처를 감정에 맞게 배분 */
 const EMOTION_GESTURES: Record<string, string[]> = {
-  neutral: ['nod', 'shrug'],
-  happy: ['celebrate', 'wave', 'jump'],
-  sad: ['shake', 'shrug'],
-  angry: ['shake'],
-  thinking: ['nod', 'shrug'],
-  surprised: ['jump', 'celebrate'],
-  relaxed: ['nod', 'wave'],
+  neutral: ['nod', 'shrug', 'wave', 'thinking'],
+  happy: ['celebrate', 'wave', 'jump', 'nod'],
+  sad: ['shake', 'shrug', 'nod', 'thinking'],
+  angry: ['shake', 'shrug', 'nod'],
+  thinking: ['nod', 'shrug', 'thinking', 'wave'],
+  surprised: ['jump', 'celebrate', 'wave', 'shake'],
+  relaxed: ['nod', 'wave', 'shrug', 'celebrate'],
 };
 
 const STYLE_SPEED_MULTIPLIER = {
@@ -95,9 +95,14 @@ function getRandomTarget(
   return { x: clamp(x, bounds.minX, bounds.maxX), y: floorY };
 }
 
-/** 액션 순환 큐: 다양한 액션을 순서대로 실행 */
+/** 액션 순환 큐: walk/gesture/jump/idle을 고르게 배분 */
 const ROAM_ACTION_SEQUENCE: RoamAction[] = [
-  'walk', 'gesture', 'walk', 'idle', 'walk', 'jump', 'gesture', 'walk', 'idle', 'gesture',
+  'walk', 'gesture', 'idle',
+  'walk', 'jump', 'gesture',
+  'walk', 'idle', 'gesture',
+  'walk', 'jump', 'idle',
+  'walk', 'gesture', 'jump',
+  'walk', 'idle', 'gesture',
 ];
 
 export default function AvatarController() {
@@ -181,8 +186,8 @@ export default function AvatarController() {
         }
         case 'gesture': {
           const gestures = EMOTION_GESTURES[em] ?? EMOTION_GESTURES.neutral;
-          const gesture = gestures[Math.floor(Math.random() * gestures.length)];
-          s.triggerGesture(gesture as any);
+          const gesture = gestures[Math.floor(Math.random() * gestures.length)] as GestureType;
+          s.triggerGesture(gesture);
           break;
         }
         case 'jump': {
