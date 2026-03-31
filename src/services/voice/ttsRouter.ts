@@ -113,7 +113,7 @@ class TTSRouter {
     return new Promise((resolve) => {
       oscillator.onended = () => {
         audio.srcObject = null;
-        this.deviceAudio = audio; // 다음 TTS 재생을 위해 보존
+        if (!this.deviceAudio) this.deviceAudio = audio;
         resolve();
       };
     });
@@ -214,7 +214,7 @@ class TTSRouter {
         try { audio.srcObject = null; } catch { /* ignore */ }
         try { source.disconnect(); } catch { /* ignore */ }
         try { gain.disconnect(); } catch { /* ignore */ }
-        this.deviceAudio = audio; // 다음 재생을 위해 보존
+        if (!this.deviceAudio) this.deviceAudio = audio;
         done();
       };
 
