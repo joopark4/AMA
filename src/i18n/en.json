@@ -6,6 +6,18 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
+    "audioDevice": {
+      "title": "Audio & Microphone",
+      "microphone": "Microphone (Input)",
+      "speaker": "Audio Output",
+      "default": "System Default",
+      "micNotFound": "No microphone found",
+      "speakerNotFound": "No output device found",
+      "inputLevel": "Input Level",
+      "outputLevel": "Output Level",
+      "testSpeaker": "Test",
+      "testing": "Playing..."
+    },
     "general": {
       "title": "General"
     },
@@ -46,7 +58,8 @@
           "whisper": "Whisper",
           "moonshine": "Moonshine",
           "vosk": "Vosk"
-        }
+        },
+        "micFallback": "Selected microphone not found, using default"
       },
       "tts": {
         "title": "Text-to-Speech (TTS)",
@@ -120,7 +133,16 @@
         "dynamicMotionBoost": "Dynamic Motion Boost",
         "dynamicBoostStrength": "Boost Strength: {{value}}%",
         "motionDiversity": "Motion Diversity: {{value}}%",
-        "enableGestureFallback": "Enable Gesture Fallback"
+        "enableGestureFallback": "Enable Gesture Fallback",
+        "walkingTitle": "Walking",
+        "autoRoam": "Auto Roam",
+        "autoRoamDesc": "Avatar walks around the screen automatically",
+        "autoRoamDisabledByFreeMove": "Not available during Free Movement",
+        "idleTitle": "Idle Behavior",
+        "enableBreathing": "Breathing Animation",
+        "enableBreathingDesc": "Subtle breathing movement when idle",
+        "enableEyeDrift": "Eye Movement",
+        "enableEyeDriftDesc": "Natural micro eye movements"
       },
       "physics": {
         "title": "Physics",
@@ -254,6 +276,7 @@
     "button": "Chat History",
     "decreaseFontSize": "Decrease font size",
     "increaseFontSize": "Increase font size",
+    "opacity": "Opacity {{value}}%",
     "close": "Close"
   },
   "avatar": {
