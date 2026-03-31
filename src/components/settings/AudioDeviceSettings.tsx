@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getSharedAudioContext } from '../../services/audio/sharedAudioContext';
+import { ttsRouter } from '../../services/voice/ttsRouter';
 
 export default function AudioDeviceSettings() {
   const { t } = useTranslation();
@@ -219,7 +220,9 @@ export default function AudioDeviceSettings() {
           <select
             value={settings.tts.audioOutputDeviceId || ''}
             onChange={(e) => {
-              setTTSSettings({ audioOutputDeviceId: e.target.value || undefined });
+              const deviceId = e.target.value || undefined;
+              setTTSSettings({ audioOutputDeviceId: deviceId });
+              ttsRouter.prepareOutputDevice(deviceId);
             }}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >

@@ -1025,16 +1025,22 @@ export default function VRMAvatar() {
       mixerRef.current.update(delta);
     }
 
-    // Mixamo 클립 재생 후 hips XZ 드리프트 방지
-    // (removeRootMotion이 0으로 설정하지만, 일부 클립에서 미세 이동 발생)
-    if (locomotionClipRef.current && (locomotionClipRef.current.isIdling || locomotionClipRef.current.isWalking)) {
+    // Mixamo 클립 재생 후 hips 드리프트 방지 (제스처 재생 중에는 스킵)
+    const clipMgrRef = locomotionClipRef.current;
+    if (clipMgrRef && !clipMgrRef.isGesturePlaying && (clipMgrRef.isIdling || clipMgrRef.isWalking)) {
       const hipsBone = vrm.humanoid?.getNormalizedBoneNode('hips');
       if (hipsBone) {
+        // XZ 위치 고정 (root motion 제거 보완)
         hipsBone.position.x = 0;
         hipsBone.position.z = 0;
-        // idle 시 hips 회전도 정면으로 리셋 (클립 내 회전 드리프트 방지)
-        if (locomotionClipRef.current.isIdling) {
-          hipsBone.rotation.y *= 0.9; // 매 프레임 10%씩 정면으로 감쇠
+        if (clipMgrRef.isIdling) {
+          // idle 시 Y 위치를 rest pose 높이로 복원 (클립 내 Y 드리프트 방지)
+          const restY = restHipsPositionRef.current?.y ?? hipsBone.position.y;
+          hipsBone.position.y = restY;
+          // idle 시 hips 회전 감쇠 (프레임 레이트 독립적)
+          hipsBone.rotation.x = THREE.MathUtils.damp(hipsBone.rotation.x, 0, 10, delta);
+          hipsBone.rotation.y = THREE.MathUtils.damp(hipsBone.rotation.y, 0, 10, delta);
+          hipsBone.rotation.z = THREE.MathUtils.damp(hipsBone.rotation.z, 0, 10, delta);
         }
       }
     }
