@@ -10,6 +10,7 @@ import UpdateSettings from '../settings/UpdateSettings';
 import DataCleanupSettings from '../settings/DataCleanupSettings';
 import { MCPSettings } from '../../features/channels';
 import MonitorSettings from '../settings/MonitorSettings';
+import AudioDeviceSettings from '../settings/AudioDeviceSettings';
 export default function SettingsPanel() {
   const { t } = useTranslation();
   const { closeSettings, setLanguage, settings, resetSettings, setAvatarSettings } = useSettingsStore();
@@ -84,6 +85,11 @@ export default function SettingsPanel() {
           {/* LLM Settings */}
           <SettingsSection title={t('settings.llm.title')}>
             <LLMSettings />
+          </SettingsSection>
+
+          {/* Audio Device Settings */}
+          <SettingsSection title={t('settings.audioDevice.title')}>
+            <AudioDeviceSettings />
           </SettingsSection>
 
           {/* Voice Settings */}

@@ -22,6 +22,7 @@ export default function HistoryPanel() {
     position = null,
     size = { width: 320, height: 480 },
     fontSize = 14,
+    opacity = 95,
   } = settings.historyPanel ?? {};
 
   const [isDragging, setIsDragging] = useState(false);
@@ -139,6 +140,7 @@ export default function HistoryPanel() {
         width: size.width,
         height: size.height,
         cursor: isDragging ? 'grabbing' : 'default',
+        opacity: opacity / 100,
       }}
       data-interactive="true"
     >
@@ -152,6 +154,15 @@ export default function HistoryPanel() {
       >
         <span className="text-sm font-semibold text-gray-700">{t('history.title')}</span>
         <div className="flex items-center gap-1" data-nodrag="true">
+          <input
+            type="range"
+            min={20}
+            max={100}
+            value={opacity}
+            onChange={(e) => setHistoryPanelSettings({ opacity: Number(e.target.value) })}
+            className="w-12 h-3 accent-gray-400 cursor-pointer"
+            title={t('history.opacity', { value: opacity })}
+          />
           <button
             onClick={decreaseFontSize}
             className="px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-600 transition-colors"
