@@ -5,21 +5,20 @@ import PhysicsController from './PhysicsController';
 import ExpressionController from './ExpressionController';
 import EyeController from './EyeController';
 import LookAtController from './LookAtController';
-import GestureController from './GestureController';
-import ClipMotionController from './ClipMotionController';
 import DanceController from './DanceController';
 import HumanoidSyncController from './HumanoidSyncController';
+import IdleFidgetController from './IdleFidgetController';
 
 /**
  * AnimationManager - Orchestrates all animation layers
  *
  * Animation Layer System (from bottom to top):
- * Layer 0: Base (idle/walking) - handled in VRMAvatar.tsx
- * Layer 1: Physics (SpringBone) - PhysicsController
- * Layer 2: Expression (表情 blending) - ExpressionController + EyeController
- * Layer 3: Clip motion (priority) - ClipMotionController
- * Layer 4: Gesture (fallback additive blending) - GestureController
- * Layer 5: Dance (highest priority, overrides when active) - DanceController
+ * Layer 0: Base (idle/walking) - Mixamo FBX clips via LocomotionClipManager (VRMAvatar.tsx)
+ * Layer 1: Idle fidget (breathing/head drift) - IdleFidgetController
+ * Layer 2: Physics (SpringBone) - PhysicsController
+ * Layer 3: Expression (表情 blending) - ExpressionController + EyeController + LookAtController
+ * Layer 4: Dance (rhythm-based movement) - DanceController
+ * Layer 5: Final humanoid sync - HumanoidSyncController
  *
  * Each layer is responsible for its own blending with the base pose.
  * Higher layers can override or additively blend with lower layers.
@@ -28,12 +27,9 @@ export default function AnimationManager() {
   const vrm = useAvatarStore((state) => state.vrm);
   const { settings } = useSettingsStore();
   const resetGestures = useAvatarStore((state) => state.resetGestures);
-  const resetMotionState = useAvatarStore((state) => state.resetMotionState);
   const stopDancing = useAvatarStore((state) => state.stopDancing);
 
   const physicsEnabled = settings.avatar?.physics?.enabled ?? true;
-  const animationEnabled = settings.avatar?.animation?.enableGestures ?? true;
-  const clipMotionEnabled = settings.avatar?.animation?.enableMotionClips ?? true;
   const dancingEnabled = settings.avatar?.animation?.enableDancing ?? true;
   const faceOnlyModeEnabled =
     settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
@@ -42,48 +38,37 @@ export default function AnimationManager() {
     if (!faceOnlyModeEnabled) return;
 
     resetGestures();
-    resetMotionState();
     stopDancing();
   }, [
     faceOnlyModeEnabled,
     resetGestures,
-    resetMotionState,
     stopDancing,
   ]);
-
-  useEffect(() => {
-    if (clipMotionEnabled) return;
-
-    resetMotionState();
-  }, [clipMotionEnabled, resetMotionState]);
 
   // Don't render anything if VRM isn't loaded
   if (!vrm) return null;
 
   return (
     <>
-      {/* Layer 1: Physics - SpringBone effects for hair/clothing */}
+      {/* Layer 1: Idle fidget - Breathing and micro head drift */}
+      {!faceOnlyModeEnabled && <IdleFidgetController />}
+
+      {/* Layer 2: Physics - SpringBone effects for hair/clothing */}
       {physicsEnabled && <PhysicsController />}
 
-      {/* Layer 2: Expression system - Facial expressions and emotions */}
+      {/* Layer 3: Expression system - Facial expressions and emotions */}
       <ExpressionController />
 
-      {/* Layer 2b: Eye controller - Eye movement and blinking */}
+      {/* Layer 3b: Eye controller - Eye movement and blinking */}
       <EyeController />
 
-      {/* Layer 2c: LookAt controller - Makes avatar look at camera */}
+      {/* Layer 3c: LookAt controller - Makes avatar look at camera */}
       <LookAtController />
 
-      {/* Layer 3: Manifest-driven clip motions */}
-      {!faceOnlyModeEnabled && clipMotionEnabled && <ClipMotionController />}
-
-      {/* Layer 4: Fallback gesture system - Hand waves, nods, etc. */}
-      {!faceOnlyModeEnabled && animationEnabled && <GestureController />}
-
-      {/* Layer 5: Dance system - Rhythm-based movement */}
+      {/* Layer 4: Dance system - Rhythm-based movement */}
       {!faceOnlyModeEnabled && dancingEnabled && <DanceController />}
 
-      {/* Layer 6: Final normalized->raw humanoid sync for VRM compatibility */}
+      {/* Layer 5: Final normalized->raw humanoid sync for VRM compatibility */}
       <HumanoidSyncController />
     </>
   );

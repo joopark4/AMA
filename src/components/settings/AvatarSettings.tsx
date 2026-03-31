@@ -418,6 +418,80 @@ export default function AvatarSettings() {
             />
           </button>
         </div>
+
+        {/* ── 걷기 ── */}
+        {!faceOnlyModeEnabled && (
+          <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {t('settings.avatar.animation.walkingTitle')}
+            </h5>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <label className={`text-sm ${settings.avatar?.freeMovement ? 'text-gray-400' : 'text-gray-600'}`}>{t('settings.avatar.animation.autoRoam')}</label>
+                <span className="text-xs text-gray-400">
+                  {settings.avatar?.freeMovement
+                    ? t('settings.avatar.animation.autoRoamDisabledByFreeMove')
+                    : t('settings.avatar.animation.autoRoamDesc')}
+                </span>
+              </div>
+              <button
+                onClick={() => !settings.avatar?.freeMovement && setAvatarSettings({ autoRoam: !(settings.avatar?.autoRoam ?? false) })}
+                disabled={settings.avatar?.freeMovement ?? false}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings.avatar?.autoRoam && !settings.avatar?.freeMovement ? 'bg-blue-600' : 'bg-gray-300'} ${settings.avatar?.freeMovement ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${settings.avatar?.autoRoam && !settings.avatar?.freeMovement ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── 대기 동작 ── */}
+        {!faceOnlyModeEnabled && (
+          <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {t('settings.avatar.animation.idleTitle')}
+            </h5>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600">{t('settings.avatar.animation.enableBreathing')}</label>
+                <span className="text-xs text-gray-400">{t('settings.avatar.animation.enableBreathingDesc')}</span>
+              </div>
+              <button
+                onClick={() => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, enableBreathing: !(settings.avatar?.animation?.enableBreathing ?? true) },
+                })}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  (settings.avatar?.animation?.enableBreathing ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  (settings.avatar?.animation?.enableBreathing ?? true) ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600">{t('settings.avatar.animation.enableEyeDrift')}</label>
+                <span className="text-xs text-gray-400">{t('settings.avatar.animation.enableEyeDriftDesc')}</span>
+              </div>
+              <button
+                onClick={() => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, enableEyeDrift: !(settings.avatar?.animation?.enableEyeDrift ?? true) },
+                })}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Physics Settings */}

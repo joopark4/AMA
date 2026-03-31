@@ -846,6 +846,15 @@ export function useConversation(): UseConversationReturn {
     }
 
     try {
+      // Sync mic device before recording
+      const selectedDeviceId = useSettingsStore.getState().settings.stt.audioInputDeviceId;
+      if (audioProcessor.getDeviceId() !== selectedDeviceId) {
+        await audioProcessor.reinitialize(selectedDeviceId);
+        if (selectedDeviceId && audioProcessor.getDeviceId() !== selectedDeviceId) {
+          useSettingsStore.getState().setSTTSettings({ audioInputDeviceId: audioProcessor.getDeviceId() });
+        }
+      }
+
       await audioProcessor.startRecording();
       localRecordingRef.current = true;
       setTranscript('');

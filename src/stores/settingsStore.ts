@@ -28,11 +28,13 @@ export interface LLMSettings {
 export interface STTSettings {
   engine: STTEngine;
   model: string;
+  audioInputDeviceId?: string;
 }
 
 export interface TTSSettings {
   engine: TTSEngine;
   voice?: string;                       // supertonic용 (F1-M5)
+  audioOutputDeviceId?: string;
 }
 
 export interface GlobalShortcutSettings {
@@ -56,6 +58,8 @@ export interface AnimationSettings {
   enableDancing: boolean;
   danceIntensity: number;
   motionDiversity: number;
+  enableBreathing: boolean;
+  enableEyeDrift: boolean;
 }
 
 export interface LightingSettings {
@@ -74,6 +78,7 @@ export interface AvatarSettings {
   scale: number;
   movementSpeed: number;
   freeMovement: boolean;
+  autoRoam: boolean;
   showSpeechBubble: boolean;
   physics: PhysicsSettings;
   animation: AnimationSettings;
@@ -85,6 +90,7 @@ export interface HistoryPanelSettings {
   position: { x: number; y: number } | null;
   size: { width: number; height: number };
   fontSize: number;
+  opacity: number;
 }
 
 export interface Settings {
@@ -255,6 +261,7 @@ const defaultSettings: Settings = {
     scale: 1.0,
     movementSpeed: 50,
     freeMovement: false,
+    autoRoam: false,
     showSpeechBubble: true,
     physics: {
       enabled: true,
@@ -271,6 +278,8 @@ const defaultSettings: Settings = {
       enableDancing: true,
       danceIntensity: 0.7,
       motionDiversity: 1.0,
+      enableBreathing: true,
+      enableEyeDrift: true,
     },
     lighting: {
       ambientIntensity: 1.0,
@@ -287,6 +296,7 @@ const defaultSettings: Settings = {
     position: null,
     size: { width: 320, height: 480 },
     fontSize: 14,
+    opacity: 95,
   },
   preferredMonitorName: '',
   mcpEnabled: false,
@@ -302,6 +312,9 @@ function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): A
     freeMovement: typeof legacyAvatar.freeMovement === 'boolean'
       ? legacyAvatar.freeMovement
       : defaultSettings.avatar.freeMovement,
+    autoRoam: typeof legacyAvatar.autoRoam === 'boolean'
+      ? legacyAvatar.autoRoam
+      : defaultSettings.avatar.autoRoam,
     showSpeechBubble: typeof legacyAvatar.showSpeechBubble === 'boolean'
       ? legacyAvatar.showSpeechBubble
       : defaultSettings.avatar.showSpeechBubble,
@@ -325,6 +338,14 @@ function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): A
       faceExpressionOnlyMode: normalizeFaceExpressionOnlyMode(
         legacyAvatar.animation?.faceExpressionOnlyMode
       ),
+      enableBreathing:
+        typeof legacyAvatar.animation?.enableBreathing === 'boolean'
+          ? legacyAvatar.animation.enableBreathing
+          : defaultSettings.avatar.animation.enableBreathing,
+      enableEyeDrift:
+        typeof legacyAvatar.animation?.enableEyeDrift === 'boolean'
+          ? legacyAvatar.animation.enableEyeDrift
+          : defaultSettings.avatar.animation.enableEyeDrift,
     },
     lighting: {
       ...defaultSettings.avatar.lighting,
@@ -354,11 +375,17 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       ...(source.stt || defaultSettings.stt),
       engine: 'whisper',
       model: normalizeWhisperModel(source.stt?.model),
+      audioInputDeviceId: typeof source.stt?.audioInputDeviceId === 'string'
+        ? source.stt.audioInputDeviceId
+        : undefined,
     },
     tts: {
       ...(source.tts || defaultSettings.tts),
       engine: normalizeTTSEngine(source.tts?.engine),
       voice: normalizeSupertonicVoice(source.tts?.voice),
+      audioOutputDeviceId: typeof source.tts?.audioOutputDeviceId === 'string'
+        ? source.tts.audioOutputDeviceId
+        : undefined,
     },
     globalShortcut: normalizeGlobalShortcutSettings(
       source.globalShortcut as Partial<GlobalShortcutSettings> | undefined
@@ -379,6 +406,10 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
         typeof source.historyPanel?.fontSize === 'number' && Number.isFinite(source.historyPanel.fontSize)
           ? source.historyPanel.fontSize
           : defaultSettings.historyPanel.fontSize,
+      opacity:
+        typeof source.historyPanel?.opacity === 'number' && Number.isFinite(source.historyPanel.opacity)
+          ? Math.max(20, Math.min(100, source.historyPanel.opacity))
+          : defaultSettings.historyPanel.opacity,
     },
     preferredMonitorName:
       typeof source.preferredMonitorName === 'string'
@@ -424,6 +455,9 @@ export const useSettingsStore = create<SettingsState>()(
               ...stt,
               engine: 'whisper',
               model: normalizeWhisperModel(stt.model ?? state.settings.stt.model),
+              audioInputDeviceId: 'audioInputDeviceId' in stt
+                ? (typeof stt.audioInputDeviceId === 'string' ? stt.audioInputDeviceId : undefined)
+                : state.settings.stt.audioInputDeviceId,
             },
           },
         })),
@@ -437,6 +471,9 @@ export const useSettingsStore = create<SettingsState>()(
               ...tts,
               engine: normalizeTTSEngine(tts.engine ?? state.settings.tts.engine),
               voice: normalizeSupertonicVoice(tts.voice ?? state.settings.tts.voice),
+              audioOutputDeviceId: 'audioOutputDeviceId' in tts
+                ? (typeof tts.audioOutputDeviceId === 'string' ? tts.audioOutputDeviceId : undefined)
+                : state.settings.tts.audioOutputDeviceId,
             },
           },
         })),
@@ -513,7 +550,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 14,
+      version: 15,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
