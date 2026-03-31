@@ -32,11 +32,15 @@ class TTSRouter {
       try {
         await (audio as any).setSinkId(deviceId);
         log('prepareOutputDevice: OK deviceId=', deviceId);
+        this.deviceAudio = audio;
       } catch (err) {
         log('prepareOutputDevice: FAILED:', (err as Error).message);
+        // setSinkId 실패 시 캐시하지 않음 — 다음 ensureOutputDevice에서 재시도 가능
       }
+    } else {
+      // deviceId 없음 = 기본 출력 사용
+      this.deviceAudio = audio;
     }
-    this.deviceAudio = audio;
   }
 
   /** 외부에서 setSinkId 적용된 Audio를 직접 설정 (테스트 버튼 등) */
