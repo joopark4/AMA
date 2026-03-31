@@ -214,8 +214,9 @@ export class LocomotionClipManager {
           this.cleanupGesture();
           // 제스처 완료 후 idle 복원
           if (wasIdling && !this._isWalking) {
-            this._isIdling = false; // playIdle 재진입 허용
+            this._isIdling = false;
             this.currentIdleEmotion = '';
+            this.currentIdleAction = null; // 캐시된 액션 해제하여 playIdle이 새로 시작하도록
             this.playIdle(prevIdleEmotion as Emotion);
           }
         }
