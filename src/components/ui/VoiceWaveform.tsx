@@ -7,7 +7,7 @@ interface VoiceWaveformProps {
 
 const SAMPLE_COUNT = 64;
 const FRAME_INTERVAL_MS = 1000 / 30;
-const EMA_ALPHA = 0.28;
+const EMA_ALPHA = 0.38;
 
 function ensureCanvasSize(canvas: HTMLCanvasElement): { width: number; height: number } {
   const ratio = window.devicePixelRatio || 1;
@@ -48,7 +48,7 @@ function drawWaveform(
 
   for (let i = 0; i < waveform.length; i++) {
     const x = (i / (waveform.length - 1)) * width;
-    const y = midY + waveform[i] * (height * 0.34);
+    const y = midY + waveform[i] * (height * 0.8);
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
@@ -106,7 +106,7 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
         {label}
       </div>
       <div className="px-2 py-1 rounded-b-md bg-slate-900/85 border border-slate-600 border-t-0">
-        <canvas ref={canvasRef} className="block w-full h-8" />
+        <canvas ref={canvasRef} className="block w-full h-12" />
       </div>
     </div>
   );
