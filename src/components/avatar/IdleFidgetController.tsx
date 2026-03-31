@@ -40,7 +40,9 @@ export default function IdleFidgetController() {
     if (!vrm?.humanoid) return;
 
     // Skip when higher-priority animations are active
+    const enableMotionClips = useSettingsStore.getState().settings.avatar?.animation?.enableMotionClips ?? true;
     const isHigherPriorityActive =
+      enableMotionClips ||
       currentMotionClip !== null ||
       currentGesture !== null ||
       isDancing;

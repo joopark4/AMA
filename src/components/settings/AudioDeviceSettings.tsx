@@ -10,6 +10,7 @@ import { ttsRouter } from '../../services/voice/ttsRouter';
 export default function AudioDeviceSettings() {
   const { t } = useTranslation();
   const { settings, setSTTSettings, setTTSSettings } = useSettingsStore();
+  const [isTesting, setIsTesting] = useState(false);
 
   // 디바이스 목록
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
@@ -238,6 +239,58 @@ export default function AudioDeviceSettings() {
               );
             })}
           </select>
+        )}
+
+        {speakers.length > 0 && (
+          <button
+            onClick={async () => {
+              setIsTesting(true);
+              try {
+                const deviceId = settings.tts.audioOutputDeviceId;
+                const ctx = getSharedAudioContext();
+                if (ctx.state === 'suspended') await ctx.resume();
+
+                // 비프음용 Audio + TTS용 Audio를 제스처 컨텍스트에서 동시에 생성
+                const beepAudio = new Audio();
+                const ttsAudio = new Audio();
+                if (deviceId && 'setSinkId' in beepAudio) {
+                  await (beepAudio as any).setSinkId(deviceId);
+                  await (ttsAudio as any).setSinkId(deviceId);
+                }
+
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                const dest = ctx.createMediaStreamDestination();
+                osc.connect(gain);
+                gain.connect(dest);
+                osc.frequency.value = 440;
+                gain.gain.value = 0.3;
+
+                beepAudio.srcObject = dest.stream;
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+                await beepAudio.play();
+
+                // TTS용 Audio를 deviceAudio에 보존 (setSinkId 적용 완료)
+                ttsRouter.setDeviceAudio(ttsAudio);
+
+                await new Promise<void>((resolve) => {
+                  osc.onended = () => {
+                    beepAudio.srcObject = null;
+                    resolve();
+                  };
+                });
+              } catch (err) {
+                console.warn('Test beep failed:', err);
+              } finally {
+                setIsTesting(false);
+              }
+            }}
+            disabled={isTesting}
+            className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isTesting ? t('settings.audioDevice.testing') : t('settings.audioDevice.testSpeaker')}
+          </button>
         )}
 
       </div>
