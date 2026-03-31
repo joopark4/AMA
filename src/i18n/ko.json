@@ -9,7 +9,7 @@
     "audioDevice": {
       "title": "오디오 & 마이크",
       "microphone": "마이크 (입력)",
-      "speaker": "스피커 (출력)",
+      "speaker": "오디오 출력",
       "default": "시스템 기본",
       "micNotFound": "마이크를 찾을 수 없습니다",
       "speakerNotFound": "출력 장치를 찾을 수 없습니다",
