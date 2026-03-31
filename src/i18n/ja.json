@@ -6,6 +6,18 @@
   "settings": {
     "title": "設定",
     "language": "言語",
+    "audioDevice": {
+      "title": "オーディオ & マイク",
+      "microphone": "マイク（入力）",
+      "speaker": "オーディオ出力",
+      "default": "システムデフォルト",
+      "micNotFound": "マイクが見つかりません",
+      "speakerNotFound": "出力デバイスが見つかりません",
+      "inputLevel": "入力レベル",
+      "outputLevel": "出力レベル",
+      "testSpeaker": "テスト",
+      "testing": "再生中..."
+    },
     "general": {
       "title": "一般"
     },
@@ -46,7 +58,8 @@
           "whisper": "Whisper",
           "moonshine": "Moonshine",
           "vosk": "Vosk"
-        }
+        },
+        "micFallback": "選択したマイクが見つからないため、デフォルトを使用します"
       },
       "tts": {
         "title": "音声合成（TTS）",
@@ -120,7 +133,16 @@
         "dynamicMotionBoost": "ダイナミックモーションブースト",
         "dynamicBoostStrength": "ブースト強度: {{value}}%",
         "motionDiversity": "モーション多様性: {{value}}%",
-        "enableGestureFallback": "ジェスチャーフォールバックを使用"
+        "enableGestureFallback": "ジェスチャーフォールバックを使用",
+        "walkingTitle": "歩行",
+        "autoRoam": "自動散歩",
+        "autoRoamDesc": "アバターが画面内を自動的に歩き回ります",
+        "autoRoamDisabledByFreeMove": "自由移動中は使用できません",
+        "idleTitle": "待機動作",
+        "enableBreathing": "呼吸アニメーション",
+        "enableBreathingDesc": "待機中の微細な呼吸動作",
+        "enableEyeDrift": "視線移動",
+        "enableEyeDriftDesc": "自然な目の微細な動き"
       },
       "physics": {
         "title": "物理エンジン",
@@ -254,6 +276,7 @@
     "button": "会話履歴",
     "decreaseFontSize": "文字サイズを縮小",
     "increaseFontSize": "文字サイズを拡大",
+    "opacity": "不透明度 {{value}}%",
     "close": "閉じる"
   },
   "avatar": {

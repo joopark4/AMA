@@ -10,6 +10,7 @@ export class AudioProcessor {
   private mediaStream: MediaStream | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
   private isInitialized = false;
+  private currentDeviceId: string | undefined = undefined;
 
   // Manual recording state
   private isManualRecording = false;
@@ -18,7 +19,7 @@ export class AudioProcessor {
   private silentGain: GainNode | null = null;
   private readonly targetSampleRate = 16000;
 
-  async initialize(): Promise<void> {
+  async initialize(deviceId?: string): Promise<void> {
     if (this.isInitialized) return;
 
     try {
@@ -26,13 +27,37 @@ export class AudioProcessor {
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
 
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+
+      if (deviceId) {
+        audioConstraints.deviceId = { exact: deviceId };
+      }
+
+      try {
+        this.mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: audioConstraints,
+        });
+        this.currentDeviceId = deviceId;
+      } catch {
+        // Fallback to default device if specified device is not available
+        if (deviceId) {
+          console.warn('Specified audio device not found, falling back to default');
+          this.mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+          this.currentDeviceId = undefined;
+        } else {
+          throw new Error('Failed to get audio stream');
+        }
+      }
 
       this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
       this.source.connect(this.analyser);
@@ -42,6 +67,17 @@ export class AudioProcessor {
       console.error('Failed to initialize audio processor:', error);
       throw error;
     }
+  }
+
+  getDeviceId(): string | undefined {
+    return this.currentDeviceId;
+  }
+
+  async reinitialize(deviceId?: string): Promise<void> {
+    if (this.isManualRecording) return;
+    if (this.currentDeviceId === deviceId && this.isInitialized) return;
+    this.dispose();
+    await this.initialize(deviceId);
   }
 
   analyze(): AudioAnalysis {
@@ -250,7 +286,7 @@ export class AudioProcessor {
     }
 
     if (!this.mediaStream || !this.audioContext || !this.source) {
-      await this.initialize();
+      await this.initialize(this.currentDeviceId);
     }
 
     if (!this.mediaStream || !this.audioContext || !this.source) {
@@ -333,6 +369,7 @@ export class AudioProcessor {
 
     this.analyser = null;
     this.isInitialized = false;
+    this.currentDeviceId = undefined;
   }
 }
 
