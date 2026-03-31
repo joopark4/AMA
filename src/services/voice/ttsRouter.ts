@@ -208,9 +208,11 @@ class TTSRouter {
     gain.connect(dest);
 
     let audio: HTMLAudioElement;
+    let isPreparedDevice = false;
     if (this.deviceAudio) {
       audio = this.deviceAudio;
       this.deviceAudio = null;
+      isPreparedDevice = true;
       log('playViaMediaStream: using prepared deviceAudio, sinkId=', (audio as any).sinkId ?? 'default');
     } else {
       audio = new Audio();
@@ -243,7 +245,8 @@ class TTSRouter {
         try { audio.srcObject = null; } catch { /* ignore */ }
         try { source.disconnect(); } catch { /* ignore */ }
         try { gain.disconnect(); } catch { /* ignore */ }
-        if (!this.deviceAudio) this.deviceAudio = audio;
+        // setSinkId 적용된 Audio만 재사용 (기본 Audio 캐시로 세션 고정 방지)
+        if (!this.deviceAudio && isPreparedDevice) this.deviceAudio = audio;
         done();
       };
 
