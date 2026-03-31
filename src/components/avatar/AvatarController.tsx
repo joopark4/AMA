@@ -142,11 +142,6 @@ export default function AvatarController() {
   }, [facingRight]);
 
   // ─── 자동 배회 스케줄링 ───
-  /** 자동 배회용 화면 bounds — 화면 양 끝까지 이동 */
-  const getScreenBounds = useCallback(() => {
-    const marginX = Math.max(20, 40 * avatarScale);
-    return { minX: marginX, maxX: window.innerWidth - marginX };
-  }, [avatarScale]);
 
   const scheduleAutoMove = useCallback(() => {
     if (!autoRoam || freeMovement) return;
@@ -172,14 +167,14 @@ export default function AvatarController() {
       }
 
       const floorY = getFloorY(avatarScale, s.groundY);
-      const screenBounds = getScreenBounds();
+      const { bounds: roamBounds } = useAvatarStore.getState();
       const action = pickRoamAction();
       const em = s.emotion;
 
       switch (action) {
         case 'walk': {
           s.setLocomotionStyle(chooseLocomotionStyle(em));
-          const target = getRandomTarget(s.position, screenBounds, floorY);
+          const target = getRandomTarget(s.position, roamBounds, floorY);
           s.setTargetPosition(target);
           s.setIsMoving(true);
           break;
@@ -203,7 +198,7 @@ export default function AvatarController() {
 
       scheduleAutoMove();
     }, tunedDelay);
-  }, [autoRoam, freeMovement, avatarScale, getScreenBounds]);
+  }, [autoRoam, freeMovement, avatarScale]);
 
   // ─── Bounds 업데이트 ───
   useEffect(() => {
@@ -428,8 +423,7 @@ export default function AvatarController() {
       stuckTimeRef.current = 0;
       if (effectiveAutoRoam) {
         const flY = bounds.maxY;
-        const screenBounds = getScreenBounds();
-        const reverseTarget = getRandomTarget(position, screenBounds, flY);
+        const reverseTarget = getRandomTarget(position, bounds, flY);
         setTargetPosition(reverseTarget);
         setFacingRight(reverseTarget.x > position.x);
       } else {

@@ -10,6 +10,7 @@ import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER } from '../../features/channels';
 import { permissions } from '../../services/tauri/permissions';
+import { ttsRouter } from '../../services/voice/ttsRouter';
 import VoiceWaveform from './VoiceWaveform';
 
 interface StatusIndicatorProps {
@@ -382,6 +383,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    ttsRouter.ensureOutputDevice().catch(() => {});
     if (textInput.trim()) {
       setHasTriedChat(true);
       sendMessage(textInput.trim());
@@ -390,6 +392,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
   };
 
   const handleVoiceToggle = useCallback(() => {
+    ttsRouter.ensureOutputDevice().catch(() => {});
     if (isVoiceListening) {
       stopListening();
     } else {

@@ -84,6 +84,9 @@
 | [#014](./issues/014-dev-oauth-and-session-restore.md) | 개발 모드 OAuth 콜백 + 세션 복원 안정화 | — |
 | [#015](./issues/015-premium-tts-fallback-to-local.md) | 프리미엄 TTS 기본 음성 폴백 (3가지 복합 원인) | 2026.03.21 |
 | [#016](./issues/016-channels-port-conflict.md) | Channels 포트 충돌로 응답 멈춤 | 2026.03.21 |
+| [#017](./issues/017-deploy-app-channels-issues.md) | 배포 앱 Channels 6건 통합 해결 | 2026.03.25 |
+| [#018](./issues/018-audio-output-device-routing.md) | WKWebView setSinkId 제스처 제약 해결 | 2026.03.31 |
+| [#019](./issues/019-tts-output-device-gesture.md) | TTS 출력 디바이스 제스처 제약 해결 | 2026.03.31 |
 
 ---
 

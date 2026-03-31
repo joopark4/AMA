@@ -150,7 +150,7 @@ const { t } = useTranslation();
 - 대화 기록 패널: 드래그 이동/리사이즈/글자 크기 조절/투명도 조절(20~100%) 지원
 - 말풍선 위치를 아바타 상단 기준으로 동적 계산 (표시/숨김 토글 가능)
 - 클릭스루 + 인터랙티브 영역 보호(버튼/아바타/설정 패널) + 멀티 모니터 대응
-- 모션 클립/제스처/댄스/표정 시스템
+- 모션 클립/제스처/댄스/표정 시스템 + 자동배회(autoRoam) + 대기동작(IdleFidget)
 - 커스텀 About 모달 (`AboutModal.tsx`) — `aboutStore` + `useMenuListeners` 훅으로 분리
 - 모델/데이터 폴더 Finder 열기: Rust `open_folder_in_finder` 커맨드
 
@@ -278,6 +278,9 @@ const { t } = useTranslation();
 | [#014 OAuth 콜백 + 세션 복원](docs/issues/014-dev-oauth-and-session-restore.md) | 개발 모드 OAuth 콜백 + 세션 복원 안정화 |
 | [#015 프리미엄 TTS 폴백](docs/issues/015-premium-tts-fallback-to-local.md) | 프리미엄 TTS 기본 음성 폴백 |
 | [#016 Channels 포트 충돌](docs/issues/016-channels-port-conflict.md) | Channels 포트 충돌로 응답 멈춤 |
+| [#017 배포 앱 Channels 이슈](docs/issues/017-deploy-app-channels-issues.md) | 배포 앱 Channels 6건 통합 해결 |
+| [#018 오디오 출력 디바이스 라우팅](docs/issues/018-audio-output-device-routing.md) | WKWebView setSinkId 제스처 제약 해결 |
+| [#019 TTS 출력 디바이스 제스처](docs/issues/019-tts-output-device-gesture.md) | 테스트 버튼에서 TTS용 Audio 동시 생성으로 해결 |
 
 ## 프로젝트 구조 요약
 

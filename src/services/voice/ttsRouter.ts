@@ -39,6 +39,24 @@ class TTSRouter {
     this.deviceAudio = audio;
   }
 
+  /** 외부에서 setSinkId 적용된 Audio를 직접 설정 (테스트 버튼 등) */
+  setDeviceAudio(audio: HTMLAudioElement): void {
+    this.deviceAudio = audio;
+    log('setDeviceAudio: sinkId=', (audio as any).sinkId ?? 'default');
+  }
+
+  /**
+   * 첫 번째 사용자 제스처에서 저장된 출력 디바이스로 Audio를 미리 준비.
+   * deviceAudio가 이미 있으면 스킵 (중복 호출 안전).
+   */
+  async ensureOutputDevice(): Promise<void> {
+    if (this.deviceAudio) return;
+    const savedDeviceId = useSettingsStore.getState().settings.tts.audioOutputDeviceId;
+    if (savedDeviceId) {
+      await this.prepareOutputDevice(savedDeviceId);
+    }
+  }
+
   private getAudioContext(): AudioContext {
     return getSharedAudioContext();
   }
@@ -185,8 +203,15 @@ class TTSRouter {
     source.connect(gain);
     gain.connect(dest);
 
-    const audio = this.deviceAudio ?? new Audio();
-    this.deviceAudio = null;
+    let audio: HTMLAudioElement;
+    if (this.deviceAudio) {
+      audio = this.deviceAudio;
+      this.deviceAudio = null;
+      log('playViaMediaStream: using prepared deviceAudio, sinkId=', (audio as any).sinkId ?? 'default');
+    } else {
+      audio = new Audio();
+      log('playViaMediaStream: no deviceAudio, using default output');
+    }
     audio.volume = 1.0;
     audio.srcObject = dest.stream;
 
