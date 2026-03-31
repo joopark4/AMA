@@ -58,7 +58,19 @@ fn main() {
         let key_rs_path = Path::new(&out_dir).join("vrm_key_const.rs");
         fs::write(&key_rs_path, &key_rs).expect("Failed to write vrm_key_const.rs");
     } else {
-        // VRM 또는 키 파일이 없으면 빈 placeholder 생성
+        // 릴리스 빌드에서는 VRM/키 누락 시 빌드 실패 (배포 사고 방지)
+        // OSS/CI 빌드에서는 AMA_ALLOW_NO_VRM=1 환경변수로 placeholder 허용
+        let allow_no_vrm = std::env::var("AMA_ALLOW_NO_VRM").unwrap_or_default() == "1";
+        let is_release = std::env::var("PROFILE").unwrap_or_default() == "release";
+
+        if is_release && !allow_no_vrm {
+            panic!(
+                "Release build requires assets/default.vrm and src/commands/vrm_key.bin. \
+                 Set AMA_ALLOW_NO_VRM=1 to build without embedded VRM (OSS/CI only)."
+            );
+        }
+
+        // 개발/OSS 빌드: 빈 placeholder 생성
         let enc_path = Path::new(&out_dir).join("default_vrm.enc");
         fs::write(&enc_path, b"").expect("Failed to write empty enc file");
 
