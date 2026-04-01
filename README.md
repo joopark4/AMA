@@ -5,7 +5,7 @@
 화면 위를 자유롭게 이동하는 AI 아바타 데스크톱 앱입니다.
 대화 입력(텍스트/음성), 음성 답변(TTS), VRM 아바타 상호작용을 제공합니다.
 
-English version: [README.en.md](README.en.md)
+English version: [README.en.md](README.en.md) | 日本語版: [README.ja.md](README.ja.md)
 
 > 버그 리포트, 기능 제안 등 피드백은 [jooparkhappy4@gmail.com](mailto:jooparkhappy4@gmail.com)으로 보내주세요.
 
@@ -178,6 +178,12 @@ models/
 └── whisper/
     └── ggml-base.bin      ← (또는 small / medium)
 ```
+
+#### 모션 파일 (Mixamo)
+
+Mixamo 애니메이션 FBX 파일은 라이선스 제한으로 저장소에 포함되지 않습니다. [Mixamo](https://www.mixamo.com/)에서 직접 다운로드 후 `public/motions/mixamo/`에 배치해야 합니다.
+
+> Mixamo 에셋은 프로젝트에 통합된 형태로만 사용 가능하며, 원본 FBX의 독립적 재배포는 허용되지 않습니다.
 
 ### AI 설정 방법
 
