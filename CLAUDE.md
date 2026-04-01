@@ -252,6 +252,7 @@ const { t } = useTranslation();
 | [설정 시스템](docs/settings/settings-system.md) | Zustand 설정/마이그레이션 |
 | [Tauri 백엔드](docs/infrastructure/tauri-backend.md) | Rust 명령/권한/단일 인스턴스 |
 | [개발 가이드](docs/fundamentals/development-guide.md) | 기능 추가/디버깅 체크리스트 |
+| [에셋 라이선스](docs/fundamentals/asset-licensing-guide.md) | Mixamo/VRM/모델 라이선스 및 배포 체크리스트 |
 | [배포](docs/infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈 |
 | [인증](docs/auth/auth-supabase.md) | Supabase OAuth 연동 |
 | [DB 스키마](docs/infrastructure/db-schema.md) | DB 테이블, RLS, 데이터 정책 |
