@@ -4,7 +4,7 @@
 
 An AI avatar desktop app that moves freely on your screen and interacts with you through text and voice.
 
-Korean version: [README.md](README.md)
+Korean version: [README.md](README.md) | 日本語版: [README.ja.md](README.ja.md)
 
 > For bug reports, feature requests, or any feedback, please email [jooparkhappy4@gmail.com](mailto:jooparkhappy4@gmail.com).
 
@@ -177,6 +177,12 @@ models/
 └── whisper/
     └── ggml-base.bin      ← (or small / medium)
 ```
+
+#### Motion Files (Mixamo)
+
+Mixamo animation FBX files are not included in the repository due to license restrictions. Download them directly from [Mixamo](https://www.mixamo.com/) and place them in `public/motions/mixamo/`.
+
+> Mixamo assets may only be used as integrated into a project. Standalone redistribution of original FBX files is not permitted.
 
 ### AI Setup
 
