@@ -17,20 +17,22 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::{oneshot, Mutex};
 
-/// JSON-RPC 요청 타임아웃 (초)
-const REQUEST_TIMEOUT_SECS: u64 = 300;
+/// JSON-RPC 요청 타임아웃 (12시간)
+const REQUEST_TIMEOUT_SECS: u64 = 43200;
 
 // ─── State ───────────────────────────────────────────────
 
 pub struct CodexState {
-    /// Arc로 감싸서 커맨드 핸들러가 lock을 빠르게 release할 수 있게 함
     process: Arc<Mutex<Option<Arc<CodexProcess>>>>,
+    /// codex_start 중복 실행 방지
+    starting: std::sync::atomic::AtomicBool,
 }
 
 impl CodexState {
     pub fn new() -> Self {
         Self {
             process: Arc::new(Mutex::new(None)),
+            starting: std::sync::atomic::AtomicBool::new(false),
         }
     }
 }
@@ -43,6 +45,9 @@ struct CodexProcess {
     thread_id: Mutex<Option<String>>,
     /// 현재 스레드에 적용된 시스템 프롬프트 (변경 감지용)
     applied_prompt: Mutex<Option<String>>,
+    /// 턴 직렬화 — turn/completed 시 notify
+    turn_ready: Arc<tokio::sync::Notify>,
+    turn_active: Arc<std::sync::atomic::AtomicBool>,
 }
 
 // ─── JSON-RPC types ──────────────────────────────────────
@@ -209,6 +214,8 @@ async fn spawn_codex_process(
     app_handle: AppHandle,
     pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
     process_state: Arc<Mutex<Option<Arc<CodexProcess>>>>,
+    turn_ready: Arc<tokio::sync::Notify>,
+    turn_active: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(tokio::process::ChildStdin, Child), String> {
     let codex_bin = find_codex_binary()
         .ok_or_else(|| "Codex CLI not found. Install with: npm install -g @openai/codex".to_string())?;
@@ -233,6 +240,8 @@ async fn spawn_codex_process(
     let app_clone = app_handle.clone();
     let pending_clone = pending.clone();
     let process_state = process_state.clone();
+    let turn_ready = turn_ready.clone();
+    let turn_active = turn_active.clone();
     tokio::spawn(async move {
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
@@ -278,6 +287,10 @@ async fn spawn_codex_process(
 
             // 알림 (method가 있는 경우)
             if let Some(method) = &msg.method {
+                // 핵심 이벤트 로깅
+                if method.starts_with("turn/") || method.starts_with("item/") {
+                    eprintln!("[codex] RX notification: {method}");
+                }
                 let params = msg.params.as_ref();
 
                 match method.as_str() {
@@ -303,9 +316,11 @@ async fn spawn_codex_process(
                         if let Some(p) = params {
                             current_thread_id = p.get("threadId")
                                 .and_then(|v| v.as_str())
+                                .or_else(|| p.get("thread").and_then(|t| t.get("id")).and_then(|v| v.as_str()))
                                 .map(|s| s.to_string());
                             current_turn_id = p.get("turnId")
                                 .and_then(|v| v.as_str())
+                                .or_else(|| p.get("turn").and_then(|t| t.get("id")).and_then(|v| v.as_str()))
                                 .map(|s| s.to_string());
                         }
                         let _ = app_clone.emit("codex-status", CodexStatusEvent {
@@ -318,6 +333,12 @@ async fn spawn_codex_process(
                         let final_text = if let Some(p) = params {
                             if let Some(tid) = p.get("threadId").and_then(|v| v.as_str()) {
                                 current_thread_id = Some(tid.to_string());
+                            }
+                            // turn/completed에서도 turnId 추출
+                            let tid = p.get("turnId").and_then(|v| v.as_str())
+                                .or_else(|| p.get("turn").and_then(|t| t.get("id")).and_then(|v| v.as_str()));
+                            if let Some(tid) = tid {
+                                current_turn_id = Some(tid.to_string());
                             }
                             p.get("outputText")
                                 .and_then(|v| v.as_str())
@@ -337,6 +358,9 @@ async fn spawn_codex_process(
                             message: None,
                         });
                         accumulated_text.clear();
+                        // 턴 완료 → 다음 턴 대기 해제
+                        turn_active.store(false, Ordering::SeqCst);
+                        turn_ready.notify_one();
                     }
 
                     "item/completed" => {
@@ -411,6 +435,7 @@ async fn send_request(
     params: Option<Value>,
 ) -> Result<Value, String> {
     let id = process.next_id.fetch_add(1, Ordering::SeqCst) + 1;
+    eprintln!("[codex] send_request id={id} method={method}");
 
     let msg = JsonRpcRequest {
         jsonrpc: "2.0",
@@ -444,7 +469,10 @@ async fn send_request(
 
     // 응답 대기 (300초 타임아웃)
     match tokio::time::timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT_SECS), rx).await {
-        Ok(Ok(result)) => result,
+        Ok(Ok(result)) => {
+            eprintln!("[codex] send_request id={id} method={method} → OK");
+            result
+        }
         Ok(Err(_)) => Err("Response channel closed".to_string()),
         Err(_) => {
             let mut map = process.pending.lock().await;
@@ -536,13 +564,22 @@ pub async fn codex_start(
     app_handle: AppHandle,
     state: tauri::State<'_, CodexState>,
 ) -> Result<(), String> {
+    eprintln!("[codex] codex_start called");
     {
         let guard = state.process.lock().await;
         if guard.is_some() {
+            eprintln!("[codex] already running, skip");
             return Ok(());
         }
     }
 
+    // 중복 시작 방지
+    if state.starting.swap(true, Ordering::SeqCst) {
+        eprintln!("[codex] already starting, skip");
+        return Ok(());
+    }
+
+    eprintln!("[codex] spawning app-server...");
     let _ = app_handle.emit("codex-status", CodexStatusEvent {
         status: "connecting".to_string(),
         message: Some("Starting codex app-server...".to_string()),
@@ -551,10 +588,15 @@ pub async fn codex_start(
     let pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 
+    let turn_ready = Arc::new(tokio::sync::Notify::new());
+    let turn_active = Arc::new(std::sync::atomic::AtomicBool::new(false));
+
     let (stdin, child) = spawn_codex_process(
         app_handle.clone(),
         pending.clone(),
         state.process.clone(),
+        turn_ready.clone(),
+        turn_active.clone(),
     ).await?;
 
     let process = Arc::new(CodexProcess {
@@ -564,9 +606,11 @@ pub async fn codex_start(
         pending,
         thread_id: Mutex::new(None),
         applied_prompt: Mutex::new(None),
+        turn_ready,
+        turn_active,
     });
 
-    // lock 바깥에서 초기화 수행
+    eprintln!("[codex] process spawned, sending initialize...");
     let init_result = send_request(&process, "initialize", Some(json!({
         "clientInfo": {
             "name": "AMA",
@@ -574,11 +618,11 @@ pub async fn codex_start(
         }
     }))).await;
 
-    match init_result {
+    let result = match init_result {
         Ok(_) => {
+            eprintln!("[codex] initialize OK, sending initialized notification...");
             send_notification(&process, "initialized", None).await?;
 
-            // 초기화 성공 후에만 state에 저장
             {
                 let mut guard = state.process.lock().await;
                 *guard = Some(process);
@@ -588,14 +632,18 @@ pub async fn codex_start(
                 status: "connected".to_string(),
                 message: None,
             });
+            eprintln!("[codex] connected!");
 
             Ok(())
         }
         Err(e) => {
-            // process가 drop되면 kill_on_drop으로 정리됨
+            eprintln!("[codex] initialize FAILED: {e}");
             Err(format!("Codex initialization failed: {e}"))
         }
-    }
+    };
+
+    state.starting.store(false, Ordering::SeqCst);
+    result
 }
 
 #[tauri::command]
@@ -625,11 +673,18 @@ pub async fn codex_send_message(
     model: Option<String>,
     reasoning_effort: Option<String>,
 ) -> Result<String, String> {
+    eprintln!("[codex] codex_send_message called: {}", text.chars().take(50).collect::<String>());
     let process = {
         let guard = state.process.lock().await;
         guard.as_ref().map(Arc::clone)
             .ok_or_else(|| "Codex not connected. Call codex_start first.".to_string())?
     };
+
+    // 이전 턴 완료 대기 (Codex는 한 스레드에서 동시 턴 불가)
+    while process.turn_active.load(Ordering::SeqCst) {
+        process.turn_ready.notified().await;
+    }
+    process.turn_active.store(true, Ordering::SeqCst);
 
     let _ = app_handle.emit("codex-status", CodexStatusEvent {
         status: "generating".to_string(),
@@ -691,9 +746,9 @@ pub async fn codex_send_message(
     let result = send_request(&process, "turn/start", Some(params)).await?;
 
     // turn ID를 프론트엔드에 반환 (응답 매칭용)
-    let turn_id = result.get("turn")
-        .and_then(|t| t.get("id"))
+    let turn_id = result.get("turnId")
         .and_then(|v| v.as_str())
+        .or_else(|| result.get("turn").and_then(|t| t.get("id")).and_then(|v| v.as_str()))
         .unwrap_or("")
         .to_string();
 
