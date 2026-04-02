@@ -75,15 +75,20 @@ export function useCodexConnection() {
     }
   }, [provider]);
 
-  // 초기 상태 조회 + 연결 시 자동 갱신
+  // 마운트 시 현재 연결 상태 즉시 반영 + 설치/인증 조회
   useEffect(() => {
+    invoke<{ connected: boolean }>('codex_get_status')
+      .then((r) => {
+        if (r.connected) setConnectionState('connected');
+      })
+      .catch(() => {});
     invoke<{ installed: boolean }>('codex_check_installed')
       .then((r) => setInstalled(r.installed))
       .catch(() => setInstalled(false));
     invoke<{ authenticated: boolean }>('codex_check_auth')
       .then((r) => setAuthenticated(r.authenticated))
       .catch(() => setAuthenticated(false));
-  }, [connectionState]);
+  }, []);
 
   const refreshStatus = useCallback(async () => {
     try {
