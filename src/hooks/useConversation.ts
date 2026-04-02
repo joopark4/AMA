@@ -768,7 +768,9 @@ export function useConversation(): UseConversationReturn {
               ? 'Claude'
               : settings.llm.provider === 'ollama'
                 ? 'Ollama'
-                : 'LocalAI';
+                : settings.llm.provider === 'codex'
+                  ? 'Codex'
+                  : 'LocalAI';
       const errorMessage = isRateLimit
         ? `${providerLabel} API 요청 한도를 초과했습니다(429). 설정에서 사용 가능한 모델/Provider를 선택하거나 잠시 후 다시 시도해 주세요.`
         : rawErrorMessage;

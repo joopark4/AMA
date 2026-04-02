@@ -9,7 +9,7 @@ import {
   normalizeGlobalShortcutAccelerator,
 } from '../services/tauri/globalShortcutUtils';
 
-export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code';
+export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
 
 // STT 엔진: whisper (로컬 whisper-cli)
 export type STTEngine = 'whisper';

@@ -45,7 +45,8 @@
         "openai": "OpenAI",
         "gemini": "Google Gemini",
         "claude_code": "Claude Code（外部連携）",
-        "claudeCodeInfo": "外部ターミナルでClaude Codeが実行中である必要があります。プロジェクトディレクトリでclaudeコマンドを実行するとama-bridgeが自動起動します。"
+        "claudeCodeInfo": "外部ターミナルでClaude Codeが実行中である必要があります。プロジェクトディレクトリでclaudeコマンドを実行するとama-bridgeが自動起動します。",
+        "codex": "OpenAI Codex"
       },
       "expand": "展開",
       "collapse": "折りたたむ"
@@ -292,6 +293,24 @@
       "note": "参考情報です。実際の配布・利用前に各プロジェクトの最新ライセンスおよび利用規約をご確認ください。",
       "expand": "展開",
       "collapse": "折りたたむ"
+    },
+    "codex": {
+      "cliStatus": "Codex CLI",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "installGuide": "Codex CLIがインストールされていません。以下のコマンドでインストールしてください。",
+      "authStatus": "ログイン",
+      "loggedIn": "ログイン済み",
+      "notLoggedIn": "未ログイン",
+      "loginGuide": "Codexにログインしていません。ターミナルで以下のコマンドを実行してください。",
+      "connection": "接続状態",
+      "disconnected": "未接続",
+      "connecting": "接続中...",
+      "connected": "接続済み",
+      "error": "エラー",
+      "refresh": "更新",
+      "retry": "再接続",
+      "info": "OpenAI Codex CLIを通じてコーディングに特化したAIと直接対話します。ChatGPTサブスクリプションで利用可能です。"
     },
     "mcp": {
       "title": "Claude Code Channels",
