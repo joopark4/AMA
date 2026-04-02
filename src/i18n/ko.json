@@ -45,7 +45,8 @@
         "openai": "OpenAI",
         "gemini": "Google Gemini",
         "claude_code": "Claude Code (외부 연동)",
-        "claudeCodeInfo": "외부 터미널에서 Claude Code가 실행 중이어야 합니다. 프로젝트 디렉토리에서 claude 명령을 실행하면 ama-bridge가 자동 시작됩니다."
+        "claudeCodeInfo": "외부 터미널에서 Claude Code가 실행 중이어야 합니다. 프로젝트 디렉토리에서 claude 명령을 실행하면 ama-bridge가 자동 시작됩니다.",
+        "codex": "OpenAI Codex"
       },
       "expand": "펼치기",
       "collapse": "접기"
@@ -292,6 +293,27 @@
       "note": "참고용 정보입니다. 실제 배포/사용 전 각 프로젝트의 최신 LICENSE 및 이용약관을 확인하세요.",
       "expand": "펼치기",
       "collapse": "접기"
+    },
+    "codex": {
+      "cliStatus": "Codex CLI",
+      "installed": "설치됨",
+      "notInstalled": "미설치",
+      "installGuide": "Codex CLI가 설치되어 있지 않습니다. 터미널에서 아래 명령으로 설치하세요.",
+      "authStatus": "로그인",
+      "loggedIn": "로그인됨",
+      "notLoggedIn": "미로그인",
+      "loginGuide": "Codex에 로그인되어 있지 않습니다. 터미널에서 아래 명령을 실행하세요.",
+      "connection": "연결 상태",
+      "disconnected": "연결 안됨",
+      "connecting": "연결 중...",
+      "connected": "연결됨",
+      "error": "오류",
+      "refresh": "새로고침",
+      "retry": "재연결",
+      "model": "모델",
+      "effort": "추론 성능",
+      "default": "기본",
+      "info": "OpenAI Codex CLI를 통해 코딩 작업에 특화된 AI와 직접 대화합니다. ChatGPT 구독으로 사용 가능합니다."
     },
     "mcp": {
       "title": "Claude Code Channels",
