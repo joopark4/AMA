@@ -632,7 +632,8 @@ export function useConversation(): UseConversationReturn {
     }
 
     // Claude Code / Codex: 비동기 처리 (fire-and-forget, 입력 비차단)
-    if (isClaudeCodeProvider() || settings.llm.provider === 'codex') {
+    const currentProvider = useSettingsStore.getState().settings.llm.provider;
+    if (isClaudeCodeProvider() || currentProvider === 'codex') {
       setError(null);
       sendToClaudeCode(text, (errMsg) => setError(errMsg));
       return;

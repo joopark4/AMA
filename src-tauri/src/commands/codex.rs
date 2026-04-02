@@ -17,6 +17,9 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::{oneshot, Mutex};
 
+/// JSON-RPC 요청 타임아웃 (초)
+const REQUEST_TIMEOUT_SECS: u64 = 300;
+
 // ─── State ───────────────────────────────────────────────
 
 pub struct CodexState {
@@ -205,6 +208,7 @@ fn get_codex_home() -> Option<PathBuf> {
 async fn spawn_codex_process(
     app_handle: AppHandle,
     pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
+    process_state: Arc<Mutex<Option<Arc<CodexProcess>>>>,
 ) -> Result<(tokio::process::ChildStdin, Child), String> {
     let codex_bin = find_codex_binary()
         .ok_or_else(|| "Codex CLI not found. Install with: npm install -g @openai/codex".to_string())?;
@@ -228,6 +232,7 @@ async fn spawn_codex_process(
     // stdout reader 태스크
     let app_clone = app_handle.clone();
     let pending_clone = pending.clone();
+    let process_state = process_state.clone();
     tokio::spawn(async move {
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
@@ -372,6 +377,12 @@ async fn spawn_codex_process(
             }
         }
 
+        // state에서 process 제거 (codex_get_status가 disconnected 반환하도록)
+        {
+            let mut guard = process_state.lock().await;
+            *guard = None;
+        }
+
         let _ = app_clone.emit("codex-status", CodexStatusEvent {
             status: "disconnected".to_string(),
             message: Some("Codex app-server process exited".to_string()),
@@ -432,7 +443,7 @@ async fn send_request(
     }
 
     // 응답 대기 (300초 타임아웃)
-    match tokio::time::timeout(std::time::Duration::from_secs(300), rx).await {
+    match tokio::time::timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT_SECS), rx).await {
         Ok(Ok(result)) => result,
         Ok(Err(_)) => Err("Response channel closed".to_string()),
         Err(_) => {
@@ -543,6 +554,7 @@ pub async fn codex_start(
     let (stdin, child) = spawn_codex_process(
         app_handle.clone(),
         pending.clone(),
+        state.process.clone(),
     ).await?;
 
     let process = Arc::new(CodexProcess {
@@ -612,7 +624,7 @@ pub async fn codex_send_message(
     system_prompt: Option<String>,
     model: Option<String>,
     reasoning_effort: Option<String>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let process = {
         let guard = state.process.lock().await;
         guard.as_ref().map(Arc::clone)
@@ -676,9 +688,16 @@ pub async fn codex_send_message(
         }
     }
 
-    send_request(&process, "turn/start", Some(params)).await?;
+    let result = send_request(&process, "turn/start", Some(params)).await?;
 
-    Ok(())
+    // turn ID를 프론트엔드에 반환 (응답 매칭용)
+    let turn_id = result.get("turn")
+        .and_then(|t| t.get("id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    Ok(turn_id)
 }
 
 #[tauri::command]
