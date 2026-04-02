@@ -287,10 +287,6 @@ async fn spawn_codex_process(
 
             // 알림 (method가 있는 경우)
             if let Some(method) = &msg.method {
-                // 핵심 이벤트 로깅
-                if method.starts_with("turn/") || method.starts_with("item/") {
-                    eprintln!("[codex] RX notification: {method}");
-                }
                 let params = msg.params.as_ref();
 
                 match method.as_str() {
@@ -435,7 +431,6 @@ async fn send_request(
     params: Option<Value>,
 ) -> Result<Value, String> {
     let id = process.next_id.fetch_add(1, Ordering::SeqCst) + 1;
-    eprintln!("[codex] send_request id={id} method={method}");
 
     let msg = JsonRpcRequest {
         jsonrpc: "2.0",
@@ -469,10 +464,7 @@ async fn send_request(
 
     // 응답 대기 (300초 타임아웃)
     match tokio::time::timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT_SECS), rx).await {
-        Ok(Ok(result)) => {
-            eprintln!("[codex] send_request id={id} method={method} → OK");
-            result
-        }
+        Ok(Ok(result)) => result,
         Ok(Err(_)) => Err("Response channel closed".to_string()),
         Err(_) => {
             let mut map = process.pending.lock().await;
@@ -564,22 +556,17 @@ pub async fn codex_start(
     app_handle: AppHandle,
     state: tauri::State<'_, CodexState>,
 ) -> Result<(), String> {
-    eprintln!("[codex] codex_start called");
     {
         let guard = state.process.lock().await;
         if guard.is_some() {
-            eprintln!("[codex] already running, skip");
             return Ok(());
         }
     }
 
     // 중복 시작 방지
     if state.starting.swap(true, Ordering::SeqCst) {
-        eprintln!("[codex] already starting, skip");
         return Ok(());
     }
-
-    eprintln!("[codex] spawning app-server...");
     let _ = app_handle.emit("codex-status", CodexStatusEvent {
         status: "connecting".to_string(),
         message: Some("Starting codex app-server...".to_string()),
@@ -610,7 +597,6 @@ pub async fn codex_start(
         turn_active,
     });
 
-    eprintln!("[codex] process spawned, sending initialize...");
     let init_result = send_request(&process, "initialize", Some(json!({
         "clientInfo": {
             "name": "AMA",
@@ -620,7 +606,6 @@ pub async fn codex_start(
 
     let result = match init_result {
         Ok(_) => {
-            eprintln!("[codex] initialize OK, sending initialized notification...");
             send_notification(&process, "initialized", None).await?;
 
             {
@@ -632,12 +617,10 @@ pub async fn codex_start(
                 status: "connected".to_string(),
                 message: None,
             });
-            eprintln!("[codex] connected!");
 
             Ok(())
         }
         Err(e) => {
-            eprintln!("[codex] initialize FAILED: {e}");
             Err(format!("Codex initialization failed: {e}"))
         }
     };
@@ -673,7 +656,6 @@ pub async fn codex_send_message(
     model: Option<String>,
     reasoning_effort: Option<String>,
 ) -> Result<String, String> {
-    eprintln!("[codex] codex_send_message called: {}", text.chars().take(50).collect::<String>());
     let process = {
         let guard = state.process.lock().await;
         guard.as_ref().map(Arc::clone)
