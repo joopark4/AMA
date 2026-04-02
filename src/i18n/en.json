@@ -45,7 +45,8 @@
         "openai": "OpenAI",
         "gemini": "Google Gemini",
         "claude_code": "Claude Code (External)",
-        "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the ama-bridge."
+        "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the ama-bridge.",
+        "codex": "OpenAI Codex"
       },
       "expand": "Expand",
       "collapse": "Collapse"
@@ -292,6 +293,27 @@
       "note": "This information is for reference. Always verify the latest LICENSE and terms before redistribution or production use.",
       "expand": "Expand",
       "collapse": "Collapse"
+    },
+    "codex": {
+      "cliStatus": "Codex CLI",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "installGuide": "Codex CLI is not installed. Install it with the command below.",
+      "authStatus": "Login",
+      "loggedIn": "Logged in",
+      "notLoggedIn": "Not logged in",
+      "loginGuide": "Not logged in to Codex. Run the command below in your terminal.",
+      "connection": "Connection",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting...",
+      "connected": "Connected",
+      "error": "Error",
+      "refresh": "Refresh",
+      "retry": "Reconnect",
+      "model": "Model",
+      "effort": "Reasoning Effort",
+      "default": "Default",
+      "info": "Chat directly with an AI specialized in coding tasks via the OpenAI Codex CLI. Available with a ChatGPT subscription."
     },
     "mcp": {
       "title": "Claude Code Channels",
