@@ -5,7 +5,7 @@
  * useConversation 코어에서 Channels 의존성을 제거한다.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -39,12 +39,14 @@ export function useClaudeCodeChat() {
   } = useAvatarStore();
 
   const { speak, stop: stopSpeaking } = useSpeechSynthesis();
+  const requestIdRef = useRef(0);
 
   const sendToClaudeCode = useCallback(async (
     text: string,
     onError?: (message: string) => void,
   ) => {
-    log('sending to Claude Code');
+    const myRequestId = ++requestIdRef.current;
+    log('sending to Claude Code, requestId:', myRequestId);
     addMessage({ role: 'user', content: text });
     setEmotion('thinking');
 
@@ -91,26 +93,31 @@ export function useClaudeCodeChat() {
       }
 
       addMessage({ role: 'assistant', content: responseText });
-      setCurrentResponse(responseText);
-      setStatus('speaking');
 
-      await new Promise(resolve => setTimeout(resolve, 50));
-      try {
-        stopSpeaking(); // 이전 TTS 중단 후 새 응답 재생
-        await speak(responseText, { emotion: responseEmotion });
-      } catch (ttsErr) {
-        log('TTS error:', ttsErr);
+      // 최신 요청만 TTS 재생 (이전 응답은 메시지만 저장)
+      if (myRequestId === requestIdRef.current) {
+        setCurrentResponse(responseText);
+        setStatus('speaking');
+        await new Promise(resolve => setTimeout(resolve, 50));
+        try {
+          stopSpeaking();
+          await speak(responseText, { emotion: responseEmotion });
+        } catch (ttsErr) {
+          log('TTS error:', ttsErr);
+        }
+
+        setStatus('idle');
+        const responseHoldMs = Math.max(
+          emotionTuningGlobal.responseClearMs,
+          getEmotionTuning(responseEmotion).expressionHoldMs
+        );
+        setTimeout(() => {
+          setEmotion('neutral');
+          clearCurrentResponse();
+        }, responseHoldMs);
+      } else {
+        log('skipping TTS for older request', myRequestId, '(current:', requestIdRef.current, ')');
       }
-
-      setStatus('idle');
-      const responseHoldMs = Math.max(
-        emotionTuningGlobal.responseClearMs,
-        getEmotionTuning(responseEmotion).expressionHoldMs
-      );
-      setTimeout(() => {
-        setEmotion('neutral');
-        clearCurrentResponse();
-      }, responseHoldMs);
     } catch (err) {
       log('error:', err);
       const errorMsg = err instanceof Error ? err.message : 'Claude Code 응답 실패';
