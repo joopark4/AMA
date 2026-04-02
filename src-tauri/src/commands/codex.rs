@@ -40,13 +40,6 @@ struct CodexProcess {
     thread_id: Mutex<Option<String>>,
 }
 
-impl Drop for CodexProcess {
-    fn drop(&mut self) {
-        // kill_on_drop(true)로 Child가 drop되면 프로세스가 kill됨
-        // 별도 처리 불필요
-    }
-}
-
 // ─── JSON-RPC types ──────────────────────────────────────
 
 #[derive(Serialize)]
@@ -254,7 +247,6 @@ async fn spawn_codex_process(
             // 응답 (id가 있고 method가 없는 경우) → pending 요청에 매칭
             if let Some(id_val) = &msg.id {
                 if msg.method.is_none() {
-                    // [P0-4 fix] Value 기반 ID 매칭
                     let id = match id_val {
                         Value::Number(n) => n.as_u64(),
                         _ => None,
@@ -262,7 +254,6 @@ async fn spawn_codex_process(
                     if let Some(id) = id {
                         let mut map = pending_clone.lock().await;
                         if let Some(sender) = map.remove(&id) {
-                            // [P2-1 fix] JSON-RPC error 필드 처리
                             if let Some(err) = msg.error {
                                 let err_msg = err.get("message")
                                     .and_then(|v| v.as_str())
@@ -371,7 +362,7 @@ async fn spawn_codex_process(
             }
         }
 
-        // [P0-1 fix] stdout 종료 시 모든 pending 요청에 에러 전달
+        // stdout 종료 시 모든 pending 요청에 에러 전달
         {
             let mut map = pending_clone.lock().await;
             for (_, sender) in map.drain() {
@@ -532,7 +523,6 @@ pub async fn codex_start(
     app_handle: AppHandle,
     state: tauri::State<'_, CodexState>,
 ) -> Result<(), String> {
-    // [P0-2 fix] lock을 짧게 보유하고 Arc clone 후 release
     {
         let guard = state.process.lock().await;
         if guard.is_some() {
@@ -620,13 +610,11 @@ pub async fn codex_send_message(
     model: Option<String>,
     reasoning_effort: Option<String>,
 ) -> Result<(), String> {
-    // [P0-2 fix] Arc clone 후 guard 즉시 release
     let process = {
         let guard = state.process.lock().await;
         guard.as_ref().map(Arc::clone)
             .ok_or_else(|| "Codex not connected. Call codex_start first.".to_string())?
     };
-    // guard dropped — lock released
 
     let _ = app_handle.emit("codex-status", CodexStatusEvent {
         status: "generating".to_string(),
