@@ -38,7 +38,6 @@ struct CodexProcess {
     next_id: AtomicU64,
     pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
     thread_id: Mutex<Option<String>>,
-    system_prompt_sent: std::sync::atomic::AtomicBool,
 }
 
 impl Drop for CodexProcess {
@@ -560,7 +559,6 @@ pub async fn codex_start(
         next_id: AtomicU64::new(0),
         pending,
         thread_id: Mutex::new(None),
-        system_prompt_sent: std::sync::atomic::AtomicBool::new(false),
     });
 
     // lock 바깥에서 초기화 수행
@@ -652,24 +650,20 @@ pub async fn codex_send_message(
         }
     }
 
-    // 첫 턴에서만 시스템 프롬프트를 input에 포함
-    let should_send_prompt = !process.system_prompt_sent.load(Ordering::SeqCst);
-    let mut input_items = Vec::new();
-    if should_send_prompt {
-        if let Some(ref prompt) = system_prompt {
-            if !prompt.is_empty() {
-                input_items.push(json!({
-                    "type": "text",
-                    "text": format!("[System]\n{prompt}")
-                }));
-                process.system_prompt_sent.store(true, Ordering::SeqCst);
-            }
+    // 매 턴마다 시스템 프롬프트를 사용자 메시지에 포함
+    let final_text = if let Some(ref prompt) = system_prompt {
+        if !prompt.is_empty() {
+            format!("<instructions>\n{prompt}\n</instructions>\n\n{text}")
+        } else {
+            text
         }
-    }
-    input_items.push(json!({
+    } else {
+        text
+    };
+    let input_items = vec![json!({
         "type": "text",
-        "text": text
-    }));
+        "text": final_text
+    })];
 
     let mut params = json!({
         "threadId": thread_id.unwrap(),
