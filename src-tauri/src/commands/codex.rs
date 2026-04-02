@@ -38,6 +38,8 @@ struct CodexProcess {
     next_id: AtomicU64,
     pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
     thread_id: Mutex<Option<String>>,
+    /// 현재 스레드에 적용된 시스템 프롬프트 (변경 감지용)
+    applied_prompt: Mutex<Option<String>>,
 }
 
 // ─── JSON-RPC types ──────────────────────────────────────
@@ -549,6 +551,7 @@ pub async fn codex_start(
         next_id: AtomicU64::new(0),
         pending,
         thread_id: Mutex::new(None),
+        applied_prompt: Mutex::new(None),
     });
 
     // lock 바깥에서 초기화 수행
@@ -621,10 +624,19 @@ pub async fn codex_send_message(
         message: None,
     });
 
+    // 시스템 프롬프트 변경 감지 → 변경 시 새 스레드 생성
+    let current_prompt = system_prompt.clone().unwrap_or_default();
+    let prompt_changed = {
+        let applied = process.applied_prompt.lock().await;
+        applied.as_deref() != Some(&current_prompt)
+    };
+
     let mut thread_id = process.thread_id.lock().await.clone();
 
-    // 스레드가 없으면 먼저 생성
-    if thread_id.is_none() {
+    // 프롬프트가 변경되었거나 스레드가 없으면 새 스레드 생성
+    let is_first_turn = thread_id.is_none() || prompt_changed;
+    if is_first_turn {
+        // 기존 스레드 폐기 + 새 스레드 생성
         let result = send_request(&process, "thread/start", Some(json!({}))).await?;
         if let Some(tid) = result.get("thread")
             .and_then(|t| t.get("id"))
@@ -636,26 +648,21 @@ pub async fn codex_send_message(
         } else {
             return Err("Failed to get threadId from thread/start response".to_string());
         }
+        // 적용된 프롬프트 기록
+        let mut applied = process.applied_prompt.lock().await;
+        *applied = Some(current_prompt.clone());
     }
 
-    // 매 턴마다 시스템 프롬프트를 사용자 메시지에 포함
-    let final_text = if let Some(ref prompt) = system_prompt {
-        if !prompt.is_empty() {
-            format!("<instructions>\n{prompt}\n</instructions>\n\n{text}")
-        } else {
-            text
-        }
+    // 첫 턴에서만 시스템 프롬프트를 메시지에 포함
+    let final_text = if is_first_turn && !current_prompt.is_empty() {
+        format!("<instructions>\n{current_prompt}\n</instructions>\n\n{text}")
     } else {
         text
     };
-    let input_items = vec![json!({
-        "type": "text",
-        "text": final_text
-    })];
 
     let mut params = json!({
         "threadId": thread_id.unwrap(),
-        "input": input_items,
+        "input": [{"type": "text", "text": final_text}],
         "approvalPolicy": "never"
     });
     if let Some(ref m) = model {
@@ -690,15 +697,11 @@ pub async fn codex_get_status(
         None
     };
 
-    let installed = find_codex_binary().is_some();
-    let authenticated = get_codex_home()
-        .map(|h| h.join("auth.json").exists())
-        .unwrap_or(false);
-
+    // hot path에서는 프로세스 상태만 반환 (바이너리/인증 탐색 제외)
     Ok(CodexConnectionStatus {
         connected,
-        installed,
-        authenticated,
+        installed: connected, // 연결되었다면 설치됨
+        authenticated: connected, // 연결되었다면 인증됨
         thread_id,
     })
 }

@@ -58,10 +58,10 @@ export class CodexClient implements LLMClient {
           }));
 
           unlistens.push(await listen<CodexStatusEvent>('codex-status', (event) => {
-            if (event.payload.status === 'error') {
+            if (event.payload.status === 'error' || event.payload.status === 'disconnected') {
               clearTimeout(timeout);
               cleanup();
-              reject(new Error(event.payload.message || 'Codex error'));
+              reject(new Error(event.payload.message || 'Codex disconnected'));
             }
           }));
 
@@ -117,10 +117,10 @@ export class CodexClient implements LLMClient {
           }));
 
           unlistens.push(await listen<CodexStatusEvent>('codex-status', (event) => {
-            if (event.payload.status === 'error') {
+            if (event.payload.status === 'error' || event.payload.status === 'disconnected') {
               clearTimeout(timeout);
               cleanup();
-              const err = new Error(event.payload.message || 'Codex error');
+              const err = new Error(event.payload.message || 'Codex disconnected');
               callbacks.onError?.(err);
               reject(err);
             }
