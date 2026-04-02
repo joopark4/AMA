@@ -22,6 +22,7 @@ import { useMenuListeners } from './hooks/useMenuListeners';
 import { useMonitorStore } from './stores/monitorStore';
 import { useAboutStore } from './stores/aboutStore';
 import { useMcpSpeakListener } from './features/channels';
+import { CODEX_PROVIDER } from './features/codex';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
 import { authService } from './services/auth/authService';
@@ -47,6 +48,15 @@ function App() {
 
   // MCP 채널 speak 이벤트 리스너
   useMcpSpeakListener();
+
+  // Codex app-server 연결 관리 (provider 전환 시 시작/중지)
+  useEffect(() => {
+    if (settings.llm.provider === CODEX_PROVIDER) {
+      invoke('codex_start').catch(() => {});
+    } else {
+      invoke('codex_stop').catch(() => {});
+    }
+  }, [settings.llm.provider]);
 
   // macOS 네이티브 메뉴 이벤트 리스너
   useMenuListeners();

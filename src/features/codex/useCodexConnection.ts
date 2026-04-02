@@ -68,15 +68,9 @@ export function useCodexConnection() {
     };
   }, []);
 
-  // provider 전환 시 연결/해제 (언마운트 시에는 유지 — 설정 닫아도 연결 지속)
+  // provider 변경 시 상태 초기화 (연결 시작/중지는 App.tsx에서 관리)
   useEffect(() => {
-    if (provider === CODEX_PROVIDER) {
-      invoke('codex_start').catch((err) => {
-        setConnectionState('error');
-        setErrorMessage(String(err));
-      });
-    } else {
-      invoke('codex_stop').catch(() => {});
+    if (provider !== CODEX_PROVIDER) {
       setConnectionState('disconnected');
     }
   }, [provider]);
