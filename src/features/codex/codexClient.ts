@@ -45,7 +45,10 @@ export class CodexClient implements LLMClient {
         }, CODEX_RESPONSE_TIMEOUT_MS);
 
         try {
+          let myTurnId: string | null = null;
+
           unlistens.push(await listen<CodexCompleteEvent>('codex-complete', (event) => {
+            if (myTurnId && event.payload.turnId !== myTurnId) return;
             clearTimeout(timeout);
             cleanup();
             resolve({ content: event.payload.text, finishReason: 'stop' });
@@ -59,7 +62,7 @@ export class CodexClient implements LLMClient {
             }
           }));
 
-          await this.invokeMessage(userMessage, systemPrompt);
+          myTurnId = await this.invokeMessage(userMessage, systemPrompt);
         } catch (err) {
           clearTimeout(timeout);
           cleanup();
@@ -94,12 +97,18 @@ export class CodexClient implements LLMClient {
         }, CODEX_RESPONSE_TIMEOUT_MS);
 
         try {
+          let myTurnId: string | null = null;
+
           unlistens.push(await listen<CodexTokenEvent>('codex-token', (event) => {
+            if (myTurnId && event.payload.itemId && !event.payload.itemId.includes(myTurnId)) {
+              // turnId 기반 필터링은 token 이벤트에서는 하지 않음 (itemId 형식이 다름)
+            }
             fullResponse += event.payload.text;
             callbacks.onToken?.(event.payload.text);
           }));
 
-          unlistens.push(await listen<CodexCompleteEvent>('codex-complete', () => {
+          unlistens.push(await listen<CodexCompleteEvent>('codex-complete', (event) => {
+            if (myTurnId && event.payload.turnId !== myTurnId) return;
             clearTimeout(timeout);
             cleanup();
             callbacks.onComplete?.(fullResponse);
@@ -116,7 +125,7 @@ export class CodexClient implements LLMClient {
             }
           }));
 
-          await this.invokeMessage(userMessage, systemPrompt);
+          myTurnId = await this.invokeMessage(userMessage, systemPrompt);
         } catch (err) {
           clearTimeout(timeout);
           cleanup();
@@ -144,9 +153,9 @@ export class CodexClient implements LLMClient {
 
   // ─── 내부 헬퍼 ────────────────────────────────
 
-  private async invokeMessage(text: string, systemPrompt: string): Promise<void> {
+  private async invokeMessage(text: string, systemPrompt: string): Promise<string> {
     const { codex } = useSettingsStore.getState().settings;
-    await invoke('codex_send_message', {
+    return invoke<string>('codex_send_message', {
       text,
       systemPrompt,
       model: codex.model,
@@ -169,10 +178,8 @@ export class CodexClient implements LLMClient {
   }
 
   private async ensureStarted(): Promise<void> {
-    try {
-      const status = await invoke<{ connected: boolean }>('codex_get_status');
-      if (!status.connected) await invoke('codex_start');
-    } catch {
+    const status = await invoke<{ connected: boolean }>('codex_get_status');
+    if (!status.connected) {
       await invoke('codex_start');
     }
   }
