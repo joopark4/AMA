@@ -29,19 +29,13 @@ interface CodexStatusEvent {
 }
 
 export class CodexClient implements LLMClient {
-  private busy = false;
-
   async chat(messages: Message[], options?: ChatOptions): Promise<LLMResponse> {
     const userMessage = this.extractLastUserMessage(messages);
     const systemPrompt = this.extractSystemPrompt(messages, options);
     await this.ensureStarted();
-    this.acquireLock();
 
     const unlistens: UnlistenFn[] = [];
-    const cleanup = () => {
-      unlistens.forEach((fn) => fn());
-      this.busy = false;
-    };
+    const cleanup = () => unlistens.forEach((fn) => fn());
 
     try {
       return await new Promise<LLMResponse>(async (resolve, reject) => {
@@ -86,14 +80,10 @@ export class CodexClient implements LLMClient {
     const userMessage = this.extractLastUserMessage(messages);
     const systemPrompt = this.extractSystemPrompt(messages, options);
     await this.ensureStarted();
-    this.acquireLock();
 
     let fullResponse = '';
     const unlistens: UnlistenFn[] = [];
-    const cleanup = () => {
-      unlistens.forEach((fn) => fn());
-      this.busy = false;
-    };
+    const cleanup = () => unlistens.forEach((fn) => fn());
 
     try {
       await new Promise<void>(async (resolve, reject) => {
@@ -176,11 +166,6 @@ export class CodexClient implements LLMClient {
     const content = last?.content || '';
     if (!content.trim()) throw new Error('No user message to send');
     return content;
-  }
-
-  private acquireLock(): void {
-    if (this.busy) throw new Error('Codex: another request is in progress');
-    this.busy = true;
   }
 
   private async ensureStarted(): Promise<void> {
