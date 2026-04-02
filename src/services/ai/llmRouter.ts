@@ -5,6 +5,7 @@ import { ClaudeClient } from './claudeClient';
 import { OpenAIClient } from './openaiClient';
 import { GeminiClient } from './geminiClient';
 import { ClaudeCodeClient } from '../../features/channels';
+import { CodexClient } from '../../features/codex';
 import { useSettingsStore, LLMProvider } from '../../stores/settingsStore';
 
 class LLMRouter {
@@ -21,6 +22,7 @@ class LLMRouter {
     this.clients.set('openai', new OpenAIClient());
     this.clients.set('gemini', new GeminiClient());
     this.clients.set('claude_code', new ClaudeCodeClient());
+    this.clients.set('codex', new CodexClient());
   }
 
   private getClient(): LLMClient {
