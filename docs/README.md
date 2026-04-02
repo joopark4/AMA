@@ -90,6 +90,19 @@
 
 ---
 
+## v0.8.0+ 작업 이력 (2026.04)
+
+- OpenAI Codex CLI 직접 연동 (`codex app-server` JSON-RPC 2.0)
+- 오디오 입/출력 디바이스 독립 선택 + 마이크 피크 미터
+- 대화기록창 투명도 조절 (20~100%)
+- 관리자 전용 API 크레딧 대시보드
+- Channels 레거시 경로 정리 + 항상 재등록
+- TTS 출력 디바이스 라우팅 안정화 (#018, #019)
+- idle 흔들림 완화 (hips damp + IdleFidget 조건 수정)
+- build.rs 안정화 (런타임 파싱 + 릴리스 VRM 검증)
+
+---
+
 ## v0.8.0 작업 이력 (2026.03.21)
 
 - main → develop 기능 통합 (About 모달, 멀티모니터 보정, ORT import, capabilities 보안 강화)

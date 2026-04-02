@@ -84,6 +84,7 @@ npm run build:mac-release
 | `settings.llm` | AI 모델 설정 | `settings.llm.provider`, `settings.llm.apiKey` |
 | `settings.voice` | STT/TTS 설정 | `settings.voice.stt.title` |
 | `settings.audioDevice` | 오디오 디바이스 설정 | `settings.audioDevice.title`, `settings.audioDevice.microphone` |
+| `settings.codex` | Codex 연동 설정 | `settings.codex.cliStatus`, `settings.codex.model` |
 | `settings.avatar` | 아바타 설정 | `settings.avatar.name`, `settings.avatar.emotions.*` |
 | `settings.update` | 앱 업데이트 | `settings.update.checkButton`, `settings.update.checking` |
 | `settings.licenses` | 라이선스 정보 | `settings.licenses.title` |
@@ -211,6 +212,16 @@ const { t } = useTranslation();
   - `.claude-plugin/plugin.json` 메타데이터 + `.mcp.json` 서버 설정
   - `server.ts`: 채널 서버 canonical source
 
+### OpenAI Codex 연동
+- `codex app-server` JSON-RPC 2.0 통신 (stdio)
+- Rust 백엔드(`codex.rs`): 프로세스 spawn + JSON-RPC 요청/응답 + Tauri 이벤트 발행
+- TypeScript 클라이언트(`codexClient.ts`): LLMClient 인터페이스 구현, 스트리밍 지원
+- 연결 관리: App 레벨 자동 시작/중지 + 턴 직렬화(한 번에 하나의 턴만)
+- 시스템 프롬프트 변경 감지 → 새 스레드 자동 생성
+- 모델/추론 성능(reasoningEffort) 선택 UI
+- CLI 설치/인증 상태 표시 + 설치/로그인 가이드
+- **모듈화**: `src/features/codex/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수)
+
 ### 설정 패널 구성
 1. **UserProfile** — 계정 정보 (OAuth)
 2. **Language** — 한국어/영어/일본어 선택
@@ -219,9 +230,10 @@ const { t } = useTranslation();
 5. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + TTS 테스트 + 글로벌 단축키
 6. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량 + 관리자 API 크레딧 대시보드
 7. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
-8. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
-9. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
-10. **LicensesSettings** — 오픈소스/모델 라이선스
+8. **CodexSettings** — Codex CLI 상태/연결/모델/추론 성능 (LLMSettings 내 Codex 선택 시 표시)
+9. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
+10. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
+11. **LicensesSettings** — 오픈소스/모델 라이선스
 - 각 섹션은 `SettingsSection.tsx` 공통 접을 수 있는 카드 UI 사용
 
 ### 로컬 배포 파이프라인
@@ -295,10 +307,11 @@ AMA/
 │   │   └── ui/            # SettingsPanel, AboutModal, StatusIndicator, HistoryPanel 등
 │   ├── features/
 │   │   ├── channels/      # Claude Code Channels 독립 모듈 (클라이언트/훅/UI/상수)
+│   │   ├── codex/         # OpenAI Codex 연동 모듈 (codexClient/useCodexConnection/CodexSettings)
 │   │   └── premium-voice/ # 프리미엄 음성 모듈 (premiumStore/supertoneApiClient/UI)
 │   ├── hooks/             # useAutoUpdate, useConversation, useVRM 등
 │   ├── services/
-│   │   ├── ai/            # llmRouter, claude/openai/gemini/ollama 클라이언트
+│   │   ├── ai/            # llmRouter, claude/openai/gemini/ollama/codex 클라이언트
 │   │   ├── audio/         # rhythmAnalyzer (댄스용)
 │   │   ├── auth/          # authService, oauthClient, supabaseClient, edgeFunctionClient
 │   │   ├── avatar/        # motionLibrary, motionSelector, motionNarration
@@ -309,7 +322,7 @@ AMA/
 ├── src-tauri/
 │   ├── src/
 │   │   ├── main.rs        # 앱 엔트리 + macOS 네이티브 메뉴바
-│   │   └── commands/      # window, voice, settings, auth, models, screenshot, http, mcp, vrm
+│   │   └── commands/      # window, voice, settings, auth, models, screenshot, http, mcp, vrm, codex
 │   └── capabilities/      # Tauri 권한 설정
 ├── claude-plugin/
 │   └── ama-bridge/        # Claude Code 공식 플러그인 구조 (.claude-plugin/ + server.ts)
