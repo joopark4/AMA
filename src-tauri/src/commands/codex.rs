@@ -619,6 +619,8 @@ pub async fn codex_send_message(
     state: tauri::State<'_, CodexState>,
     text: String,
     system_prompt: Option<String>,
+    model: Option<String>,
+    reasoning_effort: Option<String>,
 ) -> Result<(), String> {
     // [P0-2 fix] Arc clone 후 guard 즉시 release
     let process = {
@@ -669,11 +671,21 @@ pub async fn codex_send_message(
         "text": text
     }));
 
-    let params = json!({
+    let mut params = json!({
         "threadId": thread_id.unwrap(),
         "input": input_items,
         "approvalPolicy": "never"
     });
+    if let Some(ref m) = model {
+        if !m.is_empty() {
+            params["model"] = json!(m);
+        }
+    }
+    if let Some(ref e) = reasoning_effort {
+        if !e.is_empty() {
+            params["reasoningEffort"] = json!(e);
+        }
+    }
 
     send_request(&process, "turn/start", Some(params)).await?;
 
@@ -709,7 +721,20 @@ pub async fn codex_get_status(
     })
 }
 
-/// [P0-3 fix] 앱 종료 시 codex 프로세스 정리 — std::sync::Mutex로 Child를 직접 kill
+#[tauri::command]
+pub async fn codex_list_models(
+    state: tauri::State<'_, CodexState>,
+) -> Result<Value, String> {
+    let process = {
+        let guard = state.process.lock().await;
+        guard.as_ref().map(Arc::clone)
+            .ok_or_else(|| "Codex not connected".to_string())?
+    };
+
+    send_request(&process, "model/list", Some(json!({}))).await
+}
+
+/// 앱 종료 시 codex 프로세스 정리
 pub fn cleanup_codex_on_exit(app_handle: &AppHandle) {
     if let Some(state) = app_handle.try_state::<CodexState>() {
         // block_on 없이 동기적으로 처리하기 위해 try_lock 사용

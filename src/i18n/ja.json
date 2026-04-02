@@ -310,6 +310,9 @@
       "error": "エラー",
       "refresh": "更新",
       "retry": "再接続",
+      "model": "モデル",
+      "effort": "推論性能",
+      "default": "デフォルト",
       "info": "OpenAI Codex CLIを通じてコーディングに特化したAIと直接対話します。ChatGPTサブスクリプションで利用可能です。"
     },
     "mcp": {

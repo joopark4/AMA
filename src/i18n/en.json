@@ -310,6 +310,9 @@
       "error": "Error",
       "refresh": "Refresh",
       "retry": "Reconnect",
+      "model": "Model",
+      "effort": "Reasoning Effort",
+      "default": "Default",
       "info": "Chat directly with an AI specialized in coding tasks via the OpenAI Codex CLI. Available with a ChatGPT subscription."
     },
     "mcp": {

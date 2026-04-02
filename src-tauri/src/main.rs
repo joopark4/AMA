@@ -66,6 +66,7 @@ fn main() {
             commands::codex::codex_stop,
             commands::codex::codex_send_message,
             commands::codex::codex_get_status,
+            commands::codex::codex_list_models,
         ])
         .on_menu_event(|app, event| {
             if let Some(window) = app.get_webview_window("main") {
