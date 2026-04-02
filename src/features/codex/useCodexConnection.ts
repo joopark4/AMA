@@ -90,7 +90,7 @@ export function useCodexConnection() {
     };
   }, [provider]);
 
-  // 초기 상태 조회
+  // 초기 상태 조회 + 연결 시 자동 갱신
   useEffect(() => {
     invoke<{ installed: boolean }>('codex_check_installed')
       .then((r) => setInstalled(r.installed))
@@ -98,18 +98,18 @@ export function useCodexConnection() {
     invoke<{ authenticated: boolean }>('codex_check_auth')
       .then((r) => setAuthenticated(r.authenticated))
       .catch(() => setAuthenticated(false));
-  }, []);
+  }, [connectionState]);
 
   const refreshStatus = useCallback(async () => {
     try {
-      const status = await invoke<{
-        connected: boolean;
-        installed: boolean;
-        authenticated: boolean;
-      }>('codex_get_status');
-      setInstalled(status.installed);
-      setAuthenticated(status.authenticated);
-      if (status.connected) {
+      const [installResult, authResult, statusResult] = await Promise.all([
+        invoke<{ installed: boolean }>('codex_check_installed'),
+        invoke<{ authenticated: boolean }>('codex_check_auth'),
+        invoke<{ connected: boolean }>('codex_get_status'),
+      ]);
+      setInstalled(installResult.installed);
+      setAuthenticated(authResult.authenticated);
+      if (statusResult.connected) {
         setConnectionState('connected');
       }
     } catch {
