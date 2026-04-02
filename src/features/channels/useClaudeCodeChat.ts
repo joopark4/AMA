@@ -38,7 +38,7 @@ export function useClaudeCodeChat() {
     stopDancing,
   } = useAvatarStore();
 
-  const { speak } = useSpeechSynthesis();
+  const { speak, stop: stopSpeaking } = useSpeechSynthesis();
 
   const sendToClaudeCode = useCallback(async (
     text: string,
@@ -96,6 +96,7 @@ export function useClaudeCodeChat() {
 
       await new Promise(resolve => setTimeout(resolve, 50));
       try {
+        stopSpeaking(); // 이전 TTS 중단 후 새 응답 재생
         await speak(responseText, { emotion: responseEmotion });
       } catch (ttsErr) {
         log('TTS error:', ttsErr);
@@ -121,7 +122,7 @@ export function useClaudeCodeChat() {
         setEmotion('neutral');
       }, 5000);
     }
-  }, [addMessage, setCurrentResponse, clearCurrentResponse, setStatus, setEmotion, speak, startDancing, stopDancing]);
+  }, [addMessage, setCurrentResponse, clearCurrentResponse, setStatus, setEmotion, speak, stopSpeaking, startDancing, stopDancing]);
 
   /** provider가 claude_code인지 확인 */
   const isClaudeCodeProvider = useCallback((): boolean => {
