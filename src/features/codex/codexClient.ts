@@ -12,6 +12,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { Message, LLMResponse, StreamCallbacks, ChatOptions, LLMClient } from '../../services/ai/types';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { CODEX_RESPONSE_TIMEOUT_MS } from './constants';
 
 interface CodexInstallStatus {
@@ -76,7 +77,13 @@ export class CodexClient implements LLMClient {
             }
           }));
 
-          await invoke('codex_send_message', { text: userMessage, systemPrompt });
+                    const { codex } = useSettingsStore.getState().settings;
+          await invoke('codex_send_message', {
+            text: userMessage,
+            systemPrompt,
+            model: codex.model,
+            reasoningEffort: codex.reasoningEffort,
+          });
         } catch (err) {
           clearTimeout(timeout);
           cleanup();
@@ -137,7 +144,13 @@ export class CodexClient implements LLMClient {
             }
           }));
 
-          await invoke('codex_send_message', { text: userMessage, systemPrompt });
+                    const { codex } = useSettingsStore.getState().settings;
+          await invoke('codex_send_message', {
+            text: userMessage,
+            systemPrompt,
+            model: codex.model,
+            reasoningEffort: codex.reasoningEffort,
+          });
         } catch (err) {
           clearTimeout(timeout);
           cleanup();

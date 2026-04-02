@@ -110,6 +110,13 @@ export interface HistoryPanelSettings {
   opacity: number;
 }
 
+export type CodexReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+
+export interface CodexSettings {
+  model: string;
+  reasoningEffort: CodexReasoningEffort;
+}
+
 export interface Settings {
   llm: LLMSettings;
   stt: STTSettings;
@@ -125,6 +132,7 @@ export interface Settings {
   mcpEnabled: boolean;
   /** Channels ON 전의 LLM 설정 (OFF 시 복원용) */
   mcpPreviousLlm: LLMSettings | null;
+  codex: CodexSettings;
 }
 
 interface SettingsState {
@@ -138,6 +146,7 @@ interface SettingsState {
   setGlobalShortcutSettings: (shortcut: Partial<GlobalShortcutSettings>) => void;
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
   setLanguage: (language: Language) => void;
+  setCodexSettings: (codex: Partial<CodexSettings>) => void;
   setAvatarName: (name: string) => void;
   setAvatarPersonalityPrompt: (prompt: string) => void;
   setVrmModelPath: (path: string) => void;
@@ -319,6 +328,10 @@ const defaultSettings: Settings = {
   preferredMonitorName: '',
   mcpEnabled: false,
   mcpPreviousLlm: null,
+  codex: {
+    model: 'gpt-5.4',
+    reasoningEffort: 'medium',
+  },
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -433,6 +446,10 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       source.mcpPreviousLlm && typeof source.mcpPreviousLlm === 'object'
         ? source.mcpPreviousLlm as LLMSettings
         : null,
+    codex: {
+      ...defaultSettings.codex,
+      ...(source.codex || {}),
+    },
   };
 }
 
@@ -504,6 +521,14 @@ export const useSettingsStore = create<SettingsState>()(
           settings: {
             ...state.settings,
             avatar: { ...state.settings.avatar, ...avatar },
+          },
+        })),
+
+      setCodexSettings: (codex) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            codex: { ...state.settings.codex, ...codex },
           },
         })),
 

@@ -1,13 +1,33 @@
 /**
- * CodexSettings — Codex CLI 설치/로그인/연결 상태 표시
+ * CodexSettings — Codex CLI 설치/로그인/연결 상태 + 모델/성능 선택
  *
  * LLMSettings에서 provider가 'codex'일 때 추가 표시되는 섹션.
  */
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
+import { useSettingsStore, type CodexReasoningEffort } from '../../stores/settingsStore';
 import { useCodexConnection } from './useCodexConnection';
+
+interface CodexModelInfo {
+  id: string;
+  displayName: string;
+  description: string;
+  isDefault: boolean;
+  defaultReasoningEffort: string;
+  supportedReasoningEfforts: { reasoningEffort: string; description: string }[];
+}
+
+const EFFORT_LABELS: Record<CodexReasoningEffort, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  xhigh: 'Extra High',
+};
 
 export default function CodexSettings() {
   const { t } = useTranslation();
+  const { settings, setCodexSettings } = useSettingsStore();
   const {
     connectionState,
     errorMessage,
@@ -16,6 +36,25 @@ export default function CodexSettings() {
     refreshStatus,
     reconnect,
   } = useCodexConnection();
+
+  const [models, setModels] = useState<CodexModelInfo[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  // 연결 시 모델 목록 조회
+  useEffect(() => {
+    if (connectionState !== 'connected') return;
+    setLoadingModels(true);
+    invoke<{ data: CodexModelInfo[] }>('codex_list_models')
+      .then((result) => {
+        const visible = (result.data || []).filter((m) => !m.displayName.includes('hidden'));
+        setModels(visible);
+      })
+      .catch(() => setModels([]))
+      .finally(() => setLoadingModels(false));
+  }, [connectionState]);
+
+  const currentModel = models.find((m) => m.id === settings.codex.model);
+  const availableEfforts = currentModel?.supportedReasoningEfforts || [];
 
   const statusColor = {
     disconnected: 'bg-gray-400',
@@ -43,9 +82,7 @@ export default function CodexSettings() {
 
       {installed === false && (
         <div className="p-3 bg-amber-50 rounded-lg">
-          <p className="text-xs text-amber-700">
-            {t('settings.codex.installGuide')}
-          </p>
+          <p className="text-xs text-amber-700">{t('settings.codex.installGuide')}</p>
           <code className="block mt-1 text-xs bg-amber-100 px-2 py-1 rounded font-mono">
             npm install -g @openai/codex
           </code>
@@ -62,9 +99,7 @@ export default function CodexSettings() {
 
       {authenticated === false && (
         <div className="p-3 bg-amber-50 rounded-lg">
-          <p className="text-xs text-amber-700">
-            {t('settings.codex.loginGuide')}
-          </p>
+          <p className="text-xs text-amber-700">{t('settings.codex.loginGuide')}</p>
           <code className="block mt-1 text-xs bg-amber-100 px-2 py-1 rounded font-mono">
             codex login
           </code>
@@ -98,6 +133,66 @@ export default function CodexSettings() {
             {t('settings.codex.retry')}
           </button>
         </div>
+      )}
+
+      {/* 모델 선택 */}
+      {connectionState === 'connected' && (
+        <>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              {t('settings.codex.model')}
+              {loadingModels && <span className="ml-2 text-xs text-gray-400">...</span>}
+            </label>
+            <select
+              value={settings.codex.model}
+              onChange={(e) => {
+                const selected = models.find((m) => m.id === e.target.value);
+                setCodexSettings({
+                  model: e.target.value,
+                  reasoningEffort: (selected?.defaultReasoningEffort || 'medium') as CodexReasoningEffort,
+                });
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.displayName}{m.isDefault ? ` (${t('settings.codex.default')})` : ''}
+                </option>
+              ))}
+            </select>
+            {currentModel && (
+              <p className="text-xs text-gray-500">{currentModel.description}</p>
+            )}
+          </div>
+
+          {/* 성능 선택 */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              {t('settings.codex.effort')}
+            </label>
+            <select
+              value={settings.codex.reasoningEffort}
+              onChange={(e) => setCodexSettings({ reasoningEffort: e.target.value as CodexReasoningEffort })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {availableEfforts.length > 0
+                ? availableEfforts.map((e) => (
+                    <option key={e.reasoningEffort} value={e.reasoningEffort}>
+                      {EFFORT_LABELS[e.reasoningEffort as CodexReasoningEffort] || e.reasoningEffort}
+                    </option>
+                  ))
+                : (['low', 'medium', 'high', 'xhigh'] as const).map((e) => (
+                    <option key={e} value={e}>{EFFORT_LABELS[e]}</option>
+                  ))
+              }
+            </select>
+            {availableEfforts.find((e) => e.reasoningEffort === settings.codex.reasoningEffort) && (
+              <p className="text-xs text-gray-500">
+                {availableEfforts.find((e) => e.reasoningEffort === settings.codex.reasoningEffort)?.description}
+              </p>
+            )}
+          </div>
+        </>
       )}
 
       {/* Codex 안내 */}
