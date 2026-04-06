@@ -111,10 +111,13 @@ export interface HistoryPanelSettings {
 }
 
 export type CodexReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+export type CodexApprovalPolicy = 'never' | 'on-request' | 'untrusted';
 
 export interface CodexSettings {
   model: string;
   reasoningEffort: CodexReasoningEffort;
+  workingDir: string;
+  approvalPolicy: CodexApprovalPolicy;
 }
 
 export interface Settings {
@@ -331,6 +334,8 @@ const defaultSettings: Settings = {
   codex: {
     model: 'gpt-5.4',
     reasoningEffort: 'medium',
+    workingDir: '',
+    approvalPolicy: 'on-request',
   },
 };
 

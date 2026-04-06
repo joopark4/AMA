@@ -47,6 +47,7 @@ export function useClaudeCodeChat() {
   ) => {
     const myRequestId = ++requestIdRef.current;
     log('sending to Claude Code, requestId:', myRequestId);
+
     addMessage({ role: 'user', content: text });
     setEmotion('thinking');
 

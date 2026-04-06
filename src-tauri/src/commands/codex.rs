@@ -216,17 +216,30 @@ async fn spawn_codex_process(
     process_state: Arc<Mutex<Option<Arc<CodexProcess>>>>,
     turn_ready: Arc<tokio::sync::Notify>,
     turn_active: Arc<std::sync::atomic::AtomicBool>,
+    working_dir: Option<String>,
 ) -> Result<(tokio::process::ChildStdin, Child), String> {
     let codex_bin = find_codex_binary()
         .ok_or_else(|| "Codex CLI not found. Install with: npm install -g @openai/codex".to_string())?;
 
-    let mut child = Command::new(&codex_bin)
-        .arg("app-server")
+    let mut cmd = Command::new(&codex_bin);
+    cmd.arg("app-server")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
+        .kill_on_drop(true);
+
+    // 작업 폴더 설정 (미지정 시 ~/Documents 기본)
+    let effective_dir = match working_dir {
+        Some(ref dir) if !dir.is_empty() => Some(PathBuf::from(dir)),
+        _ => dirs::home_dir().map(|h| h.join("Documents")),
+    };
+    if let Some(ref dir) = effective_dir {
+        if dir.is_dir() {
+            cmd.current_dir(dir);
+        }
+    }
+
+    let mut child = cmd.spawn()
         .map_err(|e| format!("Failed to spawn codex app-server: {e}"))?;
 
     let stdout = child.stdout.take()
@@ -555,6 +568,7 @@ pub async fn codex_check_auth() -> Result<CodexAuthStatus, String> {
 pub async fn codex_start(
     app_handle: AppHandle,
     state: tauri::State<'_, CodexState>,
+    working_dir: Option<String>,
 ) -> Result<(), String> {
     {
         let guard = state.process.lock().await;
@@ -584,6 +598,7 @@ pub async fn codex_start(
         state.process.clone(),
         turn_ready.clone(),
         turn_active.clone(),
+        working_dir,
     ).await?;
 
     let process = Arc::new(CodexProcess {
@@ -655,6 +670,7 @@ pub async fn codex_send_message(
     system_prompt: Option<String>,
     model: Option<String>,
     reasoning_effort: Option<String>,
+    approval_policy: Option<String>,
 ) -> Result<String, String> {
     let process = {
         let guard = state.process.lock().await;
@@ -709,10 +725,27 @@ pub async fn codex_send_message(
         text
     };
 
+    let policy = approval_policy
+        .as_deref()
+        .filter(|p| !p.is_empty())
+        .unwrap_or("on-request");
+
+    // approvalPolicy에 따라 sandboxPolicy 자동 매핑
+    let sandbox_policy = match policy {
+        "never" => json!({ "type": "dangerFullAccess" }),
+        "on-request" => json!({
+            "type": "workspaceWrite",
+            "writableRoots": [],
+            "networkAccess": true
+        }),
+        _ => json!({ "type": "readOnly", "access": { "type": "fullAccess" }, "networkAccess": false }),
+    };
+
     let mut params = json!({
         "threadId": thread_id.unwrap(),
         "input": [{"type": "text", "text": final_text}],
-        "approvalPolicy": "never"
+        "approvalPolicy": policy,
+        "sandboxPolicy": sandbox_policy
     });
     if let Some(ref m) = model {
         if !m.is_empty() {

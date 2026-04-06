@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { useSettingsStore, type CodexReasoningEffort } from '../../stores/settingsStore';
+import { useSettingsStore, type CodexReasoningEffort, type CodexApprovalPolicy } from '../../stores/settingsStore';
 import { useCodexConnection } from './useCodexConnection';
 
 interface CodexModelInfo {
@@ -55,6 +55,23 @@ export default function CodexSettings() {
 
   const currentModel = models.find((m) => m.id === settings.codex.model);
   const availableEfforts = currentModel?.supportedReasoningEfforts || [];
+
+  const handleSelectFolder = async () => {
+    try {
+      const selected = await invoke<string | null>('pick_folder', {
+        title: t('settings.codex.selectFolder'),
+      });
+      if (typeof selected === 'string' && selected.trim().length > 0) {
+        setCodexSettings({ workingDir: selected });
+      }
+    } catch {
+      // 사용자가 취소
+    }
+  };
+
+  const handleClearFolder = () => {
+    setCodexSettings({ workingDir: '' });
+  };
 
   const statusColor = {
     disconnected: 'bg-gray-400',
@@ -135,6 +152,39 @@ export default function CodexSettings() {
         </div>
       )}
 
+      {/* 작업 폴더 */}
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
+          {t('settings.codex.workingDir')}
+        </label>
+        <div className="flex items-center gap-2">
+          <div
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 truncate text-gray-600 min-h-[38px] flex items-center"
+            title={settings.codex.workingDir || undefined}
+          >
+            {settings.codex.workingDir || (
+              <span className="text-gray-400">{t('settings.codex.workingDirPlaceholder')}</span>
+            )}
+          </div>
+          <button
+            onClick={handleSelectFolder}
+            className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
+          >
+            {t('settings.codex.selectFolder')}
+          </button>
+          {settings.codex.workingDir && (
+            <button
+              onClick={handleClearFolder}
+              className="px-2 py-2 text-sm text-gray-400 hover:text-red-500"
+              title={t('settings.codex.clearFolder')}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-500">{t('settings.codex.workingDirHelp')}</p>
+      </div>
+
       {/* 모델 선택 */}
       {connectionState === 'connected' && (
         <>
@@ -190,6 +240,30 @@ export default function CodexSettings() {
               <p className="text-xs text-gray-500">
                 {availableEfforts.find((e) => e.reasoningEffort === settings.codex.reasoningEffort)?.description}
               </p>
+            )}
+          </div>
+
+          {/* 접근 권한 */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              {t('settings.codex.approvalPolicy')}
+            </label>
+            <select
+              value={settings.codex.approvalPolicy}
+              onChange={(e) => setCodexSettings({ approvalPolicy: e.target.value as CodexApprovalPolicy })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="on-request">{t('settings.codex.approvalOnRequest')}</option>
+              <option value="never">{t('settings.codex.approvalNever')}</option>
+              <option value="untrusted">{t('settings.codex.approvalUntrusted')}</option>
+            </select>
+            <p className="text-xs text-gray-500">
+              {settings.codex.approvalPolicy === 'never' && t('settings.codex.approvalNeverDesc')}
+              {settings.codex.approvalPolicy === 'on-request' && t('settings.codex.approvalOnRequestDesc')}
+              {settings.codex.approvalPolicy === 'untrusted' && t('settings.codex.approvalUntrustedDesc')}
+            </p>
+            {settings.codex.approvalPolicy === 'never' && (
+              <p className="text-xs text-red-500 font-medium">{t('settings.codex.approvalNeverWarning')}</p>
             )}
           </div>
         </>
