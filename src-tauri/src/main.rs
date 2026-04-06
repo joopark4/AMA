@@ -39,6 +39,7 @@ fn main() {
             commands::settings::open_microphone_settings,
             commands::settings::open_accessibility_settings,
             commands::settings::open_screen_recording_settings,
+            commands::settings::pick_folder,
             commands::settings::pick_vrm_file,
             commands::auth::open_oauth_url,
             commands::auth::parse_auth_callback,

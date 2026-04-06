@@ -160,6 +160,7 @@ export class CodexClient implements LLMClient {
       systemPrompt,
       model: codex.model,
       reasoningEffort: codex.reasoningEffort,
+      approvalPolicy: codex.approvalPolicy,
     });
   }
 
@@ -180,7 +181,10 @@ export class CodexClient implements LLMClient {
   private async ensureStarted(): Promise<void> {
     const status = await invoke<{ connected: boolean }>('codex_get_status');
     if (!status.connected) {
-      await invoke('codex_start');
+      const { codex } = useSettingsStore.getState().settings;
+      await invoke('codex_start', {
+        workingDir: codex.workingDir || null,
+      });
     }
   }
 }

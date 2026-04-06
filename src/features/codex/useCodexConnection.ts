@@ -107,15 +107,19 @@ export function useCodexConnection() {
     }
   }, []);
 
+  const workingDir = useSettingsStore((s) => s.settings.codex.workingDir);
+
   const reconnect = useCallback(async () => {
     try {
       await invoke('codex_stop');
-      await invoke('codex_start');
+      await invoke('codex_start', {
+        workingDir: workingDir || null,
+      });
     } catch (err) {
       setConnectionState('error');
       setErrorMessage(String(err));
     }
-  }, []);
+  }, [workingDir]);
 
   return {
     connectionState,
