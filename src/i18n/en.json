@@ -383,6 +383,13 @@
         "tricksterDesc": "Witty, unpredictable, and humorous. Loves to tease."
       }
     },
+    "proactive": {
+      "title": "Proactive Chat",
+      "enabled": "Enable Proactive Chat",
+      "enabledDesc": "The avatar can initiate conversations. After idle time, it will greet or ask how you're doing.",
+      "idleMinutes": "Idle wait time: {{value}} min",
+      "cooldownMinutes": "Re-trigger cooldown: {{value}} min"
+    },
     "mcp": {
       "title": "Claude Code Channels",
       "description": "Connect the avatar to an external Claude Code session. User input is sent to Claude Code, and responses are spoken aloud by the avatar.",

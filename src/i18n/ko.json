@@ -383,6 +383,13 @@
         "tricksterDesc": "재치있고 예측불가한 유머러스한 성격. 놀리기를 좋아합니다."
       }
     },
+    "proactive": {
+      "title": "자발적 대화",
+      "enabled": "자발적 대화 활성화",
+      "enabledDesc": "아바타가 먼저 말을 걸 수 있습니다. 유휴 시간이 지나면 인사하거나 안부를 물어봅니다.",
+      "idleMinutes": "유휴 대기 시간: {{value}}분",
+      "cooldownMinutes": "재발화 쿨다운: {{value}}분"
+    },
     "mcp": {
       "title": "Claude Code Channels",
       "description": "외부에서 실행 중인 Claude Code와 아바타를 연결합니다. 사용자 입력이 Claude Code로 전달되고, 응답을 아바타가 음성으로 읽어줍니다.",
