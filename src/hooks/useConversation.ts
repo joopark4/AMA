@@ -17,6 +17,7 @@ import { selectMotionClip } from '../services/avatar/motionSelector';
 import { useClaudeCodeChat } from '../features/channels';
 import { buildCharacterPrompt, analyzeEmotion } from '../services/character';
 import { ttsQueue } from '../services/voice/ttsQueue';
+import { buildMessageWindow, summarizeIfNeeded } from '../services/ai/memoryManager';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -275,6 +276,7 @@ export function useConversation(): UseConversationReturn {
     setCurrentResponse,
     setStreamingResponse,
     appendStreamingToken,
+    setMemory,
     setStatus,
     clearCurrentResponse,
     clearMessages,
@@ -649,25 +651,29 @@ export function useConversation(): UseConversationReturn {
     addMessage({ role: 'user', content: text });
 
     try {
-      // Get current messages from store (fresh)
-      const currentMessages = useConversationStore.getState().messages;
+      // Get current messages + memory from store (fresh)
+      const storeState = useConversationStore.getState();
+      const currentMessages = storeState.messages;
+      const currentMemory = storeState.memory;
 
       const systemPrompt = currentCharacter?.name || currentCharacter?.personality?.traits?.length
         ? buildCharacterPrompt(currentCharacter)
         : buildSystemPrompt(settings.avatarName || '', settings.avatarPersonalityPrompt || '');
 
-      // Prepare messages for LLM (외부 알림은 프롬프트에서 제외)
+      // Phase 2: 메모리 기반 메시지 윈도우 구성
+      const { memoryContext, recentMessages } = buildMessageWindow(currentMessages, currentMemory);
+
+      // 시스템 프롬프트에 메모리 컨텍스트 결합
+      const fullSystemPrompt = memoryContext
+        ? `${systemPrompt}\n\n${memoryContext}`
+        : systemPrompt;
+
       const llmMessages: LLMMessage[] = [
-        { role: 'system', content: systemPrompt },
-        ...currentMessages
-          .filter((m) => m.source !== 'external')
-          .map((m) => ({
-            role: m.role as 'user' | 'assistant' | 'system',
-            content: m.content,
-          })),
+        { role: 'system', content: fullSystemPrompt },
+        ...recentMessages,
       ];
 
-      log('Sending to LLM:', llmMessages.length, 'messages');
+      log('Sending to LLM:', llmMessages.length, 'messages (window:', recentMessages.length, ')');
 
       // Screen analysis request route (Vision models only) — 스트리밍 미적용
       let responseText = '';
@@ -794,6 +800,21 @@ export function useConversation(): UseConversationReturn {
           log('TTS error:', ttsErr);
         }
       }
+
+      // Phase 2: 비동기 메모리 요약 (UI 차단 없이 백그라운드 실행)
+      void (async () => {
+        try {
+          const freshMessages = useConversationStore.getState().messages;
+          const freshMemory = useConversationStore.getState().memory;
+          const updated = await summarizeIfNeeded(freshMessages, freshMemory);
+          if (updated) {
+            setMemory(updated);
+            log('Memory updated: summary length', updated.summary.length, 'facts', updated.importantFacts.length);
+          }
+        } catch (err) {
+          log('Memory summarization error (non-fatal):', err);
+        }
+      })();
 
       // Keep response visible
       setStatus('idle');

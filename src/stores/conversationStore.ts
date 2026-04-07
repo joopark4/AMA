@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { DEFAULT_MEMORY_STATE, type MemoryState } from '../services/ai/memoryManager';
 
 export interface Message {
   id: string;
@@ -17,6 +18,8 @@ interface ConversationState {
   currentResponse: string | null;
   /** 스트리밍 중 누적 토큰 (Phase 1) — 스트리밍 완료 시 null */
   streamingResponse: string | null;
+  /** 대화 메모리 (Phase 2) — 요약 + 중요 사실 */
+  memory: MemoryState;
   status: ConversationStatus;
   isProcessing: boolean;
   isListening: boolean;
@@ -27,6 +30,7 @@ interface ConversationState {
   setCurrentResponse: (response: string | null) => void;
   setStreamingResponse: (response: string | null) => void;
   appendStreamingToken: (token: string) => void;
+  setMemory: (memory: MemoryState) => void;
   setStatus: (status: ConversationStatus) => void;
   setIsProcessing: (isProcessing: boolean) => void;
   setIsListening: (isListening: boolean) => void;
@@ -42,6 +46,7 @@ export const useConversationStore = create<ConversationState>()(
       messages: [],
       currentResponse: null,
       streamingResponse: null,
+      memory: DEFAULT_MEMORY_STATE,
       status: 'idle',
       isProcessing: false,
       isListening: false,
@@ -71,6 +76,8 @@ export const useConversationStore = create<ConversationState>()(
           streamingResponse: (state.streamingResponse ?? '') + token,
         })),
 
+      setMemory: (memory) => set({ memory }),
+
       setStatus: (status) =>
         set({
           status,
@@ -92,15 +99,15 @@ export const useConversationStore = create<ConversationState>()(
         set({ error, status: error ? 'error' : 'idle' }),
 
       clearMessages: () =>
-        set({ messages: [] }),
+        set({ messages: [], memory: DEFAULT_MEMORY_STATE }),
 
       clearCurrentResponse: () =>
         set({ currentResponse: null }),
     }),
     {
       name: 'mypartnerai-conversation',
-      // messages만 저장, 휘발성 상태(status, currentResponse 등)는 제외
-      partialize: (state) => ({ messages: state.messages }),
+      // messages + memory만 저장, 휘발성 상태(status, currentResponse 등)는 제외
+      partialize: (state) => ({ messages: state.messages, memory: state.memory }),
     }
   )
 );
