@@ -15,6 +15,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
 import { useClaudeCodeChat } from '../features/channels';
+import { buildCharacterPrompt, analyzeEmotion } from '../services/character';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -23,7 +24,19 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
+/**
+ * 시스템 프롬프트 빌드 — 캐릭터 프로필 기반
+ *
+ * @deprecated 레거시 시그니처, sendMessage 내에서 직접 character 프로필 사용 권장
+ */
 export function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
+  // 레거시 호환: 캐릭터 프로필이 설정되어 있으면 그것을 사용
+  const character = useSettingsStore.getState().settings.character;
+  if (character && (character.name || character.personality.traits.length > 0)) {
+    return buildCharacterPrompt(character);
+  }
+
+  // 폴백: 프로필이 없으면 기존 방식 유지
   const normalizedName = avatarName.trim() || '아바타';
   const basePrompt = `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
@@ -142,38 +155,7 @@ function isScreenRequest(text: string): boolean {
   return /(화면|스크린|screen)/i.test(text);
 }
 
-interface EmotionMatch {
-  emotion: Emotion;
-  score: number;
-}
-
-const EMOTION_KEYWORDS: Record<Emotion, string[]> = {
-  neutral: [],
-  happy: ['happy', 'great', 'love', 'awesome', '좋아', '행복', '기뻐', '최고', '고마워'],
-  sad: ['sad', 'sorry', 'unfortunately', '슬퍼', '미안', '힘들', '우울', '걱정'],
-  angry: ['angry', 'annoyed', 'frustrated', '화나', '짜증', '열받', '빡쳐'],
-  surprised: ['wow', 'surprised', 'amazing', '대박', '놀라', '헉', '와'],
-  relaxed: ['calm', 'relaxed', 'peaceful', '차분', '편안', '여유'],
-  thinking: ['think', 'maybe', 'hmm', '음', '생각', '고민', '글쎄'],
-};
-
-function analyzeEmotion(text: string): EmotionMatch {
-  const normalized = text.toLowerCase();
-  let best: EmotionMatch = { emotion: 'neutral', score: 0 };
-
-  for (const [emotion, keywords] of Object.entries(EMOTION_KEYWORDS) as [Emotion, string[]][]) {
-    if (emotion === 'neutral') continue;
-    let score = 0;
-    for (const keyword of keywords) {
-      if (normalized.includes(keyword)) score += 1;
-    }
-    if (score > best.score) {
-      best = { emotion, score };
-    }
-  }
-
-  return best;
-}
+// analyzeEmotion은 src/services/character/analyzeEmotion.ts에서 import
 
 function pickGesture(emotion: Emotion, text: string): GestureType {
   const normalized = text.toLowerCase();
@@ -644,7 +626,9 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
-    const userEmotionMatch = analyzeEmotion(text);
+    const currentCharacter = useSettingsStore.getState().settings.character;
+    const archetype = currentCharacter?.personality?.archetype;
+    const userEmotionMatch = analyzeEmotion(text, archetype);
     if (userEmotionMatch.score > 0) {
       setEmotion(userEmotionMatch.emotion);
       triggerEmotionMotion(userEmotionMatch.emotion, userEmotionMatch.score, text);
@@ -664,10 +648,9 @@ export function useConversation(): UseConversationReturn {
       // Get current messages from store (fresh)
       const currentMessages = useConversationStore.getState().messages;
 
-      const systemPrompt = buildSystemPrompt(
-        settings.avatarName || '',
-        settings.avatarPersonalityPrompt || ''
-      );
+      const systemPrompt = currentCharacter?.name || currentCharacter?.personality?.traits?.length
+        ? buildCharacterPrompt(currentCharacter)
+        : buildSystemPrompt(settings.avatarName || '', settings.avatarPersonalityPrompt || '');
 
       // Prepare messages for LLM (외부 알림은 프롬프트에서 제외)
       const llmMessages: LLMMessage[] = [
@@ -705,7 +688,7 @@ export function useConversation(): UseConversationReturn {
 
       setError(null);
 
-      const responseEmotionMatch = analyzeEmotion(responseText);
+      const responseEmotionMatch = analyzeEmotion(responseText, archetype);
       const responseEmotion =
         responseEmotionMatch.score > 0 ? responseEmotionMatch.emotion : 'neutral';
       const faceOnlyModeEnabled =
@@ -787,6 +770,7 @@ export function useConversation(): UseConversationReturn {
     }
   }, [
     addMessage,
+    settings.character,
     settings.avatarName,
     settings.avatarPersonalityPrompt,
     setCurrentResponse,

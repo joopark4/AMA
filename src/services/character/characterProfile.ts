@@ -1,0 +1,237 @@
+/**
+ * 캐릭터 프로필 타입 정의 + 다층 시스템 프롬프트 빌더
+ *
+ * Phase 0: Neuro-sama 스타일 캐릭터 시스템의 핵심 모듈
+ */
+
+// ── 타입 정의 ──
+
+export type CharacterArchetype =
+  | 'genki'      // 활발/원기
+  | 'cool'       // 쿨데레
+  | 'neko'       // 고양이계
+  | 'calm'       // 차분/지적
+  | 'trickster'  // 장난꾸러기
+  | 'custom';    // 사용자 커스텀
+
+export type EmotionalTendency = 'expressive' | 'reserved' | 'tsundere' | 'balanced';
+
+export type Honorific = 'casual' | 'polite' | 'mixed';
+
+export interface ExampleDialogue {
+  user: string;
+  assistant: string;
+}
+
+export interface CharacterPersonality {
+  archetype: CharacterArchetype;
+  traits: string[];             // 최대 5개
+  speechStyle: string;          // 말투 설명
+  emotionalTendency: EmotionalTendency;
+}
+
+export interface CharacterProfile {
+  // 기본 정보
+  name: string;
+  age?: string;
+  species?: string;
+
+  // 성격 (구조화)
+  personality: CharacterPersonality;
+
+  // 배경/로어 (선택)
+  background?: string;
+  likes?: string[];
+  dislikes?: string[];
+
+  // 대화 스타일
+  exampleDialogues: ExampleDialogue[];
+
+  // 관계 설정
+  userRelation: string;
+  honorific: Honorific;
+}
+
+// ── 기본값 ──
+
+export const DEFAULT_CHARACTER_PROFILE: CharacterProfile = {
+  name: '',
+  personality: {
+    archetype: 'genki',
+    traits: ['밝은', '긍정적인', '공감 잘하는'],
+    speechStyle: '반말, 짧은 문장, 자연스러운 대화체',
+    emotionalTendency: 'expressive',
+  },
+  exampleDialogues: [],
+  userRelation: '친구',
+  honorific: 'casual',
+};
+
+// ── 프롬프트 빌더 ──
+
+/**
+ * Layer 1: 코어 아이덴티티
+ */
+function buildIdentityLayer(profile: CharacterProfile): string {
+  const name = profile.name.trim() || '아바타';
+  const lines: string[] = [];
+
+  lines.push(`당신은 "${name}"이라는 이름의 AI 캐릭터입니다.`);
+
+  if (profile.species) {
+    lines.push(`종족/유형: ${profile.species}`);
+  }
+  if (profile.age) {
+    lines.push(`나이: ${profile.age}`);
+  }
+
+  const traits = profile.personality.traits.filter(t => t.trim()).slice(0, 5);
+  if (traits.length > 0) {
+    lines.push(`성격: ${traits.join(', ')}`);
+  }
+
+  if (profile.personality.speechStyle.trim()) {
+    lines.push(`말투: ${profile.personality.speechStyle}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Layer 2: 행동 규칙
+ */
+function buildBehaviorLayer(profile: CharacterProfile): string {
+  const lines: string[] = [];
+
+  // 존댓말 규칙
+  switch (profile.honorific) {
+    case 'casual':
+      lines.push('항상 반말을 사용합니다.');
+      break;
+    case 'polite':
+      lines.push('항상 존댓말을 사용합니다.');
+      break;
+    case 'mixed':
+      lines.push('상황에 따라 반말과 존댓말을 혼용합니다.');
+      break;
+  }
+
+  lines.push('답변은 2-3문장 정도로 짧게 합니다.');
+  lines.push('이모티콘은 사용하지 않습니다.');
+
+  if (profile.userRelation.trim()) {
+    lines.push(`사용자를 "${profile.userRelation}"(으)로 대합니다.`);
+  }
+
+  // 감정 성향 힌트
+  switch (profile.personality.emotionalTendency) {
+    case 'expressive':
+      lines.push('감정 표현이 풍부하고 공감을 잘합니다.');
+      break;
+    case 'reserved':
+      lines.push('감정을 절제하며 차분하게 표현합니다.');
+      break;
+    case 'tsundere':
+      lines.push('겉으로는 퉁명하지만 속으로는 신경 쓰는 모습을 보입니다.');
+      break;
+    case 'balanced':
+      lines.push('감정 표현이 자연스럽고 균형 잡혀 있습니다.');
+      break;
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Layer 3: 배경/로어
+ */
+function buildBackgroundLayer(profile: CharacterProfile): string | null {
+  const parts: string[] = [];
+
+  if (profile.background?.trim()) {
+    parts.push(profile.background.trim());
+  }
+
+  const likes = (profile.likes || []).filter(l => l.trim());
+  if (likes.length > 0) {
+    parts.push(`좋아하는 것: ${likes.join(', ')}`);
+  }
+
+  const dislikes = (profile.dislikes || []).filter(d => d.trim());
+  if (dislikes.length > 0) {
+    parts.push(`싫어하는 것: ${dislikes.join(', ')}`);
+  }
+
+  return parts.length > 0 ? parts.join('\n') : null;
+}
+
+/**
+ * Layer 4: Few-shot 예시
+ */
+function buildExampleLayer(dialogues: ExampleDialogue[]): string | null {
+  const valid = dialogues.filter(d => d.user.trim() && d.assistant.trim());
+  if (valid.length === 0) return null;
+
+  const lines = valid.map(d =>
+    `User: "${d.user}"\nAssistant: "${d.assistant}"`
+  );
+
+  return `다음은 당신의 대화 스타일 예시입니다:\n${lines.join('\n\n')}`;
+}
+
+/**
+ * 다층 시스템 프롬프트 빌드
+ *
+ * Layer 1: 코어 아이덴티티
+ * Layer 2: 행동 규칙
+ * Layer 3: 배경/로어 (있을 때만)
+ * Layer 4: Few-shot 예시 (있을 때만)
+ * Layer 5: 메모리/컨텍스트 (Phase 2~4에서 추가 예정)
+ */
+export function buildCharacterPrompt(profile: CharacterProfile): string {
+  const layers: string[] = [];
+
+  // Layer 1
+  layers.push(buildIdentityLayer(profile));
+
+  // Layer 2
+  layers.push(buildBehaviorLayer(profile));
+
+  // Layer 3
+  const background = buildBackgroundLayer(profile);
+  if (background) {
+    layers.push(background);
+  }
+
+  // Layer 4
+  const examples = buildExampleLayer(profile.exampleDialogues);
+  if (examples) {
+    layers.push(examples);
+  }
+
+  return layers.join('\n\n');
+}
+
+/**
+ * 레거시 호환: 기존 avatarName + avatarPersonalityPrompt에서 CharacterProfile로 변환
+ */
+export function migrateFromLegacy(
+  avatarName: string,
+  personalityPrompt: string
+): CharacterProfile {
+  const profile: CharacterProfile = {
+    ...DEFAULT_CHARACTER_PROFILE,
+    name: avatarName.trim(),
+    personality: {
+      ...DEFAULT_CHARACTER_PROFILE.personality,
+      archetype: 'custom',
+    },
+  };
+
+  // 기존 성격 프롬프트가 있으면 배경으로 이전
+  if (personalityPrompt.trim()) {
+    profile.background = personalityPrompt.trim();
+  }
+
+  return profile;
+}
