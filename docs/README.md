@@ -42,6 +42,7 @@
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
 | [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 | 2026.02.26 |
+| [codex-integration.md](./ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) | 2026.04.07 |
 
 ### settings/ — 설정
 
@@ -90,9 +91,12 @@
 
 ---
 
-## v0.8.0+ 작업 이력 (2026.04)
+## v1.0.0 작업 이력 (2026.04)
 
 - OpenAI Codex CLI 직접 연동 (`codex app-server` JSON-RPC 2.0)
+- Codex 작업 폴더 설정 (기본값 ~/Documents, 네이티브 폴더 선택 다이얼로그)
+- Codex 접근 권한 설정 (approvalPolicy + sandboxPolicy 매핑)
+- TTS 중복 재생 방지 (새 응답 수신 시 이전 TTS 자동 중단)
 - 오디오 입/출력 디바이스 독립 선택 + 마이크 피크 미터
 - 대화기록창 투명도 조절 (20~100%)
 - 관리자 전용 API 크레딧 대시보드

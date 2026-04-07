@@ -259,6 +259,7 @@ const { t } = useTranslation();
 | [기술 스택](docs/fundamentals/tech-stack.md) | 최신 의존성과 역할 |
 | [프로젝트 구조](docs/fundamentals/project-structure.md) | 디렉터리/핵심 파일 맵 |
 | [AI 서비스](docs/ai/ai-services.md) | LLM 라우팅, Vision 분석 |
+| [Codex 연동](docs/ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) |
 | [음성 서비스](docs/voice/voice-services.md) | Whisper/Supertonic 구현 상세 |
 | [아바타 시스템](docs/avatar/avatar-system.md) | VRM 로딩, 이동/회전, 상호작용 |
 | [설정 시스템](docs/settings/settings-system.md) | Zustand 설정/마이그레이션 |
