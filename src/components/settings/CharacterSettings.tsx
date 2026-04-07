@@ -12,7 +12,7 @@ import {
 
 export default function CharacterSettings() {
   const { t } = useTranslation();
-  const { settings, setCharacter } = useSettingsStore();
+  const { settings, setCharacter, setProactive } = useSettingsStore();
   const character = settings.character ?? DEFAULT_CHARACTER_PROFILE;
   const [newTrait, setNewTrait] = useState('');
   const [newLike, setNewLike] = useState('');
@@ -419,6 +419,69 @@ export default function CharacterSettings() {
           >
             {t('settings.character.addExample')}
           </button>
+        )}
+      </div>
+
+      {/* Proactive Chat (Phase 3) */}
+      <div className="space-y-3 border-t pt-4 mt-4">
+        <h4 className="text-sm font-medium text-gray-700">
+          {t('settings.proactive.title')}
+        </h4>
+
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="text-sm text-gray-600">
+              {t('settings.proactive.enabled')}
+            </span>
+            <span className="text-xs text-gray-400">
+              {t('settings.proactive.enabledDesc')}
+            </span>
+          </div>
+          <button
+            onClick={() => setProactive({ enabled: !(settings.proactive?.enabled ?? false) })}
+            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+              settings.proactive?.enabled ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                settings.proactive?.enabled ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
+        </div>
+
+        {settings.proactive?.enabled && (
+          <>
+            <div className="space-y-1">
+              <label className="block text-xs text-gray-600">
+                {t('settings.proactive.idleMinutes', { value: settings.proactive?.idleMinutes ?? 5 })}
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="30"
+                step="1"
+                value={settings.proactive?.idleMinutes ?? 5}
+                onChange={(e) => setProactive({ idleMinutes: parseInt(e.target.value) })}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs text-gray-600">
+                {t('settings.proactive.cooldownMinutes', { value: settings.proactive?.cooldownMinutes ?? 10 })}
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="60"
+                step="1"
+                value={settings.proactive?.cooldownMinutes ?? 10}
+                onChange={(e) => setProactive({ cooldownMinutes: parseInt(e.target.value) })}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+            </div>
+          </>
         )}
       </div>
     </div>

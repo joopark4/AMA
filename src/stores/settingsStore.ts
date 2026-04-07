@@ -14,6 +14,7 @@ import {
   type CharacterProfile,
   type ExampleDialogue,
 } from '../services/character';
+import { DEFAULT_PROACTIVE_SETTINGS, type ProactiveSettings } from '../services/ai/proactiveEngine';
 
 export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
 
@@ -146,6 +147,8 @@ export interface Settings {
   codex: CodexSettings;
   /** 캐릭터 프로필 (Phase 0) */
   character: CharacterProfile;
+  /** 자발적 대화 설정 (Phase 3) */
+  proactive: ProactiveSettings;
 }
 
 interface SettingsState {
@@ -164,6 +167,7 @@ interface SettingsState {
   setAvatarPersonalityPrompt: (prompt: string) => void;
   setVrmModelPath: (path: string) => void;
   setCharacter: (character: Partial<CharacterProfile>) => void;
+  setProactive: (proactive: Partial<ProactiveSettings>) => void;
   toggleSettings: () => void;
   openSettings: () => void;
   closeSettings: () => void;
@@ -349,6 +353,7 @@ const defaultSettings: Settings = {
     approvalPolicy: 'on-request',
   },
   character: DEFAULT_CHARACTER_PROFILE,
+  proactive: DEFAULT_PROACTIVE_SETTINGS,
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -468,6 +473,21 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       ...(source.codex || {}),
     },
     character: normalizeCharacterProfile(source.character),
+    proactive: normalizeProactiveSettings(source.proactive),
+  };
+}
+
+function normalizeProactiveSettings(raw: unknown): ProactiveSettings {
+  if (!raw || typeof raw !== 'object') return DEFAULT_PROACTIVE_SETTINGS;
+  const source = raw as Partial<ProactiveSettings>;
+  return {
+    enabled: typeof source.enabled === 'boolean' ? source.enabled : DEFAULT_PROACTIVE_SETTINGS.enabled,
+    idleMinutes: typeof source.idleMinutes === 'number' && Number.isFinite(source.idleMinutes)
+      ? Math.max(1, Math.min(60, source.idleMinutes))
+      : DEFAULT_PROACTIVE_SETTINGS.idleMinutes,
+    cooldownMinutes: typeof source.cooldownMinutes === 'number' && Number.isFinite(source.cooldownMinutes)
+      ? Math.max(1, Math.min(120, source.cooldownMinutes))
+      : DEFAULT_PROACTIVE_SETTINGS.cooldownMinutes,
   };
 }
 
@@ -622,6 +642,14 @@ export const useSettingsStore = create<SettingsState>()(
             }),
             // 하위호환: character.name이 변경되면 avatarName도 동기화
             ...(character.name !== undefined ? { avatarName: normalizeAvatarName(character.name) } : {}),
+          },
+        })),
+
+      setProactive: (proactive) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            proactive: { ...DEFAULT_PROACTIVE_SETTINGS, ...state.settings.proactive, ...proactive },
           },
         })),
 

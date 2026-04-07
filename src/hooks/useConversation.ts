@@ -18,6 +18,8 @@ import { useClaudeCodeChat } from '../features/channels';
 import { buildCharacterPrompt, analyzeEmotion } from '../services/character';
 import { ttsQueue } from '../services/voice/ttsQueue';
 import { buildMessageWindow, summarizeIfNeeded } from '../services/ai/memoryManager';
+import { proactiveEngine } from '../services/ai/proactiveEngine';
+import { processExternalResponse } from '../features/channels/responseProcessor';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -613,6 +615,7 @@ export function useConversation(): UseConversationReturn {
   // Send message to LLM and get response
   const sendMessage = useCallback(async (text: string) => {
     log('sendMessage called with:', text);
+    proactiveEngine.notifyUserActivity();
 
     if (!text.trim()) {
       log('Empty text, returning');
@@ -895,6 +898,33 @@ export function useConversation(): UseConversationReturn {
       audioProcessor.dispose();
     };
   }, []);
+
+  // Phase 3: 자발적 대화 엔진 start/stop
+  useEffect(() => {
+    const proactive = settings.proactive ?? { enabled: false };
+    if (!proactive.enabled) {
+      proactiveEngine.stop();
+      return;
+    }
+
+    proactiveEngine.start((text, trigger) => {
+      log('Proactive message:', trigger, text.substring(0, 50));
+      void processExternalResponse({ text, source: 'internal' });
+    });
+
+    // 앱 포커스 복귀 감지
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        proactiveEngine.notifyAppFocusReturn();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      proactiveEngine.stop();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [settings.proactive?.enabled]);
 
   // Start voice recognition (local Whisper only)
   const startListening = useCallback(async () => {

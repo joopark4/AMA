@@ -383,6 +383,13 @@
         "tricksterDesc": "機知に富み、予測不能でユーモラスな性格。からかうのが大好きです。"
       }
     },
+    "proactive": {
+      "title": "自発的会話",
+      "enabled": "自発的会話を有効化",
+      "enabledDesc": "アバターが自ら話しかけることができます。アイドル時間が過ぎると挨拶や様子を伺います。",
+      "idleMinutes": "アイドル待機時間: {{value}}分",
+      "cooldownMinutes": "再発話クールダウン: {{value}}分"
+    },
     "mcp": {
       "title": "Claude Code Channels",
       "description": "外部で実行中のClaude Codeとアバターを接続します。ユーザー入力がClaude Codeに送信され、応答をアバターが音声で読み上げます。",
