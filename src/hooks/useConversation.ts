@@ -20,6 +20,7 @@ import { ttsQueue } from '../services/voice/ttsQueue';
 import { buildMessageWindow, summarizeIfNeeded } from '../services/ai/memoryManager';
 import { proactiveEngine } from '../services/ai/proactiveEngine';
 import { processExternalResponse } from '../features/channels/responseProcessor';
+import { collectContext, formatContextForPrompt } from '../services/context';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -666,10 +667,15 @@ export function useConversation(): UseConversationReturn {
       // Phase 2: 메모리 기반 메시지 윈도우 구성
       const { memoryContext, recentMessages } = buildMessageWindow(currentMessages, currentMemory);
 
-      // 시스템 프롬프트에 메모리 컨텍스트 결합
-      const fullSystemPrompt = memoryContext
-        ? `${systemPrompt}\n\n${memoryContext}`
-        : systemPrompt;
+      // Phase 4: 환경 컨텍스트 수집
+      const contextStr = formatContextForPrompt(collectContext());
+
+      // 시스템 프롬프트에 메모리 + 환경 컨텍스트 결합
+      const fullSystemPrompt = [
+        systemPrompt,
+        memoryContext,
+        contextStr,
+      ].filter(Boolean).join('\n\n');
 
       const llmMessages: LLMMessage[] = [
         { role: 'system', content: fullSystemPrompt },
