@@ -280,6 +280,7 @@ export function useConversation(): UseConversationReturn {
     setStreamingResponse,
     appendStreamingToken,
     setMemory,
+    setMood,
     setStatus,
     clearCurrentResponse,
     clearMessages,
@@ -670,11 +671,18 @@ export function useConversation(): UseConversationReturn {
       // Phase 4: 환경 컨텍스트 수집
       const contextStr = formatContextForPrompt(collectContext());
 
-      // 시스템 프롬프트에 메모리 + 환경 컨텍스트 결합
+      // Phase 5: 지속 감정(mood) 주입
+      const currentMood = useConversationStore.getState().mood;
+      const moodHint = currentMood !== 'neutral'
+        ? `[현재 기분: ${currentMood} — 이 기분을 대화 톤에 자연스럽게 반영하세요]`
+        : '';
+
+      // 시스템 프롬프트에 메모리 + 환경 컨텍스트 + mood 결합
       const fullSystemPrompt = [
         systemPrompt,
         memoryContext,
         contextStr,
+        moodHint,
       ].filter(Boolean).join('\n\n');
 
       const llmMessages: LLMMessage[] = [
@@ -780,6 +788,10 @@ export function useConversation(): UseConversationReturn {
 
       if (responseEmotionMatch.score > 0) {
         setEmotion(responseEmotionMatch.emotion);
+        // Phase 5: 지속 감정(mood) 업데이트 — 강한 감정일 때만 mood 변경
+        if (responseEmotionMatch.score >= 2) {
+          setMood(responseEmotionMatch.emotion);
+        }
         triggerEmotionMotion(
           responseEmotionMatch.emotion,
           responseEmotionMatch.score,
@@ -792,6 +804,10 @@ export function useConversation(): UseConversationReturn {
         }
       } else {
         stopDancing();
+        // 감정 없는 응답이 2회 연속이면 mood를 neutral로 복귀
+        if (currentMood !== 'neutral') {
+          setMood('neutral');
+        }
       }
 
       // Add assistant message and set final response

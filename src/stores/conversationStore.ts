@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_MEMORY_STATE, type MemoryState } from '../services/ai/memoryManager';
+import type { Emotion } from './avatarStore';
 
 export interface Message {
   id: string;
@@ -20,6 +21,8 @@ interface ConversationState {
   streamingResponse: string | null;
   /** 대화 메모리 (Phase 2) — 요약 + 중요 사실 */
   memory: MemoryState;
+  /** 지속 감정 상태 (Phase 5) — 여러 턴에 걸쳐 서서히 변화 */
+  mood: Emotion;
   status: ConversationStatus;
   isProcessing: boolean;
   isListening: boolean;
@@ -31,6 +34,7 @@ interface ConversationState {
   setStreamingResponse: (response: string | null) => void;
   appendStreamingToken: (token: string) => void;
   setMemory: (memory: MemoryState) => void;
+  setMood: (mood: Emotion) => void;
   setStatus: (status: ConversationStatus) => void;
   setIsProcessing: (isProcessing: boolean) => void;
   setIsListening: (isListening: boolean) => void;
@@ -47,6 +51,7 @@ export const useConversationStore = create<ConversationState>()(
       currentResponse: null,
       streamingResponse: null,
       memory: DEFAULT_MEMORY_STATE,
+      mood: 'neutral' as Emotion,
       status: 'idle',
       isProcessing: false,
       isListening: false,
@@ -78,6 +83,8 @@ export const useConversationStore = create<ConversationState>()(
 
       setMemory: (memory) => set({ memory }),
 
+      setMood: (mood) => set({ mood }),
+
       setStatus: (status) =>
         set({
           status,
@@ -99,7 +106,7 @@ export const useConversationStore = create<ConversationState>()(
         set({ error, status: error ? 'error' : 'idle' }),
 
       clearMessages: () =>
-        set({ messages: [], memory: DEFAULT_MEMORY_STATE }),
+        set({ messages: [], memory: DEFAULT_MEMORY_STATE, mood: 'neutral' as Emotion }),
 
       clearCurrentResponse: () =>
         set({ currentResponse: null }),
