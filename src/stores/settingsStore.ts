@@ -8,6 +8,12 @@ import {
   DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
   normalizeGlobalShortcutAccelerator,
 } from '../services/tauri/globalShortcutUtils';
+import {
+  DEFAULT_CHARACTER_PROFILE,
+  migrateFromLegacy,
+  type CharacterProfile,
+  type ExampleDialogue,
+} from '../services/character';
 
 export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
 
@@ -126,7 +132,9 @@ export interface Settings {
   tts: TTSSettings;
   globalShortcut: GlobalShortcutSettings;
   language: Language;
+  /** @deprecated v15: character.name으로 이전. 마이그레이션 소스로만 유지 */
   avatarName: string;
+  /** @deprecated v15: character로 이전. 마이그레이션 소스로만 유지 */
   avatarPersonalityPrompt: string;
   vrmModelPath: string;
   avatar: AvatarSettings;
@@ -136,6 +144,8 @@ export interface Settings {
   /** Channels ON 전의 LLM 설정 (OFF 시 복원용) */
   mcpPreviousLlm: LLMSettings | null;
   codex: CodexSettings;
+  /** 캐릭터 프로필 (Phase 0) */
+  character: CharacterProfile;
 }
 
 interface SettingsState {
@@ -153,6 +163,7 @@ interface SettingsState {
   setAvatarName: (name: string) => void;
   setAvatarPersonalityPrompt: (prompt: string) => void;
   setVrmModelPath: (path: string) => void;
+  setCharacter: (character: Partial<CharacterProfile>) => void;
   toggleSettings: () => void;
   openSettings: () => void;
   closeSettings: () => void;
@@ -337,6 +348,7 @@ const defaultSettings: Settings = {
     workingDir: '',
     approvalPolicy: 'on-request',
   },
+  character: DEFAULT_CHARACTER_PROFILE,
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -455,6 +467,48 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       ...defaultSettings.codex,
       ...(source.codex || {}),
     },
+    character: normalizeCharacterProfile(source.character),
+  };
+}
+
+function normalizeCharacterProfile(raw: unknown): CharacterProfile {
+  if (!raw || typeof raw !== 'object') return DEFAULT_CHARACTER_PROFILE;
+  const source = raw as Partial<CharacterProfile>;
+
+  const personality = source.personality && typeof source.personality === 'object'
+    ? {
+        ...DEFAULT_CHARACTER_PROFILE.personality,
+        ...source.personality,
+        traits: Array.isArray(source.personality.traits)
+          ? source.personality.traits.filter((t): t is string => typeof t === 'string').slice(0, 5)
+          : DEFAULT_CHARACTER_PROFILE.personality.traits,
+      }
+    : DEFAULT_CHARACTER_PROFILE.personality;
+
+  return {
+    name: typeof source.name === 'string' ? source.name.slice(0, 40) : DEFAULT_CHARACTER_PROFILE.name,
+    age: typeof source.age === 'string' ? source.age.slice(0, 40) : undefined,
+    species: typeof source.species === 'string' ? source.species.slice(0, 40) : undefined,
+    personality,
+    background: typeof source.background === 'string' ? source.background.slice(0, 500) : undefined,
+    likes: Array.isArray(source.likes)
+      ? source.likes.filter((l): l is string => typeof l === 'string').slice(0, 10)
+      : undefined,
+    dislikes: Array.isArray(source.dislikes)
+      ? source.dislikes.filter((d): d is string => typeof d === 'string').slice(0, 10)
+      : undefined,
+    exampleDialogues: Array.isArray(source.exampleDialogues)
+      ? source.exampleDialogues
+          .filter((d): d is ExampleDialogue =>
+            d != null && typeof d === 'object' &&
+            typeof (d as ExampleDialogue).user === 'string' &&
+            typeof (d as ExampleDialogue).assistant === 'string')
+          .slice(0, 5)
+      : [],
+    userRelation: typeof source.userRelation === 'string' ? source.userRelation.slice(0, 40) : DEFAULT_CHARACTER_PROFILE.userRelation,
+    honorific: source.honorific === 'casual' || source.honorific === 'polite' || source.honorific === 'mixed'
+      ? source.honorific
+      : DEFAULT_CHARACTER_PROFILE.honorific,
   };
 }
 
@@ -555,6 +609,22 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
 
+      setCharacter: (character) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            character: normalizeCharacterProfile({
+              ...state.settings.character,
+              ...character,
+              personality: character.personality
+                ? { ...state.settings.character.personality, ...character.personality }
+                : state.settings.character.personality,
+            }),
+            // 하위호환: character.name이 변경되면 avatarName도 동기화
+            ...(character.name !== undefined ? { avatarName: normalizeAvatarName(character.name) } : {}),
+          },
+        })),
+
       setVrmModelPath: (path) =>
         set((state) => ({
           settings: { ...state.settings, vrmModelPath: normalizeVrmModelPath(path) },
@@ -590,7 +660,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 14,
+      version: 15,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -603,13 +673,25 @@ export const useSettingsStore = create<SettingsState>()(
           ),
         };
       },
-      migrate: (persistedState) => {
+      migrate: (persistedState, version) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState;
         }
 
         const state = persistedState as { settings?: Partial<Settings> } & Record<string, unknown>;
         if (!state.settings) return persistedState;
+
+        // v14→v15: avatarName/avatarPersonalityPrompt → character 마이그레이션
+        if ((version ?? 0) < 15) {
+          const s = state.settings;
+          if (!s.character) {
+            const name = typeof s.avatarName === 'string' ? s.avatarName : '';
+            const prompt = typeof s.avatarPersonalityPrompt === 'string' ? s.avatarPersonalityPrompt : '';
+            if (name || prompt) {
+              s.character = migrateFromLegacy(name, prompt);
+            }
+          }
+        }
 
         return {
           ...state,
