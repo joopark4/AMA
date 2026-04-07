@@ -16,6 +16,7 @@ import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
 import { useClaudeCodeChat } from '../features/channels';
 import { buildCharacterPrompt, analyzeEmotion } from '../services/character';
+import { ttsQueue } from '../services/voice/ttsQueue';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -272,6 +273,8 @@ export function useConversation(): UseConversationReturn {
   const {
     addMessage,
     setCurrentResponse,
+    setStreamingResponse,
+    appendStreamingToken,
     setStatus,
     clearCurrentResponse,
     clearMessages,
@@ -568,6 +571,7 @@ export function useConversation(): UseConversationReturn {
         return true;
       }
       case 'stop-speaking': {
+        ttsQueue.flush();
         stopSpeaking();
         clearCurrentResponse();
         await showVoiceCommandFeedback(
@@ -665,7 +669,7 @@ export function useConversation(): UseConversationReturn {
 
       log('Sending to LLM:', llmMessages.length, 'messages');
 
-      // Screen analysis request route (Vision models only)
+      // Screen analysis request route (Vision models only) — 스트리밍 미적용
       let responseText = '';
       if (isScreenRequest(text)) {
         try {
@@ -678,12 +682,77 @@ export function useConversation(): UseConversationReturn {
           throw screenError;
         }
       } else {
-        const response = await llmRouter.chat(llmMessages, {
-          temperature: 0.7,
-          maxTokens: 1024,
+        // ── 스트리밍 응답 + TTS 큐 파이프라인 (Phase 1) ──
+        setStreamingResponse('');
+        setCurrentResponse('');
+        setStatus('speaking');
+
+        // 립싱크 헬퍼 (TTS 큐에서 문장 재생 시 사용)
+        let lipSyncInterval: ReturnType<typeof setInterval> | null = null;
+        const startLipSync = () => {
+          if (lipSyncInterval) return;
+          let phase = 0;
+          lipSyncInterval = setInterval(() => {
+            phase += 0.3;
+            const v = Math.abs(Math.sin(phase)) * 0.7 + Math.random() * 0.3;
+            useAvatarStore.getState().setLipSyncValue(Math.min(1, v));
+          }, 80);
+        };
+        const stopLipSync = () => {
+          if (lipSyncInterval) {
+            clearInterval(lipSyncInterval);
+            lipSyncInterval = null;
+          }
+          useAvatarStore.getState().setLipSyncValue(0);
+        };
+
+        // TTS 큐 시작
+        ttsQueue.start({
+          ttsOptions: { voice: settings.tts.voice },
+          onLipSyncStart: startLipSync,
+          onLipSyncStop: stopLipSync,
         });
-        responseText = response.content;
-        log('LLM response received:', response.content?.substring(0, 50) + '...');
+
+        // 실시간 감정 추적
+        let lastDetectedEmotion: Emotion = 'neutral';
+
+        responseText = await new Promise<string>((resolve, reject) => {
+          llmRouter.chatStream(
+            llmMessages,
+            {
+              onToken: (token) => {
+                appendStreamingToken(token);
+                // 말풍선 실시간 업데이트
+                const accumulated = (useConversationStore.getState().streamingResponse ?? '') ;
+                setCurrentResponse(accumulated);
+                // TTS 큐에 토큰 전달 (문장 종결 시 자동 재생)
+                ttsQueue.pushToken(token);
+                // 실시간 감정 분석 (누적 텍스트 기반, 매 토큰마다는 비효율 → 50자마다)
+                if (accumulated.length % 50 < token.length) {
+                  const emotionMatch = analyzeEmotion(accumulated, archetype);
+                  if (emotionMatch.score > 0 && emotionMatch.emotion !== lastDetectedEmotion) {
+                    lastDetectedEmotion = emotionMatch.emotion;
+                    setEmotion(emotionMatch.emotion);
+                    triggerEmotionMotion(emotionMatch.emotion, emotionMatch.score, accumulated, true);
+                  }
+                }
+              },
+              onComplete: (fullResponse) => {
+                log('Streaming complete:', fullResponse.substring(0, 50) + '...');
+                resolve(fullResponse);
+              },
+              onError: (error) => {
+                reject(error);
+              },
+            },
+            { temperature: 0.7, maxTokens: 1024 }
+          );
+        });
+
+        // TTS 큐 잔여분 재생 완료 대기
+        await ttsQueue.complete();
+        stopLipSync();
+        setStreamingResponse(null);
       }
 
       setError(null);
@@ -710,24 +779,23 @@ export function useConversation(): UseConversationReturn {
         stopDancing();
       }
 
-      // Add assistant message and show popup immediately
+      // Add assistant message and set final response
       addMessage({ role: 'assistant', content: responseText });
       setCurrentResponse(responseText);
-      setStatus('speaking');
-      log('Popup shown, starting TTS...');
 
-      // Small delay to ensure React state update is rendered before TTS starts
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // Speak the response (감정 정보를 TTS 옵션으로 전달)
-      try {
-        await speak(responseText, { emotion: responseEmotion });
-        log('TTS completed');
-      } catch (ttsErr) {
-        log('TTS error:', ttsErr);
+      // 화면 분석의 경우만 별도 TTS (스트리밍은 이미 큐에서 재생됨)
+      if (isScreenRequest(text)) {
+        setStatus('speaking');
+        await new Promise(resolve => setTimeout(resolve, 50));
+        try {
+          await speak(responseText, { emotion: responseEmotion });
+          log('TTS completed');
+        } catch (ttsErr) {
+          log('TTS error:', ttsErr);
+        }
       }
 
-      // Keep response visible for 5 seconds after speaking
+      // Keep response visible
       setStatus('idle');
       const responseHoldMs = Math.max(
         emotionTuningGlobal.responseClearMs,
@@ -740,6 +808,8 @@ export function useConversation(): UseConversationReturn {
       }, responseHoldMs);
     } catch (err) {
       log('LLM error:', err);
+      ttsQueue.flush();
+      setStreamingResponse(null);
       const rawErrorMessage = err instanceof Error ? err.message : 'Failed to get response';
       const isRateLimit = /\b429\b|rate.?limit|quota|resource_exhausted|too many requests/i.test(rawErrorMessage);
       const providerLabel =
@@ -773,7 +843,10 @@ export function useConversation(): UseConversationReturn {
     settings.character,
     settings.avatarName,
     settings.avatarPersonalityPrompt,
+    settings.tts.voice,
     setCurrentResponse,
+    setStreamingResponse,
+    appendStreamingToken,
     clearCurrentResponse,
     setStatus,
     setEmotion,
@@ -816,7 +889,8 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
-    // Stop any ongoing speech
+    // Stop any ongoing speech + streaming TTS queue
+    ttsQueue.flush();
     stopSpeaking();
     clearCurrentResponse();
     setError(null);

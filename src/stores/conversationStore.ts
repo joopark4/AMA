@@ -15,6 +15,8 @@ export type ConversationStatus = 'idle' | 'listening' | 'processing' | 'speaking
 interface ConversationState {
   messages: Message[];
   currentResponse: string | null;
+  /** 스트리밍 중 누적 토큰 (Phase 1) — 스트리밍 완료 시 null */
+  streamingResponse: string | null;
   status: ConversationStatus;
   isProcessing: boolean;
   isListening: boolean;
@@ -23,6 +25,8 @@ interface ConversationState {
 
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   setCurrentResponse: (response: string | null) => void;
+  setStreamingResponse: (response: string | null) => void;
+  appendStreamingToken: (token: string) => void;
   setStatus: (status: ConversationStatus) => void;
   setIsProcessing: (isProcessing: boolean) => void;
   setIsListening: (isListening: boolean) => void;
@@ -37,6 +41,7 @@ export const useConversationStore = create<ConversationState>()(
     (set) => ({
       messages: [],
       currentResponse: null,
+      streamingResponse: null,
       status: 'idle',
       isProcessing: false,
       isListening: false,
@@ -57,6 +62,14 @@ export const useConversationStore = create<ConversationState>()(
 
       setCurrentResponse: (response) =>
         set({ currentResponse: response }),
+
+      setStreamingResponse: (response) =>
+        set({ streamingResponse: response }),
+
+      appendStreamingToken: (token) =>
+        set((state) => ({
+          streamingResponse: (state.streamingResponse ?? '') + token,
+        })),
 
       setStatus: (status) =>
         set({
