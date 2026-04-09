@@ -7,6 +7,7 @@ import { useSettingsStore, LLMProvider } from '../../stores/settingsStore';
 import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from '../../features/channels';
+import { CODEX_PROVIDER, CODEX_DEFAULT_MODEL, CodexSettings } from '../../features/codex';
 
 const CLOUD_MODELS: Record<'claude' | 'openai' | 'gemini', string[]> = {
   claude: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-6'],
@@ -454,6 +455,7 @@ export default function LLMSettings() {
   const isCloudProvider = isCloudProviderValue(currentProvider);
   const isLocalProvider = currentProvider === 'ollama' || currentProvider === 'localai';
   const isClaudeCode = currentProvider === CLAUDE_CODE_PROVIDER;
+  const isCodex = currentProvider === CODEX_PROVIDER;
 
   // Load local provider models (Ollama / LocalAI)
   useEffect(() => {
@@ -551,6 +553,7 @@ export default function LLMSettings() {
 
   const getModelsForProvider = (provider: LLMProvider): string[] => {
     if (provider === CLAUDE_CODE_PROVIDER) return [BRIDGE_DEFAULT_MODEL];
+    if (provider === CODEX_PROVIDER) return [CODEX_DEFAULT_MODEL];
     if (provider === 'ollama' || provider === 'localai') {
       return localModels;
     }
@@ -594,7 +597,9 @@ export default function LLMSettings() {
               disabled={mcpLocked}
               onChange={(e) => {
                 const provider = e.target.value as LLMProvider;
-                const models = provider === CLAUDE_CODE_PROVIDER
+                const models = provider === CODEX_PROVIDER
+                  ? [CODEX_DEFAULT_MODEL]
+                  : provider === CLAUDE_CODE_PROVIDER
                   ? [BRIDGE_DEFAULT_MODEL]
                   : provider === 'ollama' || provider === 'localai'
                     ? localModels
@@ -614,6 +619,7 @@ export default function LLMSettings() {
               <option value="openai">{t('settings.llm.providers.openai')}</option>
               <option value="gemini">{t('settings.llm.providers.gemini')}</option>
               <option value={CLAUDE_CODE_PROVIDER}>{t('settings.llm.providers.claude_code')}</option>
+              <option value={CODEX_PROVIDER}>{t('settings.llm.providers.codex')}</option>
             </select>
           </div>
 
@@ -727,6 +733,9 @@ export default function LLMSettings() {
               </p>
             </div>
           )}
+
+          {/* Codex settings */}
+          {isCodex && <CodexSettings />}
     </div>
   );
 }

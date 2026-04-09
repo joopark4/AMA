@@ -74,7 +74,7 @@ export default defineConfig({
     },
     fs: {
       // models 폴더에서 정적 파일 제공 허용
-      allow: ['..', 'models', 'node_modules'],
+      allow: ['..', 'models', 'motions', 'node_modules'],
     },
     headers: {
       // SharedArrayBuffer 사용을 위한 Cross-Origin Isolation 헤더

@@ -337,29 +337,36 @@ export function useConversation(): UseConversationReturn {
     speakOut = true
   ) => {
     addMessage({ role: 'assistant', content: message });
-    setCurrentResponse(message);
+    clearCurrentResponse(); // 이전 말풍선 즉시 제거
     setEmotion(emotion);
 
     if (speakOut) {
       setStatus('speaking');
       try {
-        await speak(message);
+        await speak(message, {
+          onPlaybackStart: () => {
+            setCurrentResponse(message);
+          },
+        });
       } catch (err) {
         log('Voice command TTS error:', err);
       }
+      // TTS 실패 시에도 새 응답 말풍선 보장
+      if (useConversationStore.getState().currentResponse !== message) {
+        setCurrentResponse(message);
+      }
       setStatus('idle');
     } else {
+      setCurrentResponse(message);
       setStatus('idle');
     }
 
-    const responseHoldMs = Math.max(
-      emotionTuningGlobal.responseClearMs,
-      getEmotionTuning(emotion).expressionHoldMs
-    );
+    setTimeout(() => {
+      clearCurrentResponse();
+    }, emotionTuningGlobal.responseClearMs);
     setTimeout(() => {
       setEmotion('neutral');
-      clearCurrentResponse();
-    }, responseHoldMs);
+    }, getEmotionTuning(emotion).expressionHoldMs);
   }, [addMessage, setCurrentResponse, setEmotion, setStatus, speak, clearCurrentResponse]);
 
   const triggerEmotionMotion = useCallback(
@@ -631,9 +638,9 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
-    // Claude Code 모드: 비동기 처리 (입력 비차단, 타임아웃 없음)
-    if (isClaudeCodeProvider()) {
-      // fire-and-forget: 응답 대기 중에도 새 입력 가능
+    // Claude Code / Codex: 비동기 처리 (fire-and-forget, 입력 비차단)
+    const currentProvider = useSettingsStore.getState().settings.llm.provider;
+    if (isClaudeCodeProvider() || currentProvider === 'codex') {
       setError(null);
       sendToClaudeCode(text, (errMsg) => setError(errMsg));
       return;
@@ -727,34 +734,39 @@ export function useConversation(): UseConversationReturn {
         stopDancing();
       }
 
-      // Add assistant message and show popup immediately
+      // Add assistant message (말풍선은 TTS 재생 시작 시 표시)
       addMessage({ role: 'assistant', content: responseText });
-      setCurrentResponse(responseText);
+      clearCurrentResponse(); // 이전 말풍선 즉시 제거 (연속 응답 시 stale 방지)
       setStatus('speaking');
-      log('Popup shown, starting TTS...');
+      log('Starting TTS (bubble will sync with playback)...');
 
-      // Small delay to ensure React state update is rendered before TTS starts
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // Speak the response (감정 정보를 TTS 옵션으로 전달)
+      // TTS 재생 — onPlaybackStart 콜백으로 말풍선과 오디오를 동시에 시작
       try {
-        await speak(responseText, { emotion: responseEmotion });
+        await speak(responseText, {
+          emotion: responseEmotion,
+          onPlaybackStart: () => {
+            setCurrentResponse(responseText);
+            log('TTS playback started, bubble shown');
+          },
+        });
         log('TTS completed');
       } catch (ttsErr) {
         log('TTS error:', ttsErr);
       }
+      // TTS 실패 또는 onPlaybackStart 미도달 시에도 새 응답 말풍선 보장
+      if (useConversationStore.getState().currentResponse !== responseText) {
+        setCurrentResponse(responseText);
+      }
 
-      // Keep response visible for 5 seconds after speaking
+      // TTS 완료 후: 말풍선은 responseClearMs 후 제거, 표정은 expressionHoldMs 후 초기화
       setStatus('idle');
-      const responseHoldMs = Math.max(
-        emotionTuningGlobal.responseClearMs,
-        getEmotionTuning(responseEmotion).expressionHoldMs
-      );
+      setTimeout(() => {
+        clearCurrentResponse();
+        log('Bubble cleared after', emotionTuningGlobal.responseClearMs, 'ms');
+      }, emotionTuningGlobal.responseClearMs);
       setTimeout(() => {
         setEmotion('neutral');
-        clearCurrentResponse();
-        log('Response cleared after', responseHoldMs, 'ms');
-      }, responseHoldMs);
+      }, getEmotionTuning(responseEmotion).expressionHoldMs);
     } catch (err) {
       log('LLM error:', err);
       const rawErrorMessage = err instanceof Error ? err.message : 'Failed to get response';
