@@ -129,6 +129,52 @@
 - 401 응답 시 세션 무효화 후 1회 자동 재시도
 - `QuotaExceededError` 전용 에러 클래스
 
+## TTS-말풍선 동기화 (onPlaybackStart)
+
+TTS 합성이 완료되고 실제 오디오 재생이 시작되는 시점에 말풍선을 표시하여, 음성과 말풍선이 동시에 나타나도록 한다.
+
+### 동작 흐름
+
+1. AI 응답 수신 → `clearCurrentResponse()` (이전 말풍선 즉시 제거)
+2. `ttsRouter.playAudio(text, { onPlaybackStart })` 호출
+3. TTS 합성 (로컬 ONNX 또는 클라우드 API)
+4. `playViaMediaStream()` → `audio.play()` 성공 시 `onPlaybackStart()` 콜백 실행
+5. 콜백 내에서 `setCurrentResponse(text)` → **말풍선 표시** (오디오와 동시)
+6. TTS 완료 → `responseClearMs`(2초) 후 `clearCurrentResponse()` → 말풍선 제거
+7. 표정은 별도 `expressionHoldMs` 타이머로 독립 초기화
+
+### 적용 경로
+
+| 경로 | 파일 |
+|------|------|
+| 일반 채팅 (Ollama/Claude/OpenAI/Gemini/LocalAI/Codex) | `useConversation.ts` |
+| 음성 명령 피드백 | `useConversation.ts` |
+| Claude Code Channels | `useClaudeCodeChat.ts` |
+| 외부 알림 (ci-webhook, monitor-alert) | `responseProcessor.ts` |
+
+### TTS 실패 폴백
+
+TTS 합성/재생이 실패하더라도 `currentResponse !== responseText` 검사로 말풍선을 강제 표시한다. 사용자는 항상 AI 응답을 볼 수 있다.
+
+### SpeechBubble 컴포넌트
+
+- 내부 타이머 없음 — `currentResponse` 상태로 순수하게 제어
+- `App.tsx`에서 `currentResponse && settings.avatar.showSpeechBubble !== false` 조건으로 렌더링
+
+## 오디오 디바이스 선택
+
+### 마이크 입력
+
+- `settings.stt.audioInputDeviceId`에 선택된 디바이스 ID 저장
+- `audioProcessor.reinitialize(deviceId)`로 녹음 디바이스 전환
+- AudioDeviceSettings에서 마이크 피크 미터 실시간 표시
+
+### 스피커 출력
+
+- `settings.tts.audioOutputDeviceId`에 선택된 디바이스 ID 저장
+- `ttsRouter.prepareOutputDevice(deviceId)` — 사용자 제스처 컨텍스트에서 `setSinkId` 적용
+- WKWebView에서 `setSinkId`는 제스처 없이 호출하면 거부됨 → 테스트 버튼 클릭 시 동시 생성으로 해결 (#019)
+
 ## 설정 UI
 
 - `VoiceSettings`:

@@ -11,6 +11,8 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 | Claude | 클라우드 | `apiKey` + `model` |
 | OpenAI | 클라우드 | `apiKey` + `model` |
 | Gemini | 클라우드 | `apiKey` + `model` |
+| Claude Code | 외부 연동 | Channels 토글 ON (자동 전환) |
+| Codex | 외부 연동 | Codex CLI 설치 + 인증 |
 
 기본값: `ollama / deepseek-v3 / http://localhost:11434`
 
@@ -28,6 +30,8 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 - `src/services/ai/openaiClient.ts`
 - `src/services/ai/geminiClient.ts`
 - `src/services/ai/screenAnalyzer.ts`
+- `src/features/codex/codexClient.ts` — OpenAI Codex LLMClient 구현
+- `src/features/channels/` — Claude Code Channels 연동
 - `src/components/settings/LLMSettings.tsx`
 
 ## 대화 처리 흐름
@@ -36,7 +40,8 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 2. `buildSystemPrompt(avatarName)`로 아바타 이름 반영 system prompt 생성
 3. 대화 히스토리를 `llmRouter.chat()`에 전달
 4. 현재 `settings.llm.provider`에 맞는 client 호출
-5. 응답 텍스트를 UI 말풍선 + TTS로 동시 반영
+5. TTS 합성 → `onPlaybackStart` 콜백으로 말풍선과 오디오 재생을 동시 시작
+6. TTS 완료 후 `responseClearMs`(2초) 경과 시 말풍선 제거
 
 ## Vision(화면 분석)
 

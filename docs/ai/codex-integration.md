@@ -117,7 +117,7 @@ let sandbox_policy = match policy {
 1. 이전 턴 완료 대기 (턴 직렬화: `turn_active` + `turn_ready`)
 2. 시스템 프롬프트 변경 감지 시 새 스레드 자동 생성 (`thread/new`)
 3. `turn/start` JSON-RPC 요청:
-   - `input`: 사용자 메시지 + `<instructions>` 래핑된 시스템 프롬프트
+   - `input`: 사용자 메시지 + 첫 턴에만 `<instructions>` 래핑된 시스템 프롬프트
    - `model`: 선택된 모델
    - `reasoningEffort`: 추론 성능
    - `approvalPolicy`: 접근 권한
@@ -182,10 +182,10 @@ const { cliStatus, authStatus, connStatus, reconnect } = useCodexConnection();
 | `5c0b653` | busy lock으로 동시 요청 차단 | lock 제거, 턴 직렬화로 대체 |
 | `e8c5079` | 턴 겹침으로 응답 혼선 | AtomicBool + Notify 턴 직렬화 |
 | `45c45d6` | 설정 패널 닫으면 연결 끊김 | App 레벨 라이프사이클 이동 |
-| `9cb741e` | 시스템 프롬프트 미적용 | `<instructions>` 태그로 매 턴 전달 |
+| `9cb741e` | 시스템 프롬프트 미적용 | `<instructions>` 태그로 첫 턴에 전달 |
 | `91ab8c9` | 읽기 전용으로만 동작 | sandboxPolicy 매핑 추가 |
 | `91ab8c9` | 폴더 선택 다이얼로그 무반응 | Rust 네이티브 `pick_folder` 커맨드 |
 
 ## 최종 수정
 
-2026.04.07
+2026.04.09
