@@ -272,6 +272,33 @@ Toggling OFF automatically restores your previous AI model settings.
 - `--permission-mode bypassPermissions` auto-accepts tool execution permissions. **Use only in trusted local environments.**
 - AMA and Claude Code must run on the **same machine** (localhost).
 
+### How to Use OpenAI Codex CLI
+
+Connect your AMA avatar to the OpenAI Codex CLI for two-way conversations with a coding agent.
+
+#### Prerequisites
+
+- [OpenAI Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`)
+- Codex login completed (`codex login`)
+
+#### Setup Steps
+
+1. Launch AMA app
+2. `Settings > LLM Provider > Codex`
+3. CLI installation and login status are verified automatically
+4. Once connected, additional options become available:
+   - **Working Directory**: the directory Codex reads/writes code in (defaults to `~/Documents`)
+   - **Model**: select from available models after connection
+   - **Reasoning Effort**: Low / Medium / High / Extra High
+   - **Approval Policy**: Approve on request (default) / Auto-approve / Approve untrusted only
+5. Chat via AMA → Codex performs coding tasks and responds → avatar speaks via TTS
+
+#### Important Notes
+
+- Codex CLI automatically launches `codex app-server` in the background. No separate terminal setup is needed.
+- Setting the approval policy to "Auto-approve" allows Codex to modify and execute files automatically. **Use only in trusted environments.**
+- Switching to a different LLM provider automatically disconnects Codex.
+
 ---
 
 ## Troubleshooting
@@ -342,6 +369,7 @@ To completely remove AMA from macOS:
 | Claude API | Cloud LLM | Anthropic Terms | [anthropic.com/claude](https://www.anthropic.com/claude) |
 | OpenAI API | Cloud LLM | OpenAI Terms | [platform.openai.com](https://platform.openai.com/) |
 | Gemini API | Cloud LLM | Google Terms | [ai.google.dev](https://ai.google.dev/) |
+| OpenAI Codex CLI | Coding agent | Apache 2.0 License | [github.com/openai/codex](https://github.com/openai/codex) |
 | ONNX Runtime Web | Supertonic inference runtime | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
 
 ### Voice Models / Engines

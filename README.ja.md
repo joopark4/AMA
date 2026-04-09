@@ -273,6 +273,33 @@ AMA アバターを Claude Code と接続して双方向の会話が可能です
 - `--permission-mode bypassPermissions` はツール実行権限を自動承認します。**信頼できるローカル環境でのみ使用**してください。
 - AMA と Claude Code は**同じマシン**（localhost）で実行する必要があります。
 
+### OpenAI Codex CLI の使い方
+
+AMA アバターを OpenAI Codex CLI と接続して、コーディングエージェントとの双方向会話が可能です。
+
+#### 前提条件
+
+- [OpenAI Codex CLI](https://github.com/openai/codex) インストール済み（`npm install -g @openai/codex`）
+- Codex ログイン済み（`codex login`）
+
+#### 設定手順
+
+1. AMA アプリを起動
+2. `設定 > LLM Provider > Codex` を選択
+3. CLI のインストール状態とログイン状態が自動的に確認されます
+4. 接続後、追加設定が可能:
+   - **作業フォルダ**: Codex がコードを読み書きするディレクトリ（未指定時は `~/Documents`）
+   - **モデル**: 接続後に利用可能なモデル一覧から選択
+   - **推論性能**: Low / Medium / High / Extra High
+   - **アクセス権限**: リクエスト時に承認（デフォルト）/ 自動承認 / 信頼されていないコードのみ承認
+5. AMA で会話 → Codex がコーディング作業を実行して応答 → アバターが TTS で読み上げ
+
+#### 注意事項
+
+- Codex CLI はバックグラウンドで `codex app-server` を自動的に起動します。別途ターミナル作業は不要です。
+- アクセス権限を「自動承認」に設定すると、Codex がファイルの変更/実行を自動で行います。**信頼できる環境でのみ使用**してください。
+- Provider を他のモデルに切り替えると、Codex 接続は自動的に終了します。
+
 ---
 
 ## よくある問題
@@ -343,6 +370,7 @@ macOS から AMA を完全に削除するには:
 | Claude API | クラウド LLM | Anthropic サービス規約 | [anthropic.com/claude](https://www.anthropic.com/claude) |
 | OpenAI API | クラウド LLM | OpenAI サービス規約 | [platform.openai.com](https://platform.openai.com/) |
 | Gemini API | クラウド LLM | Google サービス規約 | [ai.google.dev](https://ai.google.dev/) |
+| OpenAI Codex CLI | コーディングエージェント | Apache 2.0 License | [github.com/openai/codex](https://github.com/openai/codex) |
 | ONNX Runtime Web | Supertonic 推論ランタイム | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
 
 ### 音声モデル/エンジン

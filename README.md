@@ -273,6 +273,33 @@ AMA 아바타를 Claude Code와 연결하여 양방향 대화가 가능합니다
 - `--permission-mode bypassPermissions`는 도구 실행 권한을 자동 수락합니다. **신뢰할 수 있는 로컬 환경에서만 사용**하세요.
 - AMA와 Claude Code는 **같은 머신**(localhost)에서 실행되어야 합니다.
 
+### OpenAI Codex CLI 사용 방법
+
+AMA 아바타를 OpenAI Codex CLI와 연결하여 코딩 에이전트와 양방향 대화가 가능합니다.
+
+#### 사전 요구사항
+
+- [OpenAI Codex CLI](https://github.com/openai/codex) 설치 (`npm install -g @openai/codex`)
+- Codex 로그인 완료 (`codex login`)
+
+#### 설정 단계
+
+1. AMA 앱 실행
+2. `설정 > LLM Provider > Codex` 선택
+3. Codex CLI 설치 상태와 로그인 상태가 자동으로 확인됩니다
+4. 연결되면 추가 설정 가능:
+   - **작업 폴더**: Codex가 코드를 읽고 쓸 디렉터리 (미지정 시 `~/Documents`)
+   - **모델**: 연결 후 사용 가능한 모델 목록에서 선택
+   - **추론 성능**: Low / Medium / High / Extra High
+   - **접근 권한**: 요청 시 승인(기본) / 자동 승인 / 신뢰되지 않는 코드만 승인
+5. AMA에서 대화 → Codex가 코드 작업 수행 후 응답 → 아바타 TTS
+
+#### 주의사항
+
+- Codex CLI는 백그라운드에서 `codex app-server`를 자동으로 실행합니다. 별도 터미널 작업이 필요 없습니다.
+- 접근 권한을 "자동 승인"으로 설정하면 Codex가 파일 수정/실행을 자동 수행합니다. **신뢰할 수 있는 환경에서만 사용**하세요.
+- Provider를 다른 모델로 전환하면 Codex 연결이 자동으로 종료됩니다.
+
 ---
 
 ## 자주 겪는 문제
@@ -343,6 +370,7 @@ macOS에서 AMA를 완전히 제거하려면:
 | Claude API | 클라우드 LLM | Anthropic 서비스 약관 | [anthropic.com/claude](https://www.anthropic.com/claude) |
 | OpenAI API | 클라우드 LLM | OpenAI 서비스 약관 | [platform.openai.com](https://platform.openai.com/) |
 | Gemini API | 클라우드 LLM | Google 서비스 약관 | [ai.google.dev](https://ai.google.dev/) |
+| OpenAI Codex CLI | 코딩 에이전트 | Apache 2.0 License | [github.com/openai/codex](https://github.com/openai/codex) |
 | ONNX Runtime Web | Supertonic 추론 런타임 | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
 
 ### 음성 모델/엔진
