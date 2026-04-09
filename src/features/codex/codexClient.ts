@@ -48,7 +48,7 @@ export class CodexClient implements LLMClient {
           let myTurnId: string | null = null;
 
           unlistens.push(await listen<CodexCompleteEvent>('codex-complete', (event) => {
-            if (myTurnId && event.payload.turnId !== myTurnId) return;
+            if (!myTurnId || event.payload.turnId !== myTurnId) return;
             clearTimeout(timeout);
             cleanup();
             resolve({ content: event.payload.text, finishReason: 'stop' });
@@ -108,7 +108,7 @@ export class CodexClient implements LLMClient {
           }));
 
           unlistens.push(await listen<CodexCompleteEvent>('codex-complete', (event) => {
-            if (myTurnId && event.payload.turnId !== myTurnId) return;
+            if (!myTurnId || event.payload.turnId !== myTurnId) return;
             clearTimeout(timeout);
             cleanup();
             callbacks.onComplete?.(fullResponse);

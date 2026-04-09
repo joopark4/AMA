@@ -592,14 +592,22 @@ pub async fn codex_start(
     let turn_ready = Arc::new(tokio::sync::Notify::new());
     let turn_active = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-    let (stdin, child) = spawn_codex_process(
+    let spawn_result = spawn_codex_process(
         app_handle.clone(),
         pending.clone(),
         state.process.clone(),
         turn_ready.clone(),
         turn_active.clone(),
         working_dir,
-    ).await?;
+    ).await;
+
+    let (stdin, child) = match spawn_result {
+        Ok(v) => v,
+        Err(e) => {
+            state.starting.store(false, Ordering::SeqCst);
+            return Err(e);
+        }
+    };
 
     let process = Arc::new(CodexProcess {
         stdin: Mutex::new(stdin),
@@ -684,90 +692,101 @@ pub async fn codex_send_message(
     }
     process.turn_active.store(true, Ordering::SeqCst);
 
-    let _ = app_handle.emit("codex-status", CodexStatusEvent {
-        status: "generating".to_string(),
-        message: None,
-    });
+    // turn_active 가드: 에러 시에도 반드시 플래그를 리셋
+    let result = async {
+        let _ = app_handle.emit("codex-status", CodexStatusEvent {
+            status: "generating".to_string(),
+            message: None,
+        });
 
-    // 시스템 프롬프트 변경 감지 → 변경 시 새 스레드 생성
-    let current_prompt = system_prompt.clone().unwrap_or_default();
-    let prompt_changed = {
-        let applied = process.applied_prompt.lock().await;
-        applied.as_deref() != Some(&current_prompt)
-    };
+        // 시스템 프롬프트 변경 감지 → 변경 시 새 스레드 생성
+        let current_prompt = system_prompt.clone().unwrap_or_default();
+        let prompt_changed = {
+            let applied = process.applied_prompt.lock().await;
+            applied.as_deref() != Some(&current_prompt)
+        };
 
-    let mut thread_id = process.thread_id.lock().await.clone();
+        let mut thread_id = process.thread_id.lock().await.clone();
 
-    // 프롬프트가 변경되었거나 스레드가 없으면 새 스레드 생성
-    let is_first_turn = thread_id.is_none() || prompt_changed;
-    if is_first_turn {
-        // 기존 스레드 폐기 + 새 스레드 생성
-        let result = send_request(&process, "thread/start", Some(json!({}))).await?;
-        if let Some(tid) = result.get("thread")
-            .and_then(|t| t.get("id"))
-            .and_then(|v| v.as_str())
-        {
-            thread_id = Some(tid.to_string());
-            let mut stored_tid = process.thread_id.lock().await;
-            *stored_tid = Some(tid.to_string());
+        // 프롬프트가 변경되었거나 스레드가 없으면 새 스레드 생성
+        let is_first_turn = thread_id.is_none() || prompt_changed;
+        if is_first_turn {
+            // 기존 스레드 폐기 + 새 스레드 생성
+            let result = send_request(&process, "thread/start", Some(json!({}))).await?;
+            if let Some(tid) = result.get("thread")
+                .and_then(|t| t.get("id"))
+                .and_then(|v| v.as_str())
+            {
+                thread_id = Some(tid.to_string());
+                let mut stored_tid = process.thread_id.lock().await;
+                *stored_tid = Some(tid.to_string());
+            } else {
+                return Err("Failed to get threadId from thread/start response".to_string());
+            }
+            // 적용된 프롬프트 기록
+            let mut applied = process.applied_prompt.lock().await;
+            *applied = Some(current_prompt.clone());
+        }
+
+        // 첫 턴에서만 시스템 프롬프트를 메시지에 포함
+        let final_text = if is_first_turn && !current_prompt.is_empty() {
+            format!("<instructions>\n{current_prompt}\n</instructions>\n\n{text}")
         } else {
-            return Err("Failed to get threadId from thread/start response".to_string());
+            text
+        };
+
+        let policy = approval_policy
+            .as_deref()
+            .filter(|p| !p.is_empty())
+            .unwrap_or("on-request");
+
+        // approvalPolicy에 따라 sandboxPolicy 자동 매핑
+        let sandbox_policy = match policy {
+            "never" => json!({ "type": "dangerFullAccess" }),
+            "on-request" => json!({
+                "type": "workspaceWrite",
+                "writableRoots": [],
+                "networkAccess": true
+            }),
+            _ => json!({ "type": "readOnly", "access": { "type": "fullAccess" }, "networkAccess": false }),
+        };
+
+        let mut params = json!({
+            "threadId": thread_id.unwrap(),
+            "input": [{"type": "text", "text": final_text}],
+            "approvalPolicy": policy,
+            "sandboxPolicy": sandbox_policy
+        });
+        if let Some(ref m) = model {
+            if !m.is_empty() {
+                params["model"] = json!(m);
+            }
         }
-        // 적용된 프롬프트 기록
-        let mut applied = process.applied_prompt.lock().await;
-        *applied = Some(current_prompt.clone());
+        if let Some(ref e) = reasoning_effort {
+            if !e.is_empty() {
+                params["reasoningEffort"] = json!(e);
+            }
+        }
+
+        let result = send_request(&process, "turn/start", Some(params)).await?;
+
+        // turn ID를 프론트엔드에 반환 (응답 매칭용)
+        let turn_id = result.get("turnId")
+            .and_then(|v| v.as_str())
+            .or_else(|| result.get("turn").and_then(|t| t.get("id")).and_then(|v| v.as_str()))
+            .unwrap_or("")
+            .to_string();
+
+        Ok(turn_id)
+    }.await;
+
+    // 에러 시 turn_active 리셋 + turn_ready 알림
+    if result.is_err() {
+        process.turn_active.store(false, Ordering::SeqCst);
+        process.turn_ready.notify_one();
     }
 
-    // 첫 턴에서만 시스템 프롬프트를 메시지에 포함
-    let final_text = if is_first_turn && !current_prompt.is_empty() {
-        format!("<instructions>\n{current_prompt}\n</instructions>\n\n{text}")
-    } else {
-        text
-    };
-
-    let policy = approval_policy
-        .as_deref()
-        .filter(|p| !p.is_empty())
-        .unwrap_or("on-request");
-
-    // approvalPolicy에 따라 sandboxPolicy 자동 매핑
-    let sandbox_policy = match policy {
-        "never" => json!({ "type": "dangerFullAccess" }),
-        "on-request" => json!({
-            "type": "workspaceWrite",
-            "writableRoots": [],
-            "networkAccess": true
-        }),
-        _ => json!({ "type": "readOnly", "access": { "type": "fullAccess" }, "networkAccess": false }),
-    };
-
-    let mut params = json!({
-        "threadId": thread_id.unwrap(),
-        "input": [{"type": "text", "text": final_text}],
-        "approvalPolicy": policy,
-        "sandboxPolicy": sandbox_policy
-    });
-    if let Some(ref m) = model {
-        if !m.is_empty() {
-            params["model"] = json!(m);
-        }
-    }
-    if let Some(ref e) = reasoning_effort {
-        if !e.is_empty() {
-            params["reasoningEffort"] = json!(e);
-        }
-    }
-
-    let result = send_request(&process, "turn/start", Some(params)).await?;
-
-    // turn ID를 프론트엔드에 반환 (응답 매칭용)
-    let turn_id = result.get("turnId")
-        .and_then(|v| v.as_str())
-        .or_else(|| result.get("turn").and_then(|t| t.get("id")).and_then(|v| v.as_str()))
-        .unwrap_or("")
-        .to_string();
-
-    Ok(turn_id)
+    result
 }
 
 #[tauri::command]
