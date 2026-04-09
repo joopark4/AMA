@@ -101,6 +101,26 @@ pub fn open_screen_recording_settings() -> Result<(), String> {
     }
 }
 
+/// Open native directory picker to select a folder.
+#[tauri::command]
+pub async fn pick_folder(app: tauri::AppHandle, title: Option<String>) -> Result<Option<String>, String> {
+    let selected = app
+        .dialog()
+        .file()
+        .set_title(title.as_deref().unwrap_or("Select Folder"))
+        .blocking_pick_folder();
+
+    let Some(folder_path) = selected else {
+        return Ok(None);
+    };
+
+    let path = folder_path
+        .into_path()
+        .map_err(|e| format!("Invalid selected folder path: {e}"))?;
+
+    Ok(Some(path.to_string_lossy().to_string()))
+}
+
 /// Open native file picker to select a VRM model file.
 #[tauri::command]
 pub async fn pick_vrm_file(app: tauri::AppHandle) -> Result<Option<String>, String> {

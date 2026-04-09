@@ -40,6 +40,7 @@ fn main() {
             commands::settings::open_accessibility_settings,
             commands::settings::open_screen_recording_settings,
             commands::settings::pick_vrm_file,
+            commands::settings::pick_folder,
             commands::models::check_model_status,
             commands::models::download_model,
             commands::models::get_models_dir,

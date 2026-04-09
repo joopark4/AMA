@@ -44,6 +44,7 @@ coverage/
 
 # VRM models (too large for git)
 *.vrm
+*.fbx
 vrm/
 public/vrm/
 src-tauri/assets/default.vrm

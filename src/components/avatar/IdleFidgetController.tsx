@@ -14,11 +14,6 @@ const HEAD_DRIFT_INTERVAL_MIN = 20;
 const HEAD_DRIFT_INTERVAL_MAX = 40;
 const HEAD_DRIFT_SPEED = 0.8; // lerp speed
 
-/**
- * IdleFidgetController — Mixamo 클립이 뼈를 제어하지 않는 순수 idle 상태에서만 동작.
- * Mixamo Idle/Walk/Gesture 클립이 활성화된 동안에는 완전 스킵하여
- * 두 소스가 동시에 뼈를 회전시키는 충돌(떨림)을 방지한다.
- */
 export default function IdleFidgetController() {
   const vrm = useAvatarStore((state) => state.vrm);
   const animationState = useAvatarStore((state) => state.animationState);
@@ -27,7 +22,6 @@ export default function IdleFidgetController() {
   const isDancing = useAvatarStore((state) => state.isDancing);
   const enableBreathing = useSettingsStore((s) => s.settings.avatar?.animation?.enableBreathing ?? true);
   const enableEyeDrift = useSettingsStore((s) => s.settings.avatar?.animation?.enableEyeDrift ?? true);
-  const enableMotionClips = useSettingsStore((s) => s.settings.avatar?.animation?.enableMotionClips ?? true);
 
   const breathPhaseRef = useRef(Math.random() * Math.PI * 2);
   const breathPeriodRef = useRef(
@@ -45,12 +39,7 @@ export default function IdleFidgetController() {
   useFrame((_, delta) => {
     if (!vrm?.humanoid) return;
 
-    // Mixamo 클립(Idle/Walk/Gesture)이 뼈를 제어 중이면 완전 스킵
-    // enableMotionClips가 true이면 Mixamo AnimationMixer가 활성화되어 있으므로
-    // 이 컨트롤러의 뼈 회전이 충돌하여 떨림이 발생한다.
-    if (enableMotionClips) return;
-
-    // Mixamo 비활성 시에도 상위 애니메이션이 활성이면 스킵
+    // Skip when higher-priority animations are active
     const isHigherPriorityActive =
       currentMotionClip !== null ||
       currentGesture !== null ||
