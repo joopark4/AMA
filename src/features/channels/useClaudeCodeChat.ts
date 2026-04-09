@@ -97,25 +97,31 @@ export function useClaudeCodeChat() {
 
       // 최신 요청만 TTS 재생 (이전 응답은 메시지만 저장)
       if (myRequestId === requestIdRef.current) {
-        setCurrentResponse(responseText);
+        clearCurrentResponse(); // 이전 말풍선 즉시 제거
         setStatus('speaking');
-        await new Promise(resolve => setTimeout(resolve, 50));
         try {
           stopSpeaking();
-          await speak(responseText, { emotion: responseEmotion });
+          await speak(responseText, {
+            emotion: responseEmotion,
+            onPlaybackStart: () => {
+              setCurrentResponse(responseText);
+            },
+          });
         } catch (ttsErr) {
           log('TTS error:', ttsErr);
         }
+        // TTS 실패 시에도 새 응답 말풍선 보장
+        if (useConversationStore.getState().currentResponse !== responseText) {
+          setCurrentResponse(responseText);
+        }
 
         setStatus('idle');
-        const responseHoldMs = Math.max(
-          emotionTuningGlobal.responseClearMs,
-          getEmotionTuning(responseEmotion).expressionHoldMs
-        );
+        setTimeout(() => {
+          clearCurrentResponse();
+        }, emotionTuningGlobal.responseClearMs);
         setTimeout(() => {
           setEmotion('neutral');
-          clearCurrentResponse();
-        }, responseHoldMs);
+        }, getEmotionTuning(responseEmotion).expressionHoldMs);
       } else {
         log('skipping TTS for older request', myRequestId, '(current:', requestIdRef.current, ')');
       }

@@ -8,16 +8,14 @@ const snap = (v: number) => Math.round(v / SNAP_PX) * SNAP_PX;
 
 interface SpeechBubbleProps {
   message: string;
-  duration?: number;
 }
 
-export default function SpeechBubble({ message, duration = 10000 }: SpeechBubbleProps) {
+export default function SpeechBubble({ message }: SpeechBubbleProps) {
   const getViewportSize = () => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
     height: typeof window !== 'undefined' ? window.innerHeight : 720,
   });
 
-  const [isVisible, setIsVisible] = useState(true);
   const [viewportSize, setViewportSize] = useState(getViewportSize);
   const [bubbleSize, setBubbleSize] = useState({ width: 260, height: 88 });
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -41,15 +39,6 @@ export default function SpeechBubble({ message, duration = 10000 }: SpeechBubble
   }, [boundsKey]);
 
   const avatarScale = useSettingsStore((state) => state.settings.avatar?.scale || 1.0);
-
-  useEffect(() => {
-    setIsVisible(true);
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-    }, duration);
-
-    return () => clearTimeout(timer);
-  }, [message, duration]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -81,7 +70,7 @@ export default function SpeechBubble({ message, duration = 10000 }: SpeechBubble
 
     const rafId = window.requestAnimationFrame(updateBubbleSize);
     return () => window.cancelAnimationFrame(rafId);
-  }, [message, viewportSize.width, viewportSize.height, isVisible]);
+  }, [message, viewportSize.width, viewportSize.height]);
 
   const { bubbleStyle, tailStyle } = useMemo(() => {
     const clamp = (value: number, min: number, max: number) =>
@@ -128,7 +117,7 @@ export default function SpeechBubble({ message, duration = 10000 }: SpeechBubble
     };
   }, [position, interactionBounds, avatarScale, bubbleSize, viewportSize]);
 
-  if (!isVisible || !message) return null;
+  if (!message) return null;
 
   return (
     <div
