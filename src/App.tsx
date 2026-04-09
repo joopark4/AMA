@@ -19,6 +19,8 @@ import { useMenuListeners } from './hooks/useMenuListeners';
 import { useMonitorStore } from './stores/monitorStore';
 import { useAboutStore } from './stores/aboutStore';
 import { useMcpSpeakListener } from './features/channels';
+import { CODEX_PROVIDER } from './features/codex';
+import { invoke } from '@tauri-apps/api/core';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
 
@@ -83,6 +85,19 @@ function App() {
     restore();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Codex app-server 연결 관리 (provider 전환 또는 작업 폴더 변경 시 재시작)
+  useEffect(() => {
+    if (settings.llm.provider === CODEX_PROVIDER) {
+      invoke('codex_stop').catch(() => {}).then(() => {
+        invoke('codex_start', {
+          workingDir: settings.codex.workingDir || null,
+        }).catch(() => {});
+      });
+    } else {
+      invoke('codex_stop').catch(() => {});
+    }
+  }, [settings.llm.provider, settings.codex.workingDir]);
 
   // Auto-detect and set available Ollama model on startup
   useEffect(() => {

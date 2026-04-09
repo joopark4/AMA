@@ -7,3 +7,4 @@ pub mod http;
 pub mod mcp;
 pub mod vrm;
 pub mod vrm_consts;
+pub mod codex;

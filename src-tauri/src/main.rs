@@ -5,11 +5,13 @@
 )]
 
 mod commands;
+use commands::codex::CodexState;
 use tauri::{Emitter, Manager};
 use tauri::menu::{MenuBuilder, MenuItem, SubmenuBuilder};
 
 fn main() {
     let app = tauri::Builder::default()
+        .manage(CodexState::new())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -56,6 +58,13 @@ fn main() {
             commands::mcp::send_to_bridge,
             commands::vrm::load_default_vrm,
             commands::vrm::is_default_vrm_available,
+            commands::codex::codex_check_installed,
+            commands::codex::codex_check_auth,
+            commands::codex::codex_start,
+            commands::codex::codex_stop,
+            commands::codex::codex_send_message,
+            commands::codex::codex_get_status,
+            commands::codex::codex_list_models,
         ])
         .on_menu_event(|app, event| {
             if let Some(window) = app.get_webview_window("main") {
@@ -196,5 +205,9 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(|_, _| {});
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            commands::codex::cleanup_codex_on_exit(app_handle);
+        }
+    });
 }

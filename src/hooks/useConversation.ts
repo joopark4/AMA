@@ -631,9 +631,9 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
-    // Claude Code 모드: 비동기 처리 (입력 비차단, 타임아웃 없음)
-    if (isClaudeCodeProvider()) {
-      // fire-and-forget: 응답 대기 중에도 새 입력 가능
+    // Claude Code / Codex: 비동기 처리 (fire-and-forget, 입력 비차단)
+    const currentProvider = useSettingsStore.getState().settings.llm.provider;
+    if (isClaudeCodeProvider() || currentProvider === 'codex') {
       setError(null);
       sendToClaudeCode(text, (errMsg) => setError(errMsg));
       return;

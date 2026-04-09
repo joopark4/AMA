@@ -9,7 +9,17 @@ import {
   normalizeGlobalShortcutAccelerator,
 } from '../services/tauri/globalShortcutUtils';
 
-export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code';
+export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
+
+export type CodexReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+export type CodexApprovalPolicy = 'never' | 'on-request' | 'untrusted';
+
+export interface CodexSettings {
+  model: string;
+  reasoningEffort: CodexReasoningEffort;
+  workingDir: string;
+  approvalPolicy: CodexApprovalPolicy;
+}
 
 // STT 엔진: whisper (로컬 whisper-cli)
 export type STTEngine = 'whisper';
@@ -105,6 +115,7 @@ export interface Settings {
   avatar: AvatarSettings;
   historyPanel: HistoryPanelSettings;
   preferredMonitorName: string;
+  codex: CodexSettings;
   mcpEnabled: boolean;
   /** Channels ON 전의 LLM 설정 (OFF 시 복원용) */
   mcpPreviousLlm: LLMSettings | null;
@@ -120,6 +131,7 @@ interface SettingsState {
   setTTSSettings: (tts: Partial<TTSSettings>) => void;
   setGlobalShortcutSettings: (shortcut: Partial<GlobalShortcutSettings>) => void;
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
+  setCodexSettings: (codex: Partial<CodexSettings>) => void;
   setLanguage: (language: Language) => void;
   setAvatarName: (name: string) => void;
   setAvatarPersonalityPrompt: (prompt: string) => void;
@@ -298,6 +310,12 @@ const defaultSettings: Settings = {
     fontSize: 14,
     opacity: 95,
   },
+  codex: {
+    model: 'gpt-5.4',
+    reasoningEffort: 'medium',
+    workingDir: '',
+    approvalPolicy: 'on-request',
+  },
   preferredMonitorName: '',
   mcpEnabled: false,
   mcpPreviousLlm: null,
@@ -411,6 +429,10 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
           ? Math.max(20, Math.min(100, source.historyPanel.opacity))
           : defaultSettings.historyPanel.opacity,
     },
+    codex: {
+      ...defaultSettings.codex,
+      ...(source.codex && typeof source.codex === 'object' ? source.codex : {}),
+    },
     preferredMonitorName:
       typeof source.preferredMonitorName === 'string'
         ? source.preferredMonitorName
@@ -497,6 +519,14 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
 
+      setCodexSettings: (codex) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            codex: { ...state.settings.codex, ...codex },
+          },
+        })),
+
       setLanguage: (language) =>
         set((state) => ({
           settings: { ...state.settings, language },
@@ -550,7 +580,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 15,
+      version: 16,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
