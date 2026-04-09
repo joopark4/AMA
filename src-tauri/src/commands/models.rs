@@ -151,20 +151,43 @@ async fn download_file_with_progress(
 
     let temp_path = target_path.with_extension("download");
 
-    let client = reqwest::Client::new();
-    let response = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| format!("Download request failed: {}", e))?;
+    let client = reqwest::Client::builder()
+        .user_agent("AMA/1.5.0")
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-    if !response.status().is_success() {
-        return Err(format!(
-            "Download failed with HTTP {}: {}",
-            response.status(),
-            url
-        ));
+    let max_retries = 3u32;
+    let mut response = None;
+    for attempt in 0..max_retries {
+        match client.get(url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                response = Some(resp);
+                break;
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                if attempt + 1 < max_retries && (status.as_u16() == 503 || status.as_u16() == 429) {
+                    let delay = std::time::Duration::from_secs(2u64.pow(attempt + 1));
+                    tokio::time::sleep(delay).await;
+                    continue;
+                }
+                return Err(format!(
+                    "Download failed with HTTP {}: {}",
+                    status, url
+                ));
+            }
+            Err(e) => {
+                if attempt + 1 < max_retries {
+                    let delay = std::time::Duration::from_secs(2u64.pow(attempt + 1));
+                    tokio::time::sleep(delay).await;
+                    continue;
+                }
+                return Err(format!("Download request failed: {}", e));
+            }
+        }
     }
+    let response = response.unwrap();
 
     let total_bytes = response.content_length().unwrap_or(0);
 
