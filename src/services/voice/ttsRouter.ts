@@ -119,11 +119,12 @@ class TTSRouter {
 
     const { settings } = useSettingsStore.getState();
     const ttsOptions: TTSOptions = { voice: settings.tts.voice, ...options };
+    const onPlaybackStart = options?.onPlaybackStart;
 
     const result = await this.synthesize(text, ttsOptions);
     log('synthesize done, size:', result.audioData.byteLength);
 
-    await this.playViaMediaStream(result.audioData);
+    await this.playViaMediaStream(result.audioData, onPlaybackStart);
   }
 
   /**
@@ -131,7 +132,7 @@ class TTSRouter {
    * WKWebView에서 setSinkId는 srcObject(MediaStream) + 제스처 컨텍스트에서만 동작하므로,
    * prepareOutputDevice() 또는 playTestBeep()에서 미리 적용된 deviceAudio를 재사용한다.
    */
-  private async playViaMediaStream(audioData: ArrayBuffer): Promise<void> {
+  private async playViaMediaStream(audioData: ArrayBuffer, onPlaybackStart?: () => void): Promise<void> {
     const audioContext = this.getAudioContext();
     if (audioContext.state === 'suspended') await audioContext.resume();
 
@@ -194,7 +195,9 @@ class TTSRouter {
       this.activePlaybackStopper = stopCurrent;
 
       source.start(0);
-      audio.play().catch((err) => settle(() => reject(err)));
+      audio.play().then(() => {
+        if (onPlaybackStart && !cancelled) onPlaybackStart();
+      }).catch((err) => settle(() => reject(err)));
     });
   }
 }
