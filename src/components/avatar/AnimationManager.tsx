@@ -14,19 +14,15 @@ import IdleFidgetController from './IdleFidgetController';
  *
  * Animation Layer System (from bottom to top):
  * Layer 0: Base (idle/walking) - Mixamo FBX clips via LocomotionClipManager (VRMAvatar.tsx)
- * Layer 1: Idle fidget (breathing/head drift) - IdleFidgetController
+ * Layer 1: Idle fidget (breathing, micro head drift) - IdleFidgetController
  * Layer 2: Physics (SpringBone) - PhysicsController
- * Layer 3: Expression (表情 blending) - ExpressionController + EyeController + LookAtController
+ * Layer 3: Expression (facial blending) - ExpressionController + EyeController + LookAtController
  * Layer 4: Dance (rhythm-based movement) - DanceController
  * Layer 5: Final humanoid sync - HumanoidSyncController
- *
- * Each layer is responsible for its own blending with the base pose.
- * Higher layers can override or additively blend with lower layers.
  */
 export default function AnimationManager() {
   const vrm = useAvatarStore((state) => state.vrm);
   const { settings } = useSettingsStore();
-  const resetGestures = useAvatarStore((state) => state.resetGestures);
   const stopDancing = useAvatarStore((state) => state.stopDancing);
 
   const physicsEnabled = settings.avatar?.physics?.enabled ?? true;
@@ -36,16 +32,9 @@ export default function AnimationManager() {
 
   useEffect(() => {
     if (!faceOnlyModeEnabled) return;
-
-    resetGestures();
     stopDancing();
-  }, [
-    faceOnlyModeEnabled,
-    resetGestures,
-    stopDancing,
-  ]);
+  }, [faceOnlyModeEnabled, stopDancing]);
 
-  // Don't render anything if VRM isn't loaded
   if (!vrm) return null;
 
   return (

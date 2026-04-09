@@ -473,6 +473,16 @@ async function main() {
     await removeIfExists(publicModelsRoot, 'public model assets');
   }
 
+  // Mixamo motion FBX files
+  const motionsSource = resolve(rootDir, 'motions/mixamo');
+  const motionsTarget = resolve(rootDir, 'public/motions/mixamo');
+  try {
+    await access(motionsSource, constants.F_OK);
+    await syncDirectory(motionsSource, motionsTarget, 'Mixamo motion files');
+  } catch {
+    console.log(`[prepare-assets] Mixamo motions source not found, skipping: ${motionsSource}`);
+  }
+
   if (includeDefaultVrm) {
     await ensureExists(vrmSource, 'Default VRM model');
     await copyIfMissing(vrmSource, vrmTarget, 'Default VRM model');

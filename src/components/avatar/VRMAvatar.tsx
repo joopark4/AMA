@@ -1017,23 +1017,27 @@ export default function VRMAvatar() {
       }
     }
 
-    // Update animation mixer FIRST — Mixamo 클립이 뼈 회전을 적용한 후
-    // VRM.update()가 SpringBone 물리 등을 처리해야 떨림이 방지됨.
+    // Update VRM (including SpringBone physics)
+    vrm.update(delta);
+
+    // Update animation mixer
     if (mixerRef.current) {
       mixerRef.current.update(delta);
     }
 
-    // Update VRM (including SpringBone physics, normalized→raw sync)
-    vrm.update(delta);
-
-    // Mixamo 클립 재생 후 XZ 수평 드리프트만 방지 (root motion 제거 보완)
-    // Y 위치와 회전은 클립에 맡김 — 강제 리셋하면 클립의 자연스러운 hips 움직임과 충돌하여 떨림 발생
+    // Mixamo 클립 재생 후 hips 드리프트 방지 (제스처 재생 중에는 스킵)
     const clipMgrRef = locomotionClipRef.current;
     if (clipMgrRef && !clipMgrRef.isGesturePlaying && (clipMgrRef.isIdling || clipMgrRef.isWalking)) {
-      const hipsBone = vrm.humanoid?.getNormalizedBoneNode('hips');
+      const hipsBone = boneCacheRef.current['hips'];
       if (hipsBone) {
-        hipsBone.position.x = 0;
-        hipsBone.position.z = 0;
+        // XZ 위치를 부드럽게 0으로 수렴 (root motion 제거 보완)
+        hipsBone.position.x = THREE.MathUtils.damp(hipsBone.position.x, 0, 8, delta);
+        hipsBone.position.z = THREE.MathUtils.damp(hipsBone.position.z, 0, 8, delta);
+        if (clipMgrRef.isIdling) {
+          // idle 시 Y 위치를 rest pose 높이로 부드럽게 복원
+          const restY = restHipsPositionRef.current?.y ?? hipsBone.position.y;
+          hipsBone.position.y = THREE.MathUtils.damp(hipsBone.position.y, restY, 8, delta);
+        }
       }
     }
 
@@ -1297,7 +1301,7 @@ export default function VRMAvatar() {
       const rightKneeWeights = hingeProfile?.rightKnee ?? DEFAULT_KNEE_WEIGHTS;
 
       // Mixamo 클립이 재생 중이면 절차적 뼈 제어 전체 스킵
-      const clipMgrActive = clipMgr && useClipLocomotion.current && (clipMgr.isWalking || clipMgr.isIdling || clipMgr.isGesturePlaying);
+      const clipMgrActive = clipMgr && useClipLocomotion.current && (clipMgr.isWalking || clipMgr.isIdling);
 
       if (clipMgrActive) {
         // Mixamo AnimationMixer가 뼈를 제어 — 절차적 코드 스킵
