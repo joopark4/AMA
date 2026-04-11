@@ -1,13 +1,19 @@
-# AMA (MyPartnerAI)
+# AMA - AI My Avatar
+
+> **Notice:** Auto-update is currently unavailable. Please download the latest DMG from the [Releases](https://github.com/joopark4/AMA/releases) page to update.
 
 An AI avatar desktop app that moves freely on your screen and interacts with you through text and voice.
 
-> The display name is **AMA**. The internal package name and bundle ID remain `mypartnerai`.
+Korean version: [README.md](README.md) | 日本語版: [README.ja.md](README.ja.md)
 
-Korean version: [README.md](README.md)
+> For bug reports, feature requests, or any feedback, please email [jooparkhappy4@gmail.com](mailto:jooparkhappy4@gmail.com).
+
+<a href="https://www.buymeacoffee.com/eunyeon">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-red.png" alt="Buy Me A Coffee" width="217" height="60">
+</a>
 
 ![Platform](https://img.shields.io/badge/platform-macOS-blue)
-![License](https://img.shields.io/badge/license-BSD--2--Clause-green)
+![License](https://img.shields.io/badge/license-MIT-green)
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-orange)
 ![React](https://img.shields.io/badge/React-18-blue)
 
@@ -18,25 +24,25 @@ Korean version: [README.md](README.md)
   - Voice recognition
   - Settings
 - Avatar:
-  - Ships with a built-in default VRM, so you can start without picking a file
   - Click/select, drag to move, drag to rotate
-  - Free-movement mode (place anywhere on screen) + speech bubble (toggleable)
-- Conversation & voice language (`Settings > Voice`):
-  - A **single language** setting shared by the AI response and the TTS playback, kept separate from the app UI language
-  - `Follow app language` uses the current UI language as-is
-  - Supported: Korean / English / Japanese / Spanish / Portuguese / French
-  - Local TTS (Supertonic) does not support Japanese — it falls back to English with an in-UI warning
+  - Speech bubble is automatically positioned above the avatar
 - Voice:
   - STT: Whisper local (`base/small/medium`)
-  - TTS local: Supertonic (`F1~F5`, `M1~M5`)
-  - TTS premium: Supertone API (subscribers; engine switch auto-assigns a default voice)
+  - TTS: Supertonic (`F1~F5`, `M1~M5`)
   - Global shortcut: default `Cmd+Shift+Space` (works regardless of focused app)
-- Settings panel:
-  - Each section's collapsed/expanded state is persisted across launches
-  - On first launch every section starts collapsed — expand only what you need
 - When a remote session is detected:
   - Voice input (STT) is blocked
   - Text chat remains available
+
+## Demo
+
+> A live demo of two-way conversation between the AMA avatar and Claude Code via Claude Code Channels. The user asks a question in AMA, Claude Code responds, and the avatar delivers the answer via TTS.
+
+<img src="etc/demo/ccc-01.gif" alt="Claude Code Channels Demo" style="max-width:100%;height:auto;" width="360">
+
+> A live demo of two-way conversation between the AMA avatar and Codex via OpenAI Codex CLI. The user asks a question in AMA, Codex performs coding tasks and responds, and the avatar delivers the answer via TTS.
+
+<img src="etc/demo/codex-demo.gif" alt="OpenAI Codex CLI Demo" style="max-width:100%;height:auto;" width="360">
 
 ## Tested Hardware
 
@@ -45,16 +51,90 @@ Korean version: [README.md](README.md)
 | MacBook Pro | Apple M1 Max | 32 GB |
 | Mac mini | Apple M4 | 24 GB |
 
-## Requirements
+---
+
+## Option 1: DMG Install (Regular Users)
+
+### Installation
+
+1. Download `AMA_x.x.x_aarch64.dmg` from [Latest Release](https://github.com/joopark4/AMA/releases/latest) — [v0.8.0 direct link](https://github.com/joopark4/AMA/releases/tag/v0.8.0)
+2. Open the DMG and drag `AMA.app` to the `Applications` folder
+3. Launch AMA from Launchpad or Applications
+
+### First Run
+
+1. On first launch, the app prompts to download required models (TTS/STT)
+2. After model download, enter your avatar name
+3. Select a `.vrm` avatar file (can be changed later in Settings > Avatar)
+4. Configure AI model in the bottom-right Settings button, then start chatting
+
+### AI Setup
+
+Configure `LLM Provider`, `Model`, `Endpoint`, and `API Key` in the in-app settings.
+
+#### Ollama (local, recommended default)
+
+```bash
+# install on macOS
+brew install ollama
+
+# start server
+ollama serve
+
+# pull a model (example)
+ollama pull deepseek-v3
+```
+
+In app settings:
+
+- `LLM Provider`: `ollama`
+- `Endpoint`: `http://localhost:11434`
+- `Model`: `deepseek-v3` (or your pulled model)
+
+#### Gemini (cloud)
+
+1. Issue an API key from Google AI Studio
+2. Enter it directly in the app settings API Key field
+
+In app settings:
+
+- `LLM Provider`: `gemini`
+- `Model`: e.g. `gemini-2.0-flash`
+
+#### OpenAI / Claude (cloud)
+
+- Select Provider in app settings, then enter your API key
+- Select provider/model in app settings
+
+#### LocalAI (local server)
+
+- Run LocalAI with an OpenAI-compatible endpoint
+- In app settings:
+  - `LLM Provider`: `localai`
+  - `Endpoint`: e.g. `http://localhost:8080`
+  - `Model`: loaded LocalAI model id
+
+> If replies fail, verify provider/model/endpoint/API key first.
+
+### Auto Update
+
+Check for updates in the settings panel or from the macOS menu bar "Check for Updates...".
+When a new version is available, it downloads automatically and restarts.
+
+---
+
+## Option 2: Build from Source (Developers)
+
+### Requirements
 
 - Node.js 20+
 - Rust 1.75+ ([rustup](https://rustup.rs/))
 
-## Download Models (Required)
+### Download Models (Required)
 
 Model files are too large to include in the repository. Place them manually before running the app.
 
-### TTS Model (Supertonic)
+#### TTS Model (Supertonic)
 
 Git LFS is required:
 
@@ -71,7 +151,7 @@ git clone https://huggingface.co/Supertone/supertonic models/supertonic
 
 > ~250 MB total. After cloning, `models/supertonic/onnx/` and `models/supertonic/voice_styles/` must exist.
 
-### STT Model (Whisper)
+#### STT Model (Whisper)
 
 Only one model is needed. Start with `base`:
 
@@ -91,7 +171,7 @@ curl -L https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bi
   -o models/whisper/ggml-medium.bin
 ```
 
-### Expected Directory Structure
+#### Expected Directory Structure
 
 ```
 models/
@@ -102,60 +182,22 @@ models/
     └── ggml-base.bin      ← (or small / medium)
 ```
 
----
+#### Motion Files (Mixamo)
 
-## Development Run
+Mixamo animation FBX files are not included in the repository due to license restrictions. Download them directly from [Mixamo](https://www.mixamo.com/) and place them in `public/motions/mixamo/`.
 
-```bash
-# 1) Clone
-git clone https://github.com/joopark4/MyPartnerAI.git
-cd MyPartnerAI
+> Mixamo assets may only be used as integrated into a project. Standalone redistribution of original FBX files is not permitted.
 
-# 2) Install dependencies
-npm install
+### AI Setup
 
-# 3) Run in development mode (asset prep + Vite + Tauri)
-npm run tauri dev
-```
+Configure `LLM Provider`, `Model`, `Endpoint`, and `API Key` in the in-app settings.
+Setup is the same as [Option 1 AI Setup](#ai-setup).
 
-## Build
+For development, you can also use a `.env` file:
 
 ```bash
-# Standard production build
-npm run tauri build
+cp .env.example .env
 ```
-
-## First-Run Guide
-
-1. Launch the app — the built-in default VRM appears automatically
-2. Open Settings (bottom-right) — every section starts collapsed, so expand only the ones you need:
-   - **AI Model**: provider, model, API key, endpoint
-   - **Voice (STT/TTS)**: Whisper model, Supertonic voice, **Conversation & Voice Language** (Korean / English / Japanese / Spanish / Portuguese / French)
-   - **Premium Voice** (optional): sign in + subscribe to switch to Supertone API voices (Bella is auto-assigned on first activation)
-   - **Global Shortcut**: enable/disable, bind a key combination
-   - **Avatar**: replace the built-in VRM if you prefer your own
-3. Chat via microphone or text input
-4. On subsequent visits, Settings restores your previous expanded/collapsed state
-
-## Global Voice Shortcut
-
-- Default: `Cmd+Shift+Space`
-- Behavior: press once to start voice input, press again to stop
-- Location: `Settings > Voice > Global Voice Shortcut`
-- Input method: focus the shortcut field and press your key combo directly
-- If registration fails:
-  - Use the in-app warning toast action to open Accessibility settings
-  - Switch to a different combo if another app/system shortcut conflicts
-
-## Models / Runtime
-
-- Whisper models: `base`, `small`, `medium`
-- Supertonic models: `onnx`, `voice_styles`
-- A default VRM avatar is bundled and shown on first launch; users can replace it from Settings > Avatar.
-
-## Optional Environment Variables
-
-Copy `.env.example` to `.env` and set values as needed:
 
 ```env
 # Cloud LLM API keys (if used)
@@ -167,80 +209,59 @@ VITE_GOOGLE_API_KEY=
 VITE_OLLAMA_ENDPOINT=http://localhost:11434
 ```
 
-## AI Setup (Ollama / Gemini / etc.)
-
-Configure `LLM Provider`, `Model`, `Endpoint`, and `API Key` in the in-app settings.
-
-### 1) Ollama (local, recommended default)
+### Development Run
 
 ```bash
-# install on macOS
-brew install ollama
+# 1) Clone
+git clone https://github.com/joopark4/AMA.git
+cd AMA
 
-# start server
-ollama serve
+# 2) Install dependencies
+npm install
 
-# pull a model (example)
-ollama pull deepseek-v3
+# 3) Run in development mode (asset prep + Vite + Tauri)
+npm run tauri dev
 ```
 
-In app settings:
+### Build
 
-- `LLM Provider`: `ollama`
-- `Endpoint`: `http://localhost:11434`
-- `Model`: `deepseek-v3` (or your pulled model)
-
-### 2) Gemini (cloud)
-
-1. Issue an API key from Google AI Studio
-2. Set either:
-
-```env
-VITE_GOOGLE_API_KEY=your_key
+```bash
+# Standard production build
+npm run tauri build
 ```
 
-or enter it directly in the app settings API Key field.
+---
 
-In app settings:
+## Common Guide
 
-- `LLM Provider`: `gemini`
-- `Model`: e.g. `gemini-2.0-flash`
+### Global Voice Shortcut
 
-### 3) OpenAI / Claude (cloud)
+- Default: `Cmd+Shift+Space`
+- Behavior: press once to start voice input, press again to stop
+- Location: `Settings > Voice > Global Voice Shortcut`
+- Input method: focus the shortcut field and press your key combo directly
+- If registration fails:
+  - Use the in-app warning toast action to open Accessibility settings
+  - Switch to a different combo if another app/system shortcut conflicts
 
-- OpenAI: `VITE_OPENAI_API_KEY` or app settings API key field
-- Claude: `VITE_ANTHROPIC_API_KEY` or app settings API key field
-- Select provider/model in app settings
+### How to Use Claude Code Channels
 
-### 4) LocalAI (local server)
+Connect your AMA avatar to Claude Code for two-way conversations.
 
-- Run LocalAI with an OpenAI-compatible endpoint
-- In app settings:
-  - `LLM Provider`: `localai`
-  - `Endpoint`: e.g. `http://localhost:8080`
-  - `Model`: loaded LocalAI model id
+#### Prerequisites
 
-If replies fail, verify provider/model/endpoint/API key first.
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
+- [Node.js](https://nodejs.org/) 18+ installed
+- Logged in to claude.ai (`claude login`)
 
-## Claude Code Channels (Avatar ↔ Claude Code)
+#### Setup Steps
 
-Connect the AMA avatar to an external Claude Code session running in a separate terminal.
-User text/voice input is sent to Claude Code, and responses are spoken aloud by the avatar via TTS.
-
-### Demo
-
-<video src="docs/movie/ccc-01.mp4" controls width="720">
-  Claude Code Channels integration demo
-</video>
-
-> Claude Code Channels demo — the user asks a question via voice, Claude Code analyzes/executes code, and the avatar delivers the response with TTS and facial expressions.
-
-### Usage
-
-1. Run AMA: `npm run tauri dev`
+1. Launch AMA app
 2. `Settings > Claude Code Channels > Toggle ON`
-   - Turning the toggle on auto-installs the ama-bridge plugin globally and switches the AI model to Claude Code.
-3. Start Claude Code from any project folder you like:
+   - Bridge plugin auto-installs to `~/.mypartnerai/ama-bridge/`
+   - MCP server auto-registers in Claude Code (`~/.claude.json`)
+   - If auto-install fails: `cd ~/.mypartnerai/ama-bridge && npm install`
+3. In a separate terminal, run Claude Code:
    ```bash
    claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
    ```
@@ -249,55 +270,40 @@ User text/voice input is sent to Claude Code, and responses are spoken aloud by 
 
 Toggling OFF automatically restores your previous AI model settings.
 
-### Important Notes
+#### Important Notes
 
 - Channels is a **research preview** feature. The `--dangerously-load-development-channels` flag is required, and a security confirmation prompt appears once per session.
 - `--permission-mode bypassPermissions` auto-accepts tool execution permissions. **Use only in trusted local environments.**
 - AMA and Claude Code must run on the **same machine** (localhost).
 
-See [Claude Code Channels Guide](docs/channels/channels-mcp.md) for details.
+### How to Use OpenAI Codex CLI
+
+Connect your AMA avatar to the OpenAI Codex CLI for two-way conversations with a coding agent.
+
+#### Prerequisites
+
+- [OpenAI Codex CLI](https://github.com/openai/codex) installed (`npm install -g @openai/codex`)
+- Codex login completed (`codex login`)
+
+#### Setup Steps
+
+1. Launch AMA app
+2. `Settings > LLM Provider > Codex`
+3. CLI installation and login status are verified automatically
+4. Once connected, additional options become available:
+   - **Working Directory**: the directory Codex reads/writes code in (defaults to `~/Documents`)
+   - **Model**: select from available models after connection
+   - **Reasoning Effort**: Low / Medium / High / Extra High
+   - **Approval Policy**: Approve on request (default) / Auto-approve / Approve untrusted only
+5. Chat via AMA → Codex performs coding tasks and responds → avatar speaks via TTS
+
+#### Important Notes
+
+- Codex CLI automatically launches `codex app-server` in the background. No separate terminal setup is needed.
+- Setting the approval policy to "Auto-approve" allows Codex to modify and execute files automatically. **Use only in trusted environments.**
+- Switching to a different LLM provider automatically disconnects Codex.
 
 ---
-
-## AI/Model Licenses and Links
-
-### 1) AI Services / Runtime
-
-| Item | Usage | License/Terms | Link |
-|------|------|---------------|------|
-| Ollama | Local LLM server | MIT License | [github.com/ollama/ollama](https://github.com/ollama/ollama) |
-| LocalAI | Local OpenAI-compatible server | MIT License | [github.com/mudler/LocalAI](https://github.com/mudler/LocalAI) |
-| Claude API | Cloud LLM | Anthropic Terms | [anthropic.com/claude](https://www.anthropic.com/claude) |
-| OpenAI API | Cloud LLM | OpenAI Terms | [platform.openai.com](https://platform.openai.com/) |
-| Gemini API | Cloud LLM | Google Terms | [ai.google.dev](https://ai.google.dev/) |
-| ONNX Runtime Web | Supertonic inference runtime | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
-
-### 2) Voice Models / Engines
-
-| Item | Usage | License | Link |
-|------|------|----------|------|
-| whisper.cpp | STT engine (`whisper-cli`) | MIT License | [github.com/ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) |
-| Whisper (OpenAI) | Base STT model family | MIT License (OpenAI Whisper repo) | [github.com/openai/whisper](https://github.com/openai/whisper) |
-| GGML Whisper models (`ggml-base/small/medium`) | Local STT models | Follow upstream/distributor license | [huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) |
-| Supertonic code | TTS engine implementation | MIT License | [github.com/supertone-inc/supertonic](https://github.com/supertone-inc/supertonic) |
-| Supertonic models | Local TTS models | BigScience Open RAIL-M (`models/supertonic/LICENSE`) | [huggingface.co/Supertone/supertonic](https://huggingface.co/Supertone/supertonic) |
-
-Notes:
-
-- Cloud AI services (Claude/OpenAI/Gemini) are governed by service terms, not open-source licenses.
-- Always verify the latest LICENSE/terms before redistributing models/runtime assets.
-
-## Uninstalling
-
-To completely remove AMA from macOS:
-
-1. Delete `AMA.app` from the `Applications` folder
-2. Remove downloaded model data:
-   ```bash
-   rm -rf ~/.mypartnerai
-   ```
-
-> You can also delete model data from `Settings > Data Management` within the app.
 
 ## Troubleshooting
 
@@ -318,6 +324,8 @@ To completely remove AMA from macOS:
 - Confirm `.vrm` file validity
 - Re-select VRM in avatar settings
 
+---
+
 ## How to Get or Buy VRM Files
 
 ### Recommended Sources
@@ -328,33 +336,6 @@ To completely remove AMA from macOS:
 | [BOOTH (VRM search)](https://booth.pm/en/search/VRM) | Free + paid | Largest marketplace for creator-made VRM assets |
 | [VRoid Studio](https://vroid.com/en/studio/) | Create your own (free) | Build your own avatar and export as `.vrm` |
 
-### 1) Get Free VRM Files (VRoid Hub)
-
-1. Sign in to VRoid Hub
-2. Open a model page and check whether download/use is allowed
-3. Review usage terms (personal/commercial/edit/redistribution/credit)
-4. Download the `.vrm` file and select it in the app
-
-Notes:
-- Not every model is downloadable.
-- Usage permissions vary by creator/model.
-
-### 2) Buy VRM Files (BOOTH)
-
-1. Browse [BOOTH VRM search](https://booth.pm/en/search/VRM)
-2. Check price, previews, and update history
-3. Read license/usage terms carefully  
-   (commercial use, credit requirement, redistribution prohibition, etc.)
-4. Purchase and download (`.zip` / `.vrm`)
-5. Extract if needed, then select the `.vrm` file in the app
-
-### 3) Create Your Own (VRoid Studio)
-
-1. Install [VRoid Studio](https://vroid.com/en/studio/)
-2. Create or edit your character
-3. Export via `Export VRM`
-4. Select the exported `.vrm` in the app
-
 ### VRM License Checklist
 
 - Commercial use allowed?
@@ -363,8 +344,57 @@ Notes:
 - Redistribution prohibited?
 - Credit attribution required?
 
-Note: This VRM get/buy guide is for reference only. Always verify the latest license and usage terms for each model before use.
+> This VRM guide is for reference only. Always verify the latest license and usage terms for each model before use.
+
+---
+
+## Uninstalling
+
+To completely remove AMA from macOS:
+
+1. Delete `AMA.app` from the `Applications` folder
+2. Remove downloaded model data:
+   ```bash
+   rm -rf ~/.mypartnerai
+   ```
+
+> You can also delete model data from `Settings > Data Management` within the app.
+
+---
+
+## AI/Model Licenses and Links
+
+### AI Services / Runtime
+
+| Item | Usage | License/Terms | Link |
+|------|------|---------------|------|
+| Ollama | Local LLM server | MIT License | [github.com/ollama/ollama](https://github.com/ollama/ollama) |
+| LocalAI | Local OpenAI-compatible server | MIT License | [github.com/mudler/LocalAI](https://github.com/mudler/LocalAI) |
+| Claude API | Cloud LLM | Anthropic Terms | [anthropic.com/claude](https://www.anthropic.com/claude) |
+| OpenAI API | Cloud LLM | OpenAI Terms | [platform.openai.com](https://platform.openai.com/) |
+| Gemini API | Cloud LLM | Google Terms | [ai.google.dev](https://ai.google.dev/) |
+| OpenAI Codex CLI | Coding agent | Apache 2.0 License | [github.com/openai/codex](https://github.com/openai/codex) |
+| ONNX Runtime Web | Supertonic inference runtime | MIT License | [github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
+
+### Voice Models / Engines
+
+| Item | Usage | License | Link |
+|------|------|----------|------|
+| whisper.cpp | STT engine | MIT License | [github.com/ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) |
+| Whisper (OpenAI) | Base STT model | MIT License | [github.com/openai/whisper](https://github.com/openai/whisper) |
+| Supertonic code | TTS engine | MIT License | [github.com/supertone-inc/supertonic](https://github.com/supertone-inc/supertonic) |
+| Supertonic models | Local TTS models | BigScience Open RAIL-M | [huggingface.co/Supertone/supertonic](https://huggingface.co/Supertone/supertonic) |
+
+> Cloud AI services (Claude/OpenAI/Gemini) are governed by service terms, not open-source licenses. Always verify the latest LICENSE before redistributing models/runtime assets.
+
+## Default Avatar Copyright
+
+The default VRM avatar bundled in the DMG release is the property of the project author and is **NOT covered by the MIT License.**
+
+- Use is permitted only within this app.
+- Extraction, redistribution, or use in other apps/services is prohibited.
+- The source code repository does not include the default avatar.
 
 ## License
 
-BSD 2-Clause
+MIT — Applies to the source code, excluding the default avatar.
