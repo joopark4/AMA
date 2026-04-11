@@ -41,6 +41,10 @@ English version: [README.en.md](README.en.md) | 日本語版: [README.ja.md](REA
 
 <img src="etc/demo/ccc-01.gif" alt="Claude Code Channels 데모" style="max-width:100%;height:auto;" width="360">
 
+> OpenAI Codex CLI를 통한 AMA 아바타와 Codex 간 실시간 양방향 대화 데모입니다. 사용자가 AMA에서 질문하면 Codex가 코드 작업을 수행하고 응답하며, 아바타가 TTS로 음성 답변을 제공합니다.
+
+<img src="etc/demo/codex-demo.gif" alt="OpenAI Codex CLI 데모" style="max-width:100%;height:auto;" width="360">
+
 ## 테스트 사양
 
 | 장비 | CPU/SoC | 메모리 |
