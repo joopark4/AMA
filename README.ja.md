@@ -15,6 +15,9 @@
 <a href="https://www.buymeacoffee.com/eunyeon">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-red.png" alt="Buy Me A Coffee" width="217" height="60">
 </a>
+<a href="https://toon.at/donate/heavyarm">
+  <img src="https://img.shields.io/badge/Donate%20on%20Toonation-00B9F1?style=for-the-badge&logoColor=white" alt="Donate on Toonation" height="60">
+</a>
 
 ![Platform](https://img.shields.io/badge/platform-macOS-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
