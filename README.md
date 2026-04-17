@@ -9,6 +9,9 @@ English version: [README.en.md](README.en.md) | 日本語版: [README.ja.md](REA
 
 > 버그 리포트, 기능 제안 등 피드백은 [jooparkhappy4@gmail.com](mailto:jooparkhappy4@gmail.com)으로 보내주세요.
 
+<a href="https://github.com/sponsors/joopark4">
+  <img src="https://img.shields.io/badge/Sponsor%20on%20GitHub-ea4aaa?style=for-the-badge&logo=github-sponsors&logoColor=white" alt="Sponsor on GitHub" height="60">
+</a>
 <a href="https://www.buymeacoffee.com/eunyeon">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-red.png" alt="Buy Me A Coffee" width="217" height="60">
 </a>
