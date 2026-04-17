@@ -8,6 +8,9 @@ Korean version: [README.md](README.md) | 日本語版: [README.ja.md](README.ja.
 
 > For bug reports, feature requests, or any feedback, please email [jooparkhappy4@gmail.com](mailto:jooparkhappy4@gmail.com).
 
+<a href="https://github.com/sponsors/joopark4">
+  <img src="https://img.shields.io/badge/Sponsor%20on%20GitHub-ea4aaa?style=for-the-badge&logo=github-sponsors&logoColor=white" alt="Sponsor on GitHub" height="60">
+</a>
 <a href="https://www.buymeacoffee.com/eunyeon">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-red.png" alt="Buy Me A Coffee" width="217" height="60">
 </a>
