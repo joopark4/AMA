@@ -8,6 +8,7 @@ import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from '../../features/channels';
 import { CODEX_PROVIDER, CODEX_DEFAULT_MODEL, CodexSettings } from '../../features/codex';
+import { isVisionAvailable } from '../../features/screen-watch';
 
 const CLOUD_MODELS: Record<'claude' | 'openai' | 'gemini', string[]> = {
   claude: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-6'],
@@ -443,7 +444,7 @@ function getModelStatusLabel(status: ModelStatus): string {
 
 export default function LLMSettings() {
   const { t } = useTranslation();
-  const { settings, setLLMSettings } = useSettingsStore();
+  const { settings, setLLMSettings, setScreenWatchSettings } = useSettingsStore();
   const [localModels, setLocalModels] = useState<string[]>([]);
   const [cloudModels, setCloudModels] = useState<Partial<Record<CloudProvider, string[]>>>({});
   const [modelStatuses, setModelStatuses] = useState<Record<string, ModelStatus>>({});
@@ -610,6 +611,12 @@ export default function LLMSettings() {
                   model: models[0] || '',
                   endpoint,
                 });
+                // Vision 미지원 provider(Ollama/LocalAI/Claude Code) 또는
+                // 비macOS 런타임으로 전환 시 Screen Watch 자동 비활성
+                // (isVisionAvailable이 플랫폼 + provider 가용성을 함께 판단)
+                if (!isVisionAvailable(provider) && settings.screenWatch?.enabled) {
+                  setScreenWatchSettings({ enabled: false });
+                }
               }}
               className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${mcpLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
             >

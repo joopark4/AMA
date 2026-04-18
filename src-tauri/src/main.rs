@@ -11,6 +11,7 @@ use tauri::menu::{MenuBuilder, MenuItem, SubmenuBuilder};
 fn main() {
     let app = tauri::Builder::default()
         .manage(commands::codex::CodexState::new())
+        .manage(commands::screenshot::ScreenWatchState::new())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -32,6 +33,14 @@ fn main() {
             commands::window::get_cursor_position,
             commands::window::log_to_terminal,
             commands::screenshot::capture_screen,
+            commands::screenshot::capture_screen_for_watch,
+            commands::screenshot::list_windows,
+            commands::screenshot::clear_screen_watch_state,
+            commands::screenshot::delete_screen_watch_image,
+            commands::screenshot::cleanup_screen_watch_residuals,
+            commands::screenshot::check_screen_capture_permission,
+            commands::screenshot::request_screen_capture_permission,
+            commands::screenshot::get_screen_watch_save_dir,
             commands::voice::transcribe_audio,
             commands::voice::check_whisper_available,
             commands::voice::get_whisper_availability,
