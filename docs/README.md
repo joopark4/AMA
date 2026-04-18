@@ -14,6 +14,7 @@
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
 | [feature-spec.md](./features/feature-spec.md) | 전체 기능 명세서 + 정책 | 2026.04.09 |
+| [screen-watch.md](./features/screen-watch.md) | 화면 관찰 기능 (Vision LLM 기반 능동 발화, macOS 전용) | 2026.04.18 |
 
 ### auth/ — 인증/회원
 
@@ -44,6 +45,7 @@
 | [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 (Codex/Claude Code 포함) | 2026.04.09 |
 | [codex-integration.md](./ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) | 2026.04.07 |
 | [natural-interaction-plan.md](./ai/natural-interaction-plan.md) | Neuro-sama 스타일 자연 상호작용 구현 플랜 (Phase 0~5) | 2026.04.07 |
+| [natural-interaction-v2-plan.md](./ai/natural-interaction-v2-plan.md) | 자연 상호작용 v2 (VAD 감정·Presence 트리거·Gaze·Backchannel) | 2026.04.18 |
 
 ### settings/ — 설정
 
@@ -89,6 +91,23 @@
 | [#017](./issues/017-deploy-app-channels-issues.md) | 배포 앱 Channels 6건 통합 해결 | 2026.03.25 |
 | [#018](./issues/018-audio-output-device-routing.md) | WKWebView setSinkId 제스처 제약 해결 | 2026.03.31 |
 | [#019](./issues/019-tts-output-device-gesture.md) | TTS 출력 디바이스 제스처 제약 해결 | 2026.03.31 |
+
+---
+
+## v1.5.0 작업 이력 (2026.04.18)
+
+- **화면 관찰 (Screen Watch)** 기능 신규 — Vision LLM이 주기적으로 화면을 분석해 능동 발화
+  - Provider: Claude/OpenAI/Gemini (Base64 inline) + Codex (`LocalImageUserInput` file path)
+  - 캡처 대상 5종: fullscreen / main-monitor / specific-monitor / active-window / specific-window
+  - 2단 필터(Rust 픽셀 diff + LLM `[SKIP]`) + OS 권한 preflight + 파일 저장 안전장치
+- **자연 상호작용 v2** 3개 개선 축
+  - VAD 연속 감정 모델 (8종 이산 → 3D 잠재 공간 + lerp 전이)
+  - PresenceTracker + Inner-Thought 트리거 (DOM 이벤트 + urgency 가중합 + 동적 쿨다운)
+  - Gaze follow(커서 추적 + saccade) + Backchannel nod(listening 주기적 끄덕임)
+- 아바타 크기 조절을 group scale → `camera.zoom`로 전환
+  - scale<1.0에서 SpringBone이 hair/cloth를 위로 띄우는 버그 근본 회피
+  - 월드에서 아바타는 항상 1.0 사이즈, 시각 크기는 카메라 projection으로 적용
+- 조명 아이콘 이동 범위 확대 (아바타 머리 위까지 도달 가능하도록 Y -500~500, X -300~300)
 
 ---
 

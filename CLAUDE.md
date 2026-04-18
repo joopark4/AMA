@@ -128,7 +128,7 @@ const { t } = useTranslation();
 
 ---
 
-## 현재 구현 요약 (v1.0.0)
+## 현재 구현 요약 (v1.5.0)
 
 ### 음성 파이프라인
 - STT: `Whisper(whisper-cli)` 단일 경로
@@ -219,8 +219,31 @@ const { t } = useTranslation();
 - 연결 관리: App 레벨 자동 시작/중지 + 턴 직렬화(한 번에 하나의 턴만)
 - 시스템 프롬프트 변경 감지 → 새 스레드 자동 생성
 - 모델/추론 성능(reasoningEffort) 선택 UI
+- Vision: `LocalImageUserInput`로 이미지 파일 경로 전달 (Screen Watch Codex 경로)
 - CLI 설치/인증 상태 표시 + 설치/로그인 가이드
 - **모듈화**: `src/features/codex/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수)
+
+### 화면 관찰 (Screen Watch, v1.5.0)
+- 주기적 화면 캡처 + Vision LLM 분석으로 아바타가 능동 발화
+- Provider: Claude / OpenAI / Gemini / Codex (Ollama·LocalAI·Claude Code·비macOS 제외)
+- 캡처 대상: fullscreen / main-monitor / specific-monitor / active-window / specific-window
+- 2단 필터: Rust 픽셀 diff(비용 0) + LLM `[SKIP]` 규칙
+- OS 권한 preflight: `CGPreflightScreenCaptureAccess` FFI
+- 창 목록: CoreGraphics `CGWindowListCopyWindowInfo` (Accessibility 불필요)
+- 파일 저장: `~/.mypartnerai/screenshots/screen_watch.jpg` (finally 즉시 삭제)
+- **모듈화**: `src/features/screen-watch/` (service / hook / UI / Rust commands)
+
+### 자연 상호작용 v2 (v1.5.0)
+- **VAD 연속 감정**: 8종 이산 Emotion → `{v,a,d}` 3D 잠재 공간 + 턴당 lerp 전이 (`conversationStore.moodVec`)
+- **Presence + Inner-Thought**: DOM 이벤트 기반 multi-signal presence tracker + urgency 가중합 + 2-stage LLM (`src/services/presence/`)
+- **Gaze follow**: Rust 커서 polling → VRM `lookAt.target` + head/neck additive 회전 (range map 제한 보완)
+- **Backchannel nod**: `status === 'listening'` 동안 head bone에 직접 sine 기반 double bob
+- 기반: Phase 0~5 (캐릭터 프로필 / 스트리밍 TTS / 메모리 / 자발 대화 / 컨텍스트 / 감정 연속성)
+
+### 아바타 크기 조절 (v1.5.0)
+- `settings.avatar.scale` → `camera.zoom` 으로 반영 (group scale 제거)
+- SpringBone이 parent group scale과 center-space 캐시 간 불일치로 hair/cloth를 위로 띄우던 버그 회피
+- 월드에서 아바타는 항상 1.0 사이즈, 시각 크기는 projection 경유
 
 ### 설정 패널 구성
 1. **UserProfile** — 계정 정보 (OAuth)
@@ -231,9 +254,10 @@ const { t } = useTranslation();
 6. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량 + 관리자 API 크레딧 대시보드
 7. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
 8. **CodexSettings** — Codex CLI 상태/연결/모델/추론 성능 (LLMSettings 내 Codex 선택 시 표시)
-9. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
-10. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
-11. **LicensesSettings** — 오픈소스/모델 라이선스
+9. **ScreenWatchSettings** — 화면 관찰 토글 / 캡처 대상(5종) / 관찰 간격 / 응답 스타일 / 조용한 시간 / 권한 요청 (v1.5.0)
+10. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
+11. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
+12. **LicensesSettings** — 오픈소스/모델 라이선스
 - 각 섹션은 `SettingsSection.tsx` 공통 접을 수 있는 카드 UI 사용
 
 ### 로컬 배포 파이프라인
@@ -260,6 +284,8 @@ const { t } = useTranslation();
 | [프로젝트 구조](docs/fundamentals/project-structure.md) | 디렉터리/핵심 파일 맵 |
 | [AI 서비스](docs/ai/ai-services.md) | LLM 라우팅, Vision 분석 |
 | [Codex 연동](docs/ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) |
+| [자연 상호작용 v2](docs/ai/natural-interaction-v2-plan.md) | VAD 감정 / Presence 트리거 / Gaze / Backchannel (v1.5.0) |
+| [화면 관찰](docs/features/screen-watch.md) | Vision LLM 주기 관찰 + 능동 발화 (v1.5.0) |
 | [음성 서비스](docs/voice/voice-services.md) | Whisper/Supertonic 구현 상세 |
 | [아바타 시스템](docs/avatar/avatar-system.md) | VRM 로딩, 이동/회전, 상호작용 |
 | [설정 시스템](docs/settings/settings-system.md) | Zustand 설정/마이그레이션 |
