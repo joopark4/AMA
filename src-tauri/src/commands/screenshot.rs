@@ -125,6 +125,10 @@ pub enum CaptureTarget {
     Fullscreen,
     ActiveWindow,
     MainMonitor,
+    Monitor {
+        #[serde(rename = "monitorName")]
+        monitor_name: String,
+    },
     Window {
         #[serde(rename = "appName")]
         app_name: String,
@@ -168,6 +172,7 @@ const JPEG_QUALITY: u8 = 80;
 /// - 빈 이미지(권한 거부) 자동 감지
 #[tauri::command]
 pub async fn capture_screen_for_watch(
+    app: AppHandle,
     target: CaptureTarget,
     save_dir: Option<String>,
     save_filename: Option<String>,
@@ -175,11 +180,12 @@ pub async fn capture_screen_for_watch(
 ) -> Result<ScreenWatchResult, String> {
     #[cfg(target_os = "macos")]
     {
-        capture_screen_for_watch_macos(target, save_dir, save_filename, state).await
+        capture_screen_for_watch_macos(app, target, save_dir, save_filename, state).await
     }
 
     #[cfg(not(target_os = "macos"))]
     {
+        let _ = (app, target, save_dir, save_filename, state);
         Ok(ScreenWatchResult::Error {
             message: "screen watch is only supported on macOS".to_string(),
         })
@@ -188,6 +194,7 @@ pub async fn capture_screen_for_watch(
 
 #[cfg(target_os = "macos")]
 async fn capture_screen_for_watch_macos(
+    app: AppHandle,
     target: CaptureTarget,
     save_dir: Option<String>,
     save_filename: Option<String>,
@@ -216,6 +223,29 @@ async fn capture_screen_for_watch_macos(
         }
         CaptureTarget::MainMonitor => {
             args.push("-m".to_string());
+        }
+        CaptureTarget::Monitor { monitor_name } => {
+            // available_monitors()의 순서 = screencapture -D 인덱스 (1-based).
+            // 이름으로 일치하는 모니터를 찾는다 (멀티 모니터 이름 기반 선택).
+            let monitors = app
+                .available_monitors()
+                .map_err(|e| format!("available_monitors: {}", e))?;
+            let index = monitors.iter().position(|m| {
+                m.name()
+                    .map(|n| n.as_str() == monitor_name.as_str())
+                    .unwrap_or(false)
+            });
+            match index {
+                Some(idx) => {
+                    args.push("-D".to_string());
+                    args.push((idx + 1).to_string());
+                }
+                None => {
+                    return Ok(ScreenWatchResult::Error {
+                        message: format!("monitor not found: {}", monitor_name),
+                    });
+                }
+            }
         }
         CaptureTarget::ActiveWindow => {
             // fail-closed: 최상위 창 ID를 못 구하면 전체 화면으로 확대하지 않고 에러.

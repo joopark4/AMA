@@ -338,8 +338,11 @@
         "fullscreen": "전체 화면",
         "activeWindow": "활성 창",
         "mainMonitor": "메인 모니터",
+        "specificMonitor": "특정 모니터",
         "specificWindow": "특정 윈도우"
       },
+      "selectMonitor": "관찰할 모니터를 선택하세요",
+      "noMonitors": "모니터 정보를 읽을 수 없습니다",
       "selectWindow": "관찰할 윈도우를 선택하세요",
       "refresh": "🔄 새로고침",
       "loading": "로딩...",
@@ -358,7 +361,8 @@
       "cancel": "취소",
       "confirm": "동의하고 활성화",
       "permissionDenied": "화면 녹화 권한이 없습니다. 관찰이 즉시 차단됩니다.",
-      "requestPermission": "권한 요청"
+      "requestPermission": "권한 요청",
+      "openAccessibility": "접근성 설정 열기"
     },
     "mcp": {
       "title": "Claude Code Channels",

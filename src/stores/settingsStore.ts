@@ -124,6 +124,7 @@ export type CaptureTarget =
   | { type: 'fullscreen' }
   | { type: 'active-window' }
   | { type: 'main-monitor' }
+  | { type: 'monitor'; monitorName: string }
   | { type: 'window'; appName: string; windowTitle?: string };
 
 export type ScreenWatchResponseStyle = 'balanced' | 'advisor' | 'comedian' | 'analyst';
@@ -530,6 +531,13 @@ function normalizeCaptureTarget(value: unknown): CaptureTarget {
     case 'active-window':
     case 'main-monitor':
       return { type: v.type };
+    case 'monitor': {
+      const m = v as Extract<CaptureTarget, { type: 'monitor' }>;
+      if (typeof m.monitorName === 'string' && m.monitorName.trim()) {
+        return { type: 'monitor', monitorName: m.monitorName };
+      }
+      return fallback;
+    }
     case 'window': {
       const w = v as Extract<CaptureTarget, { type: 'window' }>;
       if (typeof w.appName === 'string' && w.appName.trim()) {
