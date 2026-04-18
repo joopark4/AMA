@@ -323,6 +323,44 @@ export default function AvatarSettings() {
                 }`} />
               </button>
             </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600">{t('settings.avatar.animation.gazeFollow')}</label>
+                <span className="text-xs text-gray-400">{t('settings.avatar.animation.gazeFollowDesc')}</span>
+              </div>
+              <button
+                onClick={() => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, gazeFollow: !(settings.avatar?.animation?.gazeFollow ?? true) },
+                })}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  (settings.avatar?.animation?.gazeFollow ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  (settings.avatar?.animation?.gazeFollow ?? true) ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600">{t('settings.avatar.animation.backchannel')}</label>
+                <span className="text-xs text-gray-400">{t('settings.avatar.animation.backchannelDesc')}</span>
+              </div>
+              <button
+                onClick={() => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, backchannel: !(settings.avatar?.animation?.backchannel ?? true) },
+                })}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  (settings.avatar?.animation?.backchannel ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  (settings.avatar?.animation?.backchannel ?? true) ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -84,6 +84,10 @@ export interface AnimationSettings {
   motionDiversity: number;
   enableBreathing: boolean;
   enableEyeDrift: boolean;
+  /** 커서 추적 시선 (v2 3순위) — 기본 true */
+  gazeFollow: boolean;
+  /** 경청 중 주기적 끄덕임 (v2 3순위) — 기본 true */
+  backchannel: boolean;
 }
 
 export interface LightingSettings {
@@ -325,6 +329,8 @@ const defaultSettings: Settings = {
       motionDiversity: 1.0,
       enableBreathing: true,
       enableEyeDrift: true,
+      gazeFollow: true,
+      backchannel: true,
     },
     lighting: {
       ambientIntensity: 1.0,

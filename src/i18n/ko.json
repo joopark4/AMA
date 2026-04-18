@@ -154,7 +154,11 @@
         "enableBreathing": "호흡 애니메이션",
         "enableBreathingDesc": "가만히 있을 때 미세한 호흡 움직임",
         "enableEyeDrift": "시선 이동",
-        "enableEyeDriftDesc": "자연스러운 눈동자 미세 움직임"
+        "enableEyeDriftDesc": "자연스러운 눈동자 미세 움직임",
+        "gazeFollow": "커서 시선 추적",
+        "gazeFollowDesc": "마우스 커서를 아바타가 눈으로 따라감 (정지 시 미세한 시선 흔들림)",
+        "backchannel": "경청 끄덕임",
+        "backchannelDesc": "음성 입력 중 주기적으로 고개를 끄덕여 \"듣고 있어요\" 표시"
       },
       "physics": {
         "title": "물리 엔진",

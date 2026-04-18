@@ -154,7 +154,11 @@
         "enableBreathing": "Breathing Animation",
         "enableBreathingDesc": "Subtle breathing movement when idle",
         "enableEyeDrift": "Eye Movement",
-        "enableEyeDriftDesc": "Natural micro eye movements"
+        "enableEyeDriftDesc": "Natural micro eye movements",
+        "gazeFollow": "Gaze Follow",
+        "gazeFollowDesc": "Avatar's eyes track the mouse cursor (with subtle saccades when idle)",
+        "backchannel": "Listening Nod",
+        "backchannelDesc": "Periodic nods during voice input to signal \"I'm listening\""
       },
       "physics": {
         "title": "Physics",
