@@ -356,7 +356,9 @@
       "privacyTitle": "Screen Watch Notice",
       "privacyBody": "Your screen data will be sent to the selected AI service.\n\nBe careful not to expose sensitive information (passwords, card numbers, etc.) on screen. You can use Silent Hours to pause observation during specific time ranges.",
       "cancel": "Cancel",
-      "confirm": "Agree and Enable"
+      "confirm": "Agree and Enable",
+      "permissionDenied": "Screen Recording permission is not granted. Observation is blocked.",
+      "requestPermission": "Request Permission"
     },
     "mcp": {
       "title": "Claude Code Channels",

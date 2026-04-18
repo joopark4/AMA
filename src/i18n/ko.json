@@ -356,7 +356,9 @@
       "privacyTitle": "화면 관찰 안내",
       "privacyBody": "화면 데이터가 선택한 AI 서비스로 전송됩니다.\n\n민감 정보(비밀번호, 카드번호 등)가 화면에 노출되지 않도록 주의하세요. 조용한 시간 설정을 이용하면 특정 시간대 관찰을 중단할 수 있습니다.",
       "cancel": "취소",
-      "confirm": "동의하고 활성화"
+      "confirm": "동의하고 활성화",
+      "permissionDenied": "화면 녹화 권한이 없습니다. 관찰이 즉시 차단됩니다.",
+      "requestPermission": "권한 요청"
     },
     "mcp": {
       "title": "Claude Code Channels",

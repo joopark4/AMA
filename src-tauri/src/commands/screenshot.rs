@@ -6,6 +6,16 @@ use std::process::Command;
 use std::sync::Mutex;
 use tauri::{AppHandle, State};
 
+#[cfg(target_os = "macos")]
+#[link(name = "CoreGraphics", kind = "framework")]
+extern "C" {
+    /// Returns true if the app has been granted Screen Recording permission.
+    /// Does not prompt — use `request_screen_capture_access` to trigger the prompt.
+    fn CGPreflightScreenCaptureAccess() -> bool;
+    /// Triggers the system Screen Recording permission prompt (once per app lifetime).
+    fn CGRequestScreenCaptureAccess() -> bool;
+}
+
 #[derive(serde::Serialize)]
 pub struct ScreenshotResult {
     pub data: String,
@@ -185,11 +195,19 @@ async fn capture_screen_for_watch_macos(
 ) -> Result<ScreenWatchResult, String> {
     use std::fs;
 
+    // Preflight OS-level permission check (Blocker #3).
+    // 빈 이미지 휴리스틱(=`is_uniform_image`) 대신 OS API로 실제 권한을 확인한다.
+    unsafe {
+        if !CGPreflightScreenCaptureAccess() {
+            return Ok(ScreenWatchResult::PermissionDenied);
+        }
+    }
+
     let temp_dir = std::env::temp_dir();
     let raw_path = temp_dir.join("mypartnerai_screen_watch_raw.png");
     let raw_path_str = raw_path.to_string_lossy().to_string();
 
-    // screencapture 인자 구성
+    // screencapture 인자 구성 — Window 계열은 fail-closed (찾지 못하면 에러).
     let mut args: Vec<String> = vec!["-x".to_string(), "-t".to_string(), "png".to_string()];
 
     match &target {
@@ -200,14 +218,17 @@ async fn capture_screen_for_watch_macos(
             args.push("-m".to_string());
         }
         CaptureTarget::ActiveWindow => {
-            // 최상위 창 ID 조회 후 -l 옵션
+            // fail-closed: 최상위 창 ID를 못 구하면 전체 화면으로 확대하지 않고 에러.
             match find_frontmost_window_id() {
                 Some(id) => {
                     args.push("-l".to_string());
                     args.push(id.to_string());
                 }
                 None => {
-                    // 활성 창을 찾지 못하면 전체 화면 fallback
+                    return Ok(ScreenWatchResult::Error {
+                        message: "active window not found (Accessibility permission required?)"
+                            .to_string(),
+                    });
                 }
             }
         }
@@ -262,9 +283,11 @@ async fn capture_screen_for_watch_macos(
         }
     };
 
-    // 빈 이미지 / 단색 감지 (Screen Recording 권한 미부여 시)
+    // 단색 이미지는 관찰할 콘텐츠가 없으므로 Unchanged로 스킵.
+    // (권한 거부는 이미 상단 CGPreflightScreenCaptureAccess로 처리됨 — 이 분기는
+    //  검은 바탕화면/로그인 화면/잠금 화면 같은 정상 콘텐츠를 permission_denied로 오인하지 않는다.)
     if is_uniform_image(&img) {
-        return Ok(ScreenWatchResult::PermissionDenied);
+        return Ok(ScreenWatchResult::Unchanged);
     }
 
     // 비교용 축소 (640x360)
@@ -312,9 +335,14 @@ async fn capture_screen_for_watch_macos(
             .map_err(|e| format!("jpeg encode: {}", e))?;
     }
 
-    // 선택적 파일 저장 (CLI provider용)
-    let saved_path = if let Some(dir) = save_dir {
+    // 선택적 파일 저장 — save_dir이 비어있거나 상대경로면 거부 (Blocker #2 대응).
+    let saved_path = if let Some(dir) = save_dir.filter(|d| !d.trim().is_empty()) {
         let dir_path = PathBuf::from(&dir);
+        if !dir_path.is_absolute() {
+            return Ok(ScreenWatchResult::Error {
+                message: "save_dir must be an absolute path".to_string(),
+            });
+        }
         if !dir_path.exists() {
             let _ = fs::create_dir_all(&dir_path);
         }
@@ -537,6 +565,33 @@ pub async fn clear_screen_watch_state(state: State<'_, ScreenWatchState>) -> Res
     let mut prev = state.previous_buffer.lock().unwrap();
     *prev = None;
     Ok(())
+}
+
+/// 현재 Screen Recording 권한 상태 조회. prompt 없이 bool만 반환.
+#[tauri::command]
+pub async fn check_screen_capture_permission() -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    unsafe {
+        Ok(CGPreflightScreenCaptureAccess())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(true)
+    }
+}
+
+/// 시스템 Screen Recording 권한 프롬프트 발생 (앱 생애주기당 1회만 실제 프롬프트 표시).
+/// 이미 결정된 상태에서는 현재 권한 상태만 반환.
+#[tauri::command]
+pub async fn request_screen_capture_permission() -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    unsafe {
+        Ok(CGRequestScreenCaptureAccess())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(true)
+    }
 }
 
 /// 저장된 스크린샷 파일 삭제

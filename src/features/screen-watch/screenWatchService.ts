@@ -2,10 +2,8 @@
  * Screen Watch Service — 주기적 화면 관찰 + Vision LLM 분석
  *
  * - Rust `capture_screen_for_watch`로 캡처 (변화 감지 + JPEG 리사이즈)
- * - Provider 분기:
- *   - API (Claude/OpenAI/Gemini): Base64 inline 전송 (chatWithVision)
- *   - CLI (Codex/Claude Code): 파일 저장 후 경로를 텍스트에 포함
- * - LLM 응답 수신 후 저장된 이미지 파일 즉시 삭제 (finally)
+ * - 지원 Provider: Claude / OpenAI / Gemini (Base64 inline 전송, chatWithVision)
+ *   - Codex / Claude Code는 검증된 이미지 입력 계약이 없어 1차 릴리스에서 제외.
  * - 링버퍼로 최근 3개 관찰 결과 유지 → 중복 발언 방지
  */
 
@@ -19,8 +17,6 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { ClaudeClient } from '../../services/ai/claudeClient';
 import { OpenAIClient } from '../../services/ai/openaiClient';
 import { GeminiClient } from '../../services/ai/geminiClient';
-import { llmRouter } from '../../services/ai/llmRouter';
-import type { Message as LLMMessage } from '../../services/ai/types';
 import { buildSystemPrompt } from '../../hooks/useConversation';
 
 type RustCaptureResult =
@@ -36,13 +32,9 @@ export type ObserveOutcome =
 
 const RECENT_OBSERVATIONS_LIMIT = 3;
 
-const VISION_SUPPORTED_PROVIDERS = new Set([
-  'claude',
-  'openai',
-  'gemini',
-  'codex',
-  'claude_code',
-]);
+// 1차 릴리스에서는 API 기반 Vision만 지원.
+// Codex/Claude Code는 JSON-RPC/HTTP 브리지에 이미지 입력 계약이 완성될 때까지 제외.
+const VISION_SUPPORTED_PROVIDERS = new Set(['claude', 'openai', 'gemini']);
 
 export function isVisionAvailable(provider: string): boolean {
   return VISION_SUPPORTED_PROVIDERS.has(provider);
@@ -106,6 +98,22 @@ export class ScreenWatchService {
     }
   }
 
+  async checkPermission(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('check_screen_capture_permission');
+    } catch {
+      return false;
+    }
+  }
+
+  async requestPermission(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('request_screen_capture_permission');
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * 한 번의 관찰 수행.
    */
@@ -120,18 +128,13 @@ export class ScreenWatchService {
       return { kind: 'error', reason: 'llm', detail: 'vision not supported' };
     }
 
-    // CLI provider는 파일 경로 전달 → save_dir 지정
-    const needsFile = provider === 'codex' || provider === 'claude_code';
-    const saveDir = needsFile ? await this.resolveSaveDir(provider) : null;
-    const saveFilename = needsFile ? '.screen_watch.jpg' : undefined;
-
-    // 캡처
+    // 캡처 (Base64 inline 전송이라 파일 저장 불필요)
     let capture: RustCaptureResult;
     try {
       capture = await invoke<RustCaptureResult>('capture_screen_for_watch', {
         target: options.captureTarget,
-        saveDir,
-        saveFilename,
+        saveDir: null,
+        saveFilename: null,
       });
     } catch (err) {
       return { kind: 'error', reason: 'capture', detail: String(err) };
@@ -147,22 +150,16 @@ export class ScreenWatchService {
       return { kind: 'error', reason: 'capture', detail: capture.message };
     }
 
-    // LLM 호출
-    const savedPath = capture.path;
+    // Vision API 호출
     try {
       const systemPrompt = this.buildObservationPrompt(options.responseStyle);
       const userPrompt = '방금 캡처된 사용자 화면이다. 위 규칙에 따라 짧게 한마디 해라.';
-
-      let responseText: string;
-      if (provider === 'claude' || provider === 'openai' || provider === 'gemini') {
-        responseText = await this.callVisionAPI(provider, systemPrompt, userPrompt, capture.data);
-      } else {
-        // CLI: 경로 텍스트 포함
-        if (!savedPath) {
-          return { kind: 'error', reason: 'capture', detail: 'file path missing' };
-        }
-        responseText = await this.callCLIWithPath(systemPrompt, userPrompt, savedPath);
-      }
+      const responseText = await this.callVisionAPI(
+        provider as 'claude' | 'openai' | 'gemini',
+        systemPrompt,
+        userPrompt,
+        capture.data
+      );
 
       const trimmed = (responseText ?? '').trim();
       if (!trimmed || /^\[?SKIP\]?/i.test(trimmed)) {
@@ -173,11 +170,6 @@ export class ScreenWatchService {
       return { kind: 'spoke', text: trimmed };
     } catch (err) {
       return { kind: 'error', reason: 'llm', detail: String(err) };
-    } finally {
-      // 저장된 파일 삭제 (finally 보장)
-      if (savedPath) {
-        invoke('delete_screen_watch_image', { path: savedPath }).catch(() => {});
-      }
     }
   }
 
@@ -233,51 +225,6 @@ export class ScreenWatchService {
     const client = new GeminiClient();
     const res = await client.chatWithVision(messages, imageBase64, { systemPrompt, mimeType });
     return res.content;
-  }
-
-  private async callCLIWithPath(
-    systemPrompt: string,
-    userPrompt: string,
-    imagePath: string
-  ): Promise<string> {
-    const textWithPath = `${userPrompt}\n[이미지 파일 경로]: ${imagePath}\n위 파일을 읽어 분석하라.`;
-    const llmMessages: LLMMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: textWithPath },
-    ];
-    const res = await llmRouter.chat(llmMessages, { temperature: 0.7, maxTokens: 200 });
-    return res.content;
-  }
-
-  private async resolveSaveDir(provider: string): Promise<string | null> {
-    const { settings } = useSettingsStore.getState();
-    if (provider === 'codex') {
-      const dir = settings.codex?.workingDir?.trim();
-      if (dir) return dir;
-      // fallback: ~/.mypartnerai/screenshots
-      return this.getDefaultSaveDir();
-    }
-    if (provider === 'claude_code') {
-      // ama-bridge에 GET /project-dir 조회 (추후 구현)
-      try {
-        const resp = await fetch('http://127.0.0.1:3123/project-dir');
-        if (resp.ok) {
-          const body = (await resp.json()) as { path?: string };
-          if (body.path) return body.path;
-        }
-      } catch {
-        // 무시
-      }
-      return this.getDefaultSaveDir();
-    }
-    return this.getDefaultSaveDir();
-  }
-
-  private getDefaultSaveDir(): string {
-    // Node/Rust에서 home 확장. 프론트는 환경변수 없이 알 수 없으므로
-    // Rust 측 capture_screen_for_watch가 빈 save_dir를 받으면 자체 기본 경로 사용하도록
-    // 되어 있지 않으므로, 여기선 빈 문자열 반환해 save_dir 없이 호출되게 한다.
-    return '';
   }
 }
 

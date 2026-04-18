@@ -22,6 +22,26 @@ export default function ScreenWatchSettings() {
   const [windows, setWindows] = useState<WindowInfo[]>([]);
   const [windowsLoading, setWindowsLoading] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!watch.enabled || !visionOk) {
+      setHasPermission(null);
+      return;
+    }
+    let cancelled = false;
+    void screenWatchService.checkPermission().then((ok) => {
+      if (!cancelled) setHasPermission(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [watch.enabled, visionOk]);
+
+  const handleRequestPermission = async () => {
+    const granted = await screenWatchService.requestPermission();
+    setHasPermission(granted);
+  };
 
   const loadWindows = async () => {
     setWindowsLoading(true);
@@ -112,6 +132,20 @@ export default function ScreenWatchSettings() {
           }`} />
         </button>
       </div>
+
+      {watch.enabled && visionOk && hasPermission === false && (
+        <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 space-y-2">
+          <div>
+            {t('settings.screenWatch.permissionDenied', '화면 녹화 권한이 없습니다. 관찰이 즉시 차단됩니다.')}
+          </div>
+          <button
+            onClick={handleRequestPermission}
+            className="px-3 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700"
+          >
+            {t('settings.screenWatch.requestPermission', '권한 요청')}
+          </button>
+        </div>
+      )}
 
       {watch.enabled && (
         <>
