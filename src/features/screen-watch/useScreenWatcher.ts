@@ -91,10 +91,25 @@ export function useScreenWatcher(): void {
 
         if (outcome.kind !== 'spoke') return;
 
-        // 발화 직전 대화 상태 재확인 (LLM 응답 대기 중 사용자가 말을 걸었을 수 있음)
+        // 발화 직전 전체 가드 재검사 — LLM 대기 중 상태가 바뀔 수 있음:
+        //  - 사용자가 대화 시작 / 비활성화 토글 / provider 전환 / 조용한 시간 진입
         const stateAfter = useConversationStore.getState();
         if (stateAfter.isProcessing || stateAfter.isSpeaking || stateAfter.isListening) {
           debug('skip after LLM: user conversation started');
+          return;
+        }
+        const settingsAfter = useSettingsStore.getState().settings;
+        const watchAfter = settingsAfter.screenWatch;
+        if (!watchAfter.enabled) {
+          debug('skip after LLM: watch disabled during inflight');
+          return;
+        }
+        if (!isVisionAvailable(settingsAfter.llm.provider)) {
+          debug('skip after LLM: provider no longer vision-capable');
+          return;
+        }
+        if (isInSilentHours(new Date(), watchAfter.silentHours)) {
+          debug('skip after LLM: entered silent hours');
           return;
         }
 

@@ -356,7 +356,9 @@
       "privacyTitle": "画面観察について",
       "privacyBody": "画面データが選択したAIサービスに送信されます。\n\nパスワードやカード番号などの機密情報が画面に表示されないようご注意ください。サイレント時間設定で特定時間帯の観察を停止できます。",
       "cancel": "キャンセル",
-      "confirm": "同意して有効化"
+      "confirm": "同意して有効化",
+      "permissionDenied": "画面録画権限がありません。観察は即座にブロックされます。",
+      "requestPermission": "権限をリクエスト"
     },
     "mcp": {
       "title": "Claude Code Channels",

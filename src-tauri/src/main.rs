@@ -38,6 +38,8 @@ fn main() {
             commands::screenshot::clear_screen_watch_state,
             commands::screenshot::delete_screen_watch_image,
             commands::screenshot::cleanup_screen_watch_residuals,
+            commands::screenshot::check_screen_capture_permission,
+            commands::screenshot::request_screen_capture_permission,
             commands::voice::transcribe_audio,
             commands::voice::check_whisper_available,
             commands::voice::get_whisper_availability,
