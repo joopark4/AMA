@@ -3,25 +3,33 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Object3D, Vector3 } from 'three';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { windowManager } from '../../services/tauri/windowManager';
 
 /**
  * Gaze Follow Controller (v2 — 3순위)
  *
  * 마우스 커서를 아바타 시선이 추적. 커서가 오래 정지하면 saccade jitter로 자연스러움 추가.
  *
+ * 구현 노트:
+ * - AMA는 투명 오버레이 + 클릭스루 윈도우 → DOM pointermove 이벤트가 인터랙티브 영역에서만
+ *   발화해 커서 추적 불가. Rust `get_cursor_position` 커맨드로 네이티브 커서 위치를 폴링.
+ * - 100ms 간격 polling으로 CPU 절약 (렌더 lerp가 부드러움을 보완).
+ *
  * 동작 조건:
- * - `avatar.animation.gazeFollow` 설정 ON (기본 true)
- * - faceOnlyMode가 OFF일 때만 활성 (faceOnlyMode에서는 LookAtController가 카메라 응시 유지)
+ * - `avatar.animation.gazeFollow` ON
+ * - faceOnlyMode가 OFF (faceOnlyMode일 때는 LookAtController가 카메라 응시 유지)
  */
 
+const CURSOR_POLL_INTERVAL_MS = 100;
 const CURSOR_OFFSET_SCALE_X = 0.6; // 화면 좌우 끝에서 ±0.6 world unit
 const CURSOR_OFFSET_SCALE_Y = 0.3;
-const FOLLOW_LERP_RATE = 8; // 시선 이동 속도 (높을수록 빠름)
-const SACCADE_IDLE_THRESHOLD_MS = 2500; // 커서 정지 후 saccade 시작
+const FOLLOW_LERP_RATE = 8;
+const SACCADE_IDLE_THRESHOLD_MS = 2500;
 const SACCADE_INTERVAL_MIN = 2_000;
 const SACCADE_INTERVAL_MAX = 4_000;
-const SACCADE_JITTER_RANGE = 0.25; // world unit (±)
+const SACCADE_JITTER_RANGE = 0.25;
 const SACCADE_DURATION_MS = 180;
+const CURSOR_MOVE_THRESHOLD_PX = 2; // 이 이하 움직임은 "정지"로 간주
 
 export default function GazeFollowController() {
   const vrm = useAvatarStore((state) => state.vrm);
@@ -34,6 +42,7 @@ export default function GazeFollowController() {
   );
 
   const cursorNormRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastCursorPxRef = useRef<{ x: number; y: number }>({ x: -9999, y: -9999 });
   const lastCursorMoveRef = useRef(performance.now());
   const targetObjRef = useRef(new Object3D());
   const desiredRef = useRef(new Vector3());
@@ -43,24 +52,46 @@ export default function GazeFollowController() {
   const saccadeStartedAtRef = useRef(0);
   const saccadeActiveRef = useRef(false);
 
+  // Rust 커서 polling (클릭스루 윈도우에서도 작동)
   useEffect(() => {
     if (!gazeEnabled || faceOnlyModeEnabled) return;
 
-    const handleMove = (e: PointerEvent) => {
-      // normalized device coords (-1..+1)
-      const nx = (e.clientX / size.width) * 2 - 1;
-      const ny = -((e.clientY / size.height) * 2 - 1);
-      cursorNormRef.current.x = Math.max(-1, Math.min(1, nx));
-      cursorNormRef.current.y = Math.max(-1, Math.min(1, ny));
-      lastCursorMoveRef.current = performance.now();
-      saccadeActiveRef.current = false;
-      saccadeOffsetRef.current.x = 0;
-      saccadeOffsetRef.current.y = 0;
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const poll = async () => {
+      try {
+        const pos = await windowManager.getCursorPosition();
+        if (cancelled) return;
+
+        // window-local coords → normalized (-1..+1) using canvas size
+        const nx = (pos.x / size.width) * 2 - 1;
+        const ny = -((pos.y / size.height) * 2 - 1);
+        cursorNormRef.current.x = Math.max(-1, Math.min(1, nx));
+        cursorNormRef.current.y = Math.max(-1, Math.min(1, ny));
+
+        // 실제 픽셀 이동량으로 "움직임" 판단
+        const dx = pos.x - lastCursorPxRef.current.x;
+        const dy = pos.y - lastCursorPxRef.current.y;
+        if (Math.hypot(dx, dy) > CURSOR_MOVE_THRESHOLD_PX) {
+          lastCursorMoveRef.current = performance.now();
+          saccadeActiveRef.current = false;
+          saccadeOffsetRef.current.x = 0;
+          saccadeOffsetRef.current.y = 0;
+        }
+        lastCursorPxRef.current.x = pos.x;
+        lastCursorPxRef.current.y = pos.y;
+      } catch {
+        // 무시 — Rust 커맨드 실패 시 다음 tick에 재시도
+      }
     };
 
-    window.addEventListener('pointermove', handleMove, { passive: true });
+    void poll();
+    timer = setInterval(poll, CURSOR_POLL_INTERVAL_MS);
+
     return () => {
-      window.removeEventListener('pointermove', handleMove);
+      cancelled = true;
+      if (timer) clearInterval(timer);
     };
   }, [gazeEnabled, faceOnlyModeEnabled, size]);
 
@@ -77,10 +108,9 @@ export default function GazeFollowController() {
     const now = performance.now();
     const idleMs = now - lastCursorMoveRef.current;
 
-    // Saccade: 커서가 SACCADE_IDLE_THRESHOLD_MS 이상 정지 시 주기적 시선 흔들기
+    // Saccade: 커서가 정지 상태면 주기적 시선 흔들기
     if (idleMs >= SACCADE_IDLE_THRESHOLD_MS) {
       if (!saccadeActiveRef.current && now >= nextSaccadeAtRef.current) {
-        // 새 saccade 타겟 설정
         saccadeTargetRef.current.x = (Math.random() - 0.5) * 2 * SACCADE_JITTER_RANGE;
         saccadeTargetRef.current.y = (Math.random() - 0.5) * 2 * SACCADE_JITTER_RANGE;
         saccadeActiveRef.current = true;
@@ -99,7 +129,6 @@ export default function GazeFollowController() {
       }
     }
 
-    // 시선 타겟 = 카메라 위치 + 커서 오프셋 + saccade jitter
     const cursor = cursorNormRef.current;
     desiredRef.current.set(
       camera.position.x + cursor.x * CURSOR_OFFSET_SCALE_X + saccadeOffsetRef.current.x,
@@ -107,7 +136,6 @@ export default function GazeFollowController() {
       camera.position.z
     );
 
-    // frame-rate 독립 lerp
     const blend = 1 - Math.exp(-Math.max(0.001, delta) * FOLLOW_LERP_RATE);
     targetObjRef.current.position.lerp(desiredRef.current, blend);
     vrm.lookAt.target = targetObjRef.current;
