@@ -151,9 +151,29 @@ export class CodexClient implements LLMClient {
     }
   }
 
+  /**
+   * 이미지 파일 경로를 LocalImageUserInput으로 함께 전송.
+   * - imagePath는 absolute path여야 함.
+   * - Codex의 sandbox policy에 따라 파일 접근 권한 필요.
+   */
+  async chatWithLocalImage(
+    messages: Message[],
+    imagePath: string,
+    options?: ChatOptions
+  ): Promise<LLMResponse> {
+    const systemPrompt = this.extractSystemPrompt(messages, options);
+    const userText = this.extractLastUserMessage(messages);
+    const content = await this.invokeMessage(userText, systemPrompt, imagePath);
+    return { content };
+  }
+
   // ─── 내부 헬퍼 ────────────────────────────────
 
-  private async invokeMessage(text: string, systemPrompt: string): Promise<string> {
+  private async invokeMessage(
+    text: string,
+    systemPrompt: string,
+    imagePath?: string
+  ): Promise<string> {
     const { codex } = useSettingsStore.getState().settings;
     return invoke<string>('codex_send_message', {
       text,
@@ -161,6 +181,7 @@ export class CodexClient implements LLMClient {
       model: codex.model,
       reasoningEffort: codex.reasoningEffort,
       approvalPolicy: codex.approvalPolicy,
+      imagePath: imagePath ?? null,
     });
   }
 

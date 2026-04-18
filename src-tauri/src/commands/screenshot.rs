@@ -610,6 +610,19 @@ pub async fn check_screen_capture_permission() -> Result<bool, String> {
     }
 }
 
+/// CLI provider (Codex 등)가 사용할 앱 전용 스크린샷 저장 디렉토리를 절대경로로 반환.
+/// 존재하지 않으면 생성한다.
+#[tauri::command]
+pub async fn get_screen_watch_save_dir() -> Result<String, String> {
+    use std::fs;
+    let home = dirs::home_dir().ok_or_else(|| "home dir not available".to_string())?;
+    let dir = home.join(".mypartnerai").join("screenshots");
+    if !dir.exists() {
+        fs::create_dir_all(&dir).map_err(|e| format!("create_dir_all: {}", e))?;
+    }
+    Ok(dir.to_string_lossy().to_string())
+}
+
 /// 시스템 Screen Recording 권한 프롬프트 발생 (앱 생애주기당 1회만 실제 프롬프트 표시).
 /// 이미 결정된 상태에서는 현재 권한 상태만 반환.
 #[tauri::command]

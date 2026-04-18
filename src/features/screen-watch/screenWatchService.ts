@@ -17,6 +17,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { ClaudeClient } from '../../services/ai/claudeClient';
 import { OpenAIClient } from '../../services/ai/openaiClient';
 import { GeminiClient } from '../../services/ai/geminiClient';
+import { codexClient } from '../codex';
 import { buildSystemPrompt } from '../../hooks/useConversation';
 
 type RustCaptureResult =
@@ -32,9 +33,11 @@ export type ObserveOutcome =
 
 const RECENT_OBSERVATIONS_LIMIT = 3;
 
-// 1차 릴리스에서는 API 기반 Vision만 지원.
-// Codex/Claude Code는 JSON-RPC/HTTP 브리지에 이미지 입력 계약이 완성될 때까지 제외.
-const VISION_SUPPORTED_PROVIDERS = new Set(['claude', 'openai', 'gemini']);
+// 지원 Provider:
+// - claude / openai / gemini: chatWithVision (Base64 inline)
+// - codex: codex_send_message(imagePath) — Codex app-server 프로토콜의 LocalImageUserInput 사용
+// Claude Code는 bridge/plugin의 이미지 입력 계약이 확정될 때까지 제외.
+const VISION_SUPPORTED_PROVIDERS = new Set(['claude', 'openai', 'gemini', 'codex']);
 
 export function isVisionAvailable(provider: string): boolean {
   return VISION_SUPPORTED_PROVIDERS.has(provider);
@@ -128,13 +131,23 @@ export class ScreenWatchService {
       return { kind: 'error', reason: 'llm', detail: 'vision not supported' };
     }
 
-    // 캡처 (Base64 inline 전송이라 파일 저장 불필요)
+    // Codex는 파일 경로로 이미지 전달 — 앱 전용 저장 디렉토리 미리 확보.
+    let codexSaveDir: string | null = null;
+    if (provider === 'codex') {
+      try {
+        codexSaveDir = await invoke<string>('get_screen_watch_save_dir');
+      } catch (err) {
+        return { kind: 'error', reason: 'capture', detail: `save dir: ${String(err)}` };
+      }
+    }
+
+    // 캡처 (API는 Base64 inline, Codex는 저장된 파일 경로 회수)
     let capture: RustCaptureResult;
     try {
       capture = await invoke<RustCaptureResult>('capture_screen_for_watch', {
         target: options.captureTarget,
-        saveDir: null,
-        saveFilename: null,
+        saveDir: codexSaveDir,
+        saveFilename: codexSaveDir ? 'screen_watch.jpg' : null,
       });
     } catch (err) {
       return { kind: 'error', reason: 'capture', detail: String(err) };
@@ -150,16 +163,32 @@ export class ScreenWatchService {
       return { kind: 'error', reason: 'capture', detail: capture.message };
     }
 
-    // Vision API 호출
+    const savedPath = capture.path;
+
+    // Vision 호출 (Provider별 분기)
     try {
       const systemPrompt = this.buildObservationPrompt(options.responseStyle);
       const userPrompt = '방금 캡처된 사용자 화면이다. 위 규칙에 따라 짧게 한마디 해라.';
-      const responseText = await this.callVisionAPI(
-        provider as 'claude' | 'openai' | 'gemini',
-        systemPrompt,
-        userPrompt,
-        capture.data
-      );
+
+      let responseText: string;
+      if (provider === 'codex') {
+        if (!savedPath) {
+          return { kind: 'error', reason: 'capture', detail: 'codex save path missing' };
+        }
+        const res = await codexClient.chatWithLocalImage(
+          [{ role: 'user', content: userPrompt }],
+          savedPath,
+          { systemPrompt, temperature: 0.7, maxTokens: 200 }
+        );
+        responseText = res.content;
+      } else {
+        responseText = await this.callVisionAPI(
+          provider as 'claude' | 'openai' | 'gemini',
+          systemPrompt,
+          userPrompt,
+          capture.data
+        );
+      }
 
       const trimmed = (responseText ?? '').trim();
       if (!trimmed || /^\[?SKIP\]?/i.test(trimmed)) {
@@ -170,6 +199,11 @@ export class ScreenWatchService {
       return { kind: 'spoke', text: trimmed };
     } catch (err) {
       return { kind: 'error', reason: 'llm', detail: String(err) };
+    } finally {
+      // 저장된 파일 삭제 (finally 보장)
+      if (savedPath) {
+        invoke('delete_screen_watch_image', { path: savedPath }).catch(() => {});
+      }
     }
   }
 
