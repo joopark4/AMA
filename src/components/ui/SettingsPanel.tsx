@@ -8,6 +8,7 @@ import AudioDeviceSettings from '../settings/AudioDeviceSettings';
 import VoiceSettings from '../settings/VoiceSettings';
 import { PremiumVoiceSettings } from '../../features/premium-voice';
 import AvatarSettings from '../settings/AvatarSettings';
+import CharacterSettings from '../settings/CharacterSettings';
 import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
 import DataCleanupSettings from '../settings/DataCleanupSettings';
@@ -108,6 +109,11 @@ export default function SettingsPanel() {
           {/* Premium Voice Settings */}
           <SettingsSection title={t('settings.premium.title')}>
             <PremiumVoiceSettings />
+          </SettingsSection>
+
+          {/* Character Settings */}
+          <SettingsSection title={t('settings.character.title')}>
+            <CharacterSettings />
           </SettingsSection>
 
           {/* Avatar Settings */}

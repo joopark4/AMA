@@ -11,8 +11,6 @@ export default function AvatarSettings() {
     settings,
     setVrmModelPath,
     setAvatarSettings,
-    setAvatarName,
-    setAvatarPersonalityPrompt,
   } = useSettingsStore();
   const {
     setEmotion,
@@ -21,7 +19,6 @@ export default function AvatarSettings() {
     setManualRotation,
   } = useAvatarStore();
   const savedInitialView = settings.avatar?.initialViewRotation || { x: 0, y: 0 };
-  const avatarPersonalityPrompt = settings.avatarPersonalityPrompt ?? '';
   const faceOnlyModeEnabled = settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
   const [hasDefaultVrm, setHasDefaultVrm] = useState(false);
   const isUsingDefaultVrm = !settings.vrmModelPath?.trim() && hasDefaultVrm;
@@ -80,39 +77,6 @@ export default function AvatarSettings() {
             {t('settings.avatar.useDefaultVrm')}
           </button>
         )}
-      </div>
-
-      {/* Avatar Name */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.name')}
-        </label>
-        <input
-          type="text"
-          value={settings.avatarName}
-          onChange={(e) => setAvatarName(e.target.value)}
-          placeholder={t('settings.avatar.namePlaceholder')}
-          maxLength={40}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </div>
-
-      {/* Avatar Personality Prompt */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.personalityPrompt')}
-        </label>
-        <textarea
-          value={avatarPersonalityPrompt}
-          onChange={(e) => setAvatarPersonalityPrompt(e.target.value)}
-          placeholder={t('settings.avatar.personalityPromptPlaceholder')}
-          maxLength={800}
-          rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y"
-        />
-        <p className="text-xs text-gray-500 text-right">
-          {avatarPersonalityPrompt.length}/800
-        </p>
       </div>
 
       {/* Avatar Scale */}
@@ -356,6 +320,44 @@ export default function AvatarSettings() {
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
                   (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600">{t('settings.avatar.animation.gazeFollow')}</label>
+                <span className="text-xs text-gray-400">{t('settings.avatar.animation.gazeFollowDesc')}</span>
+              </div>
+              <button
+                onClick={() => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, gazeFollow: !(settings.avatar?.animation?.gazeFollow ?? true) },
+                })}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  (settings.avatar?.animation?.gazeFollow ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  (settings.avatar?.animation?.gazeFollow ?? true) ? 'translate-x-5' : ''
+                }`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600">{t('settings.avatar.animation.backchannel')}</label>
+                <span className="text-xs text-gray-400">{t('settings.avatar.animation.backchannelDesc')}</span>
+              </div>
+              <button
+                onClick={() => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, backchannel: !(settings.avatar?.animation?.backchannel ?? true) },
+                })}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  (settings.avatar?.animation?.backchannel ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  (settings.avatar?.animation?.backchannel ?? true) ? 'translate-x-5' : ''
                 }`} />
               </button>
             </div>

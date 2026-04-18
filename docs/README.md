@@ -43,6 +43,7 @@
 |------|------|----------|
 | [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 (Codex/Claude Code 포함) | 2026.04.09 |
 | [codex-integration.md](./ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) | 2026.04.07 |
+| [natural-interaction-plan.md](./ai/natural-interaction-plan.md) | Neuro-sama 스타일 자연 상호작용 구현 플랜 (Phase 0~5) | 2026.04.07 |
 
 ### settings/ — 설정
 

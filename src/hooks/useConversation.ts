@@ -15,6 +15,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
 import { useClaudeCodeChat } from '../features/channels';
+import { buildCharacterPrompt, analyzeEmotion, emotionToVec, NEUTRAL_MOOD } from '../services/character';
+import { ttsQueue } from '../services/voice/ttsQueue';
+import { buildMessageWindow, summarizeIfNeeded } from '../services/ai/memoryManager';
+import { proactiveEngine } from '../services/ai/proactiveEngine';
+import { presenceTracker } from '../services/presence/presenceTracker';
+import { processExternalResponse } from '../features/channels/responseProcessor';
+import { collectContext, formatContextForPrompt } from '../services/context';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -23,7 +30,19 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
+/**
+ * 시스템 프롬프트 빌드 — 캐릭터 프로필 기반
+ *
+ * @deprecated 레거시 시그니처, sendMessage 내에서 직접 character 프로필 사용 권장
+ */
 export function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
+  // 레거시 호환: 캐릭터 프로필이 설정되어 있으면 그것을 사용
+  const character = useSettingsStore.getState().settings.character;
+  if (character && (character.name || character.personality.traits.length > 0)) {
+    return buildCharacterPrompt(character);
+  }
+
+  // 폴백: 프로필이 없으면 기존 방식 유지
   const normalizedName = avatarName.trim() || '아바타';
   const basePrompt = `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
@@ -142,38 +161,7 @@ function isScreenRequest(text: string): boolean {
   return /(화면|스크린|screen)/i.test(text);
 }
 
-interface EmotionMatch {
-  emotion: Emotion;
-  score: number;
-}
-
-const EMOTION_KEYWORDS: Record<Emotion, string[]> = {
-  neutral: [],
-  happy: ['happy', 'great', 'love', 'awesome', '좋아', '행복', '기뻐', '최고', '고마워'],
-  sad: ['sad', 'sorry', 'unfortunately', '슬퍼', '미안', '힘들', '우울', '걱정'],
-  angry: ['angry', 'annoyed', 'frustrated', '화나', '짜증', '열받', '빡쳐'],
-  surprised: ['wow', 'surprised', 'amazing', '대박', '놀라', '헉', '와'],
-  relaxed: ['calm', 'relaxed', 'peaceful', '차분', '편안', '여유'],
-  thinking: ['think', 'maybe', 'hmm', '음', '생각', '고민', '글쎄'],
-};
-
-function analyzeEmotion(text: string): EmotionMatch {
-  const normalized = text.toLowerCase();
-  let best: EmotionMatch = { emotion: 'neutral', score: 0 };
-
-  for (const [emotion, keywords] of Object.entries(EMOTION_KEYWORDS) as [Emotion, string[]][]) {
-    if (emotion === 'neutral') continue;
-    let score = 0;
-    for (const keyword of keywords) {
-      if (normalized.includes(keyword)) score += 1;
-    }
-    if (score > best.score) {
-      best = { emotion, score };
-    }
-  }
-
-  return best;
-}
+// analyzeEmotion은 src/services/character/analyzeEmotion.ts에서 import
 
 function pickGesture(emotion: Emotion, text: string): GestureType {
   const normalized = text.toLowerCase();
@@ -290,6 +278,10 @@ export function useConversation(): UseConversationReturn {
   const {
     addMessage,
     setCurrentResponse,
+    setStreamingResponse,
+    appendStreamingToken,
+    setMemory,
+    setMoodTarget,
     setStatus,
     clearCurrentResponse,
     clearMessages,
@@ -593,6 +585,7 @@ export function useConversation(): UseConversationReturn {
         return true;
       }
       case 'stop-speaking': {
+        ttsQueue.flush();
         stopSpeaking();
         clearCurrentResponse();
         await showVoiceCommandFeedback(
@@ -632,6 +625,7 @@ export function useConversation(): UseConversationReturn {
   // Send message to LLM and get response
   const sendMessage = useCallback(async (text: string) => {
     log('sendMessage called with:', text);
+    proactiveEngine.notifyUserActivity();
 
     if (!text.trim()) {
       log('Empty text, returning');
@@ -651,7 +645,9 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
-    const userEmotionMatch = analyzeEmotion(text);
+    const currentCharacter = useSettingsStore.getState().settings.character;
+    const archetype = currentCharacter?.personality?.archetype;
+    const userEmotionMatch = analyzeEmotion(text, archetype);
     if (userEmotionMatch.score > 0) {
       setEmotion(userEmotionMatch.emotion);
       triggerEmotionMotion(userEmotionMatch.emotion, userEmotionMatch.score, text);
@@ -668,17 +664,39 @@ export function useConversation(): UseConversationReturn {
     addMessage({ role: 'user', content: text });
 
     try {
-      // Get current messages from store (fresh)
-      const currentMessages = useConversationStore.getState().messages;
+      // Get current messages + memory from store (fresh)
+      const storeState = useConversationStore.getState();
+      const currentMessages = storeState.messages;
+      const currentMemory = storeState.memory;
 
-      const systemPrompt = buildSystemPrompt(
-        settings.avatarName || '',
-        settings.avatarPersonalityPrompt || ''
-      );
+      const systemPrompt = currentCharacter?.name || currentCharacter?.personality?.traits?.length
+        ? buildCharacterPrompt(currentCharacter)
+        : buildSystemPrompt(settings.avatarName || '', settings.avatarPersonalityPrompt || '');
 
-      // Prepare messages for LLM:
+      // Phase 2: 메모리 기반 메시지 윈도우 구성
+      const { memoryContext, recentMessages } = buildMessageWindow(currentMessages, currentMemory);
+
+      // Phase 4: 환경 컨텍스트 수집
+      const contextStr = formatContextForPrompt(collectContext());
+
+      // Phase 5: 지속 감정(mood) 주입 — v2: VAD 연속 감정 기반
+      const { mood: currentMood, moodIntensity } = useConversationStore.getState();
+      // 강도가 약하면(< 0.2) mood 힌트를 생략해 중립 톤 유지
+      const moodHint = currentMood !== 'neutral' && moodIntensity >= 0.2
+        ? `[현재 기분: ${currentMood} (강도 ${moodIntensity.toFixed(2)}) — 이 기분을 대화 톤에 자연스럽게 반영하세요]`
+        : '';
+
+      // 시스템 프롬프트에 메모리 + 환경 컨텍스트 + mood 결합
+      const fullSystemPrompt = [
+        systemPrompt,
+        memoryContext,
+        contextStr,
+        moodHint,
+      ].filter(Boolean).join('\n\n');
+
+      // memoryManager가 생성한 recentMessages 위에 screen-watch 필터를 추가 적용:
       //   - 'external' 알림은 완전 제외
-      //   - 'screen-watch' 관찰은 최근 5개만 포함 (양방향 대화 맥락 유지 + 토큰 축적 방지)
+      //   - 'screen-watch' 관찰은 전체 기록에서 최근 5개만 포함 (토큰 축적 방지)
       const SCREEN_WATCH_WINDOW = 5;
       const screenWatchIdsInWindow = new Set(
         currentMessages
@@ -686,23 +704,22 @@ export function useConversation(): UseConversationReturn {
           .slice(-SCREEN_WATCH_WINDOW)
           .map((m) => m.id)
       );
+      // recentMessages는 currentMessages의 뒤쪽 슬라이스라 인덱스 정렬로 원본 source를 참조.
+      const filteredRecentMessages = recentMessages.filter((_m, idx) => {
+        const aligned = currentMessages[currentMessages.length - recentMessages.length + idx];
+        const source = aligned?.source;
+        if (source === 'external') return false;
+        if (source === 'screen-watch') return aligned ? screenWatchIdsInWindow.has(aligned.id) : false;
+        return true;
+      });
       const llmMessages: LLMMessage[] = [
-        { role: 'system', content: systemPrompt },
-        ...currentMessages
-          .filter((m) => {
-            if (m.source === 'external') return false;
-            if (m.source === 'screen-watch') return screenWatchIdsInWindow.has(m.id);
-            return true;
-          })
-          .map((m) => ({
-            role: m.role as 'user' | 'assistant' | 'system',
-            content: m.content,
-          })),
+        { role: 'system', content: fullSystemPrompt },
+        ...filteredRecentMessages,
       ];
 
-      log('Sending to LLM:', llmMessages.length, 'messages');
+      log('Sending to LLM:', llmMessages.length, 'messages (window:', recentMessages.length, ')');
 
-      // Screen analysis request route (Vision models only)
+      // Screen analysis request route (Vision models only) — 스트리밍 미적용
       let responseText = '';
       if (isScreenRequest(text)) {
         try {
@@ -715,17 +732,88 @@ export function useConversation(): UseConversationReturn {
           throw screenError;
         }
       } else {
-        const response = await llmRouter.chat(llmMessages, {
-          temperature: 0.7,
-          maxTokens: 1024,
+        // ── 스트리밍 응답 + TTS 큐 파이프라인 (Phase 1) ──
+        setStreamingResponse('');
+        setCurrentResponse('');
+        setStatus('speaking');
+
+        // 립싱크 헬퍼 (TTS 큐에서 문장 재생 시 사용)
+        let lipSyncInterval: ReturnType<typeof setInterval> | null = null;
+        const startLipSync = () => {
+          if (lipSyncInterval) return;
+          let phase = 0;
+          lipSyncInterval = setInterval(() => {
+            phase += 0.3;
+            const v = Math.abs(Math.sin(phase)) * 0.7 + Math.random() * 0.3;
+            useAvatarStore.getState().setLipSyncValue(Math.min(1, v));
+          }, 80);
+        };
+        const stopLipSync = () => {
+          if (lipSyncInterval) {
+            clearInterval(lipSyncInterval);
+            lipSyncInterval = null;
+          }
+          useAvatarStore.getState().setLipSyncValue(0);
+        };
+
+        // TTS 큐 시작
+        ttsQueue.start({
+          ttsOptions: { voice: settings.tts.voice },
+          onLipSyncStart: startLipSync,
+          onLipSyncStop: stopLipSync,
         });
-        responseText = response.content;
-        log('LLM response received:', response.content?.substring(0, 50) + '...');
+
+        // 실시간 감정 추적
+        let lastDetectedEmotion: Emotion = 'neutral';
+
+        responseText = await new Promise<string>((resolve, reject) => {
+          // chatStream은 Promise를 반환 — pre-callback에서 throw하면 onError가 호출되지
+          // 않아 외부 Promise가 영원히 pending될 수 있음. 반환 promise에 .catch(reject)
+          // 부착으로 사전 실패도 반드시 surface.
+          const streamPromise = llmRouter.chatStream(
+            llmMessages,
+            {
+              onToken: (token) => {
+                appendStreamingToken(token);
+                // 말풍선 실시간 업데이트
+                const accumulated = (useConversationStore.getState().streamingResponse ?? '') ;
+                setCurrentResponse(accumulated);
+                // TTS 큐에 토큰 전달 (문장 종결 시 자동 재생)
+                ttsQueue.pushToken(token);
+                // 실시간 감정 분석 (누적 텍스트 기반, 매 토큰마다는 비효율 → 50자마다)
+                if (accumulated.length % 50 < token.length) {
+                  const emotionMatch = analyzeEmotion(accumulated, archetype);
+                  if (emotionMatch.score > 0 && emotionMatch.emotion !== lastDetectedEmotion) {
+                    lastDetectedEmotion = emotionMatch.emotion;
+                    setEmotion(emotionMatch.emotion);
+                    triggerEmotionMotion(emotionMatch.emotion, emotionMatch.score, accumulated, true);
+                  }
+                }
+              },
+              onComplete: (fullResponse) => {
+                log('Streaming complete:', fullResponse.substring(0, 50) + '...');
+                resolve(fullResponse);
+              },
+              onError: (error) => {
+                reject(error);
+              },
+            },
+            { temperature: 0.7, maxTokens: 1024 }
+          );
+          if (streamPromise && typeof (streamPromise as Promise<unknown>).catch === 'function') {
+            void (streamPromise as Promise<unknown>).catch(reject);
+          }
+        });
+
+        // TTS 큐 잔여분 재생 완료 대기
+        await ttsQueue.complete();
+        stopLipSync();
+        setStreamingResponse(null);
       }
 
       setError(null);
 
-      const responseEmotionMatch = analyzeEmotion(responseText);
+      const responseEmotionMatch = analyzeEmotion(responseText, archetype);
       const responseEmotion =
         responseEmotionMatch.score > 0 ? responseEmotionMatch.emotion : 'neutral';
       const faceOnlyModeEnabled =
@@ -733,6 +821,10 @@ export function useConversation(): UseConversationReturn {
 
       if (responseEmotionMatch.score > 0) {
         setEmotion(responseEmotionMatch.emotion);
+        // v2: VAD 연속 감정 — 매 응답마다 target 설정 후 lerp (강도 임계값 없이 항상 갱신).
+        // score를 alpha에 반영하면 강한 감정일수록 더 빨리 수렴한다 (0.25 ~ 0.55 범위).
+        const alpha = Math.min(0.55, 0.25 + responseEmotionMatch.score * 0.15);
+        setMoodTarget(emotionToVec(responseEmotionMatch.emotion), alpha);
         triggerEmotionMotion(
           responseEmotionMatch.emotion,
           responseEmotionMatch.score,
@@ -745,31 +837,51 @@ export function useConversation(): UseConversationReturn {
         }
       } else {
         stopDancing();
+        // v2: 감정 없는 응답일 때 neutral로 서서히 수렴 (직행 금지, 한 턴에 20%씩만)
+        setMoodTarget(NEUTRAL_MOOD, 0.2);
       }
 
-      // Add assistant message (말풍선은 TTS 재생 시작 시 표시)
+      // Add assistant message (스트리밍 경로는 ttsQueue가 말풍선/TTS를 이미 동기화했음)
       addMessage({ role: 'assistant', content: responseText });
-      clearCurrentResponse(); // 이전 말풍선 즉시 제거 (연속 응답 시 stale 방지)
-      setStatus('speaking');
-      log('Starting TTS (bubble will sync with playback)...');
+      setCurrentResponse(responseText);
 
-      // TTS 재생 — onPlaybackStart 콜백으로 말풍선과 오디오를 동시에 시작
-      try {
-        await speak(responseText, {
-          emotion: responseEmotion,
-          onPlaybackStart: () => {
-            setCurrentResponse(responseText);
-            log('TTS playback started, bubble shown');
-          },
-        });
-        log('TTS completed');
-      } catch (ttsErr) {
-        log('TTS error:', ttsErr);
+      // 화면 분석 요청은 스트리밍 미적용 → develop의 onPlaybackStart 패턴 사용
+      if (isScreenRequest(text)) {
+        clearCurrentResponse(); // stale 말풍선 제거
+        setStatus('speaking');
+        log('Starting TTS for screen analysis (bubble will sync with playback)...');
+        try {
+          await speak(responseText, {
+            emotion: responseEmotion,
+            onPlaybackStart: () => {
+              setCurrentResponse(responseText);
+              log('TTS playback started, bubble shown');
+            },
+          });
+          log('TTS completed');
+        } catch (ttsErr) {
+          log('TTS error:', ttsErr);
+        }
       }
       // TTS 실패 또는 onPlaybackStart 미도달 시에도 새 응답 말풍선 보장
       if (useConversationStore.getState().currentResponse !== responseText) {
         setCurrentResponse(responseText);
       }
+
+      // Phase 2: 비동기 메모리 요약 (UI 차단 없이 백그라운드 실행)
+      void (async () => {
+        try {
+          const freshMessages = useConversationStore.getState().messages;
+          const freshMemory = useConversationStore.getState().memory;
+          const updated = await summarizeIfNeeded(freshMessages, freshMemory);
+          if (updated) {
+            setMemory(updated);
+            log('Memory updated: summary length', updated.summary.length, 'facts', updated.importantFacts.length);
+          }
+        } catch (err) {
+          log('Memory summarization error (non-fatal):', err);
+        }
+      })();
 
       // TTS 완료 후: 말풍선은 responseClearMs 후 제거, 표정은 expressionHoldMs 후 초기화
       setStatus('idle');
@@ -782,6 +894,8 @@ export function useConversation(): UseConversationReturn {
       }, getEmotionTuning(responseEmotion).expressionHoldMs);
     } catch (err) {
       log('LLM error:', err);
+      ttsQueue.flush();
+      setStreamingResponse(null);
       const rawErrorMessage = err instanceof Error ? err.message : 'Failed to get response';
       const isRateLimit = /\b429\b|rate.?limit|quota|resource_exhausted|too many requests/i.test(rawErrorMessage);
       const providerLabel =
@@ -812,9 +926,13 @@ export function useConversation(): UseConversationReturn {
     }
   }, [
     addMessage,
+    settings.character,
     settings.avatarName,
     settings.avatarPersonalityPrompt,
+    settings.tts.voice,
     setCurrentResponse,
+    setStreamingResponse,
+    appendStreamingToken,
     clearCurrentResponse,
     setStatus,
     setEmotion,
@@ -843,6 +961,30 @@ export function useConversation(): UseConversationReturn {
     };
   }, []);
 
+  // Phase 3 / v2: 자발적 대화 엔진 start/stop (PresenceTracker 연동)
+  useEffect(() => {
+    const proactive = settings.proactive ?? { enabled: false };
+    if (!proactive.enabled) {
+      proactiveEngine.stop();
+      return;
+    }
+
+    // DOM 이벤트 기반 활동 추적 시작 (v2)
+    presenceTracker.bindDOM();
+    presenceTracker.setIdleThresholdMs(proactive.idleMinutes * 60_000);
+
+    proactiveEngine.start((text, trigger) => {
+      log('Proactive message:', trigger, text.substring(0, 50));
+      void processExternalResponse({ text, source: 'internal' });
+    });
+
+    return () => {
+      proactiveEngine.stop();
+      presenceTracker.stop();
+      // DOM 리스너는 유지 (재시작 대비) — 완전 언바인드는 앱 종료 시
+    };
+  }, [settings.proactive?.enabled, settings.proactive?.idleMinutes]);
+
   // Start voice recognition (local Whisper only)
   const startListening = useCallback(async () => {
     if (isListening || isProcessingRef.current) return;
@@ -857,7 +999,8 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
-    // Stop any ongoing speech
+    // Stop any ongoing speech + streaming TTS queue
+    ttsQueue.flush();
     stopSpeaking();
     clearCurrentResponse();
     setError(null);

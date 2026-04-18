@@ -5,6 +5,8 @@ import PhysicsController from './PhysicsController';
 import ExpressionController from './ExpressionController';
 import EyeController from './EyeController';
 import LookAtController from './LookAtController';
+import GazeFollowController from './GazeFollowController';
+import BackchannelController from './BackchannelController';
 import DanceController from './DanceController';
 import HumanoidSyncController from './HumanoidSyncController';
 import IdleFidgetController from './IdleFidgetController';
@@ -51,8 +53,14 @@ export default function AnimationManager() {
       {/* Layer 3b: Eye controller - Eye movement and blinking */}
       <EyeController />
 
-      {/* Layer 3c: LookAt controller - Makes avatar look at camera */}
+      {/* Layer 3c: LookAt controller - Makes avatar look at camera (faceOnlyMode) */}
       <LookAtController />
+
+      {/* Layer 3d: Gaze follow - Cursor tracking + saccade (v2 3순위) */}
+      <GazeFollowController />
+
+      {/* Layer 3e: Backchannel - Listening nod (v2 3순위) */}
+      <BackchannelController />
 
       {/* Layer 4: Dance system - Rhythm-based movement */}
       {!faceOnlyModeEnabled && dancingEnabled && <DanceController />}
