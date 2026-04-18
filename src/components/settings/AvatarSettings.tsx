@@ -93,10 +93,11 @@ export default function AvatarSettings() {
           onChange={(e) => setAvatarSettings({ scale: parseFloat(e.target.value) })}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
         />
-        <div className="flex justify-between text-xs text-gray-500">
-          <span>0.3x</span>
-          <span>1.0x</span>
-          <span>2.0x</span>
+        {/* 레이블 위치를 실제 슬라이더 값 비율에 맞춤 (0.3=0%, 1.0=41.2%, 2.0=100%) */}
+        <div className="relative h-4 text-xs text-gray-500">
+          <span className="absolute left-0">0.3x</span>
+          <span className="absolute -translate-x-1/2" style={{ left: `${((1.0 - 0.3) / (2.0 - 0.3)) * 100}%` }}>1.0x</span>
+          <span className="absolute right-0">2.0x</span>
         </div>
       </div>
 
