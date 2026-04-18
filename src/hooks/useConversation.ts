@@ -676,11 +676,24 @@ export function useConversation(): UseConversationReturn {
         settings.avatarPersonalityPrompt || ''
       );
 
-      // Prepare messages for LLM (외부 알림은 프롬프트에서 제외)
+      // Prepare messages for LLM:
+      //   - 'external' 알림은 완전 제외
+      //   - 'screen-watch' 관찰은 최근 5개만 포함 (양방향 대화 맥락 유지 + 토큰 축적 방지)
+      const SCREEN_WATCH_WINDOW = 5;
+      const screenWatchIdsInWindow = new Set(
+        currentMessages
+          .filter((m) => m.source === 'screen-watch')
+          .slice(-SCREEN_WATCH_WINDOW)
+          .map((m) => m.id)
+      );
       const llmMessages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },
         ...currentMessages
-          .filter((m) => m.source !== 'external')
+          .filter((m) => {
+            if (m.source === 'external') return false;
+            if (m.source === 'screen-watch') return screenWatchIdsInWindow.has(m.id);
+            return true;
+          })
           .map((m) => ({
             role: m.role as 'user' | 'assistant' | 'system',
             content: m.content,

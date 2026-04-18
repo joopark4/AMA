@@ -22,6 +22,7 @@ import { useMenuListeners } from './hooks/useMenuListeners';
 import { useMonitorStore } from './stores/monitorStore';
 import { useAboutStore } from './stores/aboutStore';
 import { useMcpSpeakListener } from './features/channels';
+import { useScreenWatcher } from './features/screen-watch';
 import { CODEX_PROVIDER } from './features/codex';
 import { ollamaClient } from './services/ai/ollamaClient';
 import { localAiClient } from './services/ai/localAiClient';
@@ -48,6 +49,9 @@ function App() {
 
   // MCP 채널 speak 이벤트 리스너
   useMcpSpeakListener();
+
+  // Screen Watch 주기 관찰 루프
+  useScreenWatcher();
 
   // Codex app-server 연결 관리 (provider 전환 또는 작업 폴더 변경 시 재시작)
   useEffect(() => {
