@@ -1,0 +1,130 @@
+import { useEffect, useRef } from 'react';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { useConversationStore } from '../../stores/conversationStore';
+import { processExternalResponse } from '../channels';
+import { screenWatchService, isInSilentHours, isVisionAvailable } from './screenWatchService';
+
+/**
+ * useScreenWatcher — Screen Watch 타이머 루프
+ *
+ * - 10초마다 tick → `Date.now() - lastObservationTime >= intervalSeconds * 1000`이면 관찰 실행
+ *   (setInterval 밀림 대응 — sleep/wake 후 연속 실행 방지)
+ * - `isObservingRef` 플래그로 동시 관찰 방지
+ * - 대화 진행(isProcessing/isSpeaking) 중엔 스킵
+ * - 설정 OFF → Rust 측 비교 버퍼 해제
+ * - 앱 시작 30초 후 첫 tick (리소스 경합 회피)
+ */
+
+const TICK_INTERVAL_MS = 10_000;
+const INITIAL_DELAY_MS = 30_000;
+const debug = (...args: unknown[]) => {
+  if (import.meta.env.DEV) console.log('[screen-watch]', ...args);
+};
+
+export function useScreenWatcher(): void {
+  const enabled = useSettingsStore((s) => s.settings.screenWatch?.enabled ?? false);
+  const provider = useSettingsStore((s) => s.settings.llm.provider);
+
+  const isObservingRef = useRef(false);
+  const lastObservationAtRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const initialTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // 앱 시작 시 한 번 잔여 스크린샷 정리
+    void screenWatchService.cleanupResiduals();
+  }, []);
+
+  useEffect(() => {
+    // Provider가 Vision 미지원이거나 토글 OFF면 비활성
+    if (!enabled || !isVisionAvailable(provider)) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (initialTimerRef.current) {
+        clearTimeout(initialTimerRef.current);
+        initialTimerRef.current = null;
+      }
+      isObservingRef.current = false;
+      lastObservationAtRef.current = 0;
+      void screenWatchService.clearState();
+      return;
+    }
+
+    debug('enabled for provider:', provider);
+
+    const tick = async () => {
+      if (isObservingRef.current) {
+        debug('skip: already observing');
+        return;
+      }
+      const state = useConversationStore.getState();
+      if (state.isProcessing || state.isSpeaking || state.isListening) {
+        debug('skip: conversation active', { status: state.status });
+        return;
+      }
+      const settingsNow = useSettingsStore.getState().settings.screenWatch;
+      if (!settingsNow.enabled) return;
+
+      // 조용한 시간
+      if (isInSilentHours(new Date(), settingsNow.silentHours)) {
+        debug('skip: silent hours');
+        return;
+      }
+
+      // 시간 기반 쿨다운 (setInterval 밀림 대응)
+      const now = Date.now();
+      const intervalMs = settingsNow.intervalSeconds * 1000;
+      if (lastObservationAtRef.current > 0 && now - lastObservationAtRef.current < intervalMs) {
+        return;
+      }
+
+      isObservingRef.current = true;
+      lastObservationAtRef.current = now;
+      try {
+        const outcome = await screenWatchService.observeScreen({
+          captureTarget: settingsNow.captureTarget,
+          responseStyle: settingsNow.responseStyle,
+        });
+        debug('outcome:', outcome);
+
+        if (outcome.kind !== 'spoke') return;
+
+        // 발화 직전 대화 상태 재확인 (LLM 응답 대기 중 사용자가 말을 걸었을 수 있음)
+        const stateAfter = useConversationStore.getState();
+        if (stateAfter.isProcessing || stateAfter.isSpeaking || stateAfter.isListening) {
+          debug('skip after LLM: user conversation started');
+          return;
+        }
+
+        await processExternalResponse({ text: outcome.text, source: 'screen-watch' });
+      } catch (err) {
+        debug('tick error:', err);
+      } finally {
+        isObservingRef.current = false;
+      }
+    };
+
+    // 초기 지연 30초 후 첫 tick, 이후 10초마다
+    initialTimerRef.current = setTimeout(() => {
+      initialTimerRef.current = null;
+      void tick();
+      timerRef.current = setInterval(() => void tick(), TICK_INTERVAL_MS);
+    }, INITIAL_DELAY_MS);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (initialTimerRef.current) {
+        clearTimeout(initialTimerRef.current);
+        initialTimerRef.current = null;
+      }
+      isObservingRef.current = false;
+      lastObservationAtRef.current = 0;
+      void screenWatchService.clearState();
+    };
+  }, [enabled, provider]);
+}

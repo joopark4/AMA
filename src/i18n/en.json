@@ -328,6 +328,36 @@
       "approvalUntrustedDesc": "Only performs read-only operations automatically. Requires approval for file modifications and command execution.",
       "info": "Chat directly with an AI specialized in coding tasks via the OpenAI Codex CLI. Available with a ChatGPT subscription."
     },
+    "screenWatch": {
+      "title": "Screen Watch",
+      "enabled": "Enable Screen Watch",
+      "enabledDesc": "Periodically observes your screen and makes situational remarks",
+      "visionUnavailable": "The current AI model doesn't support vision. Switch to Claude/OpenAI/Gemini/Codex/Claude Code.",
+      "captureTarget": "Capture Target",
+      "targets": {
+        "fullscreen": "Full Screen",
+        "activeWindow": "Active Window",
+        "mainMonitor": "Main Monitor",
+        "specificWindow": "Specific Window"
+      },
+      "selectWindow": "Select a window to observe",
+      "refresh": "🔄 Refresh",
+      "loading": "Loading...",
+      "noWindows": "No open windows or Accessibility permission required",
+      "interval": "Interval: {{value}}s",
+      "responseStyle": "Response Style",
+      "styles": {
+        "balanced": "Balanced",
+        "advisor": "Advisor",
+        "comedian": "Comedian",
+        "analyst": "Analyst"
+      },
+      "silentHours": "Silent Hours (pause observation)",
+      "privacyTitle": "Screen Watch Notice",
+      "privacyBody": "Your screen data will be sent to the selected AI service.\n\nBe careful not to expose sensitive information (passwords, card numbers, etc.) on screen. You can use Silent Hours to pause observation during specific time ranges.",
+      "cancel": "Cancel",
+      "confirm": "Agree and Enable"
+    },
     "mcp": {
       "title": "Claude Code Channels",
       "description": "Connect the avatar to an external Claude Code session. User input is sent to Claude Code, and responses are spoken aloud by the avatar.",

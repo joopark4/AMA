@@ -10,6 +10,8 @@
     <string>AMA may use camera for future features</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>AMA uses speech recognition for voice commands</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>AMA observes your screen to provide context-aware suggestions when Screen Watch is enabled</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

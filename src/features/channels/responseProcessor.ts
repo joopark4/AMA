@@ -136,7 +136,7 @@ function stopLipSync(): void {
 export interface ProcessResponseOptions {
   text: string;
   emotion?: string;
-  source?: 'internal' | 'external';
+  source?: 'internal' | 'external' | 'screen-watch';
 }
 
 /**

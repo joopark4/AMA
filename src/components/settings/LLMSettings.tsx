@@ -443,7 +443,7 @@ function getModelStatusLabel(status: ModelStatus): string {
 
 export default function LLMSettings() {
   const { t } = useTranslation();
-  const { settings, setLLMSettings } = useSettingsStore();
+  const { settings, setLLMSettings, setScreenWatchSettings } = useSettingsStore();
   const [localModels, setLocalModels] = useState<string[]>([]);
   const [cloudModels, setCloudModels] = useState<Partial<Record<CloudProvider, string[]>>>({});
   const [modelStatuses, setModelStatuses] = useState<Record<string, ModelStatus>>({});
@@ -610,6 +610,12 @@ export default function LLMSettings() {
                   model: models[0] || '',
                   endpoint,
                 });
+                // Vision 미지원 provider로 전환 시 Screen Watch 자동 비활성
+                if (provider === 'ollama' || provider === 'localai') {
+                  if (settings.screenWatch?.enabled) {
+                    setScreenWatchSettings({ enabled: false });
+                  }
+                }
               }}
               className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${mcpLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
             >

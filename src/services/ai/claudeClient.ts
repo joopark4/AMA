@@ -37,7 +37,11 @@ export class ClaudeClient implements LLMClient {
       }));
   }
 
-  private buildVisionMessages(messages: Message[], imageBase64: string): Anthropic.Messages.MessageParam[] {
+  private buildVisionMessages(
+    messages: Message[],
+    imageBase64: string,
+    mimeType: 'image/png' | 'image/jpeg' | 'image/webp' = 'image/png'
+  ): Anthropic.Messages.MessageParam[] {
     const lastUserMessage = messages.filter((m) => m.role === 'user').pop();
     if (!lastUserMessage) {
       throw new Error('No user message found');
@@ -55,7 +59,7 @@ export class ClaudeClient implements LLMClient {
             type: 'image' as const,
             source: {
               type: 'base64' as const,
-              media_type: 'image/png' as const,
+              media_type: mimeType,
               data: imageBase64,
             },
           },
@@ -147,7 +151,7 @@ export class ClaudeClient implements LLMClient {
     imageBase64: string,
     options?: ChatOptions
   ): Promise<LLMResponse> {
-    const anthropicMessages = this.buildVisionMessages(messages, imageBase64);
+    const anthropicMessages = this.buildVisionMessages(messages, imageBase64, options?.mimeType);
     const systemMessage = this.getSystemMessage(messages, options);
     return this.createMessageResponse(anthropicMessages, systemMessage, options);
   }
