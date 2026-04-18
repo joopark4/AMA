@@ -338,8 +338,11 @@
         "fullscreen": "全画面",
         "activeWindow": "アクティブウィンドウ",
         "mainMonitor": "メインモニター",
+        "specificMonitor": "特定モニター",
         "specificWindow": "特定ウィンドウ"
       },
+      "selectMonitor": "観察するモニターを選択",
+      "noMonitors": "モニター情報を読み込めません",
       "selectWindow": "観察するウィンドウを選択",
       "refresh": "🔄 更新",
       "loading": "読み込み中...",
@@ -358,7 +361,8 @@
       "cancel": "キャンセル",
       "confirm": "同意して有効化",
       "permissionDenied": "画面録画権限がありません。観察は即座にブロックされます。",
-      "requestPermission": "権限をリクエスト"
+      "requestPermission": "権限をリクエスト",
+      "openAccessibility": "アクセシビリティ設定を開く"
     },
     "mcp": {
       "title": "Claude Code Channels",

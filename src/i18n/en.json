@@ -338,8 +338,11 @@
         "fullscreen": "Full Screen",
         "activeWindow": "Active Window",
         "mainMonitor": "Main Monitor",
+        "specificMonitor": "Specific Monitor",
         "specificWindow": "Specific Window"
       },
+      "selectMonitor": "Select a monitor to observe",
+      "noMonitors": "Unable to read monitor info",
       "selectWindow": "Select a window to observe",
       "refresh": "🔄 Refresh",
       "loading": "Loading...",
@@ -358,7 +361,8 @@
       "cancel": "Cancel",
       "confirm": "Agree and Enable",
       "permissionDenied": "Screen Recording permission is not granted. Observation is blocked.",
-      "requestPermission": "Request Permission"
+      "requestPermission": "Request Permission",
+      "openAccessibility": "Open Accessibility Settings"
     },
     "mcp": {
       "title": "Claude Code Channels",

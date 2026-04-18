@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { screenWatchService, isVisionAvailable } from './screenWatchService';
+import { useMonitorStore } from '../../stores/monitorStore';
 import type { CaptureTarget, ScreenWatchResponseStyle } from '../../stores/settingsStore';
 
 const STYLES: ScreenWatchResponseStyle[] = ['balanced', 'advisor', 'comedian', 'analyst'];
@@ -73,6 +75,14 @@ export default function ScreenWatchSettings() {
     setShowPrivacy(false);
   };
 
+  const { monitors, fetchMonitors } = useMonitorStore();
+
+  useEffect(() => {
+    if (watch.captureTarget.type === 'monitor') {
+      void fetchMonitors();
+    }
+  }, [watch.captureTarget.type, fetchMonitors]);
+
   const handleTargetChange = (value: string) => {
     let target: CaptureTarget;
     switch (value) {
@@ -81,6 +91,9 @@ export default function ScreenWatchSettings() {
       case 'main-monitor':
         target = { type: value };
         break;
+      case 'monitor':
+        target = { type: 'monitor', monitorName: '' };
+        break;
       case 'window':
         target = { type: 'window', appName: '' };
         break;
@@ -88,6 +101,10 @@ export default function ScreenWatchSettings() {
         return;
     }
     setScreenWatchSettings({ captureTarget: target });
+  };
+
+  const handleSelectMonitor = (name: string) => {
+    setScreenWatchSettings({ captureTarget: { type: 'monitor', monitorName: name } });
   };
 
   const handleSelectWindow = (w: WindowInfo) => {
@@ -101,6 +118,8 @@ export default function ScreenWatchSettings() {
     watch.captureTarget.type === 'window' ? watch.captureTarget.appName : '';
   const selectedWindowTitle =
     watch.captureTarget.type === 'window' ? watch.captureTarget.windowTitle : '';
+  const selectedMonitorName =
+    watch.captureTarget.type === 'monitor' ? watch.captureTarget.monitorName : '';
 
   return (
     <div className="space-y-4">
@@ -162,9 +181,53 @@ export default function ScreenWatchSettings() {
               <option value="fullscreen">{t('settings.screenWatch.targets.fullscreen', '전체 화면')}</option>
               <option value="active-window">{t('settings.screenWatch.targets.activeWindow', '활성 창')}</option>
               <option value="main-monitor">{t('settings.screenWatch.targets.mainMonitor', '메인 모니터')}</option>
+              <option value="monitor">{t('settings.screenWatch.targets.specificMonitor', '특정 모니터')}</option>
               <option value="window">{t('settings.screenWatch.targets.specificWindow', '특정 윈도우')}</option>
             </select>
           </div>
+
+          {/* Monitor list */}
+          {targetType === 'monitor' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  {t('settings.screenWatch.selectMonitor', '관찰할 모니터를 선택하세요')}
+                </span>
+                <button
+                  onClick={() => void fetchMonitors()}
+                  className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50"
+                >
+                  {t('settings.screenWatch.refresh', '🔄 새로고침')}
+                </button>
+              </div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {monitors.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-gray-500 border border-dashed border-gray-200 rounded-lg">
+                    {t('settings.screenWatch.noMonitors', '모니터 정보를 읽을 수 없습니다')}
+                  </div>
+                )}
+                {monitors.map((m, i) => {
+                  const isSelected = selectedMonitorName === m.name;
+                  return (
+                    <button
+                      key={`${m.name}-${i}`}
+                      onClick={() => handleSelectMonitor(m.name)}
+                      className={`w-full px-3 py-2 text-left rounded-lg border text-sm transition-colors ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50 text-blue-900'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="font-medium truncate">{m.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {m.width}×{m.height} @ {m.scale_factor}x ({m.x}, {m.y})
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Window list */}
           {targetType === 'window' && (
@@ -185,8 +248,21 @@ export default function ScreenWatchSettings() {
               </div>
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {windows.length === 0 && !windowsLoading && (
-                  <div className="px-3 py-2 text-xs text-gray-500 border border-dashed border-gray-200 rounded-lg">
-                    {t('settings.screenWatch.noWindows', '열린 윈도우가 없거나 Accessibility 권한이 필요합니다')}
+                  <div className="px-3 py-2 text-xs text-gray-500 border border-dashed border-gray-200 rounded-lg space-y-2">
+                    <div>
+                      {t(
+                        'settings.screenWatch.noWindows',
+                        '열린 윈도우가 없거나 Accessibility 권한이 필요합니다'
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        invoke('open_accessibility_settings').catch(() => {});
+                      }}
+                      className="px-2 py-1 rounded bg-gray-700 text-white text-xs hover:bg-gray-800"
+                    >
+                      {t('settings.screenWatch.openAccessibility', '접근성 설정 열기')}
+                    </button>
                   </div>
                 )}
                 {windows.map((w, i) => {
