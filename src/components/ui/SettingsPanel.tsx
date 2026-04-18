@@ -12,6 +12,7 @@ import LicensesSettings from '../settings/LicensesSettings';
 import UpdateSettings from '../settings/UpdateSettings';
 import DataCleanupSettings from '../settings/DataCleanupSettings';
 import { MCPSettings } from '../../features/channels';
+import { ScreenWatchSettings } from '../../features/screen-watch';
 import MonitorSettings from '../settings/MonitorSettings';
 export default function SettingsPanel() {
   const { t } = useTranslation();
@@ -112,6 +113,11 @@ export default function SettingsPanel() {
           {/* Avatar Settings */}
           <SettingsSection title={t('settings.avatar.title')}>
             <AvatarSettings />
+          </SettingsSection>
+
+          {/* Screen Watch */}
+          <SettingsSection title={t('settings.screenWatch.title', '화면 관찰')}>
+            <ScreenWatchSettings />
           </SettingsSection>
 
           {/* Claude Code Channels */}
