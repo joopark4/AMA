@@ -154,7 +154,11 @@
         "enableBreathing": "呼吸アニメーション",
         "enableBreathingDesc": "待機中の微細な呼吸動作",
         "enableEyeDrift": "視線移動",
-        "enableEyeDriftDesc": "自然な目の微細な動き"
+        "enableEyeDriftDesc": "自然な目の微細な動き",
+        "gazeFollow": "カーソル追従視線",
+        "gazeFollowDesc": "アバターの目がマウスカーソルを追いかけます (停止時は微細な視線の揺れ)",
+        "backchannel": "相づちのうなずき",
+        "backchannelDesc": "音声入力中、定期的にうなずいて「聞いています」を表現"
       },
       "physics": {
         "title": "物理エンジン",

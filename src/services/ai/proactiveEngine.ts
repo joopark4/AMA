@@ -18,6 +18,10 @@ import { buildMessageWindow } from './memoryManager';
 import type { Message as LLMMessage } from './types';
 import { presenceTracker, type Presence } from '../presence/presenceTracker';
 
+const debug = (...args: unknown[]) => {
+  if (import.meta.env.DEV) console.log('[proactive]', ...args);
+};
+
 export type ProactiveTrigger =
   | 'idle_greeting'
   | 'time_greeting'
@@ -123,25 +127,30 @@ export async function innerThought(context: {
   trigger: ProactiveTrigger;
   urgency: number;
   idleSec: number;
-  isWindowFocused: boolean;
+  isPageVisible: boolean;
   recentUserMessage: string | null;
 }): Promise<InnerThought> {
-  // 빠른 휴리스틱: silent trigger이거나 창이 blur 상태이면 바로 skip
+  // 빠른 휴리스틱: silent trigger이거나 탭이 숨겨진 상태면 skip.
+  // (window focus는 DevTools 오픈 시 blur되므로 체크하지 않는다 — 탭 visibility만 본다)
   if (context.trigger === 'silent') {
     return { shouldSpeak: false, category: 'silent' };
   }
-  if (!context.isWindowFocused) {
-    return { shouldSpeak: false, category: 'silent', reason: 'window not focused' };
+  if (!context.isPageVisible) {
+    return { shouldSpeak: false, category: 'silent', reason: 'page not visible' };
   }
 
-  // Stage 1 프롬프트: 짧고 JSON 응답만
+  // 중강도 이상 urgency는 LLM 판단 없이 바로 발화 (쿨다운/urgency 필터가 이미 통과했음)
+  if (context.urgency >= 0.4) {
+    return { shouldSpeak: true, category: context.trigger };
+  }
+
+  // Stage 1 프롬프트: 저 urgency(<0.4)에서만 호출됨. 강한 긍정 bias.
   const systemPrompt = [
     '당신은 AI 아바타의 "내부 사고(inner thought)"입니다.',
-    '지금 사용자에게 말을 걸 적절한 순간인지 판단하세요.',
-    '판단 기준:',
-    '- 사용자가 집중해서 작업 중이면 방해하지 마세요 (false)',
-    '- 쿨다운 직후거나 최근 말한 직후면 무리하게 말하지 마세요 (false)',
-    '- 오래 조용했거나 돌아온 직후면 자연스럽게 말 걸 수 있습니다 (true)',
+    '자연스러운 동반자처럼 먼저 말을 걸어도 되는지 판단하세요.',
+    '기본 답은 true입니다. 다음 한 가지 경우에만 false로 답하세요:',
+    '- 최근 사용자 메시지에 "집중해야 해", "방해하지 마", "조용히 해" 같은 명시적 요청이 있음',
+    '그 외 모든 경우엔 true로 답하세요.',
     '반드시 다음 JSON 형식으로만 답하세요 (추가 설명 금지):',
     '{"should_speak": boolean, "category": "idle_greeting"|"time_greeting"|"return_greeting"|"observation"|"silent"}',
   ].join('\n');
@@ -171,8 +180,8 @@ export async function innerThought(context: {
     console.warn('[proactiveEngine] inner thought stage failed, falling back', err);
   }
 
-  // Heuristic fallback: urgency ≥ 0.4면 말함
-  return { shouldSpeak: context.urgency >= 0.4, category: context.trigger };
+  // Heuristic fallback: urgency ≥ 0.2면 말함 (LLM 실패 시에도 관대하게)
+  return { shouldSpeak: context.urgency >= 0.2, category: context.trigger };
 }
 
 function isValidTrigger(value: unknown): value is ProactiveTrigger {
@@ -259,6 +268,7 @@ export class ProactiveEngine {
     // PresenceTracker에 구독
     presenceTracker.start();
     this.unsubPresence = presenceTracker.subscribe((p) => this.onPresence(p));
+    debug('engine started, subscribed to presenceTracker');
   }
 
   stop(): void {
@@ -291,7 +301,12 @@ export class ProactiveEngine {
     if (!proactive?.enabled) return;
 
     const convState = useConversationStore.getState();
-    if (convState.status !== 'idle') return;
+    if (convState.status !== 'idle') {
+      if (presence.idleCrossed) {
+        debug('idle crossed but status=', convState.status, '— skipped');
+      }
+      return;
+    }
 
     // 시그널 평가
     const idleThresholdSec = proactive.idleMinutes * 60;
@@ -313,7 +328,15 @@ export class ProactiveEngine {
     }
 
     if (trigger === 'silent') return;
-    if (!this.canTrigger(proactive, urgency)) return;
+
+    debug(`trigger=${trigger} urgency=${urgency.toFixed(2)} idleSec=${presence.idleSec.toFixed(0)}`);
+
+    if (!this.canTrigger(proactive, urgency)) {
+      const cooldownMs = urgencyToCooldownMs(urgency, proactive.cooldownMinutes);
+      const remaining = cooldownMs - (Date.now() - this.lastProactiveAt);
+      debug(`cooldown blocking — ${Math.round(remaining / 1000)}s remaining`);
+      return;
+    }
 
     await this.trigger(trigger, urgency);
   }
@@ -338,18 +361,22 @@ export class ProactiveEngine {
       const messages = useConversationStore.getState().messages;
       const recentUser = [...messages].reverse().find((m) => m.role === 'user');
 
+      debug('stage 1 (inner thought) start');
       const thought = await innerThought({
         trigger: proposedTrigger,
         urgency,
         idleSec: presence.idleSec,
-        isWindowFocused: presence.isWindowFocused,
+        isPageVisible: presence.isPageVisible,
         recentUserMessage: recentUser?.content ?? null,
       });
+      debug('stage 1 result:', thought);
 
       if (!thought.shouldSpeak) return;
 
       // Stage 2: 실제 발화 생성
+      debug('stage 2 (generate message) start');
       const text = await generateProactiveMessage(thought.category);
+      debug('stage 2 result:', text ? `"${text.slice(0, 60)}..."` : 'null');
       if (!text) return;
 
       this.lastProactiveAt = Date.now();
