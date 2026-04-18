@@ -15,10 +15,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
 import { useClaudeCodeChat } from '../features/channels';
-import { buildCharacterPrompt, analyzeEmotion } from '../services/character';
+import { buildCharacterPrompt, analyzeEmotion, emotionToVec, NEUTRAL_MOOD } from '../services/character';
 import { ttsQueue } from '../services/voice/ttsQueue';
 import { buildMessageWindow, summarizeIfNeeded } from '../services/ai/memoryManager';
 import { proactiveEngine } from '../services/ai/proactiveEngine';
+import { presenceTracker } from '../services/presence/presenceTracker';
 import { processExternalResponse } from '../features/channels/responseProcessor';
 import { collectContext, formatContextForPrompt } from '../services/context';
 
@@ -280,7 +281,7 @@ export function useConversation(): UseConversationReturn {
     setStreamingResponse,
     appendStreamingToken,
     setMemory,
-    setMood,
+    setMoodTarget,
     setStatus,
     clearCurrentResponse,
     clearMessages,
@@ -671,10 +672,11 @@ export function useConversation(): UseConversationReturn {
       // Phase 4: 환경 컨텍스트 수집
       const contextStr = formatContextForPrompt(collectContext());
 
-      // Phase 5: 지속 감정(mood) 주입
-      const currentMood = useConversationStore.getState().mood;
-      const moodHint = currentMood !== 'neutral'
-        ? `[현재 기분: ${currentMood} — 이 기분을 대화 톤에 자연스럽게 반영하세요]`
+      // Phase 5: 지속 감정(mood) 주입 — v2: VAD 연속 감정 기반
+      const { mood: currentMood, moodIntensity } = useConversationStore.getState();
+      // 강도가 약하면(< 0.2) mood 힌트를 생략해 중립 톤 유지
+      const moodHint = currentMood !== 'neutral' && moodIntensity >= 0.2
+        ? `[현재 기분: ${currentMood} (강도 ${moodIntensity.toFixed(2)}) — 이 기분을 대화 톤에 자연스럽게 반영하세요]`
         : '';
 
       // 시스템 프롬프트에 메모리 + 환경 컨텍스트 + mood 결합
@@ -788,10 +790,10 @@ export function useConversation(): UseConversationReturn {
 
       if (responseEmotionMatch.score > 0) {
         setEmotion(responseEmotionMatch.emotion);
-        // Phase 5: 지속 감정(mood) 업데이트 — 강한 감정일 때만 mood 변경
-        if (responseEmotionMatch.score >= 2) {
-          setMood(responseEmotionMatch.emotion);
-        }
+        // v2: VAD 연속 감정 — 매 응답마다 target 설정 후 lerp (강도 임계값 없이 항상 갱신).
+        // score를 alpha에 반영하면 강한 감정일수록 더 빨리 수렴한다 (0.25 ~ 0.55 범위).
+        const alpha = Math.min(0.55, 0.25 + responseEmotionMatch.score * 0.15);
+        setMoodTarget(emotionToVec(responseEmotionMatch.emotion), alpha);
         triggerEmotionMotion(
           responseEmotionMatch.emotion,
           responseEmotionMatch.score,
@@ -804,10 +806,8 @@ export function useConversation(): UseConversationReturn {
         }
       } else {
         stopDancing();
-        // 감정 없는 응답이 2회 연속이면 mood를 neutral로 복귀
-        if (currentMood !== 'neutral') {
-          setMood('neutral');
-        }
+        // v2: 감정 없는 응답일 때 neutral로 서서히 수렴 (직행 금지, 한 턴에 20%씩만)
+        setMoodTarget(NEUTRAL_MOOD, 0.2);
       }
 
       // Add assistant message and set final response
@@ -921,7 +921,7 @@ export function useConversation(): UseConversationReturn {
     };
   }, []);
 
-  // Phase 3: 자발적 대화 엔진 start/stop
+  // Phase 3 / v2: 자발적 대화 엔진 start/stop (PresenceTracker 연동)
   useEffect(() => {
     const proactive = settings.proactive ?? { enabled: false };
     if (!proactive.enabled) {
@@ -929,24 +929,21 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
+    // DOM 이벤트 기반 활동 추적 시작 (v2)
+    presenceTracker.bindDOM();
+    presenceTracker.setIdleThresholdMs(proactive.idleMinutes * 60_000);
+
     proactiveEngine.start((text, trigger) => {
       log('Proactive message:', trigger, text.substring(0, 50));
       void processExternalResponse({ text, source: 'internal' });
     });
 
-    // 앱 포커스 복귀 감지
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        proactiveEngine.notifyAppFocusReturn();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       proactiveEngine.stop();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      presenceTracker.stop();
+      // DOM 리스너는 유지 (재시작 대비) — 완전 언바인드는 앱 종료 시
     };
-  }, [settings.proactive?.enabled]);
+  }, [settings.proactive?.enabled, settings.proactive?.idleMinutes]);
 
   // Start voice recognition (local Whisper only)
   const startListening = useCallback(async () => {
