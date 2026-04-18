@@ -40,6 +40,7 @@ fn main() {
             commands::screenshot::cleanup_screen_watch_residuals,
             commands::screenshot::check_screen_capture_permission,
             commands::screenshot::request_screen_capture_permission,
+            commands::screenshot::get_screen_watch_save_dir,
             commands::voice::transcribe_audio,
             commands::voice::check_whisper_available,
             commands::voice::get_whisper_availability,
