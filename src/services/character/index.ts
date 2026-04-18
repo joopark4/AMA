@@ -29,3 +29,15 @@ export { analyzeEmotion, EMOTION_KEYWORDS } from './analyzeEmotion';
 
 // 감정 가중치
 export { getEmotionWeight } from './emotionWeights';
+
+// VAD 연속 감정 (v2)
+export type { MoodVec } from './vadCatalog';
+export {
+  VAD_CATALOG,
+  NEUTRAL_MOOD,
+  MOOD_LERP_ALPHA,
+  emotionToVec,
+  nearestEmotion,
+  moodMagnitude,
+  lerpMood,
+} from './vadCatalog';

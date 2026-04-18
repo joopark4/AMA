@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_MEMORY_STATE, type MemoryState } from '../services/ai/memoryManager';
 import type { Emotion } from './avatarStore';
+import {
+  MOOD_LERP_ALPHA,
+  NEUTRAL_MOOD,
+  lerpMood,
+  moodMagnitude,
+  nearestEmotion,
+  type MoodVec,
+} from '../services/character/vadCatalog';
 
 export interface Message {
   id: string;
@@ -21,8 +29,15 @@ interface ConversationState {
   streamingResponse: string | null;
   /** 대화 메모리 (Phase 2) — 요약 + 중요 사실 */
   memory: MemoryState;
-  /** 지속 감정 상태 (Phase 5) — 여러 턴에 걸쳐 서서히 변화 */
+  /**
+   * 지속 감정 상태 (Phase 5) — 여러 턴에 걸쳐 서서히 변화.
+   * `mood`는 `moodVec`을 가장 가까운 이산 라벨로 역매핑한 값이며 프롬프트 힌트용.
+   */
   mood: Emotion;
+  /** VAD 연속 감정 벡터 (v2) — 실제 내부 상태. 턴마다 lerp로 갱신. */
+  moodVec: MoodVec;
+  /** 감정 강도 (0..1) — render intensity에 곱하기 위한 값. */
+  moodIntensity: number;
   status: ConversationStatus;
   isProcessing: boolean;
   isListening: boolean;
@@ -35,6 +50,11 @@ interface ConversationState {
   appendStreamingToken: (token: string) => void;
   setMemory: (memory: MemoryState) => void;
   setMood: (mood: Emotion) => void;
+  /**
+   * VAD 연속 감정의 타겟을 지정하고 한 스텝 lerp를 수행한다.
+   * mood/moodIntensity도 함께 파생 갱신된다.
+   */
+  setMoodTarget: (target: MoodVec, alpha?: number) => void;
   setStatus: (status: ConversationStatus) => void;
   setIsProcessing: (isProcessing: boolean) => void;
   setIsListening: (isListening: boolean) => void;
@@ -52,6 +72,8 @@ export const useConversationStore = create<ConversationState>()(
       streamingResponse: null,
       memory: DEFAULT_MEMORY_STATE,
       mood: 'neutral' as Emotion,
+      moodVec: { ...NEUTRAL_MOOD },
+      moodIntensity: 0,
       status: 'idle',
       isProcessing: false,
       isListening: false,
@@ -85,6 +107,16 @@ export const useConversationStore = create<ConversationState>()(
 
       setMood: (mood) => set({ mood }),
 
+      setMoodTarget: (target, alpha = MOOD_LERP_ALPHA) =>
+        set((state) => {
+          const next = lerpMood(state.moodVec, target, alpha);
+          return {
+            moodVec: next,
+            mood: nearestEmotion(next),
+            moodIntensity: moodMagnitude(next),
+          };
+        }),
+
       setStatus: (status) =>
         set({
           status,
@@ -106,7 +138,13 @@ export const useConversationStore = create<ConversationState>()(
         set({ error, status: error ? 'error' : 'idle' }),
 
       clearMessages: () =>
-        set({ messages: [], memory: DEFAULT_MEMORY_STATE, mood: 'neutral' as Emotion }),
+        set({
+          messages: [],
+          memory: DEFAULT_MEMORY_STATE,
+          mood: 'neutral' as Emotion,
+          moodVec: { ...NEUTRAL_MOOD },
+          moodIntensity: 0,
+        }),
 
       clearCurrentResponse: () =>
         set({ currentResponse: null }),

@@ -1,11 +1,13 @@
 /**
- * 자발적 대화 엔진 (Phase 3)
+ * 자발적 대화 엔진 (Phase 3 / v2)
  *
- * 사용자가 말을 걸지 않아도 아바타가 먼저 말을 건다.
- * - 유휴 감지 타이머
- * - 트리거 유형: idle_greeting, time_greeting, return_greeting
- * - 쿨다운: 자발 발화 후 최소 N분 재발화 방지
- * - 안전 가드레일: 대화 중/TTS 재생 중이면 보류
+ * 기존 1분 타이머 + 단일 idle 체크 → **Presence 기반 이벤트 트리거 + 2-stage LLM 필터**로 교체.
+ *
+ * v2 개선:
+ * - PresenceTracker 구독 → idle 경계/포커스 복귀 이벤트 수신
+ * - Urgency score 계산 (신호 가중합) + 동적 쿨다운 (urgency 반비례)
+ * - Stage 1: 경량 LLM 호출로 `should_speak` 판단 (헛발화 1차 필터)
+ * - Stage 2: 실제 발화 생성 (기존 로직)
  */
 
 import { useConversationStore } from '../../stores/conversationStore';
@@ -14,14 +16,20 @@ import { llmRouter } from './llmRouter';
 import { buildCharacterPrompt } from '../character';
 import { buildMessageWindow } from './memoryManager';
 import type { Message as LLMMessage } from './types';
+import { presenceTracker, type Presence } from '../presence/presenceTracker';
 
-export type ProactiveTrigger = 'idle_greeting' | 'time_greeting' | 'return_greeting';
+export type ProactiveTrigger =
+  | 'idle_greeting'
+  | 'time_greeting'
+  | 'return_greeting'
+  | 'observation'
+  | 'silent';
 
 export interface ProactiveSettings {
   enabled: boolean;
   /** 유휴 대기 시간 (분) */
   idleMinutes: number;
-  /** 최소 재발화 쿨다운 (분) */
+  /** 최소 재발화 쿨다운 (분) — urgency 낮을 때 상한 */
   cooldownMinutes: number;
 }
 
@@ -40,7 +48,6 @@ function getTimeOfDay(): 'morning' | 'afternoon' | 'evening' | 'night' {
   return 'night';
 }
 
-/** 시간대별 힌트 */
 function getTimeHint(): string {
   const timeOfDay = getTimeOfDay();
   const hour = new Date().getHours();
@@ -53,7 +60,6 @@ function getTimeHint(): string {
   return hints[timeOfDay];
 }
 
-/** 트리거별 시스템 힌트 */
 function getTriggerHint(trigger: ProactiveTrigger): string {
   switch (trigger) {
     case 'idle_greeting':
@@ -62,26 +68,148 @@ function getTriggerHint(trigger: ProactiveTrigger): string {
       return getTimeHint();
     case 'return_greeting':
       return '사용자가 잠시 자리를 비웠다가 돌아왔습니다. 반갑게 맞이해주세요.';
+    case 'observation':
+      return '사용자가 작업 중인 것 같습니다. 방해되지 않는 선에서 짧은 관찰이나 격려 한마디를 건네세요.';
+    case 'silent':
+      return ''; // 발화 없음
   }
 }
 
+/** Urgency 신호 → 가중합 (0..1) */
+export function computeUrgency(inputs: {
+  idleSec: number;
+  idleThresholdSec: number;
+  returnedFromAway: boolean;
+  crossedIdle: boolean;
+  isFirstProactive: boolean;
+  moodIntensity: number;
+}): number {
+  const idleRatio = Math.min(1, inputs.idleSec / Math.max(1, inputs.idleThresholdSec));
+  const idleComponent = inputs.crossedIdle ? 0.5 : idleRatio * 0.3;
+  const returnComponent = inputs.returnedFromAway ? 0.35 : 0;
+  const firstComponent = inputs.isFirstProactive ? 0.2 : 0;
+  const moodComponent = inputs.moodIntensity * 0.15;
+  return Math.max(0, Math.min(1, idleComponent + returnComponent + firstComponent + moodComponent));
+}
+
 /**
- * 자발적 대화 생성
+ * urgency 기반 동적 쿨다운 (ms).
  *
- * @returns 생성된 텍스트 또는 null (생성 실패 시)
+ * 높은 urgency → 짧은 쿨다운 (더 빨리 다시 말할 수 있음)
+ * 낮은 urgency → 긴 쿨다운
  */
+export function urgencyToCooldownMs(urgency: number, baseCooldownMinutes: number): number {
+  const u = Math.max(0, Math.min(1, urgency));
+  const base = baseCooldownMinutes * 60_000;
+  if (u >= 0.9) return 2 * 60_000;
+  if (u >= 0.5) return Math.min(base, 10 * 60_000);
+  return Math.max(base, 30 * 60_000);
+}
+
+// ── Stage 1: should_speak 필터 ──
+
+export interface InnerThought {
+  shouldSpeak: boolean;
+  category: ProactiveTrigger;
+  reason?: string;
+}
+
+/**
+ * Stage 1: 경량 LLM 호출로 "지금 말할 적절한 순간인가" 판단.
+ *
+ * 실패/malformed 시 heuristic fallback 사용.
+ */
+export async function innerThought(context: {
+  trigger: ProactiveTrigger;
+  urgency: number;
+  idleSec: number;
+  isWindowFocused: boolean;
+  recentUserMessage: string | null;
+}): Promise<InnerThought> {
+  // 빠른 휴리스틱: silent trigger이거나 창이 blur 상태이면 바로 skip
+  if (context.trigger === 'silent') {
+    return { shouldSpeak: false, category: 'silent' };
+  }
+  if (!context.isWindowFocused) {
+    return { shouldSpeak: false, category: 'silent', reason: 'window not focused' };
+  }
+
+  // Stage 1 프롬프트: 짧고 JSON 응답만
+  const systemPrompt = [
+    '당신은 AI 아바타의 "내부 사고(inner thought)"입니다.',
+    '지금 사용자에게 말을 걸 적절한 순간인지 판단하세요.',
+    '판단 기준:',
+    '- 사용자가 집중해서 작업 중이면 방해하지 마세요 (false)',
+    '- 쿨다운 직후거나 최근 말한 직후면 무리하게 말하지 마세요 (false)',
+    '- 오래 조용했거나 돌아온 직후면 자연스럽게 말 걸 수 있습니다 (true)',
+    '반드시 다음 JSON 형식으로만 답하세요 (추가 설명 금지):',
+    '{"should_speak": boolean, "category": "idle_greeting"|"time_greeting"|"return_greeting"|"observation"|"silent"}',
+  ].join('\n');
+
+  const userPrompt = JSON.stringify({
+    proposed_trigger: context.trigger,
+    urgency: Number(context.urgency.toFixed(2)),
+    idle_sec: Math.round(context.idleSec),
+    recent_user_message: context.recentUserMessage?.slice(0, 120) ?? null,
+  });
+
+  try {
+    const response = await llmRouter.chat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      { temperature: 0.2, maxTokens: 60 }
+    );
+    const raw = response.content?.trim() ?? '';
+    const parsed = extractJson(raw);
+    if (parsed && typeof parsed.should_speak === 'boolean') {
+      const category = isValidTrigger(parsed.category) ? parsed.category : context.trigger;
+      return { shouldSpeak: parsed.should_speak, category };
+    }
+  } catch (err) {
+    console.warn('[proactiveEngine] inner thought stage failed, falling back', err);
+  }
+
+  // Heuristic fallback: urgency ≥ 0.4면 말함
+  return { shouldSpeak: context.urgency >= 0.4, category: context.trigger };
+}
+
+function isValidTrigger(value: unknown): value is ProactiveTrigger {
+  return (
+    value === 'idle_greeting' ||
+    value === 'time_greeting' ||
+    value === 'return_greeting' ||
+    value === 'observation' ||
+    value === 'silent'
+  );
+}
+
+function extractJson(text: string): { should_speak?: unknown; category?: unknown } | null {
+  // 모델이 앞뒤 설명을 붙여도 첫 { ... } 블록만 추출
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+// ── Stage 2: 실제 발화 생성 ──
+
 export async function generateProactiveMessage(trigger: ProactiveTrigger): Promise<string | null> {
+  if (trigger === 'silent') return null;
+
   const { settings } = useSettingsStore.getState();
   const character = settings.character;
 
-  // 캐릭터 프로필 기반 시스템 프롬프트
-  const basePrompt = character?.name || character?.personality?.traits?.length
-    ? buildCharacterPrompt(character)
-    : '';
-
+  const basePrompt =
+    character?.name || character?.personality?.traits?.length
+      ? buildCharacterPrompt(character)
+      : '';
   if (!basePrompt) return null;
 
-  // 메모리 컨텍스트
   const storeState = useConversationStore.getState();
   const { memoryContext } = buildMessageWindow(storeState.messages, storeState.memory);
 
@@ -93,7 +221,9 @@ export async function generateProactiveMessage(trigger: ProactiveTrigger): Promi
     `\n[자발적 대화 지시]\n${triggerHint}`,
     '논쟁적 주제/정치/종교에 대해서는 절대 언급하지 마세요.',
     '최대 2문장으로 짧게 말하세요.',
-  ].filter(Boolean).join('\n\n');
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 
   const llmMessages: LLMMessage[] = [
     { role: 'system', content: systemPrompt },
@@ -112,99 +242,123 @@ export async function generateProactiveMessage(trigger: ProactiveTrigger): Promi
   }
 }
 
-/**
- * Proactive Engine — 싱글톤
- *
- * start/stop으로 제어. 내부적으로 유휴 타이머를 관리하고
- * 조건 충족 시 onProactiveMessage 콜백을 호출한다.
- */
+// ── Engine ──
+
 export class ProactiveEngine {
-  private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private lastProactiveAt = 0;
-  private lastUserActivityAt = Date.now();
   private running = false;
   private onMessage: ((text: string, trigger: ProactiveTrigger) => void) | null = null;
+  private unsubPresence: (() => void) | null = null;
+  private inFlight = false;
 
   start(onMessage: (text: string, trigger: ProactiveTrigger) => void): void {
+    if (this.running) this.stop();
     this.onMessage = onMessage;
     this.running = true;
-    this.lastUserActivityAt = Date.now();
-    this.scheduleIdleCheck();
+
+    // PresenceTracker에 구독
+    presenceTracker.start();
+    this.unsubPresence = presenceTracker.subscribe((p) => this.onPresence(p));
   }
 
   stop(): void {
     this.running = false;
     this.onMessage = null;
-    if (this.idleTimer) {
-      clearTimeout(this.idleTimer);
-      this.idleTimer = null;
+    if (this.unsubPresence) {
+      this.unsubPresence();
+      this.unsubPresence = null;
     }
   }
 
-  /** 사용자 활동 발생 시 호출 (타이머 리셋) */
+  /** @deprecated presenceTracker가 DOM 이벤트로 활동을 직접 수집. 호환용 브리지. */
   notifyUserActivity(): void {
-    this.lastUserActivityAt = Date.now();
+    presenceTracker.notifyActivity();
   }
 
-  /** 앱 포커스 복귀 시 호출 */
+  /** @deprecated presenceTracker의 returnedFromAway가 대체. 호환용 브리지. */
   notifyAppFocusReturn(): void {
-    if (!this.running) return;
+    // 명시 호출 시 즉시 return_greeting 시도 (포커스 복귀 직후)
+    if (!this.running || this.inFlight) return;
     const proactive = useSettingsStore.getState().settings.proactive;
     if (!proactive?.enabled) return;
-    if (!this.canTrigger(proactive)) return;
-
-    void this.trigger('return_greeting');
+    if (!this.canTrigger(proactive, /*urgency*/ 0.6)) return;
+    void this.trigger('return_greeting', 0.6);
   }
 
-  private scheduleIdleCheck(): void {
-    if (!this.running) return;
-    // 1분마다 체크
-    this.idleTimer = setTimeout(() => {
-      void this.checkIdle();
-      this.scheduleIdleCheck();
-    }, 60_000);
-  }
-
-  private async checkIdle(): Promise<void> {
-    if (!this.running) return;
+  private async onPresence(presence: Presence): Promise<void> {
+    if (!this.running || this.inFlight) return;
     const proactive = useSettingsStore.getState().settings.proactive;
     if (!proactive?.enabled) return;
-    if (!this.canTrigger(proactive)) return;
 
-    const idleMs = Date.now() - this.lastUserActivityAt;
-    const idleThreshold = proactive.idleMinutes * 60_000;
-
-    if (idleMs < idleThreshold) return;
-
-    // 시간대 인사 vs 일반 유휴 인사
-    const trigger: ProactiveTrigger = this.shouldTimeGreeting() ? 'time_greeting' : 'idle_greeting';
-    await this.trigger(trigger);
-  }
-
-  private canTrigger(proactive: ProactiveSettings): boolean {
-    // 대화 중 또는 TTS 재생 중이면 보류
     const convState = useConversationStore.getState();
-    if (convState.status !== 'idle') return false;
+    if (convState.status !== 'idle') return;
 
-    // 쿨다운
-    const cooldownMs = proactive.cooldownMinutes * 60_000;
+    // 시그널 평가
+    const idleThresholdSec = proactive.idleMinutes * 60;
+    const isFirstProactive = this.lastProactiveAt === 0;
+    const urgency = computeUrgency({
+      idleSec: presence.idleSec,
+      idleThresholdSec,
+      returnedFromAway: presence.returnedFromAway,
+      crossedIdle: presence.idleCrossed,
+      isFirstProactive,
+      moodIntensity: convState.moodIntensity ?? 0,
+    });
+
+    // 트리거 후보 선정 (우선순위: return > idleCrossed > 시간대)
+    let trigger: ProactiveTrigger = 'silent';
+    if (presence.returnedFromAway) trigger = 'return_greeting';
+    else if (presence.idleCrossed) {
+      trigger = this.shouldTimeGreeting() ? 'time_greeting' : 'idle_greeting';
+    }
+
+    if (trigger === 'silent') return;
+    if (!this.canTrigger(proactive, urgency)) return;
+
+    await this.trigger(trigger, urgency);
+  }
+
+  private canTrigger(proactive: ProactiveSettings, urgency: number): boolean {
+    const cooldownMs = urgencyToCooldownMs(urgency, proactive.cooldownMinutes);
     if (Date.now() - this.lastProactiveAt < cooldownMs) return false;
-
     return true;
   }
 
   private shouldTimeGreeting(): boolean {
-    // 시간대 인사: 앱 시작 후 첫 유휴 트리거이거나, 마지막 인사에서 6시간 이상 경과
     return this.lastProactiveAt === 0 || Date.now() - this.lastProactiveAt > 6 * 60 * 60_000;
   }
 
-  private async trigger(trigger: ProactiveTrigger): Promise<void> {
-    const text = await generateProactiveMessage(trigger);
-    if (!text) return;
+  private async trigger(proposedTrigger: ProactiveTrigger, urgency: number): Promise<void> {
+    if (this.inFlight) return;
+    this.inFlight = true;
 
-    this.lastProactiveAt = Date.now();
-    this.lastUserActivityAt = Date.now(); // 자발 발화도 활동으로 취급
-    this.onMessage?.(text, trigger);
+    try {
+      // Stage 1: inner thought
+      const presence = presenceTracker.getSnapshot();
+      const messages = useConversationStore.getState().messages;
+      const recentUser = [...messages].reverse().find((m) => m.role === 'user');
+
+      const thought = await innerThought({
+        trigger: proposedTrigger,
+        urgency,
+        idleSec: presence.idleSec,
+        isWindowFocused: presence.isWindowFocused,
+        recentUserMessage: recentUser?.content ?? null,
+      });
+
+      if (!thought.shouldSpeak) return;
+
+      // Stage 2: 실제 발화 생성
+      const text = await generateProactiveMessage(thought.category);
+      if (!text) return;
+
+      this.lastProactiveAt = Date.now();
+      // 자발 발화도 활동으로 취급 (presence 트래커에도 반영)
+      presenceTracker.notifyActivity();
+      this.onMessage?.(text, thought.category);
+    } finally {
+      this.inFlight = false;
+    }
   }
 }
 
