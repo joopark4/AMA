@@ -414,8 +414,8 @@ export default function VRMAvatar() {
       if (now - lastVisibilityRecoveryAtRef.current >= VISIBILITY_RECOVERY_COOLDOWN_MS) {
         lastVisibilityRecoveryAtRef.current = now;
         const fallbackX = clamp(width * 0.82, bounds.minX, bounds.maxX);
-        const avatarScale = settings.avatar?.scale || 1.0;
-        const solvedGroundY = solveGroundPositionY(avatarScale);
+        // scale은 camera.zoom으로 반영하므로 world 기준 발 위치 계산 시엔 항상 1.0 사용.
+        const solvedGroundY = solveGroundPositionY(1.0);
         const fallbackY = solvedGroundY ?? bounds.maxY;
         if (solvedGroundY !== null) {
           setGroundY(solvedGroundY);
@@ -940,12 +940,12 @@ export default function VRMAvatar() {
   useEffect(() => {
     if (!vrm) return;
 
-    const scale = settings.avatar?.scale || 1.0;
+    // scale은 camera.zoom으로 반영 — world-space 발 위치 계산 시엔 항상 1.0 사용.
     let retryFrame: number | null = null;
     let retries = 0;
 
     const recomputeGround = () => {
-      const groundY = solveGroundPositionY(scale);
+      const groundY = solveGroundPositionY(1.0);
       if (groundY !== null) {
         setGroundY(groundY);
         return true;
@@ -978,6 +978,25 @@ export default function VRMAvatar() {
       window.removeEventListener('resize', trySolveGround);
     };
   }, [vrm, settings.avatar?.scale, setGroundY, solveGroundPositionY]);
+
+  // 아바타 크기는 `group scale` 대신 `camera.zoom`으로 적용.
+  // 이유: VRM SpringBone이 parent group scale을 center-space 좌표에 반영할 때
+  //       hair/cloth가 작은 스케일에서 위로 떠오르는 버그가 발생 — 렌더 시점 zoom으로 회피.
+  useEffect(() => {
+    const scale = settings.avatar?.scale ?? 1.0;
+    const perspectiveCam = camera as THREE.PerspectiveCamera;
+    if ('zoom' in perspectiveCam) {
+      perspectiveCam.zoom = scale;
+      perspectiveCam.updateProjectionMatrix();
+    }
+    return () => {
+      // unmount 시 zoom 복원
+      if ('zoom' in perspectiveCam) {
+        perspectiveCam.zoom = 1.0;
+        perspectiveCam.updateProjectionMatrix();
+      }
+    };
+  }, [camera, settings.avatar?.scale]);
 
   // Animation frame update - Base pose and locomotion only
   // Expressions, blinking, gestures, and dance are handled by AnimationManager
@@ -1840,14 +1859,13 @@ export default function VRMAvatar() {
 
   const worldPos = screenToWorldAtZ(position.x, position.y, 0);
   if (!worldPos) return null;
-  const avatarScale = settings.avatar?.scale || 1.0;
 
+  // scale은 group 대신 camera.zoom으로 반영 (SpringBone 영향 방지).
   return (
     <group
       ref={groupRef}
       position={[worldPos.x, worldPos.y, worldPos.z]}
       rotation={[manualRotation.x, smoothedYawRef.current + manualRotation.y, 0]}
-      scale={[avatarScale, avatarScale, avatarScale]}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
