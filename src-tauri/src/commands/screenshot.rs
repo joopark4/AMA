@@ -569,11 +569,22 @@ fn find_frontmost_window_id() -> Option<u32> {
 fn find_window_id(app_name: &str, window_title: Option<&str>) -> Option<u32> {
     let title_filter = window_title.unwrap_or("").to_lowercase();
     let app_lower = app_name.to_lowercase();
-    for w in list_windows_macos() {
+    let windows = list_windows_macos();
+
+    // 1차: 앱 + 타이틀 부분 일치 (정확한 매칭)
+    for w in &windows {
         if w.app_name.to_lowercase() != app_lower {
             continue;
         }
-        if title_filter.is_empty() || w.window_title.to_lowercase().contains(&title_filter) {
+        if !title_filter.is_empty() && w.window_title.to_lowercase().contains(&title_filter) {
+            return Some(w.window_id);
+        }
+    }
+
+    // 2차: 타이틀 비어있거나 불일치 → 동일 앱의 첫 윈도우로 fallback
+    // (웹 브라우저/에디터 등에서 탭 제목이 동적으로 바뀌는 경우 대응)
+    for w in &windows {
+        if w.app_name.to_lowercase() == app_lower {
             return Some(w.window_id);
         }
     }

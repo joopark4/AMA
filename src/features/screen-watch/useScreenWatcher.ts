@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import { processExternalResponse } from '../channels';
@@ -16,9 +17,17 @@ import { screenWatchService, isInSilentHours, isVisionAvailable } from './screen
  */
 
 const TICK_INTERVAL_MS = 10_000;
-const INITIAL_DELAY_MS = 30_000;
+// 초기 지연 — 앱 부팅 직후 캡처/LLM 호출 폭주 방지. 설정 토글 ON 직후에도 동일 적용.
+const INITIAL_DELAY_MS = 5_000;
 const debug = (...args: unknown[]) => {
-  if (import.meta.env.DEV) console.log('[screen-watch]', ...args);
+  if (import.meta.env.DEV) {
+    console.log('[screen-watch]', ...args);
+    // Rust terminal에도 찍혀서 Tauri stdout으로 추적 가능
+    const msg = args
+      .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+      .join(' ');
+    invoke('log_to_terminal', { message: `[screen-watch] ${msg}` }).catch(() => {});
+  }
 };
 
 export function useScreenWatcher(): void {
