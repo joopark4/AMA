@@ -39,7 +39,22 @@ const RECENT_OBSERVATIONS_LIMIT = 3;
 // Claude Code는 bridge/plugin의 이미지 입력 계약이 확정될 때까지 제외.
 const VISION_SUPPORTED_PROVIDERS = new Set(['claude', 'openai', 'gemini', 'codex']);
 
+/**
+ * 현재 런타임이 macOS인지 감지.
+ * `capture_screen_for_watch`는 macOS 전용(screencapture + CoreGraphics FFI)이라
+ * 다른 OS에서는 기능 자체를 비활성화해야 한다.
+ */
+function isMacRuntime(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const hint = `${navigator.platform ?? ''} ${navigator.userAgent ?? ''}`.toLowerCase();
+  return hint.includes('mac');
+}
+
+const IS_MAC = isMacRuntime();
+
 export function isVisionAvailable(provider: string): boolean {
+  // 플랫폼 게이트: 비macOS는 Screen Watch 백엔드가 동작하지 않으므로 false 반환.
+  if (!IS_MAC) return false;
   return VISION_SUPPORTED_PROVIDERS.has(provider);
 }
 

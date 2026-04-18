@@ -236,14 +236,14 @@ async fn capture_screen_for_watch_macos(
         }
         CaptureTarget::Monitor { monitor_name } => {
             // available_monitors()의 순서 = screencapture -D 인덱스 (1-based).
-            // 이름으로 일치하는 모니터를 찾는다 (멀티 모니터 이름 기반 선택).
+            // window.rs의 get_available_monitors가 이름 None을 "Unknown"으로 정규화하므로
+            // 여기서도 동일하게 정규화한 뒤 비교해야 UI가 선택한 "Unknown"과 매칭된다.
             let monitors = app
                 .available_monitors()
                 .map_err(|e| format!("available_monitors: {}", e))?;
             let index = monitors.iter().position(|m| {
-                m.name()
-                    .map(|n| n.as_str() == monitor_name.as_str())
-                    .unwrap_or(false)
+                let name = m.name().cloned().unwrap_or_else(|| "Unknown".to_string());
+                name == *monitor_name
             });
             match index {
                 Some(idx) => {
