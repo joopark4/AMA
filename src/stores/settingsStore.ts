@@ -532,22 +532,21 @@ function normalizeCaptureTarget(value: unknown): CaptureTarget {
     case 'main-monitor':
       return { type: v.type };
     case 'monitor': {
+      // 빈 monitorName은 "아직 선택 안 함" 상태로 유지 (UI에서 목록을 보여주기 위해).
+      // 실제 캡처 시점에 Rust가 fail-closed로 거부한다.
       const m = v as Extract<CaptureTarget, { type: 'monitor' }>;
-      if (typeof m.monitorName === 'string' && m.monitorName.trim()) {
-        return { type: 'monitor', monitorName: m.monitorName };
-      }
-      return fallback;
+      const name = typeof m.monitorName === 'string' ? m.monitorName : '';
+      return { type: 'monitor', monitorName: name };
     }
     case 'window': {
+      // 빈 appName도 허용 (선택 전 상태). 실제 캡처 시 Rust가 검증.
       const w = v as Extract<CaptureTarget, { type: 'window' }>;
-      if (typeof w.appName === 'string' && w.appName.trim()) {
-        return {
-          type: 'window',
-          appName: w.appName,
-          windowTitle: typeof w.windowTitle === 'string' ? w.windowTitle : undefined,
-        };
-      }
-      return fallback;
+      const app = typeof w.appName === 'string' ? w.appName : '';
+      return {
+        type: 'window',
+        appName: app,
+        windowTitle: typeof w.windowTitle === 'string' ? w.windowTitle : undefined,
+      };
     }
     default:
       return fallback;
