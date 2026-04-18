@@ -19,34 +19,10 @@ const log = (...args: unknown[]) => {
   invoke('log_to_terminal', { message: `[responseProcessor] ${message}` }).catch(() => {});
 };
 
-// --- 감정 분석 (useConversation에서 공유) ---
-const EMOTION_KEYWORDS: Record<Emotion, string[]> = {
-  neutral: [],
-  happy: ['happy', 'great', 'love', 'awesome', '좋아', '행복', '기뻐', '최고', '고마워'],
-  sad: ['sad', 'sorry', 'unfortunately', '슬퍼', '미안', '힘들', '우울', '걱정'],
-  angry: ['angry', 'annoyed', 'frustrated', '화나', '짜증', '열받', '빡쳐'],
-  surprised: ['wow', 'surprised', 'amazing', '대박', '놀라', '헉', '와'],
-  relaxed: ['calm', 'relaxed', 'peaceful', '차분', '편안', '여유'],
-  thinking: ['think', 'maybe', 'hmm', '음', '생각', '고민', '글쎄'],
-};
-
-export function analyzeEmotion(text: string): { emotion: Emotion; score: number } {
-  const normalized = text.toLowerCase();
-  let best: { emotion: Emotion; score: number } = { emotion: 'neutral', score: 0 };
-
-  for (const [emotion, keywords] of Object.entries(EMOTION_KEYWORDS) as [Emotion, string[]][]) {
-    if (emotion === 'neutral') continue;
-    let score = 0;
-    for (const keyword of keywords) {
-      if (normalized.includes(keyword)) score += 1;
-    }
-    if (score > best.score) {
-      best = { emotion, score };
-    }
-  }
-
-  return best;
-}
+// 감정 분석: src/services/character/analyzeEmotion.ts로 통합됨
+// 내부 사용 + 외부 re-export
+import { analyzeEmotion } from '../../services/character';
+export { analyzeEmotion };
 
 // --- 모션 트리거 (useConversation에서 공유) ---
 export function triggerEmotionMotion(
