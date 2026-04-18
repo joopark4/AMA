@@ -11,7 +11,12 @@ import { ttsRouter } from './ttsRouter';
 import type { TTSOptions } from './types';
 
 // 한국어/일본어/영어 문장 종결 패턴
-const SENTENCE_END_REGEX = /[.!?~。！？]\s*$|[요다야지니까네죠래라][\s!?~]*$|[\n]/;
+// - 명시적 종결 부호(`.!?~。！？`) 뒤 공백/끝
+// - 한국어 종결 어미([요다야지니까네죠래라])는 **공백이 뒤따르거나 줄바꿈으로 확정**된 경우에만
+//   (어미가 단어 중간에 등장하는 "저는…", "하지만…" 등의 조기 절단 방지)
+// - 줄바꿈(\n 또는 \r\n): 문장 경계 신호
+const SENTENCE_END_REGEX =
+  /[.!?~。！？]["'」）)]*\s*$|[요다야지니까네죠래라]["'」）)]*[\s!?~.,]$|\r?\n$/;
 
 interface QueueItem {
   text: string;
@@ -53,7 +58,8 @@ export class TTSQueue {
     if (this.state === 'flushed') return;
     this.buffer += token;
 
-    if (SENTENCE_END_REGEX.test(this.buffer.trim())) {
+    // `\n` 매칭이 유지되도록 trim 전 버퍼에 먼저 regex 적용.
+    if (SENTENCE_END_REGEX.test(this.buffer)) {
       const sentence = this.buffer.trim();
       this.buffer = '';
       if (sentence) {

@@ -12,7 +12,7 @@ import {
 
 export default function CharacterSettings() {
   const { t } = useTranslation();
-  const { settings, setCharacter, setProactive } = useSettingsStore();
+  const { settings, setCharacter, applyCharacterPreset, setProactive } = useSettingsStore();
   const character = settings.character ?? DEFAULT_CHARACTER_PROFILE;
   const [newTrait, setNewTrait] = useState('');
   const [newLike, setNewLike] = useState('');
@@ -23,7 +23,8 @@ export default function CharacterSettings() {
     const preset = CHARACTER_PRESETS.find(p => p.meta.id === archetype);
     if (!preset) return;
     if (!confirm(t('settings.character.applyPresetConfirm'))) return;
-    setCharacter(preset.profile);
+    // 프리셋 적용은 baseline으로 초기화해 이전 archetype의 optional 필드를 누수시키지 않음
+    applyCharacterPreset(preset.profile);
   };
 
   const handleAddTrait = () => {

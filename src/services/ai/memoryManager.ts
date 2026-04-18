@@ -148,19 +148,42 @@ ${previousSummary}요약만 출력하세요.`,
       .map(line => line.replace(/^[-•*]\s*/, '').trim())
       .filter(line => line && line !== '없음' && line.length > 2);
 
-    // 기존 사실과 합치되, 중복 제거 + 최대 10개
+    // 기존 사실 병합:
+    //  - 새 fact가 기존 fact를 "포함"하면 더 구체적인 정보로 간주해 기존 교체
+    //    (예: 기존 "하루" → 신규 "하루는 학생이다")
+    //  - 새 fact가 기존 fact에 "포함"되면 구체성이 떨어지므로 신규 무시
+    //  - 그 외 신규는 추가
     const allFacts = [...currentMemory.importantFacts];
     for (const fact of newFacts) {
-      const isDuplicate = allFacts.some(
-        existing => existing.toLowerCase().includes(fact.toLowerCase()) ||
-                    fact.toLowerCase().includes(existing.toLowerCase())
-      );
-      if (!isDuplicate) allFacts.push(fact);
+      const factLower = fact.toLowerCase();
+      let replaced = false;
+      let shouldAdd = true;
+      for (let i = 0; i < allFacts.length; i++) {
+        const existingLower = allFacts[i].toLowerCase();
+        if (factLower === existingLower) {
+          shouldAdd = false;
+          break;
+        }
+        if (factLower.includes(existingLower)) {
+          // 신규가 기존보다 구체적 → 교체
+          allFacts[i] = fact;
+          replaced = true;
+          shouldAdd = false;
+          break;
+        }
+        if (existingLower.includes(factLower)) {
+          // 기존이 더 구체적 → 신규 무시
+          shouldAdd = false;
+          break;
+        }
+      }
+      if (shouldAdd && !replaced) allFacts.push(fact);
     }
 
     return {
       summary: summaryResponse.content.trim(),
-      importantFacts: allFacts.slice(0, 10),
+      // 10개를 초과하면 오래된 쪽을 밀어내는 FIFO. 최신 정보가 유지되도록 slice(-10).
+      importantFacts: allFacts.slice(-10),
       lastSummarizedAt: end,
     };
   } catch (err) {
