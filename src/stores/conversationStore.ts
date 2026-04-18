@@ -16,8 +16,11 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
-  /** 외부 알림(ci-webhook, monitor-alert)은 'external' — LLM 프롬프트에서 제외 */
-  source?: 'internal' | 'external';
+  /**
+   * 외부 알림(ci-webhook, monitor-alert)은 'external' — LLM 프롬프트에서 제외
+   * 화면 관찰(Screen Watch)은 'screen-watch' — LLM 프롬프트에 최근 N개만 포함
+   */
+  source?: 'internal' | 'external' | 'screen-watch';
 }
 
 export type ConversationStatus = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';

@@ -329,29 +329,36 @@ export function useConversation(): UseConversationReturn {
     speakOut = true
   ) => {
     addMessage({ role: 'assistant', content: message });
-    setCurrentResponse(message);
+    clearCurrentResponse(); // 이전 말풍선 즉시 제거
     setEmotion(emotion);
 
     if (speakOut) {
       setStatus('speaking');
       try {
-        await speak(message);
+        await speak(message, {
+          onPlaybackStart: () => {
+            setCurrentResponse(message);
+          },
+        });
       } catch (err) {
         log('Voice command TTS error:', err);
       }
+      // TTS 실패 시에도 새 응답 말풍선 보장
+      if (useConversationStore.getState().currentResponse !== message) {
+        setCurrentResponse(message);
+      }
       setStatus('idle');
     } else {
+      setCurrentResponse(message);
       setStatus('idle');
     }
 
-    const responseHoldMs = Math.max(
-      emotionTuningGlobal.responseClearMs,
-      getEmotionTuning(emotion).expressionHoldMs
-    );
+    setTimeout(() => {
+      clearCurrentResponse();
+    }, emotionTuningGlobal.responseClearMs);
     setTimeout(() => {
       setEmotion('neutral');
-      clearCurrentResponse();
-    }, responseHoldMs);
+    }, getEmotionTuning(emotion).expressionHoldMs);
   }, [addMessage, setCurrentResponse, setEmotion, setStatus, speak, clearCurrentResponse]);
 
   const triggerEmotionMotion = useCallback(
@@ -687,9 +694,27 @@ export function useConversation(): UseConversationReturn {
         moodHint,
       ].filter(Boolean).join('\n\n');
 
+      // memoryManager가 생성한 recentMessages 위에 screen-watch 필터를 추가 적용:
+      //   - 'external' 알림은 완전 제외
+      //   - 'screen-watch' 관찰은 전체 기록에서 최근 5개만 포함 (토큰 축적 방지)
+      const SCREEN_WATCH_WINDOW = 5;
+      const screenWatchIdsInWindow = new Set(
+        currentMessages
+          .filter((m) => m.source === 'screen-watch')
+          .slice(-SCREEN_WATCH_WINDOW)
+          .map((m) => m.id)
+      );
+      // recentMessages는 currentMessages의 뒤쪽 슬라이스라 인덱스 정렬로 원본 source를 참조.
+      const filteredRecentMessages = recentMessages.filter((_m, idx) => {
+        const aligned = currentMessages[currentMessages.length - recentMessages.length + idx];
+        const source = aligned?.source;
+        if (source === 'external') return false;
+        if (source === 'screen-watch') return aligned ? screenWatchIdsInWindow.has(aligned.id) : false;
+        return true;
+      });
       const llmMessages: LLMMessage[] = [
         { role: 'system', content: fullSystemPrompt },
-        ...recentMessages,
+        ...filteredRecentMessages,
       ];
 
       log('Sending to LLM:', llmMessages.length, 'messages (window:', recentMessages.length, ')');
@@ -810,20 +835,31 @@ export function useConversation(): UseConversationReturn {
         setMoodTarget(NEUTRAL_MOOD, 0.2);
       }
 
-      // Add assistant message and set final response
+      // Add assistant message (스트리밍 경로는 ttsQueue가 말풍선/TTS를 이미 동기화했음)
       addMessage({ role: 'assistant', content: responseText });
       setCurrentResponse(responseText);
 
-      // 화면 분석의 경우만 별도 TTS (스트리밍은 이미 큐에서 재생됨)
+      // 화면 분석 요청은 스트리밍 미적용 → develop의 onPlaybackStart 패턴 사용
       if (isScreenRequest(text)) {
+        clearCurrentResponse(); // stale 말풍선 제거
         setStatus('speaking');
-        await new Promise(resolve => setTimeout(resolve, 50));
+        log('Starting TTS for screen analysis (bubble will sync with playback)...');
         try {
-          await speak(responseText, { emotion: responseEmotion });
+          await speak(responseText, {
+            emotion: responseEmotion,
+            onPlaybackStart: () => {
+              setCurrentResponse(responseText);
+              log('TTS playback started, bubble shown');
+            },
+          });
           log('TTS completed');
         } catch (ttsErr) {
           log('TTS error:', ttsErr);
         }
+      }
+      // TTS 실패 또는 onPlaybackStart 미도달 시에도 새 응답 말풍선 보장
+      if (useConversationStore.getState().currentResponse !== responseText) {
+        setCurrentResponse(responseText);
       }
 
       // Phase 2: 비동기 메모리 요약 (UI 차단 없이 백그라운드 실행)
@@ -841,17 +877,15 @@ export function useConversation(): UseConversationReturn {
         }
       })();
 
-      // Keep response visible
+      // TTS 완료 후: 말풍선은 responseClearMs 후 제거, 표정은 expressionHoldMs 후 초기화
       setStatus('idle');
-      const responseHoldMs = Math.max(
-        emotionTuningGlobal.responseClearMs,
-        getEmotionTuning(responseEmotion).expressionHoldMs
-      );
+      setTimeout(() => {
+        clearCurrentResponse();
+        log('Bubble cleared after', emotionTuningGlobal.responseClearMs, 'ms');
+      }, emotionTuningGlobal.responseClearMs);
       setTimeout(() => {
         setEmotion('neutral');
-        clearCurrentResponse();
-        log('Response cleared after', responseHoldMs, 'ms');
-      }, responseHoldMs);
+      }, getEmotionTuning(responseEmotion).expressionHoldMs);
     } catch (err) {
       log('LLM error:', err);
       ttsQueue.flush();

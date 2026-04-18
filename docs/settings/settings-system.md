@@ -6,14 +6,14 @@
 
 - 파일: `src/stores/settingsStore.ts`
 - persist key: `mypartnerai-settings`
-- persist version: `13`
+- persist version: `14`
 
 ## 설정 스키마 (요약)
 
 ```ts
 interface Settings {
   llm: {
-    provider: 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini';
+    provider: 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
     model: string;
     apiKey?: string;
     endpoint?: string;
@@ -39,8 +39,9 @@ interface Settings {
       };
     };
   };
-  language: 'ko' | 'en';
+  language: 'ko' | 'en' | 'ja';
   avatarName: string;
+  avatarPersonalityPrompt: string;  // 아바타 성격 프롬프트 (최대 800자)
   vrmModelPath: string;
   avatar: {
     scale: number;
@@ -65,6 +66,20 @@ interface Settings {
       showControl: boolean;
     };
     initialViewRotation: { x: number; y: number };
+  };
+  stt: {
+    // ...
+    audioInputDeviceId?: string;    // 마이크 입력 디바이스 ID
+  };
+  tts: {
+    // ...
+    audioOutputDeviceId?: string;   // 스피커 출력 디바이스 ID
+  };
+  codex: {
+    model: string;                  // 기본: 'gpt-5.4'
+    reasoningEffort: 'low' | 'medium' | 'high' | 'xhigh';
+    workingDir: string;             // 기본: '' (→ ~/Documents)
+    approvalPolicy: 'never' | 'on-request' | 'untrusted';
   };
 }
 ```
@@ -110,9 +125,11 @@ interface Settings {
 | UI 컴포넌트 | 연결 설정 |
 |-------------|-----------|
 | `LLMSettings` | `settings.llm.*` |
+| `AudioDeviceSettings` | `settings.stt.audioInputDeviceId`, `settings.tts.audioOutputDeviceId` |
 | `VoiceSettings` | `settings.stt`, `settings.tts`, `modelDownloadStore` |
 | `PremiumVoiceSettings` | `settings.tts.engine`, `settings.tts.supertoneApi`, `premiumStore` |
-| `AvatarSettings` | `vrmModelPath`, `avatarName`, `avatar.*` |
+| `AvatarSettings` | `vrmModelPath`, `avatarName`, `avatarPersonalityPrompt`, `avatar.*` |
+| `CodexSettings` | `settings.codex.*` (LLM provider가 `codex`일 때 표시) |
 | `UpdateSettings` | `useAutoUpdateStore` (앱 버전/업데이트 확인) |
 | `LicensesSettings` | 설정값 저장 없음 (라이선스 안내 전용) |
 | `SettingsPanel` | 설정 저장/리셋/언어 |

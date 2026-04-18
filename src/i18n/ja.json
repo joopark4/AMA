@@ -394,6 +394,42 @@
       "idleMinutes": "アイドル待機時間: {{value}}分",
       "cooldownMinutes": "再発話クールダウン: {{value}}分"
     },
+    "screenWatch": {
+      "title": "画面観察",
+      "enabled": "画面観察を有効化",
+      "enabledDesc": "定期的に画面を観察し、状況に応じた一言を伝えます",
+      "visionUnavailable": "現在のAIモデルは画像認識に対応していません。Claude/OpenAI/Gemini/Codex/Claude Codeに切り替えてください。",
+      "captureTarget": "キャプチャ対象",
+      "targets": {
+        "fullscreen": "全画面",
+        "activeWindow": "アクティブウィンドウ",
+        "mainMonitor": "メインモニター",
+        "specificMonitor": "特定モニター",
+        "specificWindow": "特定ウィンドウ"
+      },
+      "selectMonitor": "観察するモニターを選択",
+      "noMonitors": "モニター情報を読み込めません",
+      "selectWindow": "観察するウィンドウを選択",
+      "refresh": "🔄 更新",
+      "loading": "読み込み中...",
+      "noWindows": "開いているウィンドウがないか、Accessibility権限が必要です",
+      "interval": "観察間隔: {{value}}秒",
+      "responseStyle": "応答スタイル",
+      "styles": {
+        "balanced": "バランス",
+        "advisor": "アドバイザー",
+        "comedian": "コメディアン",
+        "analyst": "アナリスト"
+      },
+      "silentHours": "サイレント時間 (観察停止)",
+      "privacyTitle": "画面観察について",
+      "privacyBody": "画面データが選択したAIサービスに送信されます。\n\nパスワードやカード番号などの機密情報が画面に表示されないようご注意ください。サイレント時間設定で特定時間帯の観察を停止できます。",
+      "cancel": "キャンセル",
+      "confirm": "同意して有効化",
+      "permissionDenied": "画面録画権限がありません。観察は即座にブロックされます。",
+      "requestPermission": "権限をリクエスト",
+      "openAccessibility": "アクセシビリティ設定を開く"
+    },
     "mcp": {
       "title": "Claude Code Channels",
       "description": "外部で実行中のClaude Codeとアバターを接続します。ユーザー入力がClaude Codeに送信され、応答をアバターが音声で読み上げます。",

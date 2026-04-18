@@ -13,7 +13,7 @@
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [feature-spec.md](./features/feature-spec.md) | 전체 기능 명세서 + 정책 | 2026.02.27 |
+| [feature-spec.md](./features/feature-spec.md) | 전체 기능 명세서 + 정책 | 2026.04.09 |
 
 ### auth/ — 인증/회원
 
@@ -27,7 +27,7 @@
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [voice-services.md](./voice/voice-services.md) | Whisper/Supertonic 구현 상세 | 2026.02.26 |
+| [voice-services.md](./voice/voice-services.md) | Whisper/Supertonic 구현 상세 + TTS-말풍선 동기화 + 오디오 디바이스 | 2026.04.09 |
 
 ### avatar/ — 아바타
 
@@ -41,7 +41,7 @@
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 | 2026.02.26 |
+| [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 (Codex/Claude Code 포함) | 2026.04.09 |
 | [codex-integration.md](./ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) | 2026.04.07 |
 | [natural-interaction-plan.md](./ai/natural-interaction-plan.md) | Neuro-sama 스타일 자연 상호작용 구현 플랜 (Phase 0~5) | 2026.04.07 |
 
@@ -49,7 +49,7 @@
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [settings-system.md](./settings/settings-system.md) | 설정 시스템 (Zustand/마이그레이션) | 2026.02.26 |
+| [settings-system.md](./settings/settings-system.md) | 설정 시스템 (Zustand/마이그레이션) | 2026.04.09 |
 
 ### channels/ — Claude Code Channels
 
@@ -64,7 +64,7 @@
 |------|------|----------|
 | [tauri-backend.md](./infrastructure/tauri-backend.md) | Rust 명령/권한/단일 인스턴스 | 2026.02.26 |
 | [db-schema.md](./infrastructure/db-schema.md) | DB 테이블 구조, RLS 정책, 데이터 저장 정책 | 2026.02.23 |
-| [deployment.md](./infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈/릴리즈 파이프라인 | 2026.02.27 |
+| [deployment.md](./infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈/릴리즈 파이프라인 | 2026.04.09 |
 
 ### 해결된 이슈
 
@@ -105,6 +105,10 @@
 - TTS 출력 디바이스 라우팅 안정화 (#018, #019)
 - idle 흔들림 완화 (hips damp + IdleFidget 조건 수정)
 - build.rs 안정화 (런타임 파싱 + 릴리스 VRM 검증)
+- TTS-말풍선 동기화 (onPlaybackStart 콜백으로 오디오와 말풍선 동시 시작)
+- 말풍선/표정 타이머 분리 (responseClearMs: 2초 / expressionHoldMs: 감정별 독립)
+- SpeechBubble 내부 타이머 제거 (부모 상태로 순수 제어)
+- 문서 전체 업데이트 (v1.0.0 기준, Codex/Audio/TTS-Bubble 반영)
 
 ---
 

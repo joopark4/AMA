@@ -151,9 +151,75 @@ export class CodexClient implements LLMClient {
     }
   }
 
+  /**
+   * 이미지 파일 경로를 LocalImageUserInput으로 함께 전송.
+   * - imagePath는 absolute path여야 함.
+   * - Codex의 sandbox policy에 따라 파일 접근 권한 필요.
+   *
+   * 구현: chat()과 동일한 이벤트 수신 패턴. invokeMessage는 turnId만 반환하므로
+   * codex-complete 이벤트의 text를 실제 응답으로 사용한다.
+   */
+  async chatWithLocalImage(
+    messages: Message[],
+    imagePath: string,
+    options?: ChatOptions
+  ): Promise<LLMResponse> {
+    const systemPrompt = this.extractSystemPrompt(messages, options);
+    const userText = this.extractLastUserMessage(messages);
+    await this.ensureStarted();
+
+    const unlistens: UnlistenFn[] = [];
+    const cleanup = () => unlistens.forEach((fn) => fn());
+
+    try {
+      return await new Promise<LLMResponse>(async (resolve, reject) => {
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error('Codex response timeout'));
+        }, CODEX_RESPONSE_TIMEOUT_MS);
+
+        try {
+          let myTurnId: string | null = null;
+
+          unlistens.push(
+            await listen<CodexCompleteEvent>('codex-complete', (event) => {
+              if (myTurnId && event.payload.turnId !== myTurnId) return;
+              clearTimeout(timeout);
+              cleanup();
+              resolve({ content: event.payload.text, finishReason: 'stop' });
+            })
+          );
+
+          unlistens.push(
+            await listen<CodexStatusEvent>('codex-status', (event) => {
+              if (event.payload.status === 'error' || event.payload.status === 'disconnected') {
+                clearTimeout(timeout);
+                cleanup();
+                reject(new Error(event.payload.message || 'Codex disconnected'));
+              }
+            })
+          );
+
+          myTurnId = await this.invokeMessage(userText, systemPrompt, imagePath);
+        } catch (err) {
+          clearTimeout(timeout);
+          cleanup();
+          reject(new Error(String(err)));
+        }
+      });
+    } catch (err) {
+      cleanup();
+      throw err;
+    }
+  }
+
   // ─── 내부 헬퍼 ────────────────────────────────
 
-  private async invokeMessage(text: string, systemPrompt: string): Promise<string> {
+  private async invokeMessage(
+    text: string,
+    systemPrompt: string,
+    imagePath?: string
+  ): Promise<string> {
     const { codex } = useSettingsStore.getState().settings;
     return invoke<string>('codex_send_message', {
       text,
@@ -161,6 +227,7 @@ export class CodexClient implements LLMClient {
       model: codex.model,
       reasoningEffort: codex.reasoningEffort,
       approvalPolicy: codex.approvalPolicy,
+      imagePath: imagePath ?? null,
     });
   }
 
