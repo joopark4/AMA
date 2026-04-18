@@ -6,7 +6,7 @@
 
 - 파일: `src/stores/settingsStore.ts`
 - persist key: `mypartnerai-settings`
-- persist version: `14`
+- persist version: `15` (v1.5.0에서 `screenWatch` 추가로 증분)
 
 ## 설정 스키마 (요약)
 
@@ -56,8 +56,17 @@ interface Settings {
     animation: {
       expressionBlendSpeed: number;
       enableGestures: boolean;
+      enableMotionClips: boolean;
+      faceExpressionOnlyMode: boolean;
+      dynamicMotionEnabled: boolean;
+      dynamicMotionBoost: number;
       enableDancing: boolean;
       danceIntensity: number;
+      motionDiversity: number;
+      enableBreathing: boolean;
+      enableEyeDrift: boolean;
+      gazeFollow: boolean;        // v1.5.0 — 커서 시선 추적
+      backchannel: boolean;       // v1.5.0 — 경청 끄덕임
     };
     lighting: {
       ambientIntensity: number;
@@ -80,6 +89,26 @@ interface Settings {
     reasoningEffort: 'low' | 'medium' | 'high' | 'xhigh';
     workingDir: string;             // 기본: '' (→ ~/Documents)
     approvalPolicy: 'never' | 'on-request' | 'untrusted';
+  };
+  // v1.5.0 — 화면 관찰
+  screenWatch: {
+    enabled: boolean;               // 기본: false
+    intervalSeconds: number;        // 30~600, 기본: 120
+    captureTarget:
+      | { type: 'fullscreen' }
+      | { type: 'active-window' }
+      | { type: 'main-monitor' }
+      | { type: 'monitor'; monitorName: string }
+      | { type: 'window'; appName: string; windowTitle?: string };
+    responseStyle: 'balanced' | 'advisor' | 'comedian' | 'analyst';
+    silentHours: { enabled: boolean; start: number; end: number };  // 0~23, 자정 넘기기 지원
+  };
+  // v1.5.0 — 자연 상호작용 기반 (natural-interaction 브랜치 통합)
+  character: CharacterProfile;      // Phase 0 캐릭터 프로필
+  proactive: {
+    enabled: boolean;
+    idleMinutes: number;
+    cooldownMinutes: number;
   };
 }
 ```
@@ -130,6 +159,8 @@ interface Settings {
 | `PremiumVoiceSettings` | `settings.tts.engine`, `settings.tts.supertoneApi`, `premiumStore` |
 | `AvatarSettings` | `vrmModelPath`, `avatarName`, `avatarPersonalityPrompt`, `avatar.*` |
 | `CodexSettings` | `settings.codex.*` (LLM provider가 `codex`일 때 표시) |
+| `ScreenWatchSettings` | `settings.screenWatch.*` (v1.5.0) |
+| `CharacterSettings` | `settings.character`, `settings.proactive` (v1.5.0) |
 | `UpdateSettings` | `useAutoUpdateStore` (앱 버전/업데이트 확인) |
 | `LicensesSettings` | 설정값 저장 없음 (라이선스 안내 전용) |
 | `SettingsPanel` | 설정 저장/리셋/언어 |

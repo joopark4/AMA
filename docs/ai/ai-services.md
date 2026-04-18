@@ -45,9 +45,19 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 
 ## Vision(화면 분석)
 
+### 수동 화면 분석
 - `screenAnalyzer`가 Tauri `capture_screen`으로 스크린샷(base64)을 취득
 - Vision 지원 provider: `claude`, `openai`, `gemini`
 - `ollama/localai`에서 Vision 요청 시 `Vision not supported` 에러 반환
+
+### Screen Watch 주기 관찰 (v1.5.0)
+- 별도 Tauri 커맨드 `capture_screen_for_watch` 사용 (기존 `capture_screen` 변경 없음)
+- 공급 경로:
+  - Claude/OpenAI/Gemini: `chatWithVision` + Base64 inline (JPEG mimeType)
+  - Codex: `codex_send_message(imagePath)` → `LocalImageUserInput` input item
+- Vision client 3종에 `ChatOptions.mimeType` 파라미터 추가 (image/png · image/jpeg · image/webp)
+- Codex 경로는 `~/.mypartnerai/screenshots/screen_watch.jpg` 절대경로 저장 후 finally에서 즉시 삭제
+- 자세한 파이프라인: [화면 관찰 문서](../features/screen-watch.md)
 
 ## 설정 UI 동작
 

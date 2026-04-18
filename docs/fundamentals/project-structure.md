@@ -1,6 +1,6 @@
 # 프로젝트 구조
 
-> 최종 수정: 2026-04-09 (v1.0.0 기준)
+> 최종 수정: 2026-04-18 (v1.5.0 기준)
 
 최신 구현 기준 디렉터리/핵심 파일 맵입니다.
 
@@ -103,6 +103,16 @@ src/features/channels/
 └── MCPSettings.tsx              # Channels 설정 UI (토글/등록/연결확인)
 ```
 
+### 화면 관찰 (`src/features/screen-watch/`, v1.5.0)
+
+```text
+src/features/screen-watch/
+├── index.ts                     # 퍼블릭 API
+├── screenWatchService.ts        # 캡처/Vision LLM/프롬프트/[SKIP]/링버퍼
+├── useScreenWatcher.ts          # 타이머 루프 + isObserving 동시성
+└── ScreenWatchSettings.tsx      # 설정 UI (토글/캡처 대상/스타일/조용한 시간/권한)
+```
+
 ### 훅
 
 ```text
@@ -143,6 +153,16 @@ src/services/
 ├── avatar/
 │   ├── motionLibrary.ts         # 모션 클립 라이브러리
 │   └── motionSelector.ts        # 모션 선택 알고리즘
+├── character/                   # 자연 상호작용 캐릭터 시스템 (v1.5.0)
+│   ├── characterProfile.ts      # 4-layer 시스템 프롬프트 빌더
+│   ├── presets.ts               # 내장 5종 (genki/cool/neko/calm/trickster)
+│   ├── analyzeEmotion.ts        # 텍스트 감정 분석
+│   ├── emotionWeights.ts        # archetype별 감정 가중치
+│   └── vadCatalog.ts            # 8종 Emotion ↔ VAD(v/a/d) 좌표 + lerp
+├── presence/                    # v1.5.0
+│   └── presenceTracker.ts       # DOM 이벤트 기반 presence 멀티 시그널
+├── context/                     # v1.5.0
+│   └── contextCollector.ts      # 시간/심야/세션 컨텍스트 수집
 ├── tauri/
 │   ├── fileDialog.ts            # native picker + dialog fallback
 │   ├── globalShortcutUtils.ts   # 글로벌 단축키 유틸
