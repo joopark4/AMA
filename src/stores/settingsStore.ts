@@ -131,6 +131,29 @@ export interface CodexSettings {
   approvalPolicy: CodexApprovalPolicy;
 }
 
+export type CaptureTarget =
+  | { type: 'fullscreen' }
+  | { type: 'active-window' }
+  | { type: 'main-monitor' }
+  | { type: 'monitor'; monitorName: string }
+  | { type: 'window'; appName: string; windowTitle?: string };
+
+export type ScreenWatchResponseStyle = 'balanced' | 'advisor' | 'comedian' | 'analyst';
+
+export interface ScreenWatchSilentHours {
+  enabled: boolean;
+  start: number; // 0..23
+  end: number;   // 0..23
+}
+
+export interface ScreenWatchSettings {
+  enabled: boolean;
+  intervalSeconds: number; // 30..600
+  captureTarget: CaptureTarget;
+  responseStyle: ScreenWatchResponseStyle;
+  silentHours: ScreenWatchSilentHours;
+}
+
 export interface Settings {
   llm: LLMSettings;
   stt: STTSettings;
@@ -153,6 +176,8 @@ export interface Settings {
   character: CharacterProfile;
   /** 자발적 대화 설정 (Phase 3) */
   proactive: ProactiveSettings;
+  /** 화면 관찰 설정 */
+  screenWatch: ScreenWatchSettings;
 }
 
 interface SettingsState {
@@ -167,6 +192,7 @@ interface SettingsState {
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
   setLanguage: (language: Language) => void;
   setCodexSettings: (codex: Partial<CodexSettings>) => void;
+  setScreenWatchSettings: (screenWatch: Partial<ScreenWatchSettings>) => void;
   setAvatarName: (name: string) => void;
   setAvatarPersonalityPrompt: (prompt: string) => void;
   setVrmModelPath: (path: string) => void;
@@ -360,6 +386,13 @@ const defaultSettings: Settings = {
   },
   character: DEFAULT_CHARACTER_PROFILE,
   proactive: DEFAULT_PROACTIVE_SETTINGS,
+  screenWatch: {
+    enabled: false,
+    intervalSeconds: 120,
+    captureTarget: { type: 'fullscreen' },
+    responseStyle: 'balanced',
+    silentHours: { enabled: false, start: 23, end: 7 },
+  },
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -480,6 +513,7 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
     },
     character: normalizeCharacterProfile(source.character),
     proactive: normalizeProactiveSettings(source.proactive),
+    screenWatch: normalizeScreenWatchSettings(source.screenWatch),
   };
 }
 
@@ -535,6 +569,84 @@ function normalizeCharacterProfile(raw: unknown): CharacterProfile {
     honorific: source.honorific === 'casual' || source.honorific === 'polite' || source.honorific === 'mixed'
       ? source.honorific
       : DEFAULT_CHARACTER_PROFILE.honorific,
+  };
+}
+
+function normalizeScreenWatchSettings(
+  value: Partial<ScreenWatchSettings> | undefined
+): ScreenWatchSettings {
+  const d = defaultSettings.screenWatch;
+  if (!value || typeof value !== 'object') return d;
+
+  const interval = Number(value.intervalSeconds);
+  const clampedInterval = Number.isFinite(interval)
+    ? Math.max(30, Math.min(600, Math.round(interval)))
+    : d.intervalSeconds;
+
+  const style: ScreenWatchResponseStyle =
+    value.responseStyle === 'advisor' ||
+    value.responseStyle === 'comedian' ||
+    value.responseStyle === 'analyst' ||
+    value.responseStyle === 'balanced'
+      ? value.responseStyle
+      : d.responseStyle;
+
+  const target = normalizeCaptureTarget(value.captureTarget);
+  const silentHours = normalizeSilentHours(value.silentHours);
+
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : d.enabled,
+    intervalSeconds: clampedInterval,
+    captureTarget: target,
+    responseStyle: style,
+    silentHours,
+  };
+}
+
+function normalizeCaptureTarget(value: unknown): CaptureTarget {
+  const fallback: CaptureTarget = { type: 'fullscreen' };
+  if (!value || typeof value !== 'object') return fallback;
+  const v = value as Partial<CaptureTarget> & { type?: string };
+  switch (v.type) {
+    case 'fullscreen':
+    case 'active-window':
+    case 'main-monitor':
+      return { type: v.type };
+    case 'monitor': {
+      // 빈 monitorName은 "아직 선택 안 함" 상태로 유지 (UI에서 목록을 보여주기 위해).
+      // 실제 캡처 시점에 Rust가 fail-closed로 거부한다.
+      const m = v as Extract<CaptureTarget, { type: 'monitor' }>;
+      const name = typeof m.monitorName === 'string' ? m.monitorName : '';
+      return { type: 'monitor', monitorName: name };
+    }
+    case 'window': {
+      // 빈 appName도 허용 (선택 전 상태). 실제 캡처 시 Rust가 검증.
+      const w = v as Extract<CaptureTarget, { type: 'window' }>;
+      const app = typeof w.appName === 'string' ? w.appName : '';
+      return {
+        type: 'window',
+        appName: app,
+        windowTitle: typeof w.windowTitle === 'string' ? w.windowTitle : undefined,
+      };
+    }
+    default:
+      return fallback;
+  }
+}
+
+function normalizeSilentHours(value: unknown): ScreenWatchSilentHours {
+  const d = defaultSettings.screenWatch.silentHours;
+  if (!value || typeof value !== 'object') return d;
+  const v = value as Partial<ScreenWatchSilentHours>;
+  const clampHour = (n: unknown): number => {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return 0;
+    return Math.max(0, Math.min(23, Math.round(num)));
+  };
+  return {
+    enabled: typeof v.enabled === 'boolean' ? v.enabled : d.enabled,
+    start: v.start !== undefined ? clampHour(v.start) : d.start,
+    end: v.end !== undefined ? clampHour(v.end) : d.end,
   };
 }
 
@@ -614,6 +726,17 @@ export const useSettingsStore = create<SettingsState>()(
           settings: {
             ...state.settings,
             codex: { ...state.settings.codex, ...codex },
+          },
+        })),
+
+      setScreenWatchSettings: (screenWatch) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            screenWatch: normalizeScreenWatchSettings({
+              ...state.settings.screenWatch,
+              ...screenWatch,
+            }),
           },
         })),
 

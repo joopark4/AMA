@@ -129,7 +129,7 @@ export class OpenAIClient implements LLMClient {
           {
             type: 'image_url' as const,
             image_url: {
-              url: `data:image/png;base64,${imageBase64}`,
+              url: `data:${options?.mimeType ?? 'image/png'};base64,${imageBase64}`,
             },
           },
           {

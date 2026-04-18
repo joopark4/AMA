@@ -112,7 +112,7 @@ function stopLipSync(): void {
 export interface ProcessResponseOptions {
   text: string;
   emotion?: string;
-  source?: 'internal' | 'external';
+  source?: 'internal' | 'external' | 'screen-watch';
 }
 
 /**
@@ -142,12 +142,10 @@ export async function processExternalResponse(options: ProcessResponseOptions): 
 
   // 1. 대화 기록 저장 (외부 알림은 source 태그 부착 → LLM 프롬프트에서 제외)
   store.addMessage({ role: 'assistant', content: text, source });
-
-  // 2. 말풍선 표시
-  store.setCurrentResponse(text);
+  store.clearCurrentResponse(); // 이전 말풍선 즉시 제거
   store.setStatus('speaking');
 
-  // 3. 감정 설정 + 모션 트리거
+  // 2. 감정 설정 + 모션 트리거
   avatarStore.setEmotion(emotion);
   if (emotionMatch.score > 0 || emotion !== 'neutral') {
     triggerEmotionMotion(emotion, Math.max(emotionMatch.score, 1), text, true);
@@ -160,34 +158,36 @@ export async function processExternalResponse(options: ProcessResponseOptions): 
     }
   }
 
-  // 4. TTS 재생
-  await new Promise(resolve => setTimeout(resolve, 50)); // React 렌더 대기
-
+  // 3. TTS 재생 — onPlaybackStart 콜백으로 말풍선과 오디오를 동시에 시작
   try {
     startLipSync();
-
-    // MCP 외부 경로든 내부든 ttsRouter.playAudio 사용
-    // 외부 소스의 경우 클라우드 TTS 차단은 향후 ttsRouter에 옵션 추가로 처리
-    await ttsRouter.playAudio(text, { emotion });
-
+    await ttsRouter.playAudio(text, {
+      emotion,
+      onPlaybackStart: () => {
+        store.setCurrentResponse(text);
+        log('TTS playback started, bubble shown');
+      },
+    });
     log('TTS completed');
   } catch (err) {
     log('TTS error:', err);
   } finally {
     stopLipSync();
   }
+  // TTS 실패 시에도 새 응답 말풍선 보장
+  if (useConversationStore.getState().currentResponse !== text) {
+    store.setCurrentResponse(text);
+  }
 
-  // 5. 정리
+  // 4. 정리 — 말풍선은 responseClearMs 후 제거, 표정은 expressionHoldMs 후 초기화
   store.setStatus('idle');
-  const responseHoldMs = Math.max(
-    emotionTuningGlobal.responseClearMs,
-    getEmotionTuning(emotion).expressionHoldMs
-  );
+  setTimeout(() => {
+    useConversationStore.getState().clearCurrentResponse();
+    log('Bubble cleared after', emotionTuningGlobal.responseClearMs, 'ms');
+  }, emotionTuningGlobal.responseClearMs);
   setTimeout(() => {
     useAvatarStore.getState().setEmotion('neutral');
-    useConversationStore.getState().clearCurrentResponse();
-    log('Response cleared after', responseHoldMs, 'ms');
-  }, responseHoldMs);
+  }, getEmotionTuning(emotion).expressionHoldMs);
 }
 
 function isValidEmotion(value: string): boolean {

@@ -671,6 +671,7 @@ pub async fn codex_send_message(
     model: Option<String>,
     reasoning_effort: Option<String>,
     approval_policy: Option<String>,
+    image_path: Option<String>,
 ) -> Result<String, String> {
     let process = {
         let guard = state.process.lock().await;
@@ -741,9 +742,23 @@ pub async fn codex_send_message(
         _ => json!({ "type": "readOnly", "access": { "type": "fullAccess" }, "networkAccess": false }),
     };
 
+    // UserInput 배열: text + (선택) localImage.
+    // Codex app-server 프로토콜 v2 LocalImageUserInput: { type: "localImage", path: "/abs/path" }
+    let mut input_items: Vec<serde_json::Value> = Vec::with_capacity(2);
+    input_items.push(json!({ "type": "text", "text": final_text }));
+    if let Some(ref path) = image_path {
+        let trimmed = path.trim();
+        if !trimmed.is_empty() {
+            if !std::path::Path::new(trimmed).is_absolute() {
+                return Err(format!("image_path must be absolute: {}", trimmed));
+            }
+            input_items.push(json!({ "type": "localImage", "path": trimmed }));
+        }
+    }
+
     let mut params = json!({
         "threadId": thread_id.unwrap(),
-        "input": [{"type": "text", "text": final_text}],
+        "input": input_items,
         "approvalPolicy": policy,
         "sandboxPolicy": sandbox_policy
     });

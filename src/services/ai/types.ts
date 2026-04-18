@@ -24,6 +24,8 @@ export interface ChatOptions {
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;
+  /** Vision 요청 시 이미지 MIME 타입 (기본: image/png) */
+  mimeType?: 'image/png' | 'image/jpeg' | 'image/webp';
 }
 
 export interface VisionMessage extends Message {

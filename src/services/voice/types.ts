@@ -25,6 +25,7 @@ export interface TTSOptions {
   pitch?: number;
   emotion?: string;    // 대화 감정 정보 (happy, sad 등)
   style?: string;      // Supertone 스타일 직접 지정
+  onPlaybackStart?: () => void;  // 오디오 재생 시작 시 호출 (말풍선 동기화용)
 }
 
 export interface VoiceActivityResult {

@@ -52,7 +52,7 @@ const DEFAULT_PROFILE: EmotionTuningProfile = {
 };
 
 const DEFAULT_GLOBAL: EmotionTuningGlobal = {
-  responseClearMs: 5000,
+  responseClearMs: 2000,
   happyDanceMs: 3500,
   idleNeutralDelayMs: 3000,
 };
