@@ -197,6 +197,13 @@ interface SettingsState {
   setAvatarPersonalityPrompt: (prompt: string) => void;
   setVrmModelPath: (path: string) => void;
   setCharacter: (character: Partial<CharacterProfile>) => void;
+  /**
+   * 프리셋 적용 전용 — 기존 character 상태를 계승하지 않고
+   * DEFAULT_CHARACTER_PROFILE을 baseline으로 초기화 후 profile을 덮어쓴다.
+   * 이전 archetype의 background/likes/dislikes/exampleDialogues 등
+   * optional 필드가 누수되지 않도록 보장.
+   */
+  applyCharacterPreset: (profile: CharacterProfile) => void;
   setProactive: (proactive: Partial<ProactiveSettings>) => void;
   toggleSettings: () => void;
   openSettings: () => void;
@@ -771,6 +778,24 @@ export const useSettingsStore = create<SettingsState>()(
             }),
             // 하위호환: character.name이 변경되면 avatarName도 동기화
             ...(character.name !== undefined ? { avatarName: normalizeAvatarName(character.name) } : {}),
+          },
+        })),
+
+      applyCharacterPreset: (profile) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            // DEFAULT_CHARACTER_PROFILE을 baseline으로 하고 profile로 덮어씀 —
+            // 이전 상태의 optional 필드(background, likes, dislikes, 예시 등)는 모두 리셋된다.
+            character: normalizeCharacterProfile({
+              ...DEFAULT_CHARACTER_PROFILE,
+              ...profile,
+              personality: {
+                ...DEFAULT_CHARACTER_PROFILE.personality,
+                ...(profile.personality ?? {}),
+              },
+            }),
+            ...(profile.name !== undefined ? { avatarName: normalizeAvatarName(profile.name) } : {}),
           },
         })),
 

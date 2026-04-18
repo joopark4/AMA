@@ -52,25 +52,24 @@ export default function GazeFollowController() {
   const saccadeStartedAtRef = useRef(0);
   const saccadeActiveRef = useRef(false);
 
-  // Rust 커서 polling (클릭스루 윈도우에서도 작동)
+  // Rust 커서 polling (클릭스루 윈도우에서도 작동).
+  // setInterval 대신 setTimeout 체인 — 이전 polling이 늦으면 호출이 쌓이지 않음.
   useEffect(() => {
     if (!gazeEnabled || faceOnlyModeEnabled) return;
 
     let cancelled = false;
-    let timer: ReturnType<typeof setInterval> | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
     const poll = async () => {
       try {
         const pos = await windowManager.getCursorPosition();
         if (cancelled) return;
 
-        // window-local coords → normalized (-1..+1) using canvas size
         const nx = (pos.x / size.width) * 2 - 1;
         const ny = -((pos.y / size.height) * 2 - 1);
         cursorNormRef.current.x = Math.max(-1, Math.min(1, nx));
         cursorNormRef.current.y = Math.max(-1, Math.min(1, ny));
 
-        // 실제 픽셀 이동량으로 "움직임" 판단
         const dx = pos.x - lastCursorPxRef.current.x;
         const dy = pos.y - lastCursorPxRef.current.y;
         if (Math.hypot(dx, dy) > CURSOR_MOVE_THRESHOLD_PX) {
@@ -82,16 +81,19 @@ export default function GazeFollowController() {
         lastCursorPxRef.current.x = pos.x;
         lastCursorPxRef.current.y = pos.y;
       } catch {
-        // 무시 — Rust 커맨드 실패 시 다음 tick에 재시도
+        // Rust 커맨드 실패는 무시 — 다음 체인에서 재시도
+      } finally {
+        if (!cancelled) {
+          timer = setTimeout(poll, CURSOR_POLL_INTERVAL_MS);
+        }
       }
     };
 
     void poll();
-    timer = setInterval(poll, CURSOR_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
-      if (timer) clearInterval(timer);
+      if (timer) clearTimeout(timer);
     };
   }, [gazeEnabled, faceOnlyModeEnabled, size]);
 

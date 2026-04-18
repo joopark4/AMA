@@ -767,7 +767,10 @@ export function useConversation(): UseConversationReturn {
         let lastDetectedEmotion: Emotion = 'neutral';
 
         responseText = await new Promise<string>((resolve, reject) => {
-          llmRouter.chatStream(
+          // chatStream은 Promise를 반환 — pre-callback에서 throw하면 onError가 호출되지
+          // 않아 외부 Promise가 영원히 pending될 수 있음. 반환 promise에 .catch(reject)
+          // 부착으로 사전 실패도 반드시 surface.
+          const streamPromise = llmRouter.chatStream(
             llmMessages,
             {
               onToken: (token) => {
@@ -797,6 +800,9 @@ export function useConversation(): UseConversationReturn {
             },
             { temperature: 0.7, maxTokens: 1024 }
           );
+          if (streamPromise && typeof (streamPromise as Promise<unknown>).catch === 'function') {
+            void (streamPromise as Promise<unknown>).catch(reject);
+          }
         });
 
         // TTS 큐 잔여분 재생 완료 대기
