@@ -10,6 +10,8 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "cocoa",
+ "core-foundation 0.10.1",
+ "core-graphics",
  "dirs 5.0.1",
  "futures-util",
  "image",

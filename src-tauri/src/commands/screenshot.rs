@@ -465,71 +465,94 @@ pub async fn list_windows() -> Result<Vec<WindowInfo>, String> {
 
 #[cfg(target_os = "macos")]
 fn list_windows_macos() -> Vec<WindowInfo> {
-    // CGWindowListCopyWindowInfo FFI 대신 AppleScript로 fallback.
-    // Accessibility 권한이 있으면 visible app의 window 목록 취득 가능.
-    fallback_list_windows_via_applescript()
-}
-
-#[cfg(target_os = "macos")]
-fn fallback_list_windows_via_applescript() -> Vec<WindowInfo> {
-    // AppleScript로 visible app의 window 목록 조회 (windowId는 osascript에서 취득 어려움 → -1 placeholder)
-    // 실제 캡처 시 find_window_id가 다시 조회하여 실제 ID 반환
-    let script = r#"
-    set windowList to {}
-    tell application "System Events"
-        set visibleApps to (every process whose visible is true and background only is false)
-        repeat with proc in visibleApps
-            set appName to name of proc
-            try
-                set procWindows to windows of proc
-                repeat with w in procWindows
-                    try
-                        set wTitle to name of w
-                        if wTitle is not missing value and wTitle is not "" then
-                            copy (appName & "|" & wTitle) to end of windowList
-                        end if
-                    end try
-                end repeat
-            end try
-        end repeat
-    end tell
-    set AppleScript's text item delimiters to linefeed
-    return windowList as text
-    "#;
-
-    let output = Command::new("osascript")
-        .args(["-e", script])
-        .output();
-
-    let output = match output {
-        Ok(o) if o.status.success() => o,
-        _ => return Vec::new(),
+    // CoreGraphics CGWindowListCopyWindowInfo 사용.
+    // Accessibility 대신 Screen Recording 권한만 필요 (이미 확보한 권한).
+    use core_foundation::array::{CFArray, CFArrayRef};
+    use core_foundation::base::{CFType, TCFType};
+    use core_foundation::dictionary::CFDictionary;
+    use core_foundation::number::CFNumber;
+    use core_foundation::string::CFString;
+    use core_graphics::display::{
+        kCGNullWindowID, kCGWindowListExcludeDesktopElements, kCGWindowListOptionOnScreenOnly,
+        CGWindowListCopyWindowInfo,
     };
 
-    let text = String::from_utf8_lossy(&output.stdout);
-    let mut result = Vec::new();
-    for line in text.lines() {
-        let parts: Vec<&str> = line.splitn(2, '|').collect();
-        if parts.len() != 2 {
+    let options = kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements;
+    let cf_array_ref: CFArrayRef = unsafe { CGWindowListCopyWindowInfo(options, kCGNullWindowID) };
+    if cf_array_ref.is_null() {
+        return Vec::new();
+    }
+    let array: CFArray<CFDictionary<CFString, CFType>> =
+        unsafe { CFArray::wrap_under_create_rule(cf_array_ref) };
+
+    let owner_name_key = CFString::from_static_string("kCGWindowOwnerName");
+    let window_name_key = CFString::from_static_string("kCGWindowName");
+    let window_number_key = CFString::from_static_string("kCGWindowNumber");
+    let window_layer_key = CFString::from_static_string("kCGWindowLayer");
+
+    let mut result: Vec<WindowInfo> = Vec::new();
+    let count = array.len();
+    for i in 0..count {
+        let dict = match array.get(i as isize) {
+            Some(d) => d,
+            None => continue,
+        };
+
+        // Layer: 0 = 일반 앱 윈도우. 음수는 화면 서비스, 양수는 배경 등.
+        let layer = dict
+            .find(&window_layer_key)
+            .and_then(|v| v.downcast::<CFNumber>())
+            .and_then(|n| n.to_i32());
+        if layer != Some(0) {
             continue;
         }
-        let app = parts[0].trim();
-        let title = parts[1].trim();
-        if app.is_empty() || title.is_empty() {
+
+        // Owner name (앱 이름)
+        let owner = dict
+            .find(&owner_name_key)
+            .and_then(|v| v.downcast::<CFString>())
+            .map(|s| s.to_string());
+        let app_name = match owner {
+            Some(n) if !n.is_empty() => n,
+            _ => continue,
+        };
+
+        // 자기 앱/시스템 윈도우 제외
+        if matches!(
+            app_name.as_str(),
+            "AMA" | "MyPartnerAI" | "Window Server" | "Dock" | "SystemUIServer" | "Control Center"
+                | "NotificationCenter" | "Spotlight"
+        ) {
             continue;
         }
-        // 자기 앱 제외
-        if app == "AMA" || app == "MyPartnerAI" {
+
+        // Window title (비어있어도 포함 — 일부 앱은 이름 없음. 앱 이름으로 fallback 표시)
+        let title = dict
+            .find(&window_name_key)
+            .and_then(|v| v.downcast::<CFString>())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        // Window number (실제 ID)
+        let window_id = dict
+            .find(&window_number_key)
+            .and_then(|v| v.downcast::<CFNumber>())
+            .and_then(|n| n.to_i64())
+            .map(|n| n as u32)
+            .unwrap_or(0);
+        if window_id == 0 {
             continue;
         }
-        // 시스템 윈도우 제외
-        if matches!(app, "Window Server" | "Dock" | "SystemUIServer" | "Control Center") {
-            continue;
-        }
+
+        let display_title = if title.is_empty() {
+            app_name.clone()
+        } else {
+            title
+        };
         result.push(WindowInfo {
-            app_name: app.to_string(),
-            window_title: title.to_string(),
-            window_id: 0, // placeholder — 캡처 시점에 실제 ID 조회
+            app_name,
+            window_title: display_title,
+            window_id,
         });
     }
     result
@@ -537,28 +560,29 @@ fn fallback_list_windows_via_applescript() -> Vec<WindowInfo> {
 
 #[cfg(target_os = "macos")]
 fn find_frontmost_window_id() -> Option<u32> {
-    // AppleScript로 최상위 앱의 첫 윈도우 ID 취득
-    let script = r#"
-    tell application "System Events"
-        set frontApp to first process whose frontmost is true
-        try
-            set frontWindow to first window of frontApp
-            return id of frontWindow
-        on error
-            return ""
-        end try
-    end tell
-    "#;
-    let output = Command::new("osascript").args(["-e", script]).output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let s = String::from_utf8_lossy(&output.stdout);
-    s.trim().parse::<u32>().ok()
+    // CoreGraphics: on-screen window 중 layer=0인 첫 윈도우 (가장 최상위).
+    // list_windows_macos()의 결과 첫 항목이 최상위와 일치하는 편.
+    list_windows_macos().first().map(|w| w.window_id)
 }
 
 #[cfg(target_os = "macos")]
 fn find_window_id(app_name: &str, window_title: Option<&str>) -> Option<u32> {
+    let title_filter = window_title.unwrap_or("").to_lowercase();
+    let app_lower = app_name.to_lowercase();
+    for w in list_windows_macos() {
+        if w.app_name.to_lowercase() != app_lower {
+            continue;
+        }
+        if title_filter.is_empty() || w.window_title.to_lowercase().contains(&title_filter) {
+            return Some(w.window_id);
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "macos")]
+#[allow(dead_code)]
+fn find_window_id_via_applescript(app_name: &str, window_title: Option<&str>) -> Option<u32> {
     let title_filter = window_title.unwrap_or("");
     let script = format!(
         r#"
