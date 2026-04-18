@@ -30,13 +30,15 @@ export default function LightingControl() {
   }, []);
 
   // Calculate sun position based on light settings
+  // 좌표 범위:
+  //   X: lightX ±5 → 화면 offset ±300px
+  //   Y: lightY ±5 → 화면 offset ±500px (negative Y = 아바타 위쪽)
+  // avatarCenterY는 아바타 머리 근처를 기준으로 하여
+  // sunPosition.y = 0이면 머리 옆, 음수면 머리 위.
   useEffect(() => {
     const lightPos = settings.avatar?.lighting?.directionalPosition || { x: 0, y: 1, z: 2 };
-    // Map 3D light position to 2D screen offset from avatar center
-    // X: -5 to 5 → -200 to 200 pixels
-    // Y: -5 to 5 → 300 to -300 pixels (inverted for screen coords)
-    const offsetX = (lightPos.x / 5) * 200;
-    const offsetY = -(lightPos.y / 5) * 300;
+    const offsetX = (lightPos.x / 5) * 300;
+    const offsetY = -(lightPos.y / 5) * 500;
     setSunPosition({ x: offsetX, y: offsetY });
   }, [settings.avatar?.lighting?.directionalPosition]);
 
@@ -56,16 +58,15 @@ export default function LightingControl() {
     const deltaX = e.clientX - dragStartRef.current.x;
     const deltaY = e.clientY - dragStartRef.current.y;
 
-    // Clamp to reasonable bounds (wider range for more control)
-    const newX = Math.max(-200, Math.min(200, initialPosRef.current.x + deltaX));
-    const newY = Math.max(-300, Math.min(300, initialPosRef.current.y + deltaY));
+    // 아바타 머리 위까지 갈 수 있도록 상방향(Y 음수) 범위 확대.
+    const newX = Math.max(-300, Math.min(300, initialPosRef.current.x + deltaX));
+    const newY = Math.max(-500, Math.min(500, initialPosRef.current.y + deltaY));
 
     setSunPosition({ x: newX, y: newY });
 
-    // Update light position in settings
-    // Map 2D offset back to 3D position
-    const lightX = (newX / 200) * 5;
-    const lightY = -(newY / 300) * 5;
+    // 2D offset → 3D light position 역매핑 (범위 확장에 맞춰 분모 조정)
+    const lightX = (newX / 300) * 5;
+    const lightY = -(newY / 500) * 5;
 
     setAvatarSettings({
       lighting: {
@@ -88,9 +89,10 @@ export default function LightingControl() {
   // Check if lighting control should be shown
   const showControl = settings.avatar?.lighting?.showControl !== false;
 
-  // Position sun relative to avatar center (fixed distance regardless of scale)
+  // Position sun relative to avatar center (fixed distance regardless of scale).
+  // avatarPosition.y는 발 위치이므로 머리 근처로 끌어올린다 (아바타 모델 높이 ~250px 기준).
   const avatarCenterX = avatarPosition.x;
-  const avatarCenterY = avatarPosition.y - 150;
+  const avatarCenterY = avatarPosition.y - 250;
 
   // Keep icon visible inside viewport (old/outlier positions can place it off-screen).
   const iconSize = 40;

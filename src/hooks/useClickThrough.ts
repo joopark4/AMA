@@ -142,10 +142,11 @@ export function useClickThrough() {
         mouseY <= hitBottom;
 
       // Check if mouse is over sun (lighting control)
+      // LightingControl.tsx와 동일한 범위(300/500, avatarCenter=-250) 사용.
       const lightPos = settingsState.settings.avatar?.lighting?.directionalPosition || { x: 0, y: 1, z: 2 };
-      const sunOffsetX = (lightPos.x / 5) * 200;
-      const sunOffsetY = -(lightPos.y / 5) * 300;
-      const avatarCenterY = avatarPos.y - 150;
+      const sunOffsetX = (lightPos.x / 5) * 300;
+      const sunOffsetY = -(lightPos.y / 5) * 500;
+      const avatarCenterY = avatarPos.y - 250;
       const sunX = avatarPos.x + sunOffsetX;
       const sunY = avatarCenterY + sunOffsetY;
       const sunRadius = 30;
