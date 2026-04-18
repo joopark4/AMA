@@ -210,9 +210,19 @@ async fn capture_screen_for_watch_macos(
         }
     }
 
+    // 임시 PNG 파일명은 UUID 기반 — 멀티 사용자/동시 인스턴스 충돌 방지.
     let temp_dir = std::env::temp_dir();
-    let raw_path = temp_dir.join("mypartnerai_screen_watch_raw.png");
+    let raw_path = temp_dir.join(format!("ama_screen_watch_{}.png", uuid::Uuid::new_v4()));
     let raw_path_str = raw_path.to_string_lossy().to_string();
+
+    // 어떤 경로로 종료하더라도 임시 파일 제거를 보장하는 guard.
+    struct CleanupGuard<'a>(&'a std::path::Path);
+    impl Drop for CleanupGuard<'_> {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(self.0);
+        }
+    }
+    let _cleanup = CleanupGuard(&raw_path);
 
     // screencapture 인자 구성 — Window 계열은 fail-closed (찾지 못하면 에러).
     let mut args: Vec<String> = vec!["-x".to_string(), "-t".to_string(), "png".to_string()];
@@ -293,7 +303,7 @@ async fn capture_screen_for_watch_macos(
         });
     }
 
-    // 캡처된 파일을 디코딩
+    // 캡처된 파일을 디코딩 (임시 파일은 _cleanup guard가 함수 종료 시 일괄 제거)
     let raw_bytes = match fs::read(&raw_path) {
         Ok(b) => b,
         Err(e) => {
@@ -302,7 +312,6 @@ async fn capture_screen_for_watch_macos(
             });
         }
     };
-    let _ = fs::remove_file(&raw_path);
 
     let img = match image::load_from_memory(&raw_bytes) {
         Ok(i) => i.to_rgb8(),
@@ -423,14 +432,17 @@ fn mean_abs_diff(a: &[u8], b: &[u8]) -> f32 {
     if a.len() != b.len() || a.is_empty() {
         return f32::MAX;
     }
-    // 성능 위해 step-sampling (10% 픽셀만 비교해도 체감 변화는 잡힘)
-    let step = 30; // RGB 10픽셀 간격
+    // 10픽셀 간격으로 R/G/B 3채널 모두 샘플링 (step=30 = 3 bytes/pixel × 10 pixels).
+    // 이전 구현은 Red 채널만 비교해 초록/파랑만 변하는 변화를 놓쳤음.
+    let step = 30;
     let mut sum: u64 = 0;
     let mut count: u64 = 0;
     let mut i = 0;
-    while i < a.len() {
+    while i + 2 < a.len() {
         sum += (a[i] as i32 - b[i] as i32).unsigned_abs() as u64;
-        count += 1;
+        sum += (a[i + 1] as i32 - b[i + 1] as i32).unsigned_abs() as u64;
+        sum += (a[i + 2] as i32 - b[i + 2] as i32).unsigned_abs() as u64;
+        count += 3;
         i += step;
     }
     if count == 0 {
@@ -486,9 +498,12 @@ fn list_windows_macos() -> Vec<WindowInfo> {
         unsafe { CFArray::wrap_under_create_rule(cf_array_ref) };
 
     let owner_name_key = CFString::from_static_string("kCGWindowOwnerName");
+    let owner_pid_key = CFString::from_static_string("kCGWindowOwnerPID");
     let window_name_key = CFString::from_static_string("kCGWindowName");
     let window_number_key = CFString::from_static_string("kCGWindowNumber");
     let window_layer_key = CFString::from_static_string("kCGWindowLayer");
+
+    let self_pid = std::process::id() as i64;
 
     let mut result: Vec<WindowInfo> = Vec::new();
     let count = array.len();
@@ -507,6 +522,15 @@ fn list_windows_macos() -> Vec<WindowInfo> {
             continue;
         }
 
+        // 자기 앱 PID 기반 제외 (이름 하드코딩 대신 실제 프로세스 ID 비교).
+        let owner_pid = dict
+            .find(&owner_pid_key)
+            .and_then(|v| v.downcast::<CFNumber>())
+            .and_then(|n| n.to_i64());
+        if owner_pid == Some(self_pid) {
+            continue;
+        }
+
         // Owner name (앱 이름)
         let owner = dict
             .find(&owner_name_key)
@@ -517,10 +541,10 @@ fn list_windows_macos() -> Vec<WindowInfo> {
             _ => continue,
         };
 
-        // 자기 앱/시스템 윈도우 제외
+        // 시스템 윈도우 제외 (자기 앱 제외는 위에서 PID 기반으로 처리).
         if matches!(
             app_name.as_str(),
-            "AMA" | "MyPartnerAI" | "Window Server" | "Dock" | "SystemUIServer" | "Control Center"
+            "Window Server" | "Dock" | "SystemUIServer" | "Control Center"
                 | "NotificationCenter" | "Spotlight"
         ) {
             continue;

@@ -13,7 +13,7 @@ import { screenWatchService, isInSilentHours, isVisionAvailable } from './screen
  * - `isObservingRef` 플래그로 동시 관찰 방지
  * - 대화 진행(isProcessing/isSpeaking) 중엔 스킵
  * - 설정 OFF → Rust 측 비교 버퍼 해제
- * - 앱 시작 30초 후 첫 tick (리소스 경합 회피)
+ * - 앱 시작/토글 ON 후 INITIAL_DELAY_MS 후 첫 tick (리소스 경합 회피)
  */
 
 const TICK_INTERVAL_MS = 10_000;
@@ -130,7 +130,7 @@ export function useScreenWatcher(): void {
       }
     };
 
-    // 초기 지연 30초 후 첫 tick, 이후 10초마다
+    // INITIAL_DELAY_MS 후 첫 tick, 이후 TICK_INTERVAL_MS마다
     initialTimerRef.current = setTimeout(() => {
       initialTimerRef.current = null;
       void tick();
