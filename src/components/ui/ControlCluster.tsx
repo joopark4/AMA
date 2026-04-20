@@ -34,6 +34,7 @@ import { llmRouter } from '../../services/ai/llmRouter';
 import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER } from '../../features/channels';
+import { QuickActionsPalette } from '../../features/quick-actions';
 import { permissions } from '../../services/tauri/permissions';
 import { ttsRouter } from '../../services/voice/ttsRouter';
 import VoiceWaveform from './VoiceWaveform';
@@ -345,7 +346,7 @@ export default function ControlCluster() {
   const [hasAutoShownConfigGuide, setHasAutoShownConfigGuide] = useState(false);
   const [llmDependencyIssue, setLlmDependencyIssue] = useState<DependencyIssue | null>(null);
   const [globalShortcutToast, setGlobalShortcutToast] = useState<string | null>(null);
-  const [sparklesToast, setSparklesToast] = useState<string | null>(null);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
 
   const avatarHidden = settings.avatarHidden;
 
@@ -510,14 +511,8 @@ export default function ControlCluster() {
   }, [isVoiceListening, startListening, stopListening]);
 
   const handleSparklesClick = useCallback(() => {
-    setSparklesToast(t('overlay.quickActionsComingSoon'));
-  }, [t]);
-
-  useEffect(() => {
-    if (!sparklesToast) return;
-    const timer = setTimeout(() => setSparklesToast(null), 2400);
-    return () => clearTimeout(timer);
-  }, [sparklesToast]);
+    setQuickActionsOpen((v) => !v);
+  }, []);
 
   /* ─── 글로벌 단축키 ─── */
   const globalShortcutSettings = settings.globalShortcut ?? {
@@ -694,15 +689,6 @@ export default function ControlCluster() {
         </div>
       )}
 
-      {sparklesToast && (
-        <div
-          className="glass px-3 py-2 text-xs max-w-xs animate-fade-in"
-          style={{ color: 'var(--ink)', borderRadius: 'var(--r)' }}
-        >
-          {sparklesToast}
-        </div>
-      )}
-
       {/* ─── StatusPill (cluster 상단, 우측 정렬) ─── */}
       <div style={{ paddingRight: 8, marginBottom: -4 }}>
         <StatusPill kind={pillKind} label={pillLabel} />
@@ -793,6 +779,7 @@ export default function ControlCluster() {
         <ClusterBtn
           onClick={handleSparklesClick}
           title={t('overlay.quickActions')}
+          active={quickActionsOpen}
         >
           <Sparkles size={17} />
         </ClusterBtn>
@@ -842,6 +829,13 @@ export default function ControlCluster() {
           <SettingsIcon size={17} />
         </ClusterBtn>
       </div>
+
+      {/* ─── Quick Actions Palette (✨) ─── */}
+      <QuickActionsPalette
+        open={quickActionsOpen}
+        onClose={() => setQuickActionsOpen(false)}
+        sendMessage={sendMessage}
+      />
 
       {/* ─── Dependency guide modal ─── */}
       {showDependencyGuide && (
