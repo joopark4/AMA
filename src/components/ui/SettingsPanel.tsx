@@ -26,6 +26,7 @@ import {
   ScanEye,
   ScrollText,
   Settings as SettingsIcon,
+  Sparkles,
   Trash2,
   User,
   UserRound,
@@ -48,6 +49,7 @@ import UpdateSettings from '../settings/UpdateSettings';
 import DataCleanupSettings from '../settings/DataCleanupSettings';
 import { MCPSettings } from '../../features/channels';
 import { ScreenWatchSettings } from '../../features/screen-watch';
+import { QuickActionsSettings } from '../../features/quick-actions';
 import MonitorSettings from '../settings/MonitorSettings';
 
 /* ─────────────────────── User pill (헤더용 컴팩트) ─────────────────────── */
@@ -250,6 +252,10 @@ export default function SettingsPanel() {
 
           <SettingsSection icon={<User size={16} />} title={t('settings.character.title')}>
             <CharacterSettings />
+          </SettingsSection>
+
+          <SettingsSection icon={<Sparkles size={16} />} title={t('settings.quickActions.title')}>
+            <QuickActionsSettings />
           </SettingsSection>
 
           <SettingsSection icon={<Box size={16} />} title={t('settings.avatar.title')}>
