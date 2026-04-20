@@ -509,64 +509,46 @@
     "avatarResting": "{{name}} is taking a quick break"
   },
   "quick": {
-    "calendar": {
-      "label": "Today's schedule",
-      "hint": "Calendar summary",
-      "desc": "Brief today and tomorrow's schedule"
+    "category": {
+      "avatar": "Avatar",
+      "animation": "Animation",
+      "voice": "Voice",
+      "screen": "Screen",
+      "channels": "Channels",
+      "proactive": "Proactive"
     },
-    "mail": {
-      "label": "Mail summary",
-      "hint": "Unread mail",
-      "desc": "Summarize the important unread emails"
-    },
-    "translate": {
-      "label": "Translate",
-      "hint": "Clipboard",
-      "desc": "Translate copied text instantly"
-    },
-    "capture": {
-      "label": "Screen capture",
-      "hint": "Use Screen Watch",
-      "desc": "Describe what's on the screen for you"
-    },
-    "polish": {
-      "label": "Polish writing",
-      "hint": "Grammar and tone",
-      "desc": "Refine grammar, tone, and flow"
-    },
-    "focus": {
-      "label": "Focus sounds",
-      "hint": "lo-fi suggestions",
-      "desc": "Suggest music or noise for focus"
-    },
-    "news": {
-      "label": "Top news",
-      "hint": "3-line brief",
-      "desc": "Brief today's headline news"
-    },
-    "files": {
-      "label": "Tidy folder",
-      "hint": "Downloads folder",
-      "desc": "Organize a messy folder by category"
-    },
-    "memo": {
-      "label": "Remember as memo",
-      "hint": "Natural language",
-      "desc": "Save the gist of the recent chat"
-    }
+    "avatarHidden": { "title": "Hide avatar", "desc": "Temporarily hide the avatar" },
+    "freeMovement": { "title": "Free movement", "desc": "Drag the avatar anywhere" },
+    "autoRoam": { "title": "Auto roam", "desc": "Avatar wanders periodically" },
+    "showSpeechBubble": { "title": "Show speech bubble", "desc": "Display AI replies as a bubble" },
+    "physics": { "title": "Physics simulation", "desc": "Hair and cloth swing" },
+    "lightingControl": { "title": "Lighting control", "desc": "Show the draggable sun icon" },
+    "faceOnly": { "title": "Face-only mode", "desc": "Express only with the face" },
+    "breathing": { "title": "Breathing", "desc": "Subtle chest movement" },
+    "eyeDrift": { "title": "Eye drift", "desc": "Random gaze drift" },
+    "gazeFollow": { "title": "Gaze follow", "desc": "Eyes track the cursor" },
+    "backchannel": { "title": "Backchannel nod", "desc": "Small nods while listening" },
+    "gestures": { "title": "Gestures", "desc": "Hand motions for emotions" },
+    "motionClips": { "title": "Motion clips", "desc": "Use the motion library" },
+    "dancing": { "title": "Dancing", "desc": "Dance when happy" },
+    "globalShortcut": { "title": "Global shortcut", "desc": "Toggle voice input via hotkey" },
+    "screenWatch": { "title": "Screen watch", "desc": "Periodic screen observation" },
+    "silentHours": { "title": "Silent hours", "desc": "Pause screen watch in selected hours" },
+    "channels": { "title": "Claude Code Channels", "desc": "Two-way bridge to external Claude Code" },
+    "proactive": { "title": "Proactive talk", "desc": "Speak first when there's something to say" }
   },
   "quickActions": {
     "title": "Quick actions",
-    "searchPlaceholder": "Find an action or type a command…",
+    "searchPlaceholder": "Find a toggle…",
     "manage": "Manage in settings",
-    "empty": "No registered actions",
-    "emptyDesc": "Register your favourite actions in settings to see them here.",
+    "empty": "No registered toggles",
+    "emptyDesc": "Tick the settings you use often and they will appear here as quick toggles.",
     "noResults": "No results",
     "noResultsDesc": "Try a different keyword.",
-    "register": "Register an action",
+    "register": "Register a toggle",
     "registeredCount": "Registered · {{count}}",
-    "footerHint": "Press Enter to run",
-    "footerSettings": "Settings"
+    "footerToggleHint": "Toggles apply instantly",
+    "footerClose": "Close"
   },
   "onboarding": {
     "avatarNameTitle": "Set Avatar Name",

@@ -1,56 +1,73 @@
 /**
- * Quick Actions — 자주 쓰는 기능 타입 정의 (Phase 4).
+ * Quick Actions — 자주 쓰는 설정 토글 (재설계).
  *
- * 사용자가 ✨ 버튼이나 설정에서 등록한 기능을 한 번에 호출하는 모듈.
+ * 사용자가 자주 변경하는 boolean 설정을 빠르게 토글할 수 있도록 모은 모음.
+ * 핸드오프 spec의 9개 LLM 프롬프트 액션은 사용자 요청에 따라 설정 토글로 대체.
+ *
+ * 주의: 이 파일은 settingsStore를 import하지 않는다 (순환 의존 방지).
+ * 실제 select/apply는 catalog.ts에서 store를 참조해 정의.
  */
-import type { LucideIcon } from 'lucide-react';
 
-export type QuickActionId =
-  | 'calendar'
-  | 'mail'
-  | 'translate'
-  | 'capture'
-  | 'polish'
-  | 'focus'
-  | 'news'
-  | 'files'
-  | 'memo';
+/** Quick Toggle 카테고리 — 설정 패널에서 그룹화 헤더로 사용 */
+export type QuickToggleCategory =
+  | 'avatar'
+  | 'animation'
+  | 'voice'
+  | 'screen'
+  | 'channels'
+  | 'proactive';
 
-export interface QuickActionDef {
-  id: QuickActionId;
-  icon: LucideIcon;
-  /** i18n 키 — 짧은 라벨 (예: "오늘 일정") */
-  labelKey: string;
-  /** i18n 키 — 한 줄 힌트 (예: "캘린더 요약") */
-  hintKey: string;
-  /** i18n 키 — 상세 설명 (설정 등록 화면용) */
-  descKey: string;
-  /** 아이콘 칩 배경 oklch 색상 */
-  accent: string;
+export interface QuickToggleDef {
+  /** 고유 ID (예: "avatar.freeMovement") — settingsStore.enabledQuickActions에 저장됨 */
+  id: string;
+  /** i18n 키 — 짧은 라벨 */
+  titleKey: string;
+  /** i18n 키 — 한 줄 설명 (선택) */
+  descKey?: string;
+  /** 설정 패널 그룹화에 사용 */
+  category: QuickToggleCategory;
+  /**
+   * Zustand selector — 컴포넌트가 useSettingsStore(def.select)로 구독.
+   * state 타입은 `any`로 두어 catalog.ts가 settingsStore의 구체 타입을 import하지 않아도 되게 함.
+   */
+  select: (state: any) => boolean;
+  /** 새 값 적용 — store action 호출 */
+  apply: (value: boolean) => void;
 }
+
+/** Quick Action ID는 자유 문자열 — 런타임에 ALL_QUICK_ACTION_IDS Set으로 검증 */
+export type QuickActionId = string;
 
 /**
- * 핸들러가 사용할 수 있는 환경 — 외부에서 주입.
- * 컴포넌트가 useConversation 등을 통해 sendMessage를 확보한 뒤 dispatch에 전달한다.
+ * 등록 가능한 토글 ID 전체 — settingsStore.enabledQuickActions 검증/마이그레이션에 사용.
+ *
+ * catalog.ts의 QUICK_TOGGLES와 동일 순서/내용으로 유지할 것.
+ * (catalog.ts가 settingsStore를 import하기 때문에 여기서는 분리.)
  */
-export interface QuickActionContext {
-  /** LLM에 메시지 전송 (사용자 입력으로 처리) */
-  sendMessage: (text: string) => Promise<void> | void;
-  /** 시스템 클립보드에서 텍스트 읽기. 실패 시 빈 문자열 */
-  readClipboard: () => Promise<string>;
-}
-
-export type QuickActionHandler = (ctx: QuickActionContext) => Promise<void> | void;
-
-/** 모든 QuickActionId의 집합 — 마이그레이션/필터에서 사용 */
-export const ALL_QUICK_ACTION_IDS: ReadonlySet<QuickActionId> = new Set([
-  'calendar',
-  'mail',
-  'translate',
-  'capture',
-  'polish',
-  'focus',
-  'news',
-  'files',
-  'memo',
+export const ALL_QUICK_ACTION_IDS: ReadonlySet<string> = new Set([
+  // 아바타
+  'avatar.hidden',
+  'avatar.freeMovement',
+  'avatar.autoRoam',
+  'avatar.showSpeechBubble',
+  'avatar.physics',
+  'avatar.lightingControl',
+  // 애니메이션
+  'animation.faceOnly',
+  'animation.breathing',
+  'animation.eyeDrift',
+  'animation.gazeFollow',
+  'animation.backchannel',
+  'animation.gestures',
+  'animation.motionClips',
+  'animation.dancing',
+  // 음성
+  'voice.globalShortcut',
+  // 화면
+  'screen.watch',
+  'screen.silentHours',
+  // Channels
+  'channels.enabled',
+  // 자발적 대화
+  'proactive.enabled',
 ]);
