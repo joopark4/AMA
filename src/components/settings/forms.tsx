@@ -228,50 +228,43 @@ export function Toggle({
   ariaLabel?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => !disabled && onChange?.(!on)}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      aria-pressed={on}
-      className="relative shrink-0 inline-block"
+    <label
+      className="shrink-0 inline-flex items-center"
       style={{
-        // WKWebView의 native button 스타일(-webkit-appearance: button) 무력화 —
-        // 미설정 시 tauri/WKWebView에서 인라인 background가 무시되어 투명하게 보일 수 있음.
-        appearance: 'none',
-        WebkitAppearance: 'none',
-        width: 44,
-        height: 24,
-        minWidth: 44,
         flexShrink: 0,
-        borderRadius: 99,
-        // 시인성 극대화: rgb/hex로 fallback
-        background: on ? '#e6903a' : '#a8a39a',
-        border: on ? '1px solid #c77630' : '1px solid #7a756d',
-        boxShadow: on
-          ? '0 1px 2px rgba(0, 0, 0, 0.1)'
-          : 'inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-        opacity: disabled ? 0.5 : 1,
+        minWidth: 24,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'background 200ms var(--ease), border-color 200ms var(--ease)',
-        padding: 0,
+        opacity: disabled ? 0.5 : 1,
+        gap: 6,
       }}
       data-interactive="true"
+      aria-label={ariaLabel}
     >
-      <div
+      <input
+        type="checkbox"
+        checked={on}
+        onChange={(e) => !disabled && onChange?.(e.target.checked)}
+        disabled={disabled}
         style={{
-          position: 'absolute',
-          top: 1,
-          left: on ? 21 : 1,
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          background: 'white',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08)',
-          transition: 'left 220ms var(--ease)',
+          width: 24,
+          height: 24,
+          minWidth: 24,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          accentColor: '#e6903a',
         }}
+        data-interactive="true"
       />
-    </button>
+      <span
+        style={{
+          fontSize: 12,
+          color: on ? '#c77630' : '#7a756d',
+          fontWeight: 600,
+          minWidth: 28,
+        }}
+      >
+        {on ? 'ON' : 'OFF'}
+      </span>
+    </label>
   );
 }
 
