@@ -6,6 +6,7 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
 import ControlCluster from './components/ui/ControlCluster';
+import AvatarRestingBadge from './components/ui/AvatarRestingBadge';
 import SettingsPanel from './components/ui/SettingsPanel';
 import HistoryPanel from './components/ui/HistoryPanel';
 import LightingControl from './components/avatar/LightingControl';
@@ -199,22 +200,33 @@ function App() {
   const requiresAvatarNameSetup =
     !requiresModelDownload && !isDevBuild && !(settings.avatarName || '').trim();
 
+  const avatarHidden = settings.avatarHidden;
+
   return (
     <div className="w-full h-full relative">
-      {/* Main 3D Avatar Canvas - includes 3D model drag support */}
-      <ErrorBoundary name="AvatarCanvas">
-        <AvatarCanvas />
-      </ErrorBoundary>
+      {/* Main 3D Avatar Canvas + Lighting + SpeechBubble — avatarHidden 시 모두 unmount */}
+      {!avatarHidden && (
+        <>
+          <ErrorBoundary name="AvatarCanvas">
+            <AvatarCanvas />
+          </ErrorBoundary>
 
-      {/* Lighting Control - draggable sun emoji */}
-      <ErrorBoundary name="LightingControl">
-        <LightingControl />
-      </ErrorBoundary>
+          <ErrorBoundary name="LightingControl">
+            <LightingControl />
+          </ErrorBoundary>
 
-      {/* Speech Bubble - shows AI responses */}
-      {currentResponse && settings.avatar?.showSpeechBubble !== false && (
-        <ErrorBoundary name="SpeechBubble">
-          <SpeechBubble message={currentResponse} />
+          {currentResponse && settings.avatar?.showSpeechBubble !== false && (
+            <ErrorBoundary name="SpeechBubble">
+              <SpeechBubble message={currentResponse} />
+            </ErrorBoundary>
+          )}
+        </>
+      )}
+
+      {/* 아바타 숨김 안내 pill (중앙) */}
+      {avatarHidden && (
+        <ErrorBoundary name="AvatarRestingBadge">
+          <AvatarRestingBadge />
         </ErrorBoundary>
       )}
 
