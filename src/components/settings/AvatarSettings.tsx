@@ -4,6 +4,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { pickVrmFile } from '../../services/tauri/fileDialog';
 import { isDefaultVrmAvailable } from '../../services/tauri/defaultVrm';
+import { Field, FormCard, Pill, Row, Slider, Toggle } from './forms';
 
 export default function AvatarSettings() {
   const { t } = useTranslation();
@@ -43,133 +44,144 @@ export default function AvatarSettings() {
   const emotions = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'relaxed', 'thinking'] as const;
 
   return (
-    <div className="space-y-4">
-      {/* VRM Model Path */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.model')}
-        </label>
+    <div>
+      {/* VRM Model */}
+      <Field label={t('settings.avatar.model')}>
         {isUsingDefaultVrm && (
-          <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: 10,
+              background: 'oklch(0.95 0.05 160 / 0.5)',
+              boxShadow: 'inset 0 0 0 1px oklch(0.7 0.12 160 / 0.3)',
+              fontSize: 12,
+              color: 'var(--ok)',
+              marginBottom: 8,
+            }}
+          >
             {t('settings.avatar.defaultVrmLabel')}
           </div>
         )}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={settings.vrmModelPath}
-            placeholder={isUsingDefaultVrm ? t('settings.avatar.defaultVrmLabel') : t('settings.avatar.vrmPlaceholder')}
-            readOnly
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 text-sm"
-          />
-          <button
-            onClick={handleSelectVRM}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            {t('settings.avatar.select')}
-          </button>
-        </div>
+        <FormCard padding={12}>
+          <div className="flex items-center" style={{ gap: 12 }}>
+            <div className="flex-1 min-w-0">
+              <div
+                className="truncate"
+                style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}
+              >
+                {settings.vrmModelPath?.trim() ||
+                  (isUsingDefaultVrm
+                    ? t('settings.avatar.defaultVrmLabel')
+                    : t('settings.avatar.vrmPlaceholder'))}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSelectVRM}
+              className="focus-ring"
+              style={{
+                padding: '6px 12px',
+                borderRadius: 8,
+                fontSize: 12,
+                color: 'var(--accent-ink)',
+                background: 'var(--accent-soft)',
+                fontWeight: 500,
+              }}
+              data-interactive="true"
+            >
+              {t('settings.avatar.select')}
+            </button>
+          </div>
+        </FormCard>
         {settings.vrmModelPath?.trim() && hasDefaultVrm && (
           <button
+            type="button"
             onClick={() => setVrmModelPath('')}
-            className="w-full px-3 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+            className="w-full focus-ring"
+            style={{
+              marginTop: 8,
+              padding: '8px 12px',
+              fontSize: 12.5,
+              fontWeight: 500,
+              borderRadius: 10,
+              background: 'oklch(1 0 0 / 0.7)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+              color: 'var(--ink-2)',
+            }}
+            data-interactive="true"
           >
             {t('settings.avatar.useDefaultVrm')}
           </button>
         )}
-      </div>
+      </Field>
 
-      {/* Avatar Scale */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.scale')}: {settings.avatar?.scale?.toFixed(1) || '1.0'}x
-        </label>
-        <input
-          type="range"
-          min="0.3"
-          max="2.0"
-          step="0.1"
+      {/* Scale */}
+      <Field
+        label={t('settings.avatar.scale')}
+        hint={`${(settings.avatar?.scale || 1.0).toFixed(1)}x`}
+      >
+        <Slider
           value={settings.avatar?.scale || 1.0}
-          onChange={(e) => setAvatarSettings({ scale: parseFloat(e.target.value) })}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          min={0.3}
+          max={2.0}
+          step={0.1}
+          format={(v) => `${v.toFixed(1)}x`}
+          onChange={(v) => setAvatarSettings({ scale: v })}
         />
-        {/* 레이블 위치를 실제 슬라이더 값 비율에 맞춤 (0.3=0%, 1.0=41.2%, 2.0=100%) */}
-        <div className="relative h-4 text-xs text-gray-500">
-          <span className="absolute left-0">0.3x</span>
-          <span className="absolute -translate-x-1/2" style={{ left: `${((1.0 - 0.3) / (2.0 - 0.3)) * 100}%` }}>1.0x</span>
-          <span className="absolute right-0">2.0x</span>
-        </div>
-      </div>
+      </Field>
 
-      {/* Free Movement Mode */}
-      <div className="flex items-center justify-between py-2">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-gray-700">
-            {t('settings.avatar.freeMovement.title')}
-          </span>
-          <span className="text-xs text-gray-500">
-            {t('settings.avatar.freeMovement.description')}
-          </span>
-        </div>
-        <button
-          onClick={() => setAvatarSettings({ freeMovement: !(settings.avatar?.freeMovement ?? false) })}
-          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-            settings.avatar?.freeMovement ? 'bg-blue-600' : 'bg-gray-300'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-              settings.avatar?.freeMovement ? 'translate-x-5' : ''
-            }`}
-          />
-        </button>
-      </div>
+      {/* Free Movement */}
+      <Row
+        label={
+          <div>
+            <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
+              {t('settings.avatar.freeMovement.title')}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
+              {t('settings.avatar.freeMovement.description')}
+            </div>
+          </div>
+        }
+      >
+        <Toggle
+          on={settings.avatar?.freeMovement ?? false}
+          onChange={(on) => setAvatarSettings({ freeMovement: on })}
+        />
+      </Row>
 
-      {/* Speech Bubble Toggle */}
-      <div className="flex items-center justify-between py-2">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-gray-700">
-            {t('settings.avatar.speechBubble.title')}
-          </span>
-          <span className="text-xs text-gray-500">
-            {t('settings.avatar.speechBubble.description')}
-          </span>
-        </div>
-        <button
-          onClick={() => setAvatarSettings({ showSpeechBubble: !(settings.avatar?.showSpeechBubble ?? true) })}
-          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-            settings.avatar?.showSpeechBubble !== false ? 'bg-blue-600' : 'bg-gray-300'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-              settings.avatar?.showSpeechBubble !== false ? 'translate-x-5' : ''
-            }`}
-          />
-        </button>
-      </div>
+      {/* Speech Bubble */}
+      <Row
+        label={
+          <div>
+            <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
+              {t('settings.avatar.speechBubble.title')}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
+              {t('settings.avatar.speechBubble.description')}
+            </div>
+          </div>
+        }
+      >
+        <Toggle
+          on={settings.avatar?.showSpeechBubble !== false}
+          onChange={(on) => setAvatarSettings({ showSpeechBubble: on })}
+        />
+      </Row>
 
       {/* Expression Control */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.expression')}
-        </label>
-        <div className="flex flex-wrap gap-2">
+      <Field label={t('settings.avatar.expression')}>
+        <div className="flex flex-wrap" style={{ gap: 6 }}>
           {emotions.map((em) => (
-            <button
+            <Pill
               key={em}
+              active={emotion === em}
               onClick={() => setEmotion(em)}
-              className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                emotion === em
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
             >
               {t(`settings.avatar.emotions.${em}`)}
-            </button>
+            </Pill>
           ))}
         </div>
-      </div>
+      </Field>
 
       {/* Initial View Rotation */}
       <div className="space-y-2 border-t pt-4 mt-4">
@@ -188,7 +200,8 @@ export default function AvatarSettings() {
                 y: manualRotation.y,
               },
             })}
-            className="px-3 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="px-3 py-2 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent-2 transition-colors focus-ring"
+            data-interactive="true"
           >
             {t('settings.avatar.initialView.saveCurrent')}
           </button>
@@ -197,7 +210,12 @@ export default function AvatarSettings() {
               x: savedInitialView.x,
               y: savedInitialView.y,
             })}
-            className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+            className="px-3 py-2 text-xs font-medium rounded-lg text-ink-2 transition-colors focus-ring"
+            style={{
+              background: 'oklch(1 0 0 / 0.7)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+            }}
+            data-interactive="true"
           >
             {t('settings.avatar.initialView.applySaved')}
           </button>
@@ -207,7 +225,12 @@ export default function AvatarSettings() {
               setAvatarSettings({ initialViewRotation: resetRotation });
               setManualRotation(resetRotation);
             }}
-            className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+            className="px-3 py-2 text-xs font-medium rounded-lg text-ink-2 transition-colors focus-ring"
+            style={{
+              background: 'oklch(1 0 0 / 0.7)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+            }}
+            data-interactive="true"
           >
             {t('settings.avatar.initialView.resetFront')}
           </button>
@@ -247,7 +270,7 @@ export default function AvatarSettings() {
             onClick={() => setAvatarSettings({
               animation: { ...settings.avatar?.animation, faceExpressionOnlyMode: !faceOnlyModeEnabled },
             })}
-            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${faceOnlyModeEnabled ? 'bg-emerald-600' : 'bg-gray-300'}`}
+            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${faceOnlyModeEnabled ? 'bg-ok' : 'bg-[oklch(0.85_0.005_60)]'}`}
           >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${faceOnlyModeEnabled ? 'translate-x-5' : ''}`} />
           </button>
@@ -272,7 +295,7 @@ export default function AvatarSettings() {
               <button
                 onClick={() => !settings.avatar?.freeMovement && setAvatarSettings({ autoRoam: !(settings.avatar?.autoRoam ?? false) })}
                 disabled={settings.avatar?.freeMovement ?? false}
-                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings.avatar?.autoRoam && !settings.avatar?.freeMovement ? 'bg-blue-600' : 'bg-gray-300'} ${settings.avatar?.freeMovement ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings.avatar?.autoRoam && !settings.avatar?.freeMovement ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'} ${settings.avatar?.freeMovement ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${settings.avatar?.autoRoam && !settings.avatar?.freeMovement ? 'translate-x-5' : ''}`} />
               </button>
@@ -297,7 +320,7 @@ export default function AvatarSettings() {
                   animation: { ...settings.avatar?.animation, enableBreathing: !(settings.avatar?.animation?.enableBreathing ?? true) },
                 })}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  (settings.avatar?.animation?.enableBreathing ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                  (settings.avatar?.animation?.enableBreathing ?? true) ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -316,7 +339,7 @@ export default function AvatarSettings() {
                   animation: { ...settings.avatar?.animation, enableEyeDrift: !(settings.avatar?.animation?.enableEyeDrift ?? true) },
                 })}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                  (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -335,7 +358,7 @@ export default function AvatarSettings() {
                   animation: { ...settings.avatar?.animation, gazeFollow: !(settings.avatar?.animation?.gazeFollow ?? true) },
                 })}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  (settings.avatar?.animation?.gazeFollow ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                  (settings.avatar?.animation?.gazeFollow ?? true) ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -354,7 +377,7 @@ export default function AvatarSettings() {
                   animation: { ...settings.avatar?.animation, backchannel: !(settings.avatar?.animation?.backchannel ?? true) },
                 })}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  (settings.avatar?.animation?.backchannel ?? true) ? 'bg-blue-600' : 'bg-gray-300'
+                  (settings.avatar?.animation?.backchannel ?? true) ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -381,7 +404,7 @@ export default function AvatarSettings() {
               physics: { ...settings.avatar?.physics, enabled: !settings.avatar?.physics?.enabled },
             })}
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.physics?.enabled ? 'bg-blue-600' : 'bg-gray-300'
+              settings.avatar?.physics?.enabled ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
             }`}
           >
             <span
@@ -404,7 +427,7 @@ export default function AvatarSettings() {
                 type="range" min="0.2" max="2.0" step="0.1"
                 value={settings.avatar?.physics?.gravityMultiplier ?? 1.0}
                 onChange={(e) => setAvatarSettings({ physics: { ...settings.avatar?.physics, gravityMultiplier: parseFloat(e.target.value) } })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
               />
             </div>
 
@@ -418,7 +441,7 @@ export default function AvatarSettings() {
                 type="range" min="0.2" max="2.0" step="0.1"
                 value={settings.avatar?.physics?.stiffnessMultiplier ?? 1.0}
                 onChange={(e) => setAvatarSettings({ physics: { ...settings.avatar?.physics, stiffnessMultiplier: parseFloat(e.target.value) } })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
               />
             </div>
           </>
@@ -441,7 +464,7 @@ export default function AvatarSettings() {
             type="range" min="0" max="3" step="0.1"
             value={settings.avatar?.lighting?.ambientIntensity ?? 1.0}
             onChange={(e) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, ambientIntensity: parseFloat(e.target.value) } })}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
           />
         </div>
 
@@ -455,7 +478,7 @@ export default function AvatarSettings() {
             type="range" min="0" max="3" step="0.1"
             value={settings.avatar?.lighting?.directionalIntensity ?? 1.0}
             onChange={(e) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, directionalIntensity: parseFloat(e.target.value) } })}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
           />
         </div>
 
@@ -466,7 +489,7 @@ export default function AvatarSettings() {
           <button
             onClick={() => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, showControl: !settings.avatar?.lighting?.showControl } })}
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.lighting?.showControl !== false ? 'bg-blue-600' : 'bg-gray-300'
+              settings.avatar?.lighting?.showControl !== false ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
             }`}
           >
             <span
