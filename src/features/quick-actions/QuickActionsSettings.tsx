@@ -64,19 +64,12 @@ export default function QuickActionsSettings() {
                     key={def.id}
                     type="button"
                     onClick={() => toggle(def.id)}
-                    className="w-full flex items-start text-left transition-colors focus-ring"
+                    className="w-full flex items-start text-left transition-colors focus-ring hover:bg-[oklch(1_0_0_/_0.5)]"
                     style={{
                       padding: '10px 12px',
                       gap: 11,
                       borderTop: i === 0 ? 'none' : '1px solid var(--hairline)',
-                      background: 'transparent',
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = 'oklch(1 0 0 / 0.5)')
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = 'transparent')
-                    }
                     data-interactive="true"
                   >
                     {/* 체크박스 */}

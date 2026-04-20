@@ -60,4 +60,38 @@
 
   /* ─── easing ─── */
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ─── 페이지 스크롤 epsilon (settings panel 페이지 네비) ─── */
+  --scroll-edge-epsilon: 4px;
+}
+
+/* ─── 다크 모드 토큰 (Phase 7 준비, 활성화는 추후) ───
+   사용 시: <html data-theme="dark"> 또는 prefers-color-scheme 미디어 쿼리.
+   현재는 기본 라이트 모드만 적용됨. */
+[data-theme='dark'] {
+  --bg:        oklch(0.20 0.012 60);
+  --bg-2:      oklch(0.18 0.012 60);
+  --bg-3:      oklch(0.15 0.015 60);
+  --surface:   oklch(0.25 0.012 60 / 0.62);
+  --surface-2: oklch(0.25 0.012 60 / 0.78);
+  --surface-3: oklch(0.25 0.012 60 / 0.92);
+
+  --ink:       oklch(0.92 0.012 50);
+  --ink-2:     oklch(0.78 0.012 50);
+  --ink-3:     oklch(0.62 0.012 55);
+  --ink-4:     oklch(0.42 0.010 60);
+
+  --hairline:        rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.15);
+  --top-edge:        rgba(255, 255, 255, 0.1);
+
+  --accent-soft:   oklch(0.30 0.08 50);
+  --accent-ink:    oklch(0.85 0.12 45);
+
+  --toggle-off-track:  oklch(0.40 0.008 60);
+  --toggle-off-border: oklch(0.50 0.008 60);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.30);
+  --shadow:    0 2px 10px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.50);
 }
