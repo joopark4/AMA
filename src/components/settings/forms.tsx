@@ -243,45 +243,60 @@ export function Toggle({
         }
       }}
       style={{
-        // 핵심: Tauri WKWebView가 inline-flex를 제대로 렌더하지 않음 (debug로 확인).
-        // inline-block으로 전환 + 핸들은 absolute positioning으로 배치.
+        // WKWebView 호환: SVG로 트랙+핸들 모두 그림 — 가장 안정적 렌더.
         display: 'inline-block',
-        position: 'relative',
-        width: 44,
-        height: 24,
-        minWidth: 44,
         flex: '0 0 44px',
         flexShrink: 0,
-        padding: 0,
-        boxSizing: 'border-box',
-        borderRadius: 99,
-        background: on ? '#e6903a' : '#b5b0a6',
-        border: `1px solid ${on ? '#c77630' : '#7a756d'}`,
-        boxShadow: on
-          ? '0 1px 2px rgba(0, 0, 0, 0.15)'
-          : 'inset 0 1px 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08)',
+        minWidth: 44,
+        lineHeight: 0,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        transition: 'background 200ms var(--ease), border-color 200ms var(--ease)',
         userSelect: 'none',
         verticalAlign: 'middle',
       }}
       data-interactive="true"
     >
-      <span
+      <svg
+        width="44"
+        height="24"
+        viewBox="0 0 44 24"
+        xmlns="http://www.w3.org/2000/svg"
         style={{
-          position: 'absolute',
-          top: 1,
-          left: on ? 21 : 1,
-          width: 20,
-          height: 20,
-          borderRadius: '50%',
-          background: '#ffffff',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1)',
-          transition: 'left 220ms var(--ease)',
-          pointerEvents: 'none',
+          display: 'block',
+          transition: 'fill 200ms var(--ease)',
         }}
-      />
+      >
+        {/* 트랙 */}
+        <rect
+          x="0.5"
+          y="0.5"
+          width="43"
+          height="23"
+          rx="11.5"
+          fill={on ? '#e6903a' : '#b5b0a6'}
+          stroke={on ? '#c77630' : '#7a756d'}
+          strokeWidth="1"
+          style={{ transition: 'fill 200ms var(--ease), stroke 200ms var(--ease)' }}
+        />
+        {/* 핸들 그림자 */}
+        <circle
+          cx={on ? 32 : 12}
+          cy="13"
+          r="9.5"
+          fill="rgba(0, 0, 0, 0.15)"
+          style={{ transition: 'cx 220ms var(--ease)' }}
+        />
+        {/* 핸들 */}
+        <circle
+          cx={on ? 32 : 12}
+          cy="12"
+          r="9.5"
+          fill="#ffffff"
+          stroke="rgba(0, 0, 0, 0.1)"
+          strokeWidth="0.5"
+          style={{ transition: 'cx 220ms var(--ease)' }}
+        />
+      </svg>
     </div>
   );
 }
