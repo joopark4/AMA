@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { screenWatchService, isVisionAvailable } from './screenWatchService';
 import { useMonitorStore } from '../../stores/monitorStore';
+import { Toggle } from '../../components/settings/forms';
 import type { CaptureTarget, ScreenWatchResponseStyle } from '../../stores/settingsStore';
 
 const STYLES: ScreenWatchResponseStyle[] = ['balanced', 'advisor', 'comedian', 'analyst'];
@@ -139,17 +140,11 @@ export default function ScreenWatchSettings() {
             {t('settings.screenWatch.enabledDesc', '주기적으로 화면을 관찰하고 상황에 맞는 한마디를 건넵니다')}
           </span>
         </div>
-        <button
-          onClick={handleToggleEnabled}
+        <Toggle
+          on={watch.enabled && visionOk}
           disabled={!visionOk}
-          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-            watch.enabled && visionOk ? 'bg-accent' : 'bg-gray-300'
-          } ${!visionOk ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-            watch.enabled && visionOk ? 'translate-x-5' : ''
-          }`} />
-        </button>
+          onChange={() => handleToggleEnabled()}
+        />
       </div>
 
       {watch.enabled && visionOk && hasPermission === false && (
@@ -336,20 +331,14 @@ export default function ScreenWatchSettings() {
               <label className="text-sm font-medium text-gray-700">
                 {t('settings.screenWatch.silentHours', '조용한 시간 (관찰 중단)')}
               </label>
-              <button
-                onClick={() =>
+              <Toggle
+                on={watch.silentHours.enabled}
+                onChange={(v) =>
                   setScreenWatchSettings({
-                    silentHours: { ...watch.silentHours, enabled: !watch.silentHours.enabled },
+                    silentHours: { ...watch.silentHours, enabled: v },
                   })
                 }
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  watch.silentHours.enabled ? 'bg-accent' : 'bg-gray-300'
-                }`}
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                  watch.silentHours.enabled ? 'translate-x-5' : ''
-                }`} />
-              </button>
+              />
             </div>
             {watch.silentHours.enabled && (
               <div className="flex items-center gap-2 text-sm">
