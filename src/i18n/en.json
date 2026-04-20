@@ -5,6 +5,12 @@
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "Make AMA your own",
+    "manage": "Manage",
+    "guestUser": "Guest",
+    "loggedOut": "Not signed in",
+    "resetAll": "Reset all",
+    "resetConfirm": "Reset every setting? This cannot be undone.",
     "language": "Language",
     "audioDevice": {
       "title": "Audio & Microphone",

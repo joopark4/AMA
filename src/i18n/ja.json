@@ -5,6 +5,12 @@
   },
   "settings": {
     "title": "設定",
+    "subtitle": "AMAを自分らしく整える",
+    "manage": "管理",
+    "guestUser": "ゲスト",
+    "loggedOut": "未ログイン",
+    "resetAll": "すべてリセット",
+    "resetConfirm": "すべての設定をリセットしますか？元に戻せません。",
     "language": "言語",
     "audioDevice": {
       "title": "オーディオ & マイク",
