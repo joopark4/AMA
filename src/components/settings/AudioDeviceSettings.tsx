@@ -287,7 +287,7 @@ export default function AudioDeviceSettings() {
               }
             }}
             disabled={isTesting}
-            className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 text-xs bg-blue-50 text-accent-ink hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
           >
             {isTesting ? t('settings.audioDevice.testing') : t('settings.audioDevice.testSpeaker')}
           </button>

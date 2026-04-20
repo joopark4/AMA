@@ -92,14 +92,14 @@ export default function CodexSettings() {
       {/* 설치 상태 */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-600">{t('settings.codex.cliStatus')}</span>
-        <span className={`text-sm font-medium ${installed ? 'text-green-600' : 'text-red-600'}`}>
+        <span className={`text-sm font-medium ${installed ? 'text-ok' : 'text-danger'}`}>
           {installed === null ? '...' : installed ? t('settings.codex.installed') : t('settings.codex.notInstalled')}
         </span>
       </div>
 
       {installed === false && (
-        <div className="p-3 bg-amber-50 rounded-lg">
-          <p className="text-xs text-amber-700">{t('settings.codex.installGuide')}</p>
+        <div className="p-3 bg-[oklch(0.95_0.04_75_/_0.5)] rounded-lg">
+          <p className="text-xs text-warn">{t('settings.codex.installGuide')}</p>
           <code className="block mt-1 text-xs bg-amber-100 px-2 py-1 rounded font-mono">
             npm install -g @openai/codex
           </code>
@@ -109,14 +109,14 @@ export default function CodexSettings() {
       {/* 로그인 상태 */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-600">{t('settings.codex.authStatus')}</span>
-        <span className={`text-sm font-medium ${authenticated ? 'text-green-600' : 'text-red-600'}`}>
+        <span className={`text-sm font-medium ${authenticated ? 'text-ok' : 'text-danger'}`}>
           {authenticated === null ? '...' : authenticated ? t('settings.codex.loggedIn') : t('settings.codex.notLoggedIn')}
         </span>
       </div>
 
       {authenticated === false && (
-        <div className="p-3 bg-amber-50 rounded-lg">
-          <p className="text-xs text-amber-700">{t('settings.codex.loginGuide')}</p>
+        <div className="p-3 bg-[oklch(0.95_0.04_75_/_0.5)] rounded-lg">
+          <p className="text-xs text-warn">{t('settings.codex.loginGuide')}</p>
           <code className="block mt-1 text-xs bg-amber-100 px-2 py-1 rounded font-mono">
             codex login
           </code>
@@ -145,7 +145,7 @@ export default function CodexSettings() {
           <p className="text-xs text-red-700">{errorMessage}</p>
           <button
             onClick={reconnect}
-            className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
+            className="mt-2 text-xs text-danger hover:text-red-800 underline"
           >
             {t('settings.codex.retry')}
           </button>

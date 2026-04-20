@@ -33,7 +33,7 @@ export default function MonitorSettings() {
               disabled={isCurrent || isMoving}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-left transition-colors ${
                 isCurrent
-                  ? 'border-blue-500 bg-blue-50 cursor-default'
+                  ? 'border-[oklch(0.74_0.14_45)] bg-accent-soft cursor-default'
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               } disabled:opacity-60 disabled:cursor-not-allowed`}
             >
@@ -47,7 +47,7 @@ export default function MonitorSettings() {
                 </span>
               </div>
               {isCurrent && (
-                <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-medium text-accent-ink bg-accent-soft px-2 py-0.5 rounded-full">
                   {t('settings.monitor.current')}
                 </span>
               )}

@@ -143,7 +143,7 @@ export default function ScreenWatchSettings() {
           onClick={handleToggleEnabled}
           disabled={!visionOk}
           className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-            watch.enabled && visionOk ? 'bg-blue-600' : 'bg-gray-300'
+            watch.enabled && visionOk ? 'bg-accent' : 'bg-gray-300'
           } ${!visionOk ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -214,7 +214,7 @@ export default function ScreenWatchSettings() {
                       onClick={() => handleSelectMonitor(m.name)}
                       className={`w-full px-3 py-2 text-left rounded-lg border text-sm transition-colors ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-50 text-blue-900'
+                          ? 'border-[oklch(0.74_0.14_45)] bg-accent-soft text-accent-ink'
                           : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
@@ -274,7 +274,7 @@ export default function ScreenWatchSettings() {
                       onClick={() => handleSelectWindow(w)}
                       className={`w-full px-3 py-2 text-left rounded-lg border text-sm transition-colors ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-50 text-blue-900'
+                          ? 'border-[oklch(0.74_0.14_45)] bg-accent-soft text-accent-ink'
                           : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
@@ -320,7 +320,7 @@ export default function ScreenWatchSettings() {
                   onClick={() => setScreenWatchSettings({ responseStyle: style })}
                   className={`px-3 py-1 rounded-full text-sm transition-colors ${
                     watch.responseStyle === style
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-accent text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -343,7 +343,7 @@ export default function ScreenWatchSettings() {
                   })
                 }
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  watch.silentHours.enabled ? 'bg-blue-600' : 'bg-gray-300'
+                  watch.silentHours.enabled ? 'bg-accent' : 'bg-gray-300'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -407,7 +407,7 @@ export default function ScreenWatchSettings() {
               </button>
               <button
                 onClick={confirmEnable}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
+                className="px-4 py-2 rounded-lg bg-accent text-white text-sm hover:bg-blue-700"
               >
                 {t('settings.screenWatch.confirm', '동의하고 활성화')}
               </button>

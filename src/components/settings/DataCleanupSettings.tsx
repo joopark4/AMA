@@ -61,7 +61,7 @@ export default function DataCleanupSettings() {
         <button
           onClick={handleDeleteAll}
           disabled={deleting}
-          className="w-full px-3 py-2 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full px-3 py-2 text-sm text-white bg-danger rounded-lg hover:bg-danger disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           {deleting ? t('settings.dataCleanup.deleting') : t('settings.dataCleanup.deleteAll')}
         </button>
@@ -69,7 +69,7 @@ export default function DataCleanupSettings() {
         {/* Result */}
         {result?.success && (
           <div className="space-y-1">
-            <p className="text-sm text-green-600">
+            <p className="text-sm text-ok">
               {t('settings.dataCleanup.success', { size: formatBytes(result.size ?? 0) })}
             </p>
             <p className="text-xs text-gray-500">
@@ -78,7 +78,7 @@ export default function DataCleanupSettings() {
           </div>
         )}
         {result?.success === false && (
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-danger">
             {t('settings.dataCleanup.error', { error: result.error })}
           </p>
         )}
