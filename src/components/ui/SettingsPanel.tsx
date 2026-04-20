@@ -12,11 +12,13 @@
  * 명시적 Save 버튼이 없어졌으므로 모든 close 경로(X, 백드롭, ESC)에서 호출.
  * Reset은 스크롤 하단에 작은 텍스트 버튼으로 유지.
  */
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
   Brain,
+  ChevronLeft,
+  ChevronRight,
   Cloud,
   Code,
   Download,
@@ -145,6 +147,39 @@ export default function SettingsPanel() {
     }
   };
 
+  /* ─── 가로 스크롤 페이지 네비게이션 ─── */
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const epsilon = 4;
+    setCanScrollLeft(el.scrollLeft > epsilon);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - epsilon);
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => updateScrollState();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      ro.disconnect();
+    };
+  }, [updateScrollState]);
+
+  const scrollByPage = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' });
+  };
+
   return (
     <div className="fixed inset-0 z-[100]" data-interactive="true">
       {/* Backdrop — 클릭 시 닫힘 */}
@@ -178,9 +213,9 @@ export default function SettingsPanel() {
         {/* Header */}
         <div
           className="flex items-center justify-between"
-          style={{ padding: '20px 22px 16px' }}
+          style={{ padding: '20px 22px 16px', gap: 12 }}
         >
-          <div>
+          <div className="min-w-0">
             <div
               style={{
                 fontSize: 19,
@@ -201,23 +236,72 @@ export default function SettingsPanel() {
               {t('settings.subtitle')}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="grid place-items-center focus-ring"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 99,
-              background: 'oklch(1 0 0 / 0.5)',
-              boxShadow: 'inset 0 0 0 1px var(--hairline)',
-              color: 'var(--ink-2)',
-            }}
-            title={t('history.close')}
-            data-interactive="true"
-          >
-            <X size={16} />
-          </button>
+
+          <div className="flex items-center" style={{ gap: 8 }}>
+            {/* 페이지 네비게이션 (가로 스크롤 양 끝 도달 시 비활성) */}
+            <button
+              type="button"
+              onClick={() => scrollByPage(-1)}
+              disabled={!canScrollLeft}
+              className="grid place-items-center focus-ring"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 99,
+                background: 'oklch(1 0 0 / 0.5)',
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                color: canScrollLeft ? 'var(--ink-2)' : 'var(--ink-4)',
+                opacity: canScrollLeft ? 1 : 0.4,
+                cursor: canScrollLeft ? 'pointer' : 'not-allowed',
+                transition: 'opacity 160ms var(--ease)',
+              }}
+              title="이전 페이지"
+              aria-label="Previous page"
+              data-interactive="true"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollByPage(1)}
+              disabled={!canScrollRight}
+              className="grid place-items-center focus-ring"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 99,
+                background: 'oklch(1 0 0 / 0.5)',
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                color: canScrollRight ? 'var(--ink-2)' : 'var(--ink-4)',
+                opacity: canScrollRight ? 1 : 0.4,
+                cursor: canScrollRight ? 'pointer' : 'not-allowed',
+                transition: 'opacity 160ms var(--ease)',
+              }}
+              title="다음 페이지"
+              aria-label="Next page"
+              data-interactive="true"
+            >
+              <ChevronRight size={16} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClose}
+              className="grid place-items-center focus-ring"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 99,
+                background: 'oklch(1 0 0 / 0.5)',
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                color: 'var(--ink-2)',
+              }}
+              title={t('history.close')}
+              data-interactive="true"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* User pill */}
@@ -225,18 +309,19 @@ export default function SettingsPanel() {
           <HeaderUserPill />
         </div>
 
-        {/* Sections — CSS Grid auto-fit: 패널 너비에 따라 자동으로 컬럼 수 결정,
-            세로 스크롤만 발생 (가로 스크롤 없음). 같은 행의 섹션 높이가 다르면
-            아래에 약간의 빈 공간이 생길 수 있으나 가로 스크롤보다 자연스러움. */}
+        {/* Sections — CSS columns 가로 흐름 + overflow-x로 페이지 스크롤.
+            높이는 패널 가용 영역에 고정되어 콘텐츠가 가로로 흘러 페이지 단위로 이동. */}
         <div
-          className="scroll flex-1 overflow-y-auto"
+          ref={scrollRef}
+          className="scroll flex-1"
           style={{
             padding: '0 22px 22px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-            gridAutoRows: 'min-content',
-            alignItems: 'start',
-            gap: 12,
+            columnWidth: 340,
+            columnGap: 14,
+            columnFill: 'auto',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollBehavior: 'smooth',
           }}
           data-interactive="true"
         >
@@ -257,20 +342,25 @@ export default function SettingsPanel() {
             { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
             { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
           ].map(({ key, icon, title, Comp, defaultOpen }) => (
-            <SettingsSection
+            <div
               key={key}
-              icon={icon}
-              title={title}
-              defaultOpen={defaultOpen}
+              style={{
+                breakInside: 'avoid',
+                pageBreakInside: 'avoid',
+                marginBottom: 12,
+              }}
             >
-              <Comp />
-            </SettingsSection>
+              <SettingsSection icon={icon} title={title} defaultOpen={defaultOpen}>
+                <Comp />
+              </SettingsSection>
+            </div>
           ))}
 
-          {/* 전체 초기화 — 모든 컬럼 폭에 걸쳐 가운데 정렬 */}
+          {/* 전체 초기화 — 마지막 컬럼 끝에 위치 */}
           <div
             style={{
-              gridColumn: '1 / -1',
+              breakInside: 'avoid',
+              pageBreakInside: 'avoid',
               textAlign: 'center',
               marginTop: 4,
             }}
