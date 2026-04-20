@@ -592,9 +592,11 @@ export default function ControlCluster() {
       ? 'linear-gradient(135deg, var(--glow) 0%, var(--accent) 100%)'
       : 'var(--accent)',
     color: 'white',
+    // idle 그림자: 클러스터 pill 하단으로 튀어나오지 않도록 짧게(Y 2, blur 6) 줄임.
+    // listening 시에만 살짝 강조 (scale + 은은한 accent ring).
     boxShadow: isVoiceListening
-      ? '0 0 0 6px oklch(0.82 0.13 320 / 0.18), 0 8px 24px oklch(0.82 0.13 320 / 0.45)'
-      : '0 6px 18px oklch(0.74 0.14 45 / 0.4)',
+      ? '0 0 0 4px rgba(230, 144, 58, 0.18), 0 2px 8px rgba(230, 144, 58, 0.25)'
+      : '0 1px 3px rgba(0, 0, 0, 0.12)',
     transition: 'all 240ms var(--ease)',
     transform: isVoiceListening ? 'scale(1.05)' : 'scale(1)',
     position: 'relative',
