@@ -101,7 +101,7 @@ export default function CharacterSettings() {
               onClick={() => handlePresetApply(preset.meta.id)}
               className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                 character.personality.archetype === preset.meta.id
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-accent text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
               title={t(preset.meta.descriptionKey)}
@@ -112,7 +112,7 @@ export default function CharacterSettings() {
           <button
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               character.personality.archetype === 'custom'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-accent text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
             onClick={() => setCharacter({ personality: { ...character.personality, archetype: 'custom' } })}
@@ -441,7 +441,7 @@ export default function CharacterSettings() {
           <button
             onClick={() => setProactive({ enabled: !(settings.proactive?.enabled ?? false) })}
             className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-              settings.proactive?.enabled ? 'bg-blue-600' : 'bg-gray-300'
+              settings.proactive?.enabled ? 'bg-accent' : 'bg-gray-300'
             }`}
           >
             <span
