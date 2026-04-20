@@ -2,6 +2,13 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
+import {
+  AVATAR_HEAD_OFFSET_Y,
+  LIGHT_SCREEN_HALF_RANGE_X,
+  LIGHT_SCREEN_HALF_RANGE_Y,
+  lightPosToScreenOffset,
+  screenOffsetToLightPos,
+} from './lightingLayout';
 
 export default function LightingControl() {
   const { t } = useTranslation();
@@ -29,17 +36,12 @@ export default function LightingControl() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Calculate sun position based on light settings
-  // 좌표 범위:
-  //   X: lightX ±5 → 화면 offset ±300px
-  //   Y: lightY ±5 → 화면 offset ±500px (negative Y = 아바타 위쪽)
+  // 조명 위치를 화면 offset으로 변환.
   // avatarCenterY는 아바타 머리 근처를 기준으로 하여
   // sunPosition.y = 0이면 머리 옆, 음수면 머리 위.
   useEffect(() => {
     const lightPos = settings.avatar?.lighting?.directionalPosition || { x: 0, y: 1, z: 2 };
-    const offsetX = (lightPos.x / 5) * 300;
-    const offsetY = -(lightPos.y / 5) * 500;
-    setSunPosition({ x: offsetX, y: offsetY });
+    setSunPosition(lightPosToScreenOffset(lightPos));
   }, [settings.avatar?.lighting?.directionalPosition]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -59,14 +61,18 @@ export default function LightingControl() {
     const deltaY = e.clientY - dragStartRef.current.y;
 
     // 아바타 머리 위까지 갈 수 있도록 상방향(Y 음수) 범위 확대.
-    const newX = Math.max(-300, Math.min(300, initialPosRef.current.x + deltaX));
-    const newY = Math.max(-500, Math.min(500, initialPosRef.current.y + deltaY));
+    const newX = Math.max(
+      -LIGHT_SCREEN_HALF_RANGE_X,
+      Math.min(LIGHT_SCREEN_HALF_RANGE_X, initialPosRef.current.x + deltaX)
+    );
+    const newY = Math.max(
+      -LIGHT_SCREEN_HALF_RANGE_Y,
+      Math.min(LIGHT_SCREEN_HALF_RANGE_Y, initialPosRef.current.y + deltaY)
+    );
 
     setSunPosition({ x: newX, y: newY });
 
-    // 2D offset → 3D light position 역매핑 (범위 확장에 맞춰 분모 조정)
-    const lightX = (newX / 300) * 5;
-    const lightY = -(newY / 500) * 5;
+    const { x: lightX, y: lightY } = screenOffsetToLightPos({ x: newX, y: newY });
 
     setAvatarSettings({
       lighting: {
@@ -90,9 +96,9 @@ export default function LightingControl() {
   const showControl = settings.avatar?.lighting?.showControl !== false;
 
   // Position sun relative to avatar center (fixed distance regardless of scale).
-  // avatarPosition.y는 발 위치이므로 머리 근처로 끌어올린다 (아바타 모델 높이 ~250px 기준).
+  // avatarPosition.y는 발 위치이므로 머리 근처로 끌어올린다.
   const avatarCenterX = avatarPosition.x;
-  const avatarCenterY = avatarPosition.y - 250;
+  const avatarCenterY = avatarPosition.y - AVATAR_HEAD_OFFSET_Y;
 
   // Keep icon visible inside viewport (old/outlier positions can place it off-screen).
   const iconSize = 40;
