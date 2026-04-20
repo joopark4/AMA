@@ -1,5 +1,30 @@
+/**
+ * ControlCluster — 우하단 컨트롤 영역 (v2 리디자인).
+ *
+ * 기존 StatusIndicator의 모든 기능(상태 표시 / 음성 / 키보드 / 기록 / 설정 /
+ * 의존성 가이드 / 에러 토스트 / 글로벌 단축키 등)을 흡수하고,
+ * 디자인은 핸드오프 문서의 ControlCluster 사양으로 교체했다.
+ *
+ * 추가 사항(v2):
+ * - StatusPill을 클러스터 상단에 배치 (이전: 우상단)
+ * - 자주 쓰는 기능(✨) 버튼 자리 — Phase 4 전까지 비활성/안내
+ * - 아바타 숨기기 토글 (settingsStore.avatarHidden)
+ *
+ * 클릭스루: 모든 인터랙티브 wrapper에 data-interactive="true" 부여.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Eye,
+  EyeOff,
+  History,
+  Keyboard,
+  Mic,
+  Send,
+  Settings as SettingsIcon,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore, type LLMProvider } from '../../stores/settingsStore';
 import { useConversation } from '../../hooks/useConversation';
@@ -9,14 +34,9 @@ import { llmRouter } from '../../services/ai/llmRouter';
 import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER } from '../../features/channels';
-
 import { permissions } from '../../services/tauri/permissions';
 import { ttsRouter } from '../../services/voice/ttsRouter';
 import VoiceWaveform from './VoiceWaveform';
-
-interface StatusIndicatorProps {
-  isProcessing: boolean;
-}
 
 interface DependencyIssue {
   id: string;
@@ -54,7 +74,6 @@ function buildModelUnsetIssue(provider: LLMProvider): DependencyIssue {
       ],
     };
   }
-
   if (provider === 'localai') {
     return {
       id: 'llm-model-unset',
@@ -67,7 +86,6 @@ function buildModelUnsetIssue(provider: LLMProvider): DependencyIssue {
       ],
     };
   }
-
   const defaultModel = CLOUD_DEFAULT_MODELS[provider as 'claude' | 'openai' | 'gemini'];
   return {
     id: 'llm-model-unset',
@@ -94,7 +112,6 @@ function buildEndpointUnsetIssue(provider: 'ollama' | 'localai'): DependencyIssu
       ],
     };
   }
-
   return {
     id: 'llm-endpoint-unset',
     title: 'LLM 엔드포인트 설정 (LocalAI)',
@@ -114,9 +131,8 @@ function buildCloudApiKeyIssue(provider: 'claude' | 'openai' | 'gemini'): Depend
       : provider === 'openai'
         ? 'platform.openai.com'
         : 'aistudio.google.com';
-
-  const keyPrefix = provider === 'openai' ? '`sk-...`' : provider === 'claude' ? '`sk-ant-...`' : '발급된 API 키';
-
+  const keyPrefix =
+    provider === 'openai' ? '`sk-...`' : provider === 'claude' ? '`sk-ant-...`' : '발급된 API 키';
   return {
     id: 'llm-api-key',
     title: `LLM API 키 설정 (${PROVIDER_LABELS[provider]})`,
@@ -147,7 +163,6 @@ function buildLocalServerIssue(
       ],
     };
   }
-
   return {
     id: 'llm-localai-server',
     title: 'LLM 서버 연결 실패 (LocalAI)',
@@ -174,7 +189,6 @@ function buildLocalModelIssue(provider: 'ollama' | 'localai', model: string): De
       ],
     };
   }
-
   return {
     id: 'llm-localai-model',
     title: 'LLM 모델 누락 (LocalAI)',
@@ -187,10 +201,128 @@ function buildLocalModelIssue(provider: 'ollama' | 'localai', model: string): De
   };
 }
 
-export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) {
+/* ─────────────────────── 보조 컴포넌트 (v2 리디자인) ─────────────────────── */
+
+type StatusKind = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
+
+function StatusPill({ kind, label }: { kind: StatusKind; label: string }) {
+  const meta: Record<StatusKind, { dot: string; text: string; animate: boolean }> = {
+    idle: { dot: 'oklch(0.7 0.01 50)', text: 'var(--ink-3)', animate: false },
+    listening: { dot: 'var(--glow)', text: 'var(--glow)', animate: true },
+    processing: { dot: 'var(--accent)', text: 'var(--accent)', animate: true },
+    speaking: { dot: 'var(--ok)', text: 'var(--ok)', animate: true },
+    error: { dot: 'var(--danger)', text: 'var(--danger)', animate: true },
+  };
+  const m = meta[kind];
+  return (
+    <div
+      className="glass inline-flex items-center gap-2 px-3 py-1.5"
+      style={{
+        borderRadius: 999,
+        fontSize: 12.5,
+        fontWeight: 500,
+        color: m.text,
+        letterSpacing: '-0.01em',
+      }}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 99,
+          background: m.dot,
+          boxShadow: `0 0 12px ${m.dot}`,
+          animation: m.animate ? 'auraBreath 1.6s ease-in-out infinite' : 'none',
+        }}
+      />
+      {label}
+    </div>
+  );
+}
+
+function ListeningBars() {
+  const delays = [0, 0.1, 0.25, 0.15, 0.32, 0.18, 0.08];
+  return (
+    <div className="flex items-center justify-center gap-[3px]" style={{ height: 22 }}>
+      {delays.map((d, i) => (
+        <div
+          key={i}
+          style={{
+            width: 3,
+            height: 18,
+            borderRadius: 2,
+            background: 'white',
+            transformOrigin: 'center',
+            animation: `wave ${0.7 + (i % 3) * 0.15}s ${d}s ease-in-out infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ClusterBtn({
+  children,
+  onClick,
+  title,
+  active,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  title: string;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      data-interactive="true"
+      className={[
+        'grid place-items-center transition-all',
+        'w-10 h-10 rounded-pill',
+        disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[oklch(0.92_0.02_60_/_0.7)]',
+      ].join(' ')}
+      style={{
+        background: active ? 'var(--accent-soft)' : 'transparent',
+        color: active ? 'var(--accent-ink)' : 'var(--ink-2)',
+        transitionDuration: '160ms',
+        transitionTimingFunction: 'var(--ease)',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Divider() {
+  return (
+    <div
+      style={{
+        width: 1,
+        height: 24,
+        background: 'var(--hairline-strong)',
+        margin: '0 4px',
+      }}
+    />
+  );
+}
+
+/* ────────────────────────────── 메인 컴포넌트 ────────────────────────────── */
+
+export default function ControlCluster() {
   const { t } = useTranslation();
-  const { status, isListening, isSpeaking } = useConversationStore();
-  const { openSettings, settings, isHistoryOpen, toggleHistory } = useSettingsStore();
+  const { status, isSpeaking } = useConversationStore();
+  const {
+    openSettings,
+    settings,
+    isHistoryOpen,
+    toggleHistory,
+    toggleAvatarHidden,
+  } = useSettingsStore();
   const {
     isListening: isVoiceListening,
     isVoiceInputRuntimeBlocked,
@@ -213,62 +345,46 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
   const [hasAutoShownConfigGuide, setHasAutoShownConfigGuide] = useState(false);
   const [llmDependencyIssue, setLlmDependencyIssue] = useState<DependencyIssue | null>(null);
   const [globalShortcutToast, setGlobalShortcutToast] = useState<string | null>(null);
-  const isVoiceButtonDisabled = false;
+  const [sparklesToast, setSparklesToast] = useState<string | null>(null);
 
+  const avatarHidden = settings.avatarHidden;
+
+  /* ─── 의존성 이슈 추적 (LLM provider/key/endpoint/model) ─── */
   useEffect(() => {
     let cancelled = false;
-
-    const updateLlmDependencyIssue = async () => {
+    const update = async () => {
       const provider = settings.llm.provider;
       const model = settings.llm.model || '';
       const endpoint = settings.llm.endpoint || '';
       const apiKey = settings.llm.apiKey || '';
 
       if (!model.trim()) {
-        if (!cancelled) {
-          setLlmDependencyIssue(buildModelUnsetIssue(provider));
-        }
+        if (!cancelled) setLlmDependencyIssue(buildModelUnsetIssue(provider));
         return;
       }
-
       if ((provider === 'ollama' || provider === 'localai') && !endpoint.trim()) {
-        if (!cancelled) {
-          setLlmDependencyIssue(buildEndpointUnsetIssue(provider));
-        }
+        if (!cancelled) setLlmDependencyIssue(buildEndpointUnsetIssue(provider));
         return;
       }
-
       if (provider === 'openai' || provider === 'claude' || provider === 'gemini') {
         if (!apiKey.trim()) {
-          if (!cancelled) {
-            setLlmDependencyIssue(buildCloudApiKeyIssue(provider));
-          }
+          if (!cancelled) setLlmDependencyIssue(buildCloudApiKeyIssue(provider));
           return;
         }
-
-        if (!cancelled) {
-          setLlmDependencyIssue(null);
-        }
+        if (!cancelled) setLlmDependencyIssue(null);
         return;
       }
-
       if (!hasTriedChat) {
-        if (!cancelled) {
-          setLlmDependencyIssue(null);
-        }
+        if (!cancelled) setLlmDependencyIssue(null);
         return;
       }
-
       const isAvailable = await llmRouter.isAvailable();
       if (!isAvailable) {
-        if (!cancelled) {
-          if (provider === 'ollama' || provider === 'localai') {
-            setLlmDependencyIssue(buildLocalServerIssue(provider, endpoint, model));
-          }
+        if (!cancelled && (provider === 'ollama' || provider === 'localai')) {
+          setLlmDependencyIssue(buildLocalServerIssue(provider, endpoint, model));
         }
         return;
       }
-
       if (provider === 'ollama') {
         const models = await ollamaClient.getAvailableModels();
         if (!cancelled) {
@@ -280,7 +396,6 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
         }
         return;
       }
-
       if (provider === 'localai') {
         const models = await localAiClient.getAvailableModels();
         if (!cancelled) {
@@ -292,14 +407,9 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
         }
         return;
       }
-
-      if (!cancelled) {
-        setLlmDependencyIssue(null);
-      }
+      if (!cancelled) setLlmDependencyIssue(null);
     };
-
-    void updateLlmDependencyIssue();
-
+    void update();
     return () => {
       cancelled = true;
     };
@@ -322,7 +432,6 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       setHasAutoShownConfigGuide(true);
       return;
     }
-
     if (!isImmediateLlmConfigIssue) {
       setHasAutoShownConfigGuide(false);
     }
@@ -330,7 +439,6 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
 
   const dependencyIssues = useMemo<DependencyIssue[]>(() => {
     const issues: DependencyIssue[] = [];
-
     if (hasTriedVoiceInput && voiceInputUnavailableReason) {
       issues.push({
         id: 'stt-whisper',
@@ -348,7 +456,6 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
             ],
       });
     }
-
     if (hasTriedChat && ttsUnavailableReason) {
       issues.push({
         id: 'tts-supertonic',
@@ -361,11 +468,9 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
         ],
       });
     }
-
     if ((hasTriedChat || isImmediateLlmConfigIssue) && llmDependencyIssue) {
       issues.push(llmDependencyIssue);
     }
-
     return issues;
   }, [
     voiceInputUnavailableReason,
@@ -383,6 +488,7 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
     }
   }, [dependencyIssues.length, showDependencyGuide]);
 
+  /* ─── 입력/음성 핸들러 ─── */
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     ttsRouter.ensureOutputDevice().catch(() => {});
@@ -403,11 +509,21 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
     }
   }, [isVoiceListening, startListening, stopListening]);
 
+  const handleSparklesClick = useCallback(() => {
+    setSparklesToast(t('overlay.quickActionsComingSoon'));
+  }, [t]);
+
+  useEffect(() => {
+    if (!sparklesToast) return;
+    const timer = setTimeout(() => setSparklesToast(null), 2400);
+    return () => clearTimeout(timer);
+  }, [sparklesToast]);
+
+  /* ─── 글로벌 단축키 ─── */
   const globalShortcutSettings = settings.globalShortcut ?? {
     enabled: true,
     accelerator: DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
   };
-
   const { registerError: globalShortcutRegisterError } = useGlobalVoiceShortcut({
     enabled: globalShortcutSettings.enabled,
     accelerator: globalShortcutSettings.accelerator,
@@ -430,11 +546,33 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
     }
   }, []);
 
-  const getStatusText = () => {
+  /* ─── 키보드 토글 부수효과 ─── */
+  useEffect(() => {
+    if (!showTextInput) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowTextInput(false);
+        setTextInput('');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showTextInput]);
+
+  /* ─── StatusPill 결정 ─── */
+  const pillKind: StatusKind = (() => {
+    if (status === 'error') return 'error';
+    if (isVoiceListening || status === 'listening') return 'listening';
+    if (status === 'processing') return 'processing';
+    if (status === 'speaking' || isSpeaking) return 'speaking';
+    return 'idle';
+  })();
+
+  const pillLabel = (() => {
     if (isVoiceListening && transcript) {
-      return transcript.length > 30 ? transcript.slice(-30) + '...' : transcript;
+      return transcript.length > 30 ? '…' + transcript.slice(-30) : transcript;
     }
-    switch (status) {
+    switch (pillKind) {
       case 'listening':
         return t('status.listening');
       case 'processing':
@@ -446,39 +584,49 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       default:
         return t('status.idle');
     }
-  };
+  })();
 
-  const getStatusColor = () => {
-    switch (status) {
-      case 'listening':
-        return 'bg-green-500';
-      case 'processing':
-        return 'bg-yellow-500';
-      case 'speaking':
-        return 'bg-blue-500';
-      case 'error':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-400';
-    }
+  /* ─── 음성 버튼 비주얼 ─── */
+  const voiceBtnStyle: React.CSSProperties = {
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+    display: 'grid',
+    placeItems: 'center',
+    background: isVoiceListening
+      ? 'linear-gradient(135deg, var(--glow) 0%, var(--accent) 100%)'
+      : 'var(--accent)',
+    color: 'white',
+    boxShadow: isVoiceListening
+      ? '0 0 0 6px oklch(0.82 0.13 320 / 0.18), 0 8px 24px oklch(0.82 0.13 320 / 0.45)'
+      : '0 6px 18px oklch(0.74 0.14 45 / 0.4)',
+    transition: 'all 240ms var(--ease)',
+    transform: isVoiceListening ? 'scale(1.05)' : 'scale(1)',
+    position: 'relative',
   };
 
   return (
     <div
-      className="fixed flex flex-col items-end gap-2 z-50"
+      className="fixed flex flex-col items-end gap-3 z-50"
       style={{
-        right: 'max(env(safe-area-inset-right), 1rem)',
-        bottom: 'max(env(safe-area-inset-bottom), 1rem)',
+        right: 'max(env(safe-area-inset-right), 24px)',
+        bottom: 'max(env(safe-area-inset-bottom), 24px)',
       }}
       data-interactive="true"
     >
+      {/* ─── Toasts / dependency banners ─── */}
       {dependencyIssues.length > 0 && (
-        <div className="bg-slate-900/85 border border-slate-600 text-slate-100 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
+        <div
+          className="glass px-3 py-2 text-xs max-w-xs"
+          style={{ color: 'var(--ink)', borderRadius: 'var(--r)' }}
+          data-interactive="true"
+        >
           <div>{t('dependency.requiredCheck', { count: dependencyIssues.length })}</div>
           <button
             type="button"
             onClick={() => setShowDependencyGuide(true)}
-            className="mt-2 w-full px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
+            className="mt-2 w-full px-2 py-1 rounded-md text-white text-xs"
+            style={{ background: 'var(--accent)' }}
           >
             {t('dependency.showGuide')}
           </button>
@@ -486,21 +634,29 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
       )}
 
       {globalShortcutToast && (
-        <div className="bg-amber-100 border border-amber-400 text-amber-800 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
+        <div
+          className="glass px-3 py-2 text-xs max-w-xs"
+          style={{ color: 'var(--ink)', borderRadius: 'var(--r)' }}
+          data-interactive="true"
+        >
           <div>{t('settings.voice.globalShortcut.registerErrorToast')}</div>
-          <div className="mt-1 text-[11px] break-words">{globalShortcutToast}</div>
+          <div className="mt-1 text-[11px] break-words" style={{ color: 'var(--ink-2)' }}>
+            {globalShortcutToast}
+          </div>
           <div className="mt-2 flex items-center gap-2">
             <button
               type="button"
               onClick={() => void handleOpenAccessibilitySettings()}
-              className="px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors text-[11px]"
+              className="px-2 py-1 rounded text-white text-[11px]"
+              style={{ background: 'var(--accent)' }}
             >
               {t('settings.voice.globalShortcut.openAccessibility')}
             </button>
             <button
               type="button"
               onClick={() => setGlobalShortcutToast(null)}
-              className="px-2 py-1 bg-white/80 text-amber-900 rounded hover:bg-white transition-colors text-[11px]"
+              className="px-2 py-1 rounded text-[11px]"
+              style={{ background: 'oklch(1 0 0 / 0.6)', color: 'var(--ink)' }}
             >
               {t('settings.cancel')}
             </button>
@@ -508,15 +664,19 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
         </div>
       )}
 
-      {/* Error display */}
       {voiceError && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
+        <div
+          className="glass px-3 py-2 text-xs max-w-xs"
+          style={{ color: 'var(--danger)', borderRadius: 'var(--r)' }}
+          data-interactive="true"
+        >
           <div>{voiceError}</div>
           {needsMicrophonePermission && (
             <button
               onClick={openMicrophoneSettings}
               data-interactive="true"
-              className="mt-2 w-full px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-xs font-medium cursor-pointer"
+              className="mt-2 w-full px-2 py-1 rounded text-white text-xs font-medium"
+              style={{ background: 'var(--danger)' }}
             >
               {t('dependency.openSystemSettings')}
             </button>
@@ -524,205 +684,221 @@ export default function StatusIndicator({ isProcessing }: StatusIndicatorProps) 
         </div>
       )}
 
-      {!voiceError && hasTriedVoiceInput && voiceInputUnavailableReason && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
-          <div>{voiceInputUnavailableReason}</div>
-        </div>
-      )}
-
       {!voiceError && hasTriedChat && ttsUnavailableReason && (
-        <div className="bg-orange-100 border border-orange-400 text-orange-700 px-3 py-2 rounded-lg text-xs max-w-xs" data-interactive="true">
+        <div
+          className="glass px-3 py-2 text-xs max-w-xs"
+          style={{ color: 'var(--warn)', borderRadius: 'var(--r)' }}
+          data-interactive="true"
+        >
           <div>{ttsUnavailableReason}</div>
         </div>
       )}
 
-      {/* Debug info - shows transcript when listening */}
-      {isVoiceListening && transcript && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-3 py-1 rounded-lg text-xs max-w-xs">
-          {t('status.recognizing', { transcript })}
+      {sparklesToast && (
+        <div
+          className="glass px-3 py-2 text-xs max-w-xs animate-fade-in"
+          style={{ color: 'var(--ink)', borderRadius: 'var(--r)' }}
+        >
+          {sparklesToast}
         </div>
       )}
 
-      {/* Processing indicator */}
-      {status === 'processing' && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-1 rounded-lg text-xs">
-          {t('status.llmProcessing')}
-        </div>
-      )}
+      {/* ─── StatusPill (cluster 상단, 우측 정렬) ─── */}
+      <div style={{ paddingRight: 8, marginBottom: -4 }}>
+        <StatusPill kind={pillKind} label={pillLabel} />
+      </div>
 
-      {/* Text input form */}
+      {/* ─── Text input row (showTextInput 시) ─── */}
       {showTextInput && (
-        <form onSubmit={handleTextSubmit} className="flex gap-2">
+        <form
+          onSubmit={handleTextSubmit}
+          className="glass-strong flex items-center gap-2"
+          style={{
+            padding: 6,
+            paddingLeft: 18,
+            borderRadius: 999,
+            width: 440,
+            animation: 'inputSlide 240ms var(--ease)',
+          }}
+          data-interactive="true"
+        >
+          <Keyboard size={16} style={{ color: 'var(--ink-3)' }} />
           <input
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             placeholder={t('chat.placeholder')}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-48"
+            className="focus-ring flex-1 bg-transparent border-0 outline-none"
+            style={{
+              padding: '10px 4px',
+              fontSize: 14.5,
+              letterSpacing: '-0.01em',
+              color: 'var(--ink)',
+            }}
             autoFocus
+            data-interactive="true"
           />
           <button
-            type="submit"
-            disabled={!textInput.trim() || (status === 'processing' && settings.llm.provider !== CLAUDE_CODE_PROVIDER && settings.llm.provider !== 'codex')}
-            className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
+            type="button"
+            onClick={() => {
+              setShowTextInput(false);
+              setTextInput('');
+            }}
+            title={t('overlay.closeKeyboard')}
+            className="grid place-items-center transition-all"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              background: 'transparent',
+              color: 'var(--ink-3)',
+              transitionDuration: '160ms',
+              transitionTimingFunction: 'var(--ease)',
+            }}
+            data-interactive="true"
           >
-            {t('chat.send')}
+            <X size={14} />
+          </button>
+          <button
+            type="submit"
+            disabled={
+              !textInput.trim() ||
+              (status === 'processing' &&
+                settings.llm.provider !== CLAUDE_CODE_PROVIDER &&
+                settings.llm.provider !== 'codex')
+            }
+            className="grid place-items-center transition-all"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 999,
+              background: textInput.trim() ? 'var(--accent)' : 'oklch(0.88 0.01 60)',
+              color: textInput.trim() ? 'white' : 'var(--ink-3)',
+              transitionDuration: '200ms',
+              transitionTimingFunction: 'var(--ease)',
+            }}
+            data-interactive="true"
+          >
+            <Send size={15} />
           </button>
         </form>
       )}
 
-      <div className="flex items-center gap-2">
-      {/* Status badge */}
-      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-200">
-        {/* Status dot */}
-        <div className={`w-2 h-2 rounded-full ${getStatusColor()} ${
-          (isListening || isProcessing || isSpeaking) ? 'animate-pulse' : ''
-        }`} />
-
-        {/* Status text */}
-        <span className="text-sm text-gray-700">
-          {getStatusText()}
-        </span>
-
-        {/* Processing spinner */}
-        {isProcessing && (
-          <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full loading-spinner" />
-        )}
-      </div>
-
-      {/* Text input toggle button */}
-      <button
-        onClick={() => setShowTextInput(!showTextInput)}
-        className={`p-2 backdrop-blur-sm rounded-full border transition-colors ${
-          showTextInput
-            ? 'bg-green-500 border-green-400 hover:bg-green-600'
-            : 'bg-gray-500 border-gray-400 hover:bg-gray-600'
-        }`}
-        title={t('chat.textInputToggle')}
+      {/* ─── Button cluster ─── */}
+      <div
+        className="glass-strong flex items-center"
+        style={{ padding: 6, gap: 4, borderRadius: 999 }}
+        data-interactive="true"
       >
-        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-      </button>
+        <ClusterBtn
+          onClick={handleSparklesClick}
+          title={t('overlay.quickActions')}
+        >
+          <Sparkles size={17} />
+        </ClusterBtn>
+        <ClusterBtn
+          onClick={toggleHistory}
+          title={t('history.button')}
+          active={isHistoryOpen}
+        >
+          <History size={17} />
+        </ClusterBtn>
+        <ClusterBtn
+          onClick={() => setShowTextInput((v) => !v)}
+          title={showTextInput ? t('overlay.closeKeyboard') : t('overlay.toggleKeyboard')}
+          active={showTextInput}
+        >
+          <Keyboard size={17} />
+        </ClusterBtn>
+        <ClusterBtn
+          onClick={toggleAvatarHidden}
+          title={avatarHidden ? t('overlay.showAvatar') : t('overlay.hideAvatar')}
+          active={avatarHidden}
+        >
+          {avatarHidden ? <EyeOff size={17} /> : <Eye size={17} />}
+        </ClusterBtn>
+        <Divider />
 
-      {/* Voice input button */}
-      <div className="relative">
-        {isVoiceListening && (
-          <VoiceWaveform label={t('status.voiceListeningOverlay')} />
-        )}
-        <button
-          onClick={handleVoiceToggle}
-          disabled={isVoiceButtonDisabled}
-          className={`p-2 backdrop-blur-sm rounded-full border transition-colors ${
-            isVoiceButtonDisabled
-              ? 'bg-gray-400 border-gray-300 cursor-not-allowed'
-              : isVoiceListening
-              ? 'bg-red-500 border-red-400 hover:bg-red-600 animate-pulse'
-              : 'bg-blue-500 border-blue-400 hover:bg-blue-600'
-          }`}
-          title={
-            isVoiceButtonDisabled
-              ? voiceInputUnavailableReason || t('chat.voiceUnavailable')
-              : isVoiceListening
+        {/* Voice button (primary) */}
+        <div className="relative" data-interactive="true">
+          {isVoiceListening && <VoiceWaveform label={t('status.voiceListeningOverlay')} />}
+          <button
+            type="button"
+            onClick={handleVoiceToggle}
+            title={
+              isVoiceListening
                 ? t('chat.stopListening')
-                : t('chat.startVoiceInput')
-          }
-        >
-          {isVoiceListening ? (
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-          )}
-        </button>
+                : voiceInputUnavailableReason || t('chat.startVoiceInput')
+            }
+            style={voiceBtnStyle}
+            data-interactive="true"
+          >
+            {isVoiceListening ? <ListeningBars /> : <Mic size={20} />}
+          </button>
+        </div>
+
+        <Divider />
+        <ClusterBtn onClick={openSettings} title={t('settings.title')}>
+          <SettingsIcon size={17} />
+        </ClusterBtn>
       </div>
 
-      {/* History button */}
-      <button
-        onClick={toggleHistory}
-        className={`p-2 backdrop-blur-sm rounded-full border transition-colors ${
-          isHistoryOpen
-            ? 'bg-purple-500 border-purple-400 hover:bg-purple-600'
-            : 'bg-white/90 border-gray-200 hover:bg-gray-100'
-        }`}
-        title={t('history.button')}
-      >
-        <svg
-          className={`w-5 h-5 ${isHistoryOpen ? 'text-white' : 'text-gray-600'}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-          />
-        </svg>
-      </button>
-
-      {/* Settings button */}
-      <button
-        onClick={openSettings}
-        className="p-2 bg-white/90 backdrop-blur-sm rounded-full border border-gray-200 hover:bg-gray-100 transition-colors"
-        title={t('settings.title')}
-      >
-        <svg
-          className="w-5 h-5 text-gray-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
-      </button>
-      </div>
-
+      {/* ─── Dependency guide modal ─── */}
       {showDependencyGuide && (
-        <div className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4" data-interactive="true">
-          <div className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 p-5">
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+          style={{ background: 'oklch(0.2 0 0 / 0.6)' }}
+          data-interactive="true"
+        >
+          <div
+            className="glass-strong w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5 scroll"
+            style={{ borderRadius: 'var(--r-lg)' }}
+          >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-slate-800">{t('dependency.guideTitle')}</h3>
+              <h3 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>
+                {t('dependency.guideTitle')}
+              </h3>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={openSettings}
-                  className="px-3 py-1 text-xs rounded-md bg-blue-600 hover:bg-blue-700 text-white"
+                  className="px-3 py-1 text-xs rounded-md text-white"
+                  style={{ background: 'var(--accent)' }}
                 >
                   {t('dependency.openSettings')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowDependencyGuide(false)}
-                  className="px-3 py-1 text-xs rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  className="px-3 py-1 text-xs rounded-md"
+                  style={{ background: 'oklch(1 0 0 / 0.6)', color: 'var(--ink)' }}
                 >
                   {t('dependency.close')}
                 </button>
               </div>
             </div>
 
-            <div className="mt-3 space-y-4">
+            <div className="mt-3 space-y-3">
               {dependencyIssues.map((issue) => (
-                <div key={issue.id} className="border border-slate-200 rounded-lg p-3">
-                  <div className="text-sm font-semibold text-slate-800">{issue.title}</div>
-                  <div className="mt-1 text-xs text-slate-600">{issue.summary}</div>
-                  <ol className="mt-2 list-decimal list-inside space-y-1 text-xs text-slate-700">
+                <div
+                  key={issue.id}
+                  className="p-3"
+                  style={{
+                    border: '1px solid var(--hairline)',
+                    borderRadius: 'var(--r-sm)',
+                    background: 'oklch(1 0 0 / 0.4)',
+                  }}
+                >
+                  <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
+                    {issue.title}
+                  </div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--ink-2)' }}>
+                    {issue.summary}
+                  </div>
+                  <ol
+                    className="mt-2 list-decimal list-inside space-y-1 text-xs"
+                    style={{ color: 'var(--ink-2)' }}
+                  >
                     {issue.steps.map((step, index) => (
                       <li key={`${issue.id}-${index}`}>{step}</li>
                     ))}
