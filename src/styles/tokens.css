@@ -28,10 +28,15 @@
   --top-edge:        rgba(255, 255, 255, 0.6);
 
   /* ─── accent (warm peach) ─── */
-  --accent:      oklch(0.74 0.14 45);
-  --accent-2:    oklch(0.82 0.11 50);
-  --accent-soft: oklch(0.93 0.05 50);
-  --accent-ink:  oklch(0.32 0.10 40);
+  --accent:        oklch(0.74 0.14 45);
+  --accent-2:      oklch(0.82 0.11 50);
+  --accent-soft:   oklch(0.93 0.05 50);
+  --accent-ink:    oklch(0.32 0.10 40);
+  --accent-border: oklch(0.56 0.14 45);  /* ON 토글 트랙 테두리용 (accent 어두운 톤) */
+
+  /* ─── toggle (스위치 OFF 상태) ─── */
+  --toggle-off-track:  oklch(0.72 0.008 60);
+  --toggle-off-border: oklch(0.55 0.008 60);
 
   /* ─── secondary glow / status ─── */
   --glow:    oklch(0.85 0.12 320);
