@@ -261,24 +261,23 @@ export function Toggle({
         height="24"
         viewBox="0 0 44 24"
         xmlns="http://www.w3.org/2000/svg"
-        style={{
-          display: 'block',
-          transition: 'fill 200ms var(--ease)',
-        }}
+        style={{ display: 'block' }}
       >
-        {/* 트랙 */}
+        {/* 트랙 — 색상 토큰 사용 (theme/accent 변경 시 자동 반영) */}
         <rect
           x="0.5"
           y="0.5"
           width="43"
           height="23"
           rx="11.5"
-          fill={on ? '#e6903a' : '#b5b0a6'}
-          stroke={on ? '#c77630' : '#7a756d'}
           strokeWidth="1"
-          style={{ transition: 'fill 200ms var(--ease), stroke 200ms var(--ease)' }}
+          style={{
+            fill: on ? 'var(--accent)' : 'var(--toggle-off-track)',
+            stroke: on ? 'var(--accent-border)' : 'var(--toggle-off-border)',
+            transition: 'fill 200ms var(--ease), stroke 200ms var(--ease)',
+          }}
         />
-        {/* 핸들 그림자 */}
+        {/* 핸들 그림자 (핸들보다 1px 아래) */}
         <circle
           cx={on ? 32 : 12}
           cy="13"
