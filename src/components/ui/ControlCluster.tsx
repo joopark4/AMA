@@ -698,12 +698,17 @@ export default function ControlCluster() {
       {showTextInput && (
         <form
           onSubmit={handleTextSubmit}
-          className="glass-strong flex items-center gap-2"
+          className="flex items-center gap-2"
           style={{
             padding: 6,
             paddingLeft: 18,
             borderRadius: 999,
             width: 440,
+            // glass-strong 효과를 인라인으로 적용하되, 외곽 shadow 제거 (겹쳐 보이는 잔상 방지).
+            background: 'var(--surface-2)',
+            backdropFilter: 'blur(40px) saturate(1.8)',
+            WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+            boxShadow: 'inset 0 1px 0 var(--top-edge), inset 0 0 0 1px var(--hairline)',
             animation: 'inputSlide 240ms var(--ease)',
           }}
           data-interactive="true"
