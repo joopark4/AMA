@@ -178,6 +178,11 @@ export interface Settings {
   proactive: ProactiveSettings;
   /** 화면 관찰 설정 */
   screenWatch: ScreenWatchSettings;
+  /**
+   * 아바타 숨김 토글 (v2 리디자인) — true면 ControlCluster에서 AvatarCanvas/LightingControl 언마운트.
+   * persist되어 앱 재시작 후에도 유지된다.
+   */
+  avatarHidden: boolean;
 }
 
 interface SettingsState {
@@ -205,6 +210,8 @@ interface SettingsState {
    */
   applyCharacterPreset: (profile: CharacterProfile) => void;
   setProactive: (proactive: Partial<ProactiveSettings>) => void;
+  setAvatarHidden: (hidden: boolean) => void;
+  toggleAvatarHidden: () => void;
   toggleSettings: () => void;
   openSettings: () => void;
   closeSettings: () => void;
@@ -400,6 +407,7 @@ const defaultSettings: Settings = {
     responseStyle: 'balanced',
     silentHours: { enabled: false, start: 23, end: 7 },
   },
+  avatarHidden: false,
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -521,6 +529,7 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
     character: normalizeCharacterProfile(source.character),
     proactive: normalizeProactiveSettings(source.proactive),
     screenWatch: normalizeScreenWatchSettings(source.screenWatch),
+    avatarHidden: typeof source.avatarHidden === 'boolean' ? source.avatarHidden : false,
   };
 }
 
@@ -807,6 +816,16 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
 
+      setAvatarHidden: (hidden) =>
+        set((state) => ({
+          settings: { ...state.settings, avatarHidden: Boolean(hidden) },
+        })),
+
+      toggleAvatarHidden: () =>
+        set((state) => ({
+          settings: { ...state.settings, avatarHidden: !state.settings.avatarHidden },
+        })),
+
       setVrmModelPath: (path) =>
         set((state) => ({
           settings: { ...state.settings, vrmModelPath: normalizeVrmModelPath(path) },
@@ -842,7 +861,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 15,
+      version: 16,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -872,6 +891,14 @@ export const useSettingsStore = create<SettingsState>()(
             if (name || prompt) {
               s.character = migrateFromLegacy(name, prompt);
             }
+          }
+        }
+
+        // v15→v16: avatarHidden 필드 추가 (기본 false)
+        if ((version ?? 0) < 16) {
+          const s = state.settings;
+          if (typeof s.avatarHidden !== 'boolean') {
+            s.avatarHidden = false;
           }
         }
 
