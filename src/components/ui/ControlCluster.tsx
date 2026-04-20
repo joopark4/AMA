@@ -714,7 +714,7 @@ export default function ControlCluster() {
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             placeholder={t('chat.placeholder')}
-            className="focus-ring flex-1 bg-transparent border-0 outline-none"
+            className="flex-1 bg-transparent border-0 outline-none"
             style={{
               padding: '10px 4px',
               fontSize: 14.5,
