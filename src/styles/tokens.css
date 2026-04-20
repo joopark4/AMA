@@ -21,9 +21,11 @@
   --ink-4:     oklch(0.78 0.010 60);
 
   /* ─── hairlines ─── */
-  --hairline:        oklch(0.20 0.01 50 / 0.10);
-  --hairline-strong: oklch(0.20 0.01 50 / 0.18);
-  --top-edge:        oklch(1 0 0 / 0.7);
+  /* Tauri WKWebView에서 oklch 기반 hairline이 뚜렷한 회색 링으로 렌더되는
+     문제 때문에 rgba로 전환 + alpha 살짝 낮춤 */
+  --hairline:        rgba(0, 0, 0, 0.06);
+  --hairline-strong: rgba(0, 0, 0, 0.12);
+  --top-edge:        rgba(255, 255, 255, 0.6);
 
   /* ─── accent (warm peach) ─── */
   --accent:      oklch(0.74 0.14 45);
@@ -45,9 +47,11 @@
   --r-xl: 28px;
 
   /* ─── shadows ─── */
-  --shadow-sm: 0 1px 2px oklch(0.2 0.01 50 / 0.06), 0 4px 12px oklch(0.2 0.01 50 / 0.05);
-  --shadow:    0 2px 4px oklch(0.2 0.01 50 / 0.08), 0 12px 32px oklch(0.2 0.01 50 / 0.10);
-  --shadow-lg: 0 6px 16px oklch(0.2 0.01 50 / 0.10), 0 30px 80px oklch(0.2 0.01 50 / 0.18);
+  /* WKWebView에서 2-layer oklch shadow가 뚜렷한 링/경계선으로 렌더되는 문제 —
+     단일 soft rgba shadow로 단순화. */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow:    0 2px 10px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.08);
 
   /* ─── easing ─── */
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
