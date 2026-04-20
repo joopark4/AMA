@@ -183,7 +183,7 @@ export default function UserProfile() {
             onClick={() => { setExpanded((v) => !v); setDeleteConfirm(false); setDeleteError(null); }}
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
           >
-            <div className="w-8 h-8 bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm flex-shrink-0">
+            <div className="w-8 h-8 bg-accent-soft flex items-center justify-center text-accent-ink font-semibold text-sm flex-shrink-0">
               {user.nickname.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 text-left min-w-0">
@@ -217,7 +217,7 @@ export default function UserProfile() {
                 <button
                   type="button"
                   onClick={() => setTermsModal('terms')}
-                  className="hover:text-blue-500 hover:underline"
+                  className="hover:text-accent-ink hover:underline"
                 >
                   {t('auth.termsLink')}
                 </button>
@@ -225,7 +225,7 @@ export default function UserProfile() {
                 <button
                   type="button"
                   onClick={() => setTermsModal('privacy')}
-                  className="hover:text-blue-500 hover:underline"
+                  className="hover:text-accent-ink hover:underline"
                 >
                   {t('auth.privacyLink')}
                 </button>
@@ -242,10 +242,10 @@ export default function UserProfile() {
               {/* 계정 삭제 영역 */}
               <div className="pt-1 border-t border-gray-200 space-y-2">
                 {deleteError && (
-                  <p className="text-xs text-red-600">{deleteError}</p>
+                  <p className="text-xs text-danger">{deleteError}</p>
                 )}
                 {deleteConfirm && (
-                  <p className="text-xs text-red-500 font-medium">
+                  <p className="text-xs text-danger font-medium">
                     {t('auth.deleteAccountConfirm')}
                   </p>
                 )}
@@ -255,8 +255,8 @@ export default function UserProfile() {
                   className={`
                     w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50
                     ${deleteConfirm
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'border border-red-200 text-red-500 hover:bg-red-50'}
+                      ? 'bg-danger text-white hover:bg-danger'
+                      : 'border border-[oklch(0.7_0.15_25_/_0.4)] text-danger hover:bg-[oklch(0.95_0.04_25_/_0.6)]'}
                   `}
                 >
                   {deleteConfirm ? t('auth.deleteAccountFinal') : t('auth.deleteAccount')}
@@ -314,14 +314,14 @@ export default function UserProfile() {
           <div className="px-4 pb-4 space-y-2 border-t border-gray-100 bg-gray-50 pt-3">
             {/* 에러 메시지 */}
             {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+              <div className="rounded-lg bg-[oklch(0.95_0.04_25_/_0.6)] border border-[oklch(0.7_0.15_25_/_0.4)] px-3 py-2 text-xs text-danger">
                 {error}
               </div>
             )}
 
             {/* 개발/테스트 모드 안내 */}
             {mockMode && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+              <div className="rounded-lg bg-[oklch(0.95_0.04_75_/_0.6)] border border-[oklch(0.7_0.15_75_/_0.4)] px-3 py-2 text-xs text-warn">
                 {t('auth.mockModeNotice')}
               </div>
             )}
@@ -335,20 +335,20 @@ export default function UserProfile() {
                     type="checkbox"
                     checked={agreedTerms}
                     onChange={(e) => handleAgreementChange('terms', e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-accent-ink focus:ring-accent"
                   />
                   <span className="flex-1">{t('auth.agreeToTerms')}</span>
-                  <button type="button" onClick={() => setTermsModal('terms')} className="text-blue-500 hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
+                  <button type="button" onClick={() => setTermsModal('terms')} className="text-accent-ink hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
                 </label>
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={agreedPrivacy}
                     onChange={(e) => handleAgreementChange('privacy', e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-accent-ink focus:ring-accent"
                   />
                   <span className="flex-1">{t('auth.agreeToPrivacy')}</span>
-                  <button type="button" onClick={() => setTermsModal('privacy')} className="text-blue-500 hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
+                  <button type="button" onClick={() => setTermsModal('privacy')} className="text-accent-ink hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
                 </label>
               </div>
             )}
