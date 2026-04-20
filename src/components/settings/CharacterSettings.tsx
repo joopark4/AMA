@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { Toggle } from './forms';
 import {
   CHARACTER_PRESETS,
   DEFAULT_CHARACTER_PROFILE,
@@ -438,18 +439,10 @@ export default function CharacterSettings() {
               {t('settings.proactive.enabledDesc')}
             </span>
           </div>
-          <button
-            onClick={() => setProactive({ enabled: !(settings.proactive?.enabled ?? false) })}
-            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-              settings.proactive?.enabled ? 'bg-accent' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                settings.proactive?.enabled ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
+          <Toggle
+            on={settings.proactive?.enabled ?? false}
+            onChange={(v) => setProactive({ enabled: v })}
+          />
         </div>
 
         {settings.proactive?.enabled && (
