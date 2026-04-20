@@ -236,31 +236,38 @@ export function Toggle({
       aria-pressed={on}
       className="relative shrink-0 inline-block"
       style={{
+        // WKWebView의 native button 스타일(-webkit-appearance: button) 무력화 —
+        // 미설정 시 tauri/WKWebView에서 인라인 background가 무시되어 투명하게 보일 수 있음.
+        appearance: 'none',
+        WebkitAppearance: 'none',
         width: 44,
         height: 24,
         minWidth: 44,
+        flexShrink: 0,
         borderRadius: 99,
-        // 시인성 극대화: ON은 accent, OFF는 확연히 진한 회색 + 강한 hairline
-        background: on ? 'var(--accent)' : 'oklch(0.70 0.012 60)',
+        // 시인성 극대화: rgb/hex로 fallback
+        background: on ? '#e6903a' : '#a8a39a',
+        border: on ? '1px solid #c77630' : '1px solid #7a756d',
         boxShadow: on
-          ? '0 0 0 1px oklch(0.55 0.14 45 / 0.35), 0 1px 2px oklch(0.2 0 0 / 0.08)'
-          : 'inset 0 0 0 1px oklch(0.20 0.01 50 / 0.30), 0 1px 2px oklch(0.2 0 0 / 0.08)',
+          ? '0 1px 2px rgba(0, 0, 0, 0.1)'
+          : 'inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'background 200ms var(--ease), box-shadow 200ms var(--ease)',
+        transition: 'background 200ms var(--ease), border-color 200ms var(--ease)',
+        padding: 0,
       }}
       data-interactive="true"
     >
       <div
         style={{
           position: 'absolute',
-          top: 2,
-          left: on ? 22 : 2,
+          top: 1,
+          left: on ? 21 : 1,
           width: 20,
           height: 20,
           borderRadius: '50%',
           background: 'white',
-          boxShadow: '0 1px 3px oklch(0.2 0 0 / 0.35), 0 0 0 1px oklch(0.2 0 0 / 0.08)',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08)',
           transition: 'left 220ms var(--ease)',
         }}
       />
