@@ -11,6 +11,13 @@
     "loggedOut": "Not signed in",
     "resetAll": "Reset all",
     "resetConfirm": "Reset every setting? This cannot be undone.",
+    "quickActions": {
+      "title": "Quick actions",
+      "description": "Register frequently used actions to call them from the ✨ icon. Voice triggers are also supported.",
+      "registered": "Registered · {{count}}",
+      "clearAll": "Clear all",
+      "empty": "No actions registered yet. Tick one above to add it."
+    },
     "language": "Language",
     "audioDevice": {
       "title": "Audio & Microphone",
@@ -499,8 +506,67 @@
     "hideAvatar": "Hide avatar",
     "showAvatar": "Show avatar",
     "quickActions": "Quick actions",
-    "quickActionsComingSoon": "Quick actions are coming soon",
     "avatarResting": "{{name}} is taking a quick break"
+  },
+  "quick": {
+    "calendar": {
+      "label": "Today's schedule",
+      "hint": "Calendar summary",
+      "desc": "Brief today and tomorrow's schedule"
+    },
+    "mail": {
+      "label": "Mail summary",
+      "hint": "Unread mail",
+      "desc": "Summarize the important unread emails"
+    },
+    "translate": {
+      "label": "Translate",
+      "hint": "Clipboard",
+      "desc": "Translate copied text instantly"
+    },
+    "capture": {
+      "label": "Screen capture",
+      "hint": "Use Screen Watch",
+      "desc": "Describe what's on the screen for you"
+    },
+    "polish": {
+      "label": "Polish writing",
+      "hint": "Grammar and tone",
+      "desc": "Refine grammar, tone, and flow"
+    },
+    "focus": {
+      "label": "Focus sounds",
+      "hint": "lo-fi suggestions",
+      "desc": "Suggest music or noise for focus"
+    },
+    "news": {
+      "label": "Top news",
+      "hint": "3-line brief",
+      "desc": "Brief today's headline news"
+    },
+    "files": {
+      "label": "Tidy folder",
+      "hint": "Downloads folder",
+      "desc": "Organize a messy folder by category"
+    },
+    "memo": {
+      "label": "Remember as memo",
+      "hint": "Natural language",
+      "desc": "Save the gist of the recent chat"
+    }
+  },
+  "quickActions": {
+    "title": "Quick actions",
+    "searchPlaceholder": "Find an action or type a command…",
+    "manage": "Manage in settings",
+    "empty": "No registered actions",
+    "emptyDesc": "Register your favourite actions in settings to see them here.",
+    "noResults": "No results",
+    "noResultsDesc": "Try a different keyword.",
+    "register": "Register an action",
+    "registeredCount": "Registered · {{count}}",
+    "footerHint": "Press Enter to run",
+    "footerSettings": "Settings"
   },
   "onboarding": {
     "avatarNameTitle": "Set Avatar Name",

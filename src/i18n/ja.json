@@ -11,6 +11,13 @@
     "loggedOut": "未ログイン",
     "resetAll": "すべてリセット",
     "resetConfirm": "すべての設定をリセットしますか？元に戻せません。",
+    "quickActions": {
+      "title": "よく使う機能",
+      "description": "よく使う機能を登録すると ✨ アイコンからすぐ呼び出せます。音声からも呼び出せます。",
+      "registered": "登録済み · {{count}}件",
+      "clearAll": "すべて解除",
+      "empty": "登録された機能はまだありません。上でチェックしてください。"
+    },
     "language": "言語",
     "audioDevice": {
       "title": "オーディオ & マイク",
@@ -499,8 +506,67 @@
     "hideAvatar": "アバターを隠す",
     "showAvatar": "アバターを表示",
     "quickActions": "よく使う機能",
-    "quickActionsComingSoon": "よく使う機能は準備中です",
     "avatarResting": "{{name}}はちょっと休憩中です"
+  },
+  "quick": {
+    "calendar": {
+      "label": "今日の予定",
+      "hint": "カレンダー要約",
+      "desc": "今日・明日の予定を吹き出しで知らせます"
+    },
+    "mail": {
+      "label": "メール要約",
+      "hint": "未読メール",
+      "desc": "重要な未読メールだけ選んで要約"
+    },
+    "translate": {
+      "label": "翻訳",
+      "hint": "クリップボード",
+      "desc": "コピーしたテキストをすぐ翻訳"
+    },
+    "capture": {
+      "label": "画面キャプチャ",
+      "hint": "Screen Watch 案内",
+      "desc": "画面の内容を説明します"
+    },
+    "polish": {
+      "label": "文章を整える",
+      "hint": "誤字・トーン",
+      "desc": "誤字・トーン・文の流れを整えます"
+    },
+    "focus": {
+      "label": "集中サウンド",
+      "hint": "lo-fi 推薦",
+      "desc": "集中に良い音楽・ホワイトノイズを提案"
+    },
+    "news": {
+      "label": "主要ニュース",
+      "hint": "今日の3行",
+      "desc": "関心トピックで一日のニュースを要約"
+    },
+    "files": {
+      "label": "フォルダ整理",
+      "hint": "ダウンロード",
+      "desc": "散らかったフォルダをカテゴリ別に整理"
+    },
+    "memo": {
+      "label": "メモとして記憶",
+      "hint": "自然言語で保存",
+      "desc": "直前の会話の要点をメモ風にまとめます"
+    }
+  },
+  "quickActions": {
+    "title": "よく使う機能",
+    "searchPlaceholder": "機能を検索またはコマンドを入力…",
+    "manage": "設定で管理",
+    "empty": "登録された機能はありません",
+    "emptyDesc": "設定でよく使う機能を登録するとここに表示されます。",
+    "noResults": "結果がありません",
+    "noResultsDesc": "別のキーワードで試してみてください。",
+    "register": "機能を登録",
+    "registeredCount": "登録済み · {{count}}件",
+    "footerHint": "Enterで実行",
+    "footerSettings": "設定"
   },
   "onboarding": {
     "avatarNameTitle": "アバター名の設定",
