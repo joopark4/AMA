@@ -225,15 +225,18 @@ export default function SettingsPanel() {
           <HeaderUserPill />
         </div>
 
-        {/* Sections (scroll) — CSS 멀티컬럼: 패널 너비에 따라 1~3 컬럼 자동 분배.
-            각 섹션은 break-inside:avoid 로 잘리지 않고 다음 컬럼으로 이동. */}
+        {/* Sections — CSS Grid auto-fit: 패널 너비에 따라 자동으로 컬럼 수 결정,
+            세로 스크롤만 발생 (가로 스크롤 없음). 같은 행의 섹션 높이가 다르면
+            아래에 약간의 빈 공간이 생길 수 있으나 가로 스크롤보다 자연스러움. */}
         <div
           className="scroll flex-1 overflow-y-auto"
           style={{
             padding: '0 22px 22px',
-            columnWidth: 360,
-            columnGap: 14,
-            columnFill: 'balance',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+            gridAutoRows: 'min-content',
+            alignItems: 'start',
+            gap: 12,
           }}
           data-interactive="true"
         >
@@ -254,26 +257,20 @@ export default function SettingsPanel() {
             { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
             { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
           ].map(({ key, icon, title, Comp, defaultOpen }) => (
-            <div
+            <SettingsSection
               key={key}
-              style={{
-                breakInside: 'avoid',
-                pageBreakInside: 'avoid',
-                marginBottom: 12,
-                // CSS columns 안에서 inline-block 흉내로 안전하게 균형 분배
-                display: 'block',
-              }}
+              icon={icon}
+              title={title}
+              defaultOpen={defaultOpen}
             >
-              <SettingsSection icon={icon} title={title} defaultOpen={defaultOpen}>
-                <Comp />
-              </SettingsSection>
-            </div>
+              <Comp />
+            </SettingsSection>
           ))}
 
-          {/* 전체 초기화 — 작은 텍스트 링크 (컬럼 흐름 마지막) */}
+          {/* 전체 초기화 — 모든 컬럼 폭에 걸쳐 가운데 정렬 */}
           <div
             style={{
-              breakInside: 'avoid',
+              gridColumn: '1 / -1',
               textAlign: 'center',
               marginTop: 4,
             }}
