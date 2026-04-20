@@ -229,20 +229,32 @@ export function Toggle({
 }) {
   return (
     <label
-      className="shrink-0 inline-block"
+      className="shrink-0"
       style={{
+        // 라벨 자체가 트랙. inline-flex + 배경·border로 구성 — absolute 제거.
+        display: 'inline-flex',
+        alignItems: 'center',
         position: 'relative',
         width: 44,
         height: 24,
         minWidth: 44,
         flexShrink: 0,
+        padding: 0,
+        boxSizing: 'border-box',
+        borderRadius: 99,
+        background: on ? '#e6903a' : '#a8a39a',
+        border: on ? '1px solid #c77630' : '1px solid #7a756d',
+        boxShadow: on
+          ? '0 1px 2px rgba(0, 0, 0, 0.1)'
+          : 'inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
+        transition: 'background 200ms var(--ease), border-color 200ms var(--ease)',
       }}
       aria-label={ariaLabel}
       data-interactive="true"
     >
-      {/* 실제 상태를 담는 숨겨진 네이티브 체크박스 — 접근성 + 이벤트 소스 */}
+      {/* 숨겨진 네이티브 체크박스 — 라벨 클릭 시 자동 토글 */}
       <input
         type="checkbox"
         checked={on}
@@ -250,7 +262,8 @@ export function Toggle({
         disabled={disabled}
         style={{
           position: 'absolute',
-          inset: 0,
+          top: 0,
+          left: 0,
           width: '100%',
           height: '100%',
           margin: 0,
@@ -260,32 +273,18 @@ export function Toggle({
         }}
         data-interactive="true"
       />
-      {/* 비주얼 트랙 (label 내부 div — WKWebView 렌더 안정) */}
-      <div
+      {/* 핸들: margin-left로 위치 조정 (absolute 대신 inline-flex 내부 흐름) */}
+      <span
         style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: 99,
-          background: on ? '#e6903a' : '#a8a39a',
-          border: on ? '1px solid #c77630' : '1px solid #7a756d',
-          boxShadow: on
-            ? '0 1px 2px rgba(0, 0, 0, 0.1)'
-            : 'inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-          transition: 'background 200ms var(--ease), border-color 200ms var(--ease)',
-        }}
-      />
-      {/* 비주얼 핸들 */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 1,
-          left: on ? 21 : 1,
-          width: 20,
-          height: 20,
+          display: 'block',
+          width: 18,
+          height: 18,
+          marginLeft: on ? 22 : 2,
           borderRadius: '50%',
           background: 'white',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08)',
-          transition: 'left 220ms var(--ease)',
+          transition: 'margin-left 220ms var(--ease)',
+          pointerEvents: 'none',
         }}
       />
     </label>
