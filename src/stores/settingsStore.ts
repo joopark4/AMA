@@ -15,6 +15,7 @@ import {
   type ExampleDialogue,
 } from '../services/character';
 import { DEFAULT_PROACTIVE_SETTINGS, type ProactiveSettings } from '../services/ai/proactiveEngine';
+import { ALL_QUICK_ACTION_IDS, type QuickActionId } from '../features/quick-actions/types';
 
 export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
 
@@ -183,6 +184,11 @@ export interface Settings {
    * persist되어 앱 재시작 후에도 유지된다.
    */
   avatarHidden: boolean;
+  /**
+   * 자주 쓰는 기능 (Phase 4) — ✨ 팔레트에 등록된 기능 ID 목록.
+   * 사용자가 설정에서 체크박스로 등록/해제하며, 순서는 등록 순서.
+   */
+  enabledQuickActions: QuickActionId[];
 }
 
 interface SettingsState {
@@ -212,6 +218,8 @@ interface SettingsState {
   setProactive: (proactive: Partial<ProactiveSettings>) => void;
   setAvatarHidden: (hidden: boolean) => void;
   toggleAvatarHidden: () => void;
+  setEnabledQuickActions: (ids: QuickActionId[]) => void;
+  toggleQuickAction: (id: QuickActionId) => void;
   toggleSettings: () => void;
   openSettings: () => void;
   closeSettings: () => void;
@@ -408,6 +416,7 @@ const defaultSettings: Settings = {
     silentHours: { enabled: false, start: 23, end: 7 },
   },
   avatarHidden: false,
+  enabledQuickActions: ['calendar', 'mail', 'translate', 'capture'],
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -530,6 +539,11 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
     proactive: normalizeProactiveSettings(source.proactive),
     screenWatch: normalizeScreenWatchSettings(source.screenWatch),
     avatarHidden: typeof source.avatarHidden === 'boolean' ? source.avatarHidden : false,
+    enabledQuickActions: Array.isArray(source.enabledQuickActions)
+      ? source.enabledQuickActions.filter((id): id is QuickActionId =>
+          typeof id === 'string' && ALL_QUICK_ACTION_IDS.has(id as QuickActionId)
+        )
+      : defaultSettings.enabledQuickActions,
   };
 }
 
@@ -826,6 +840,26 @@ export const useSettingsStore = create<SettingsState>()(
           settings: { ...state.settings, avatarHidden: !state.settings.avatarHidden },
         })),
 
+      setEnabledQuickActions: (ids) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            enabledQuickActions: ids.filter((id) => ALL_QUICK_ACTION_IDS.has(id)),
+          },
+        })),
+
+      toggleQuickAction: (id) =>
+        set((state) => {
+          if (!ALL_QUICK_ACTION_IDS.has(id)) return state;
+          const curr = state.settings.enabledQuickActions ?? [];
+          const next = curr.includes(id)
+            ? curr.filter((x) => x !== id)
+            : [...curr, id];
+          return {
+            settings: { ...state.settings, enabledQuickActions: next },
+          };
+        }),
+
       setVrmModelPath: (path) =>
         set((state) => ({
           settings: { ...state.settings, vrmModelPath: normalizeVrmModelPath(path) },
@@ -861,7 +895,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 16,
+      version: 17,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -899,6 +933,14 @@ export const useSettingsStore = create<SettingsState>()(
           const s = state.settings;
           if (typeof s.avatarHidden !== 'boolean') {
             s.avatarHidden = false;
+          }
+        }
+
+        // v16→v17: enabledQuickActions 필드 추가 (기본: calendar/mail/translate/capture)
+        if ((version ?? 0) < 17) {
+          const s = state.settings;
+          if (!Array.isArray(s.enabledQuickActions)) {
+            s.enabledQuickActions = ['calendar', 'mail', 'translate', 'capture'];
           }
         }
 
