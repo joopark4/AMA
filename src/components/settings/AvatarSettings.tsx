@@ -270,7 +270,7 @@ export default function AvatarSettings() {
             onClick={() => setAvatarSettings({
               animation: { ...settings.avatar?.animation, faceExpressionOnlyMode: !faceOnlyModeEnabled },
             })}
-            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${faceOnlyModeEnabled ? 'bg-ok' : 'bg-[oklch(0.85_0.005_60)]'}`}
+            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${faceOnlyModeEnabled ? 'bg-accent' : 'bg-[oklch(0.78_0.008_60)]'}`}
           >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${faceOnlyModeEnabled ? 'translate-x-5' : ''}`} />
           </button>
@@ -295,7 +295,7 @@ export default function AvatarSettings() {
               <button
                 onClick={() => !settings.avatar?.freeMovement && setAvatarSettings({ autoRoam: !(settings.avatar?.autoRoam ?? false) })}
                 disabled={settings.avatar?.freeMovement ?? false}
-                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings.avatar?.autoRoam && !settings.avatar?.freeMovement ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'} ${settings.avatar?.freeMovement ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings.avatar?.autoRoam && !settings.avatar?.freeMovement ? 'bg-accent' : 'bg-[oklch(0.78_0.008_60)]'} ${settings.avatar?.freeMovement ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${settings.avatar?.autoRoam && !settings.avatar?.freeMovement ? 'translate-x-5' : ''}`} />
               </button>
@@ -320,7 +320,7 @@ export default function AvatarSettings() {
                   animation: { ...settings.avatar?.animation, enableBreathing: !(settings.avatar?.animation?.enableBreathing ?? true) },
                 })}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  (settings.avatar?.animation?.enableBreathing ?? true) ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
+                  (settings.avatar?.animation?.enableBreathing ?? true) ? 'bg-accent' : 'bg-[oklch(0.78_0.008_60)]'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -339,7 +339,7 @@ export default function AvatarSettings() {
                   animation: { ...settings.avatar?.animation, enableEyeDrift: !(settings.avatar?.animation?.enableEyeDrift ?? true) },
                 })}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
+                  (settings.avatar?.animation?.enableEyeDrift ?? true) ? 'bg-accent' : 'bg-[oklch(0.78_0.008_60)]'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -358,7 +358,7 @@ export default function AvatarSettings() {
                   animation: { ...settings.avatar?.animation, gazeFollow: !(settings.avatar?.animation?.gazeFollow ?? true) },
                 })}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  (settings.avatar?.animation?.gazeFollow ?? true) ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
+                  (settings.avatar?.animation?.gazeFollow ?? true) ? 'bg-accent' : 'bg-[oklch(0.78_0.008_60)]'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -377,7 +377,7 @@ export default function AvatarSettings() {
                   animation: { ...settings.avatar?.animation, backchannel: !(settings.avatar?.animation?.backchannel ?? true) },
                 })}
                 className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                  (settings.avatar?.animation?.backchannel ?? true) ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
+                  (settings.avatar?.animation?.backchannel ?? true) ? 'bg-accent' : 'bg-[oklch(0.78_0.008_60)]'
                 }`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -404,7 +404,7 @@ export default function AvatarSettings() {
               physics: { ...settings.avatar?.physics, enabled: !settings.avatar?.physics?.enabled },
             })}
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.physics?.enabled ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
+              settings.avatar?.physics?.enabled ? 'bg-accent' : 'bg-[oklch(0.78_0.008_60)]'
             }`}
           >
             <span
@@ -489,7 +489,7 @@ export default function AvatarSettings() {
           <button
             onClick={() => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, showControl: !settings.avatar?.lighting?.showControl } })}
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.lighting?.showControl !== false ? 'bg-accent' : 'bg-[oklch(0.85_0.005_60)]'
+              settings.avatar?.lighting?.showControl !== false ? 'bg-accent' : 'bg-[oklch(0.78_0.008_60)]'
             }`}
           >
             <span

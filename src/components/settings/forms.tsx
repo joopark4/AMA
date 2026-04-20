@@ -239,10 +239,14 @@ export function Toggle({
         width: 38,
         height: 22,
         borderRadius: 99,
-        background: on ? 'var(--accent)' : 'oklch(0.85 0.005 60)',
+        // OFF 상태도 글래시 패널 위에서 잘 보이도록 약간 더 진한 회색 + hairline
+        background: on ? 'var(--accent)' : 'oklch(0.78 0.008 60)',
+        boxShadow: on
+          ? '0 0 0 1px oklch(0.6 0.14 45 / 0.25), 0 1px 2px oklch(0.2 0 0 / 0.06)'
+          : 'inset 0 0 0 1px var(--hairline-strong), 0 1px 1px oklch(0.2 0 0 / 0.04)',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'background 200ms var(--ease)',
+        transition: 'background 200ms var(--ease), box-shadow 200ms var(--ease)',
       }}
       data-interactive="true"
     >
@@ -255,7 +259,7 @@ export function Toggle({
           height: 18,
           borderRadius: '50%',
           background: 'white',
-          boxShadow: '0 1px 2px oklch(0.2 0 0 / 0.2)',
+          boxShadow: '0 1px 2px oklch(0.2 0 0 / 0.25), 0 0 0 1px oklch(0.2 0 0 / 0.05)',
           transition: 'left 220ms var(--ease)',
         }}
       />
