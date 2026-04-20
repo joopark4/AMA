@@ -493,7 +493,8 @@
     "hideAvatar": "Hide avatar",
     "showAvatar": "Show avatar",
     "quickActions": "Quick actions",
-    "quickActionsComingSoon": "Quick actions are coming soon"
+    "quickActionsComingSoon": "Quick actions are coming soon",
+    "avatarResting": "{{name}} is taking a quick break"
   },
   "onboarding": {
     "avatarNameTitle": "Set Avatar Name",

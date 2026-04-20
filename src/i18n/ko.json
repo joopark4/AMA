@@ -493,7 +493,8 @@
     "hideAvatar": "아바타 숨기기",
     "showAvatar": "아바타 보이기",
     "quickActions": "자주 쓰는 기능",
-    "quickActionsComingSoon": "자주 쓰는 기능은 준비 중이에요"
+    "quickActionsComingSoon": "자주 쓰는 기능은 준비 중이에요",
+    "avatarResting": "{{name}}는 잠깐 쉬는 중이에요"
   },
   "onboarding": {
     "avatarNameTitle": "아바타 이름 설정",

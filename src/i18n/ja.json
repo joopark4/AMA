@@ -493,7 +493,8 @@
     "hideAvatar": "アバターを隠す",
     "showAvatar": "アバターを表示",
     "quickActions": "よく使う機能",
-    "quickActionsComingSoon": "よく使う機能は準備中です"
+    "quickActionsComingSoon": "よく使う機能は準備中です",
+    "avatarResting": "{{name}}はちょっと休憩中です"
   },
   "onboarding": {
     "avatarNameTitle": "アバター名の設定",
