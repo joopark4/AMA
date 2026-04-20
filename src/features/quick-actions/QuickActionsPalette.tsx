@@ -1,40 +1,73 @@
 /**
- * QuickActionsPalette — ✨ 팔레트 (Phase 4).
+ * QuickActionsPalette — ✨ 팔레트 (재설계: 토글 모음).
  *
- * ControlCluster의 ✨ 버튼이나 단축키로 열림 → 등록된 기능을 그리드로 표시 →
- * 클릭 시 dispatch. 검색으로 필터링, ESC/배경 클릭으로 닫힘.
- *
- * sendMessage는 useConversation을 가진 부모(ControlCluster)에서 prop으로 주입.
+ * 사용자가 설정에 등록한 boolean 설정을 토글 row로 노출 → 클릭/Toggle로
+ * 즉시 store 변경. 검색으로 필터링. ESC/배경 클릭으로 닫힘.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Search, Settings as SettingsIcon, Sparkles } from 'lucide-react';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { getQuickActionDef } from './catalog';
-import { useQuickActions } from './useQuickActions';
-import type { QuickActionDef, QuickActionId } from './types';
+import { Toggle } from '../../components/settings/forms';
+import { CATEGORY_LABEL_KEY, getQuickToggle } from './catalog';
+import type { QuickToggleCategory, QuickToggleDef } from './types';
 
 interface QuickActionsPaletteProps {
   open: boolean;
   onClose: () => void;
-  /** 부모(ControlCluster)의 useConversation에서 가져온 sendMessage */
-  sendMessage: (text: string) => Promise<void> | void;
+}
+
+/** 단일 토글 row — useSettingsStore selector로 실시간 구독 */
+function ToggleRow({ def }: { def: QuickToggleDef }) {
+  const { t } = useTranslation();
+  const value = useSettingsStore(def.select);
+
+  return (
+    <div
+      className="flex items-start"
+      style={{
+        padding: '12px 14px',
+        gap: 12,
+        borderRadius: 12,
+        background: 'oklch(1 0 0 / 0.6)',
+        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+      }}
+    >
+      <div className="flex-1 min-w-0">
+        <div
+          style={{
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: 'var(--ink)',
+            marginBottom: def.descKey ? 2 : 0,
+          }}
+        >
+          {t(def.titleKey)}
+        </div>
+        {def.descKey && (
+          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.4 }}>
+            {t(def.descKey)}
+          </div>
+        )}
+      </div>
+      <div style={{ marginTop: 2 }}>
+        <Toggle on={value} onChange={(v) => def.apply(v)} />
+      </div>
+    </div>
+  );
 }
 
 export default function QuickActionsPalette({
   open,
   onClose,
-  sendMessage,
 }: QuickActionsPaletteProps) {
   const { t } = useTranslation();
   const enabledIds = useSettingsStore((s) => s.settings.enabledQuickActions);
   const openSettings = useSettingsStore((s) => s.openSettings);
-  const { dispatch } = useQuickActions({ sendMessage });
 
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 열릴 때 입력 포커스 + 검색 초기화
   useEffect(() => {
     if (!open) return;
     setQuery('');
@@ -42,7 +75,6 @@ export default function QuickActionsPalette({
     return () => window.clearTimeout(timer);
   }, [open]);
 
-  // ESC 닫기
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -52,24 +84,26 @@ export default function QuickActionsPalette({
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  const pinned = useMemo<QuickActionDef[]>(() => {
-    const defs = enabledIds
-      .map((id) => getQuickActionDef(id))
-      .filter((d): d is QuickActionDef => Boolean(d));
-    if (!query.trim()) return defs;
-    const q = query.toLowerCase();
-    return defs.filter((d) => {
-      const label = t(d.labelKey).toLowerCase();
-      const hint = t(d.hintKey).toLowerCase();
-      const desc = t(d.descKey).toLowerCase();
-      return label.includes(q) || hint.includes(q) || desc.includes(q);
+  // 등록된 + 카테고리 그룹화 + 검색 필터
+  const grouped = useMemo<Record<QuickToggleCategory, QuickToggleDef[]>>(() => {
+    const result: Record<QuickToggleCategory, QuickToggleDef[]> = {
+      avatar: [], animation: [], voice: [], screen: [], channels: [], proactive: [],
+    };
+    const q = query.trim().toLowerCase();
+    enabledIds.forEach((id) => {
+      const def = getQuickToggle(id);
+      if (!def) return;
+      if (q) {
+        const title = t(def.titleKey).toLowerCase();
+        const desc = def.descKey ? t(def.descKey).toLowerCase() : '';
+        if (!title.includes(q) && !desc.includes(q)) return;
+      }
+      result[def.category].push(def);
     });
+    return result;
   }, [enabledIds, query, t]);
 
-  const handlePick = async (id: QuickActionId) => {
-    onClose();
-    await dispatch(id);
-  };
+  const totalShown = Object.values(grouped).reduce((acc, arr) => acc + arr.length, 0);
 
   const handleManage = () => {
     onClose();
@@ -94,7 +128,7 @@ export default function QuickActionsPalette({
         onClick={(e) => e.stopPropagation()}
         className="glass-strong overflow-hidden flex flex-col"
         style={{
-          width: 'min(640px, calc(100vw - 32px))',
+          width: 'min(560px, calc(100vw - 32px))',
           maxHeight: '80vh',
           padding: 0,
           animation: 'scaleIn 240ms var(--ease)',
@@ -106,12 +140,12 @@ export default function QuickActionsPalette({
         <div
           className="flex items-center"
           style={{
-            padding: '16px 20px',
+            padding: '14px 18px',
             gap: 12,
             borderBottom: '1px solid var(--hairline)',
           }}
         >
-          <Search size={18} style={{ color: 'var(--ink-3)' }} />
+          <Search size={16} style={{ color: 'var(--ink-3)' }} />
           <input
             ref={inputRef}
             value={query}
@@ -119,7 +153,7 @@ export default function QuickActionsPalette({
             placeholder={t('quickActions.searchPlaceholder')}
             className="focus-ring flex-1 bg-transparent border-0 outline-none"
             style={{
-              fontSize: 16,
+              fontSize: 14.5,
               color: 'var(--ink)',
               letterSpacing: '-0.01em',
             }}
@@ -141,13 +175,19 @@ export default function QuickActionsPalette({
         </div>
 
         {/* 본문 */}
-        <div className="scroll" style={{ overflowY: 'auto', padding: 16 }}>
+        <div
+          className="scroll"
+          style={{
+            overflowY: 'auto',
+            padding: 14,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+          }}
+        >
           <div
             className="flex items-center justify-between"
-            style={{
-              marginBottom: 10,
-              paddingLeft: 4,
-            }}
+            style={{ paddingLeft: 4 }}
           >
             <div
               style={{
@@ -179,7 +219,7 @@ export default function QuickActionsPalette({
             </button>
           </div>
 
-          {pinned.length === 0 ? (
+          {totalShown === 0 ? (
             <div
               className="text-center"
               style={{
@@ -248,71 +288,31 @@ export default function QuickActionsPalette({
               )}
             </div>
           ) : (
-            <div
-              className="grid"
-              style={{
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 8,
-              }}
-            >
-              {pinned.map((def) => {
-                const Icon = def.icon;
-                return (
-                  <button
-                    key={def.id}
-                    type="button"
-                    onClick={() => void handlePick(def.id)}
-                    className="text-left flex flex-col focus-ring"
+            (Object.keys(grouped) as QuickToggleCategory[]).map((cat) => {
+              const items = grouped[cat];
+              if (items.length === 0) return null;
+              return (
+                <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div
                     style={{
-                      padding: 14,
-                      gap: 10,
-                      borderRadius: 16,
-                      background: 'oklch(1 0 0 / 0.55)',
-                      boxShadow: 'inset 0 0 0 1px var(--hairline)',
-                      cursor: 'pointer',
-                      transition: 'all 180ms var(--ease)',
+                      paddingLeft: 4,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--ink-3)',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.4,
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'oklch(1 0 0 / 0.85)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'oklch(1 0 0 / 0.55)';
-                      e.currentTarget.style.transform = 'none';
-                    }}
-                    data-interactive="true"
                   >
-                    <div
-                      className="grid place-items-center"
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 10,
-                        background: def.accent,
-                        color: 'oklch(0.25 0.05 50)',
-                      }}
-                    >
-                      <Icon size={18} />
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 13.5,
-                          fontWeight: 600,
-                          marginBottom: 2,
-                          color: 'var(--ink)',
-                        }}
-                      >
-                        {t(def.labelKey)}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
-                        {t(def.hintKey)}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    {t(CATEGORY_LABEL_KEY[cat])}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {items.map((def) => (
+                      <ToggleRow key={def.id} def={def} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
 
@@ -326,12 +326,10 @@ export default function QuickActionsPalette({
             color: 'var(--ink-3)',
           }}
         >
-          <span>{t('quickActions.footerHint')}</span>
+          <span>{t('quickActions.footerToggleHint')}</span>
           <span className="inline-flex items-center" style={{ gap: 6 }}>
-            <kbd style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}>↵</kbd>
-            <span style={{ opacity: 0.6 }}>·</span>
-            <kbd style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}>⌘,</kbd>
-            <span>{t('quickActions.footerSettings')}</span>
+            <kbd style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}>esc</kbd>
+            <span>{t('quickActions.footerClose')}</span>
           </span>
         </div>
       </div>

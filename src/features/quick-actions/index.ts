@@ -1,20 +1,18 @@
 /**
- * Quick Actions 모듈 — 자주 쓰는 기능 (Phase 4).
- *
- * 외부 노출:
- * - 타입: QuickActionId, QuickActionDef
- * - 카탈로그: QUICK_ACTION_DEFS, getQuickActionDef, runQuickAction
- * - 훅: useQuickActions (sendMessage 주입)
- * - UI: QuickActionsPalette, QuickActionsSettings
+ * Quick Actions 모듈 — 자주 쓰는 설정 토글 (재설계).
  */
 export type {
   QuickActionId,
-  QuickActionDef,
-  QuickActionContext,
-  QuickActionHandler,
+  QuickToggleDef,
+  QuickToggleCategory,
 } from './types';
-export { ALL_QUICK_ACTION_IDS } from './types';
-export { QUICK_ACTION_DEFS, getQuickActionDef, runQuickAction } from './catalog';
-export { useQuickActions } from './useQuickActions';
+export {
+  QUICK_TOGGLES,
+  QUICK_TOGGLES_BY_CATEGORY,
+  ALL_QUICK_ACTION_IDS,
+  CATEGORY_ORDER,
+  CATEGORY_LABEL_KEY,
+  getQuickToggle,
+} from './catalog';
 export { default as QuickActionsPalette } from './QuickActionsPalette';
 export { default as QuickActionsSettings } from './QuickActionsSettings';

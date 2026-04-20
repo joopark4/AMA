@@ -509,64 +509,46 @@
     "avatarResting": "{{name}}はちょっと休憩中です"
   },
   "quick": {
-    "calendar": {
-      "label": "今日の予定",
-      "hint": "カレンダー要約",
-      "desc": "今日・明日の予定を吹き出しで知らせます"
+    "category": {
+      "avatar": "アバター",
+      "animation": "アニメーション",
+      "voice": "音声",
+      "screen": "画面",
+      "channels": "Channels",
+      "proactive": "自発的会話"
     },
-    "mail": {
-      "label": "メール要約",
-      "hint": "未読メール",
-      "desc": "重要な未読メールだけ選んで要約"
-    },
-    "translate": {
-      "label": "翻訳",
-      "hint": "クリップボード",
-      "desc": "コピーしたテキストをすぐ翻訳"
-    },
-    "capture": {
-      "label": "画面キャプチャ",
-      "hint": "Screen Watch 案内",
-      "desc": "画面の内容を説明します"
-    },
-    "polish": {
-      "label": "文章を整える",
-      "hint": "誤字・トーン",
-      "desc": "誤字・トーン・文の流れを整えます"
-    },
-    "focus": {
-      "label": "集中サウンド",
-      "hint": "lo-fi 推薦",
-      "desc": "集中に良い音楽・ホワイトノイズを提案"
-    },
-    "news": {
-      "label": "主要ニュース",
-      "hint": "今日の3行",
-      "desc": "関心トピックで一日のニュースを要約"
-    },
-    "files": {
-      "label": "フォルダ整理",
-      "hint": "ダウンロード",
-      "desc": "散らかったフォルダをカテゴリ別に整理"
-    },
-    "memo": {
-      "label": "メモとして記憶",
-      "hint": "自然言語で保存",
-      "desc": "直前の会話の要点をメモ風にまとめます"
-    }
+    "avatarHidden": { "title": "アバターを隠す", "desc": "アバターを一時的に非表示" },
+    "freeMovement": { "title": "自由移動モード", "desc": "ドラッグでどこへでも配置" },
+    "autoRoam": { "title": "自動徘徊", "desc": "ゆっくりと自動で動く" },
+    "showSpeechBubble": { "title": "吹き出し表示", "desc": "AI応答を吹き出しで表示" },
+    "physics": { "title": "物理シミュレーション", "desc": "髪・服の揺れ" },
+    "lightingControl": { "title": "ライティングコントロール", "desc": "ドラッグ可能な太陽アイコン" },
+    "faceOnly": { "title": "表情のみモード", "desc": "体は動かさず表情だけ" },
+    "breathing": { "title": "呼吸", "desc": "静かな胸の動き" },
+    "eyeDrift": { "title": "視線ドリフト", "desc": "ランダムな視線移動" },
+    "gazeFollow": { "title": "視線追従", "desc": "カーソルを目で追う" },
+    "backchannel": { "title": "うなずき", "desc": "聞いている間に小さくうなずく" },
+    "gestures": { "title": "ジェスチャー", "desc": "感情に応じた手の動き" },
+    "motionClips": { "title": "モーションクリップ", "desc": "モーションライブラリを使用" },
+    "dancing": { "title": "ダンス", "desc": "嬉しい時に踊る" },
+    "globalShortcut": { "title": "グローバルショートカット", "desc": "ホットキーで音声入力" },
+    "screenWatch": { "title": "画面観察", "desc": "周期的に画面を見て発話" },
+    "silentHours": { "title": "サイレント時間帯", "desc": "指定時間は画面観察を休止" },
+    "channels": { "title": "Claude Code Channels", "desc": "外部 Claude Code と双方向接続" },
+    "proactive": { "title": "自発的会話", "desc": "話したいことがあれば先に話しかける" }
   },
   "quickActions": {
     "title": "よく使う機能",
-    "searchPlaceholder": "機能を検索またはコマンドを入力…",
+    "searchPlaceholder": "機能を検索…",
     "manage": "設定で管理",
     "empty": "登録された機能はありません",
-    "emptyDesc": "設定でよく使う機能を登録するとここに表示されます。",
+    "emptyDesc": "設定でよく使う機能をチェックすると、ここにトグルで表示されます。",
     "noResults": "結果がありません",
     "noResultsDesc": "別のキーワードで試してみてください。",
     "register": "機能を登録",
     "registeredCount": "登録済み · {{count}}件",
-    "footerHint": "Enterで実行",
-    "footerSettings": "設定"
+    "footerToggleHint": "トグルで即時適用",
+    "footerClose": "閉じる"
   },
   "onboarding": {
     "avatarNameTitle": "アバター名の設定",

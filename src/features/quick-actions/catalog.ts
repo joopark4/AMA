@@ -1,170 +1,246 @@
 /**
- * Quick Actions 카탈로그 — 정의 + 기본 핸들러.
+ * Quick Toggles 카탈로그 — 자주 사용하는 boolean 설정 모음.
  *
- * 핸들러는 `QuickActionContext`를 받아 sendMessage / readClipboard 등을 호출.
- * UI는 `QUICK_ACTION_DEFS`만 보고 렌더, 실행 시 `runQuickAction`로 dispatch.
+ * 사용자는 설정 패널에서 원하는 항목을 체크 → ✨ 팔레트에 토글로 노출됨.
+ * 각 정의는 select(zustand selector) + apply(store action 호출)로
+ * 양방향 바인딩.
  */
-import {
-  Brain,
-  Calendar,
-  Camera,
-  Folder,
-  Languages,
-  Mail,
-  Music,
-  Pen,
-  Zap,
-} from 'lucide-react';
-import type {
-  QuickActionContext,
-  QuickActionDef,
-  QuickActionHandler,
-  QuickActionId,
-} from './types';
+import { useSettingsStore } from '../../stores/settingsStore';
+import type { AnimationSettings } from '../../stores/settingsStore';
+import type { QuickToggleCategory, QuickToggleDef } from './types';
 
-/** 9개 기능 정의 — 핸드오프 spec과 동일 순서/색상 */
-export const QUICK_ACTION_DEFS: QuickActionDef[] = [
+/** avatar.animation.<key> boolean 토글용 헬퍼 */
+function applyAnim(key: keyof AnimationSettings) {
+  return (value: boolean) => {
+    const st = useSettingsStore.getState();
+    const current = st.settings.avatar?.animation;
+    st.setAvatarSettings({
+      animation: { ...current, [key]: value } as AnimationSettings,
+    });
+  };
+}
+
+export const QUICK_TOGGLES: QuickToggleDef[] = [
+  /* ─── 아바타 ─── */
   {
-    id: 'calendar',
-    icon: Calendar,
-    labelKey: 'quick.calendar.label',
-    hintKey: 'quick.calendar.hint',
-    descKey: 'quick.calendar.desc',
-    accent: 'oklch(0.85 0.10 50)',
+    id: 'avatar.hidden',
+    titleKey: 'quick.avatarHidden.title',
+    descKey: 'quick.avatarHidden.desc',
+    category: 'avatar',
+    select: (s) => s.settings.avatarHidden,
+    apply: (v) => useSettingsStore.getState().setAvatarHidden(v),
   },
   {
-    id: 'mail',
-    icon: Mail,
-    labelKey: 'quick.mail.label',
-    hintKey: 'quick.mail.hint',
-    descKey: 'quick.mail.desc',
-    accent: 'oklch(0.85 0.10 200)',
+    id: 'avatar.freeMovement',
+    titleKey: 'quick.freeMovement.title',
+    descKey: 'quick.freeMovement.desc',
+    category: 'avatar',
+    select: (s) => s.settings.avatar?.freeMovement ?? false,
+    apply: (v) => useSettingsStore.getState().setAvatarSettings({ freeMovement: v }),
   },
   {
-    id: 'translate',
-    icon: Languages,
-    labelKey: 'quick.translate.label',
-    hintKey: 'quick.translate.hint',
-    descKey: 'quick.translate.desc',
-    accent: 'oklch(0.85 0.10 320)',
+    id: 'avatar.autoRoam',
+    titleKey: 'quick.autoRoam.title',
+    descKey: 'quick.autoRoam.desc',
+    category: 'avatar',
+    select: (s) => s.settings.avatar?.autoRoam ?? false,
+    apply: (v) => useSettingsStore.getState().setAvatarSettings({ autoRoam: v }),
   },
   {
-    id: 'capture',
-    icon: Camera,
-    labelKey: 'quick.capture.label',
-    hintKey: 'quick.capture.hint',
-    descKey: 'quick.capture.desc',
-    accent: 'oklch(0.85 0.10 140)',
+    id: 'avatar.showSpeechBubble',
+    titleKey: 'quick.showSpeechBubble.title',
+    descKey: 'quick.showSpeechBubble.desc',
+    category: 'avatar',
+    select: (s) => s.settings.avatar?.showSpeechBubble !== false,
+    apply: (v) => useSettingsStore.getState().setAvatarSettings({ showSpeechBubble: v }),
   },
   {
-    id: 'polish',
-    icon: Pen,
-    labelKey: 'quick.polish.label',
-    hintKey: 'quick.polish.hint',
-    descKey: 'quick.polish.desc',
-    accent: 'oklch(0.85 0.10 70)',
+    id: 'avatar.physics',
+    titleKey: 'quick.physics.title',
+    descKey: 'quick.physics.desc',
+    category: 'avatar',
+    select: (s) => s.settings.avatar?.physics?.enabled ?? true,
+    apply: (v) => {
+      const st = useSettingsStore.getState();
+      st.setAvatarSettings({
+        physics: { ...st.settings.avatar.physics, enabled: v },
+      });
+    },
   },
   {
-    id: 'focus',
-    icon: Music,
-    labelKey: 'quick.focus.label',
-    hintKey: 'quick.focus.hint',
-    descKey: 'quick.focus.desc',
-    accent: 'oklch(0.85 0.10 25)',
+    id: 'avatar.lightingControl',
+    titleKey: 'quick.lightingControl.title',
+    descKey: 'quick.lightingControl.desc',
+    category: 'avatar',
+    select: (s) => s.settings.avatar?.lighting?.showControl !== false,
+    apply: (v) => {
+      const st = useSettingsStore.getState();
+      st.setAvatarSettings({
+        lighting: { ...st.settings.avatar.lighting, showControl: v },
+      });
+    },
+  },
+
+  /* ─── 애니메이션 ─── */
+  {
+    id: 'animation.faceOnly',
+    titleKey: 'quick.faceOnly.title',
+    descKey: 'quick.faceOnly.desc',
+    category: 'animation',
+    select: (s) => s.settings.avatar?.animation?.faceExpressionOnlyMode ?? false,
+    apply: applyAnim('faceExpressionOnlyMode'),
   },
   {
-    id: 'news',
-    icon: Zap,
-    labelKey: 'quick.news.label',
-    hintKey: 'quick.news.hint',
-    descKey: 'quick.news.desc',
-    accent: 'oklch(0.85 0.10 240)',
+    id: 'animation.breathing',
+    titleKey: 'quick.breathing.title',
+    descKey: 'quick.breathing.desc',
+    category: 'animation',
+    select: (s) => s.settings.avatar?.animation?.enableBreathing ?? true,
+    apply: applyAnim('enableBreathing'),
   },
   {
-    id: 'files',
-    icon: Folder,
-    labelKey: 'quick.files.label',
-    hintKey: 'quick.files.hint',
-    descKey: 'quick.files.desc',
-    accent: 'oklch(0.85 0.10 110)',
+    id: 'animation.eyeDrift',
+    titleKey: 'quick.eyeDrift.title',
+    descKey: 'quick.eyeDrift.desc',
+    category: 'animation',
+    select: (s) => s.settings.avatar?.animation?.enableEyeDrift ?? true,
+    apply: applyAnim('enableEyeDrift'),
   },
   {
-    id: 'memo',
-    icon: Brain,
-    labelKey: 'quick.memo.label',
-    hintKey: 'quick.memo.hint',
-    descKey: 'quick.memo.desc',
-    accent: 'oklch(0.85 0.10 290)',
+    id: 'animation.gazeFollow',
+    titleKey: 'quick.gazeFollow.title',
+    descKey: 'quick.gazeFollow.desc',
+    category: 'animation',
+    select: (s) => s.settings.avatar?.animation?.gazeFollow ?? true,
+    apply: applyAnim('gazeFollow'),
+  },
+  {
+    id: 'animation.backchannel',
+    titleKey: 'quick.backchannel.title',
+    descKey: 'quick.backchannel.desc',
+    category: 'animation',
+    select: (s) => s.settings.avatar?.animation?.backchannel ?? true,
+    apply: applyAnim('backchannel'),
+  },
+  {
+    id: 'animation.gestures',
+    titleKey: 'quick.gestures.title',
+    descKey: 'quick.gestures.desc',
+    category: 'animation',
+    select: (s) => s.settings.avatar?.animation?.enableGestures ?? true,
+    apply: applyAnim('enableGestures'),
+  },
+  {
+    id: 'animation.motionClips',
+    titleKey: 'quick.motionClips.title',
+    descKey: 'quick.motionClips.desc',
+    category: 'animation',
+    select: (s) => s.settings.avatar?.animation?.enableMotionClips ?? true,
+    apply: applyAnim('enableMotionClips'),
+  },
+  {
+    id: 'animation.dancing',
+    titleKey: 'quick.dancing.title',
+    descKey: 'quick.dancing.desc',
+    category: 'animation',
+    select: (s) => s.settings.avatar?.animation?.enableDancing ?? true,
+    apply: applyAnim('enableDancing'),
+  },
+
+  /* ─── 음성 ─── */
+  {
+    id: 'voice.globalShortcut',
+    titleKey: 'quick.globalShortcut.title',
+    descKey: 'quick.globalShortcut.desc',
+    category: 'voice',
+    select: (s) => s.settings.globalShortcut?.enabled ?? true,
+    apply: (v) =>
+      useSettingsStore.getState().setGlobalShortcutSettings({ enabled: v }),
+  },
+
+  /* ─── 화면 ─── */
+  {
+    id: 'screen.watch',
+    titleKey: 'quick.screenWatch.title',
+    descKey: 'quick.screenWatch.desc',
+    category: 'screen',
+    select: (s) => s.settings.screenWatch?.enabled ?? false,
+    apply: (v) =>
+      useSettingsStore.getState().setScreenWatchSettings({ enabled: v }),
+  },
+  {
+    id: 'screen.silentHours',
+    titleKey: 'quick.silentHours.title',
+    descKey: 'quick.silentHours.desc',
+    category: 'screen',
+    select: (s) => s.settings.screenWatch?.silentHours?.enabled ?? false,
+    apply: (v) => {
+      const st = useSettingsStore.getState();
+      st.setScreenWatchSettings({
+        silentHours: { ...st.settings.screenWatch.silentHours, enabled: v },
+      });
+    },
+  },
+
+  /* ─── Channels ─── */
+  {
+    id: 'channels.enabled',
+    titleKey: 'quick.channels.title',
+    descKey: 'quick.channels.desc',
+    category: 'channels',
+    select: (s) => s.settings.mcpEnabled,
+    apply: (v) => useSettingsStore.getState().setSettings({ mcpEnabled: v }),
+  },
+
+  /* ─── 자발적 대화 ─── */
+  {
+    id: 'proactive.enabled',
+    titleKey: 'quick.proactive.title',
+    descKey: 'quick.proactive.desc',
+    category: 'proactive',
+    select: (s) => s.settings.proactive?.enabled ?? false,
+    apply: (v) =>
+      useSettingsStore.getState().setProactive({ enabled: v }),
   },
 ];
 
-const DEF_BY_ID: Record<QuickActionId, QuickActionDef> = QUICK_ACTION_DEFS.reduce(
+const TOGGLE_BY_ID: Record<string, QuickToggleDef> = QUICK_TOGGLES.reduce(
   (acc, def) => ({ ...acc, [def.id]: def }),
-  {} as Record<QuickActionId, QuickActionDef>
+  {} as Record<string, QuickToggleDef>
 );
 
-export function getQuickActionDef(id: QuickActionId): QuickActionDef | undefined {
-  return DEF_BY_ID[id];
+export function getQuickToggle(id: string): QuickToggleDef | undefined {
+  return TOGGLE_BY_ID[id];
 }
 
-/**
- * 기본 핸들러들 — 대부분 sendMessage로 LLM에 프롬프트 주입.
- * translate / polish는 클립보드 텍스트를 읽어 프롬프트에 포함.
- *
- * MVP 정책: 외부 API(캘린더/메일 실시간 데이터)는 통합하지 않고
- * LLM에 자연어 프롬프트만 전달한다. 추후 도구 호출(tool use) 도입 시 확장.
- */
-const HANDLERS: Record<QuickActionId, QuickActionHandler> = {
-  calendar: async (ctx) => {
-    await ctx.sendMessage('오늘 일정을 짧게 요약해줘.');
-  },
-  mail: async (ctx) => {
-    await ctx.sendMessage('읽지 않은 메일 중 중요한 것만 골라 요약해줘.');
-  },
-  translate: async (ctx) => {
-    const text = await ctx.readClipboard();
-    if (!text.trim()) {
-      await ctx.sendMessage('번역할 텍스트가 클립보드에 없어. 복사한 뒤 다시 시도해줘.');
-      return;
-    }
-    await ctx.sendMessage(`다음을 자연스럽게 번역해줘:\n\n${text}`);
-  },
-  capture: async (ctx) => {
-    // 화면 분석은 화면 관찰 기능과 자연스럽게 안내 (별도 캡처 IPC 미구현 상태)
-    await ctx.sendMessage(
-      '지금 화면을 분석하고 싶어. 화면 관찰(Screen Watch) 기능을 켜거나 스크린샷을 첨부해줘.'
-    );
-  },
-  polish: async (ctx) => {
-    const text = await ctx.readClipboard();
-    if (!text.trim()) {
-      await ctx.sendMessage('다듬을 글이 클립보드에 없어. 복사한 뒤 다시 시도해줘.');
-      return;
-    }
-    await ctx.sendMessage(
-      `다음 글의 맞춤법·어투·문장 흐름을 자연스럽게 다듬어줘. 의미는 유지해줘.\n\n${text}`
-    );
-  },
-  focus: async (ctx) => {
-    await ctx.sendMessage('집중에 좋은 음악이나 백색소음을 추천해줘.');
-  },
-  news: async (ctx) => {
-    await ctx.sendMessage('오늘 주요 뉴스 3개만 짧게 정리해줘.');
-  },
-  files: async (ctx) => {
-    await ctx.sendMessage('어지러운 다운로드 폴더를 카테고리별로 정리하는 방법을 알려줘.');
-  },
-  memo: async (ctx) => {
-    await ctx.sendMessage('방금 한 대화 핵심을 메모처럼 짧게 정리해줘.');
-  },
+/** 카테고리별 그룹화 (설정 체크리스트용) */
+export const QUICK_TOGGLES_BY_CATEGORY: Record<QuickToggleCategory, QuickToggleDef[]> =
+  QUICK_TOGGLES.reduce((acc, def) => {
+    acc[def.category] = acc[def.category] || [];
+    acc[def.category].push(def);
+    return acc;
+  }, {} as Record<QuickToggleCategory, QuickToggleDef[]>);
+
+/** Settings persist 마이그레이션/검증에 사용 */
+export const ALL_QUICK_ACTION_IDS: ReadonlySet<string> = new Set(
+  QUICK_TOGGLES.map((d) => d.id)
+);
+
+/** 카테고리 표시 순서 + i18n 키 */
+export const CATEGORY_ORDER: QuickToggleCategory[] = [
+  'avatar',
+  'animation',
+  'voice',
+  'screen',
+  'channels',
+  'proactive',
+];
+
+export const CATEGORY_LABEL_KEY: Record<QuickToggleCategory, string> = {
+  avatar: 'quick.category.avatar',
+  animation: 'quick.category.animation',
+  voice: 'quick.category.voice',
+  screen: 'quick.category.screen',
+  channels: 'quick.category.channels',
+  proactive: 'quick.category.proactive',
 };
-
-/** 단일 진입점 — UI는 이 함수만 호출 */
-export async function runQuickAction(
-  id: QuickActionId,
-  ctx: QuickActionContext
-): Promise<void> {
-  const handler = HANDLERS[id];
-  if (!handler) return;
-  await handler(ctx);
-}

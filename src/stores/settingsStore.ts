@@ -416,7 +416,12 @@ const defaultSettings: Settings = {
     silentHours: { enabled: false, start: 23, end: 7 },
   },
   avatarHidden: false,
-  enabledQuickActions: ['calendar', 'mail', 'translate', 'capture'],
+  enabledQuickActions: [
+    'avatar.freeMovement',
+    'avatar.showSpeechBubble',
+    'voice.globalShortcut',
+    'screen.watch',
+  ],
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -895,7 +900,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 17,
+      version: 18,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -942,6 +947,18 @@ export const useSettingsStore = create<SettingsState>()(
           if (!Array.isArray(s.enabledQuickActions)) {
             s.enabledQuickActions = ['calendar', 'mail', 'translate', 'capture'];
           }
+        }
+
+        // v17→v18: Quick Actions 모델 변경 (LLM 프롬프트 → 설정 토글).
+        // 기존 ID(calendar/mail/...)는 모두 무효이므로 새 기본값으로 교체.
+        if ((version ?? 0) < 18) {
+          const s = state.settings;
+          s.enabledQuickActions = [
+            'avatar.freeMovement',
+            'avatar.showSpeechBubble',
+            'voice.globalShortcut',
+            'screen.watch',
+          ];
         }
 
         return {

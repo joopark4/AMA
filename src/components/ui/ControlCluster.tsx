@@ -834,7 +834,6 @@ export default function ControlCluster() {
       <QuickActionsPalette
         open={quickActionsOpen}
         onClose={() => setQuickActionsOpen(false)}
-        sendMessage={sendMessage}
       />
 
       {/* ─── Dependency guide modal ─── */}

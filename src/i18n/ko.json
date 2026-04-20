@@ -509,64 +509,46 @@
     "avatarResting": "{{name}}는 잠깐 쉬는 중이에요"
   },
   "quick": {
-    "calendar": {
-      "label": "오늘 일정",
-      "hint": "캘린더 요약",
-      "desc": "오늘·내일 일정을 말풍선으로 브리핑"
+    "category": {
+      "avatar": "아바타",
+      "animation": "애니메이션",
+      "voice": "음성",
+      "screen": "화면",
+      "channels": "Channels",
+      "proactive": "자발적 대화"
     },
-    "mail": {
-      "label": "메일 요약",
-      "hint": "읽지 않은 메일",
-      "desc": "중요 메일만 골라 요약해서 읽어드려요"
-    },
-    "translate": {
-      "label": "번역",
-      "hint": "클립보드",
-      "desc": "복사한 텍스트를 즉시 번역"
-    },
-    "capture": {
-      "label": "화면 캡처 분석",
-      "hint": "Screen Watch 안내",
-      "desc": "스크린샷을 찍으면 내용을 설명해드려요"
-    },
-    "polish": {
-      "label": "글 다듬기",
-      "hint": "맞춤법·톤",
-      "desc": "맞춤법·어투·문장 구조를 다듬어요"
-    },
-    "focus": {
-      "label": "집중 사운드",
-      "hint": "lo-fi · 추천",
-      "desc": "집중에 좋은 음악·백색소음 추천"
-    },
-    "news": {
-      "label": "주요 뉴스",
-      "hint": "오늘의 3줄",
-      "desc": "관심 토픽 기준 하루 뉴스 브리핑"
-    },
-    "files": {
-      "label": "폴더 정리",
-      "hint": "다운로드 폴더",
-      "desc": "어지러운 폴더를 카테고리별로 정리"
-    },
-    "memo": {
-      "label": "메모 기억",
-      "hint": "자연어로 저장",
-      "desc": "방금 한 대화 핵심을 메모처럼 정리"
-    }
+    "avatarHidden": { "title": "아바타 숨기기", "desc": "아바타를 화면에서 일시 숨김" },
+    "freeMovement": { "title": "자유 이동 모드", "desc": "마우스 드래그로 어디든 배치" },
+    "autoRoam": { "title": "자동 배회", "desc": "주기적으로 천천히 움직임" },
+    "showSpeechBubble": { "title": "말풍선 표시", "desc": "AI 응답을 말풍선으로 표시" },
+    "physics": { "title": "물리 시뮬레이션", "desc": "머리카락·옷자락 흔들림" },
+    "lightingControl": { "title": "조명 컨트롤", "desc": "드래그 가능한 태양 아이콘 표시" },
+    "faceOnly": { "title": "표정 전용 모드", "desc": "몸 동작 없이 표정만" },
+    "breathing": { "title": "호흡 애니메이션", "desc": "조용한 가슴 움직임" },
+    "eyeDrift": { "title": "눈동자 드리프트", "desc": "랜덤하게 시선 이동" },
+    "gazeFollow": { "title": "시선 따라오기", "desc": "마우스 커서를 따라 시선 이동" },
+    "backchannel": { "title": "끄덕임", "desc": "듣고 있을 때 살짝 끄덕임" },
+    "gestures": { "title": "제스처", "desc": "감정에 따른 손 동작" },
+    "motionClips": { "title": "모션 클립", "desc": "다양한 모션 라이브러리 사용" },
+    "dancing": { "title": "춤추기", "desc": "기쁠 때 춤" },
+    "globalShortcut": { "title": "글로벌 단축키", "desc": "단축키로 음성 입력 시작/중지" },
+    "screenWatch": { "title": "화면 관찰", "desc": "주기적으로 화면 보고 능동 발화" },
+    "silentHours": { "title": "조용한 시간대", "desc": "지정한 시간엔 화면 관찰 끔" },
+    "channels": { "title": "Claude Code Channels", "desc": "외부 Claude Code와 양방향 연결" },
+    "proactive": { "title": "자발적 대화", "desc": "할 말이 있으면 먼저 말 걸기" }
   },
   "quickActions": {
     "title": "자주 쓰는 기능",
-    "searchPlaceholder": "기능 찾기 또는 명령어 입력…",
+    "searchPlaceholder": "기능 찾기…",
     "manage": "설정에서 관리",
     "empty": "등록된 기능이 없어요",
-    "emptyDesc": "설정에서 자주 쓰는 기능을 등록하면 여기에 나타나요.",
+    "emptyDesc": "설정에서 자주 사용할 기능을 체크하면 여기에 토글로 나타나요.",
     "noResults": "검색 결과가 없어요",
     "noResultsDesc": "다른 키워드로 검색해보세요.",
     "register": "기능 등록하러 가기",
     "registeredCount": "등록된 기능 · {{count}}개",
-    "footerHint": "엔터로 실행",
-    "footerSettings": "설정"
+    "footerToggleHint": "토글로 즉시 적용",
+    "footerClose": "닫기"
   },
   "onboarding": {
     "avatarNameTitle": "아바타 이름 설정",
