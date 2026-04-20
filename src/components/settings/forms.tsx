@@ -234,16 +234,17 @@ export function Toggle({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={on}
-      className="relative shrink-0"
+      className="relative shrink-0 inline-block"
       style={{
-        width: 38,
-        height: 22,
+        width: 44,
+        height: 24,
+        minWidth: 44,
         borderRadius: 99,
-        // OFF 상태도 글래시 패널 위에서 잘 보이도록 약간 더 진한 회색 + hairline
-        background: on ? 'var(--accent)' : 'oklch(0.78 0.008 60)',
+        // 시인성 극대화: ON은 accent, OFF는 확연히 진한 회색 + 강한 hairline
+        background: on ? 'var(--accent)' : 'oklch(0.70 0.012 60)',
         boxShadow: on
-          ? '0 0 0 1px oklch(0.6 0.14 45 / 0.25), 0 1px 2px oklch(0.2 0 0 / 0.06)'
-          : 'inset 0 0 0 1px var(--hairline-strong), 0 1px 1px oklch(0.2 0 0 / 0.04)',
+          ? '0 0 0 1px oklch(0.55 0.14 45 / 0.35), 0 1px 2px oklch(0.2 0 0 / 0.08)'
+          : 'inset 0 0 0 1px oklch(0.20 0.01 50 / 0.30), 0 1px 2px oklch(0.2 0 0 / 0.08)',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'background 200ms var(--ease), box-shadow 200ms var(--ease)',
@@ -254,12 +255,12 @@ export function Toggle({
         style={{
           position: 'absolute',
           top: 2,
-          left: on ? 18 : 2,
-          width: 18,
-          height: 18,
+          left: on ? 22 : 2,
+          width: 20,
+          height: 20,
           borderRadius: '50%',
           background: 'white',
-          boxShadow: '0 1px 2px oklch(0.2 0 0 / 0.25), 0 0 0 1px oklch(0.2 0 0 / 0.05)',
+          boxShadow: '0 1px 3px oklch(0.2 0 0 / 0.35), 0 0 0 1px oklch(0.2 0 0 / 0.08)',
           transition: 'left 220ms var(--ease)',
         }}
       />
