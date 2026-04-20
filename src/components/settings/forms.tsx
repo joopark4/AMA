@@ -229,41 +229,65 @@ export function Toggle({
 }) {
   return (
     <label
-      className="shrink-0 inline-flex items-center"
+      className="shrink-0 inline-block"
       style={{
+        position: 'relative',
+        width: 44,
+        height: 24,
+        minWidth: 44,
         flexShrink: 0,
-        minWidth: 24,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        gap: 6,
       }}
-      data-interactive="true"
       aria-label={ariaLabel}
+      data-interactive="true"
     >
+      {/* 실제 상태를 담는 숨겨진 네이티브 체크박스 — 접근성 + 이벤트 소스 */}
       <input
         type="checkbox"
         checked={on}
         onChange={(e) => !disabled && onChange?.(e.target.checked)}
         disabled={disabled}
         style={{
-          width: 24,
-          height: 24,
-          minWidth: 24,
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          margin: 0,
+          opacity: 0,
           cursor: disabled ? 'not-allowed' : 'pointer',
-          accentColor: '#e6903a',
+          zIndex: 1,
         }}
         data-interactive="true"
       />
-      <span
+      {/* 비주얼 트랙 (label 내부 div — WKWebView 렌더 안정) */}
+      <div
         style={{
-          fontSize: 12,
-          color: on ? '#c77630' : '#7a756d',
-          fontWeight: 600,
-          minWidth: 28,
+          position: 'absolute',
+          inset: 0,
+          borderRadius: 99,
+          background: on ? '#e6903a' : '#a8a39a',
+          border: on ? '1px solid #c77630' : '1px solid #7a756d',
+          boxShadow: on
+            ? '0 1px 2px rgba(0, 0, 0, 0.1)'
+            : 'inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+          transition: 'background 200ms var(--ease), border-color 200ms var(--ease)',
         }}
-      >
-        {on ? 'ON' : 'OFF'}
-      </span>
+      />
+      {/* 비주얼 핸들 */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 1,
+          left: on ? 21 : 1,
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          background: 'white',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+          transition: 'left 220ms var(--ease)',
+        }}
+      />
     </label>
   );
 }
