@@ -160,15 +160,16 @@ export default function SettingsPanel() {
         data-interactive="true"
       />
 
-      {/* Panel — 우측 슬라이드 인 */}
+      {/* Panel — 우측 슬라이드 인 (멀티컬럼: 너비에 따라 자동 분배) */}
       <div
         className="glass-strong absolute flex flex-col overflow-hidden"
         style={{
           top: 'max(env(safe-area-inset-top), 64px)',
           right: 12,
           bottom: 12,
-          width: 420,
-          maxWidth: 'calc(100vw - 24px)',
+          // 화면 너비에 비례해 확장 (단일 컬럼 ~420 → 최대 3컬럼 ~1200)
+          width: 'min(1200px, calc(100vw - 24px))',
+          minWidth: 'min(420px, calc(100vw - 24px))',
           padding: 0,
           animation: 'panelIn 320ms var(--ease)',
         }}
@@ -224,89 +225,76 @@ export default function SettingsPanel() {
           <HeaderUserPill />
         </div>
 
-        {/* Sections (scroll) */}
+        {/* Sections (scroll) — CSS 멀티컬럼: 패널 너비에 따라 1~3 컬럼 자동 분배.
+            각 섹션은 break-inside:avoid 로 잘리지 않고 다음 컬럼으로 이동. */}
         <div
-          className="scroll flex-1 overflow-y-auto flex flex-col"
-          style={{ padding: '0 22px 22px', gap: 10 }}
+          className="scroll flex-1 overflow-y-auto"
+          style={{
+            padding: '0 22px 22px',
+            columnWidth: 360,
+            columnGap: 14,
+            columnFill: 'balance',
+          }}
           data-interactive="true"
         >
-          <SettingsSection icon={<Globe size={16} />} title={t('settings.language')}>
-            <LanguageSection />
-          </SettingsSection>
+          {[
+            { key: 'lang', icon: <Globe size={16} />, title: t('settings.language'), Comp: LanguageSection, defaultOpen: true },
+            { key: 'llm', icon: <Brain size={16} />, title: t('settings.llm.title'), Comp: LLMSettings, defaultOpen: true },
+            { key: 'audio', icon: <Volume2 size={16} />, title: t('settings.audioDevice.title'), Comp: AudioDeviceSettings, defaultOpen: true },
+            { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings, defaultOpen: true },
+            { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings, defaultOpen: true },
+            { key: 'character', icon: <User size={16} />, title: t('settings.character.title'), Comp: CharacterSettings, defaultOpen: true },
+            { key: 'quick', icon: <Sparkles size={16} />, title: t('settings.quickActions.title'), Comp: QuickActionsSettings, defaultOpen: true },
+            { key: 'avatar', icon: <Box size={16} />, title: t('settings.avatar.title'), Comp: AvatarSettings, defaultOpen: true },
+            { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title', '화면 관찰'), Comp: ScreenWatchSettings, defaultOpen: true },
+            { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings, defaultOpen: true },
+            { key: 'mcp', icon: <Code size={16} />, title: t('settings.mcp.title'), Comp: MCPSettings, defaultOpen: true },
+            { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
+            { key: 'account', icon: <UserRound size={16} />, title: t('settings.account.title'), Comp: UserProfile, defaultOpen: true },
+            { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
+            { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
+          ].map(({ key, icon, title, Comp, defaultOpen }) => (
+            <div
+              key={key}
+              style={{
+                breakInside: 'avoid',
+                pageBreakInside: 'avoid',
+                marginBottom: 12,
+                // CSS columns 안에서 inline-block 흉내로 안전하게 균형 분배
+                display: 'block',
+              }}
+            >
+              <SettingsSection icon={icon} title={title} defaultOpen={defaultOpen}>
+                <Comp />
+              </SettingsSection>
+            </div>
+          ))}
 
-          <SettingsSection icon={<Brain size={16} />} title={t('settings.llm.title')} defaultOpen>
-            <LLMSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<Volume2 size={16} />} title={t('settings.audioDevice.title')}>
-            <AudioDeviceSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<Mic size={16} />} title={t('settings.voice.title')}>
-            <VoiceSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<Cloud size={16} />} title={t('settings.premium.title')}>
-            <PremiumVoiceSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<User size={16} />} title={t('settings.character.title')}>
-            <CharacterSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<Sparkles size={16} />} title={t('settings.quickActions.title')}>
-            <QuickActionsSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<Box size={16} />} title={t('settings.avatar.title')}>
-            <AvatarSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<ScanEye size={16} />} title={t('settings.screenWatch.title', '화면 관찰')}>
-            <ScreenWatchSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<MonitorIcon size={16} />} title={t('settings.monitor.title')}>
-            <MonitorSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<Code size={16} />} title={t('settings.mcp.title')}>
-            <MCPSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<Download size={16} />} title={t('settings.update.title')}>
-            <UpdateSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<UserRound size={16} />} title={t('settings.account.title')}>
-            <UserProfile />
-          </SettingsSection>
-
-          <SettingsSection icon={<Trash2 size={16} />} title={t('settings.dataCleanup.title')}>
-            <DataCleanupSettings />
-          </SettingsSection>
-
-          <SettingsSection icon={<ScrollText size={16} />} title={t('settings.licenses.title')}>
-            <LicensesSettings />
-          </SettingsSection>
-
-          {/* 전체 초기화 — 작은 텍스트 링크 */}
-          <button
-            type="button"
-            onClick={handleResetAll}
-            className="self-center focus-ring"
+          {/* 전체 초기화 — 작은 텍스트 링크 (컬럼 흐름 마지막) */}
+          <div
             style={{
-              padding: '10px 14px',
-              fontSize: 11.5,
-              color: 'var(--ink-3)',
-              background: 'transparent',
-              borderRadius: 8,
+              breakInside: 'avoid',
+              textAlign: 'center',
+              marginTop: 4,
             }}
-            data-interactive="true"
           >
-            <SettingsIcon size={11} className="inline mr-1.5 align-text-bottom" />
-            {t('settings.resetAll')}
-          </button>
+            <button
+              type="button"
+              onClick={handleResetAll}
+              className="focus-ring"
+              style={{
+                padding: '10px 14px',
+                fontSize: 11.5,
+                color: 'var(--ink-3)',
+                background: 'transparent',
+                borderRadius: 8,
+              }}
+              data-interactive="true"
+            >
+              <SettingsIcon size={11} className="inline mr-1.5 align-text-bottom" />
+              {t('settings.resetAll')}
+            </button>
+          </div>
         </div>
       </div>
     </div>
