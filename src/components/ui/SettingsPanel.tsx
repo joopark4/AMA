@@ -155,9 +155,12 @@ export default function SettingsPanel() {
   const updateScrollState = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const epsilon = 4;
-    setCanScrollLeft(el.scrollLeft > epsilon);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - epsilon);
+    // 1px 미만 차이는 노이즈 (트랙패드 스크롤 등) — 작은 epsilon으로 양 끝 판단
+    const SCROLL_EDGE_EPSILON = 4;
+    setCanScrollLeft(el.scrollLeft > SCROLL_EDGE_EPSILON);
+    setCanScrollRight(
+      el.scrollLeft + el.clientWidth < el.scrollWidth - SCROLL_EDGE_EPSILON
+    );
   }, []);
 
   useEffect(() => {

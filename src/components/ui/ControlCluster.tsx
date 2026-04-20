@@ -489,6 +489,16 @@ export default function ControlCluster() {
     }
   }, [dependencyIssues.length, showDependencyGuide]);
 
+  // 의존성 가이드 모달 ESC 닫기
+  useEffect(() => {
+    if (!showDependencyGuide) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowDependencyGuide(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showDependencyGuide]);
+
   /* ─── 입력/음성 핸들러 ─── */
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
