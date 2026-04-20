@@ -91,6 +91,7 @@
 | [#017](./issues/017-deploy-app-channels-issues.md) | 배포 앱 Channels 6건 통합 해결 | 2026.03.25 |
 | [#018](./issues/018-audio-output-device-routing.md) | WKWebView setSinkId 제스처 제약 해결 | 2026.03.31 |
 | [#019](./issues/019-tts-output-device-gesture.md) | TTS 출력 디바이스 제스처 제약 해결 | 2026.03.31 |
+| [#020](./issues/020-wkwebview-toggle-rendering.md) | WKWebView 커스텀 Toggle 렌더링 이슈 — SVG 기반으로 해결 | 2026.04.20 |
 
 ---
 
