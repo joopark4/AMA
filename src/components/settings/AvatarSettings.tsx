@@ -260,7 +260,7 @@ export default function AvatarSettings() {
 
         {/* 표정 전용 모드 */}
         <div className="flex items-center justify-between">
-          <div className="flex flex-col">
+          <div className="flex flex-col flex-1 min-w-0 pr-3">
             <label className="text-sm text-gray-600">{t('settings.avatar.animation.faceOnlyMode')}</label>
             {faceOnlyModeEnabled && (
               <span className="text-xs text-ok">{t('settings.avatar.animation.faceOnlyDescription')}</span>
@@ -288,7 +288,7 @@ export default function AvatarSettings() {
             </h5>
 
             <div className="flex items-center justify-between">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
                 <label className={`text-sm ${settings.avatar?.freeMovement ? 'text-gray-400' : 'text-gray-600'}`}>{t('settings.avatar.animation.autoRoam')}</label>
                 <span className="text-xs text-gray-400">
                   {settings.avatar?.freeMovement
@@ -319,7 +319,7 @@ export default function AvatarSettings() {
             </h5>
 
             <div className="flex items-center justify-between">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
                 <label className="text-sm text-gray-600">{t('settings.avatar.animation.enableBreathing')}</label>
                 <span className="text-xs text-gray-400">{t('settings.avatar.animation.enableBreathingDesc')}</span>
               </div>
@@ -332,7 +332,7 @@ export default function AvatarSettings() {
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
                 <label className="text-sm text-gray-600">{t('settings.avatar.animation.enableEyeDrift')}</label>
                 <span className="text-xs text-gray-400">{t('settings.avatar.animation.enableEyeDriftDesc')}</span>
               </div>
@@ -345,7 +345,7 @@ export default function AvatarSettings() {
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
                 <label className="text-sm text-gray-600">{t('settings.avatar.animation.gazeFollow')}</label>
                 <span className="text-xs text-gray-400">{t('settings.avatar.animation.gazeFollowDesc')}</span>
               </div>
@@ -358,7 +358,7 @@ export default function AvatarSettings() {
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
                 <label className="text-sm text-gray-600">{t('settings.avatar.animation.backchannel')}</label>
                 <span className="text-xs text-gray-400">{t('settings.avatar.animation.backchannelDesc')}</span>
               </div>
