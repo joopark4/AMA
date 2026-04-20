@@ -228,13 +228,26 @@ export function Toggle({
   ariaLabel?: string;
 }) {
   return (
-    <label
-      className="shrink-0"
+    <div
+      role="switch"
+      aria-checked={on}
+      aria-label={ariaLabel}
+      aria-disabled={disabled}
+      tabIndex={disabled ? -1 : 0}
+      onClick={() => !disabled && onChange?.(!on)}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          onChange?.(!on);
+        }
+      }}
       style={{
-        // 라벨 자체가 트랙. inline-flex + 배경·border로 구성 — absolute 제거.
+        // 순수 <div> 스위치 — form 요소 제거. WKWebView가 가장 안정적으로 렌더.
         display: 'inline-flex',
         alignItems: 'center',
         position: 'relative',
+        flex: '0 0 auto',
         width: 44,
         height: 24,
         minWidth: 44,
@@ -242,38 +255,18 @@ export function Toggle({
         padding: 0,
         boxSizing: 'border-box',
         borderRadius: 99,
-        background: on ? '#e6903a' : '#a8a39a',
-        border: on ? '1px solid #c77630' : '1px solid #7a756d',
+        background: on ? '#e6903a' : '#b5b0a6',
+        border: `1px solid ${on ? '#c77630' : '#7a756d'}`,
         boxShadow: on
-          ? '0 1px 2px rgba(0, 0, 0, 0.1)'
-          : 'inset 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+          ? '0 1px 2px rgba(0, 0, 0, 0.15)'
+          : 'inset 0 1px 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
         transition: 'background 200ms var(--ease), border-color 200ms var(--ease)',
+        userSelect: 'none',
       }}
-      aria-label={ariaLabel}
       data-interactive="true"
     >
-      {/* 숨겨진 네이티브 체크박스 — 라벨 클릭 시 자동 토글 */}
-      <input
-        type="checkbox"
-        checked={on}
-        onChange={(e) => !disabled && onChange?.(e.target.checked)}
-        disabled={disabled}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          margin: 0,
-          opacity: 0,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          zIndex: 1,
-        }}
-        data-interactive="true"
-      />
-      {/* 핸들: margin-left로 위치 조정 (absolute 대신 inline-flex 내부 흐름) */}
       <span
         style={{
           display: 'block',
@@ -281,13 +274,13 @@ export function Toggle({
           height: 18,
           marginLeft: on ? 22 : 2,
           borderRadius: '50%',
-          background: 'white',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+          background: '#ffffff',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1)',
           transition: 'margin-left 220ms var(--ease)',
           pointerEvents: 'none',
         }}
       />
-    </label>
+    </div>
   );
 }
 
