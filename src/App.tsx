@@ -264,29 +264,97 @@ function App() {
         </ErrorBoundary>
       )}
 
-      {/* First-run avatar name setup for production builds */}
+      {/* First-run avatar name setup for production builds (v2 글래시 톤) */}
       {requiresAvatarNameSetup && (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center px-4" data-interactive="true">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <h2 className="text-xl font-semibold text-gray-800">
-              {t('onboarding.avatarNameTitle', '아바타 이름 설정')}
-            </h2>
-            <p className="text-sm text-gray-600">
-              {t('onboarding.avatarNameDescription', '첫 실행입니다. 사용할 아바타 이름을 입력해 주세요.')}
-            </p>
+        <div
+          className="fixed inset-0 z-[220] flex items-center justify-center px-4"
+          data-interactive="true"
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'oklch(0.2 0 0 / 0.55)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+            }}
+          />
+          <div
+            className="glass-strong relative w-full max-w-md"
+            style={{
+              padding: 24,
+              borderRadius: 'var(--r-lg)',
+              animation: 'scaleIn 280ms var(--ease)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+            data-interactive="true"
+          >
+            <div>
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: 'var(--ink)',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {t('onboarding.avatarNameTitle', '아바타 이름 설정')}
+              </h2>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: 'var(--ink-2)',
+                  marginTop: 4,
+                  lineHeight: 1.55,
+                }}
+              >
+                {t('onboarding.avatarNameDescription', '첫 실행입니다. 사용할 아바타 이름을 입력해 주세요.')}
+              </p>
+            </div>
             <input
               type="text"
               value={initialAvatarName}
               onChange={(e) => setInitialAvatarName(e.target.value)}
               maxLength={40}
               placeholder={t('settings.avatar.namePlaceholder', '예: 은연')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="focus-ring w-full"
+              style={{
+                padding: '10px 14px',
+                fontSize: 14,
+                borderRadius: 12,
+                border: 0,
+                background: 'oklch(1 0 0 / 0.7)',
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                color: 'var(--ink)',
+                outline: 'none',
+              }}
+              data-interactive="true"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && initialAvatarName.trim()) {
+                  setAvatarName(initialAvatarName);
+                }
+              }}
             />
             <button
+              type="button"
               onClick={() => setAvatarName(initialAvatarName)}
               disabled={!initialAvatarName.trim()}
-              className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="w-full focus-ring"
+              style={{
+                padding: '10px 14px',
+                borderRadius: 12,
+                background: !initialAvatarName.trim()
+                  ? 'oklch(0.85 0.005 60)'
+                  : 'var(--accent)',
+                color: !initialAvatarName.trim() ? 'var(--ink-3)' : 'white',
+                fontSize: 13.5,
+                fontWeight: 500,
+                cursor: !initialAvatarName.trim() ? 'not-allowed' : 'pointer',
+                transition: 'background 200ms var(--ease)',
+              }}
+              data-interactive="true"
             >
               {t('onboarding.confirmAvatarName', '이름 저장')}
             </button>
