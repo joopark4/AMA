@@ -1,16 +1,18 @@
 /**
- * MCPSettings — Claude Code Channels on/off + 글로벌 등록
+ * MCPSettings — Claude Code Channels on/off + 글로벌 등록 (v2 리디자인).
  *
  * ON 시: 등록 확인 → 미등록이면 자동 등록 → AI 모델을 claude_code로 전환
  * OFF 시: 이전 AI 모델로 복원
  */
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSettingsStore } from '../../stores/settingsStore';
 import { invoke } from '@tauri-apps/api/core';
+import { AlertTriangle, Copy, Check } from 'lucide-react';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { Field, Row, SectionHint, Toggle } from '../../components/settings/forms';
 import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from './constants';
 
-/** 복사 가능한 터미널 명령어 블록 */
+/** 복사 가능한 터미널 명령어 블록 — 다크 카드 + mono */
 function CopyableCommand({ command }: { command: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -20,11 +22,67 @@ function CopyableCommand({ command }: { command: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <div className="flex items-center gap-2 bg-gray-900 rounded-lg p-3">
-      <code className="flex-1 text-xs text-green-400 font-mono select-all break-all">{command}</code>
-      <button onClick={handleCopy} className="shrink-0 px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600">
-        {copied ? t('settings.mcp.copied') : t('settings.mcp.copy')}
+    <div
+      className="flex items-center"
+      style={{
+        gap: 8,
+        padding: 12,
+        borderRadius: 12,
+        background: 'oklch(0.18 0.01 50)',
+      }}
+    >
+      <code
+        className="flex-1 select-all break-all"
+        style={{
+          fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+          fontSize: 11.5,
+          color: 'oklch(0.85 0.12 130)',
+          lineHeight: 1.55,
+        }}
+      >
+        {command}
+      </code>
+      <button
+        onClick={handleCopy}
+        className="shrink-0 grid place-items-center focus-ring"
+        style={{
+          padding: '4px 8px',
+          borderRadius: 6,
+          fontSize: 11,
+          background: 'oklch(0.3 0.01 50)',
+          color: 'oklch(0.92 0 0)',
+        }}
+        data-interactive="true"
+      >
+        <span className="inline-flex items-center" style={{ gap: 4 }}>
+          {copied ? <Check size={11} /> : <Copy size={11} />}
+          {copied ? t('settings.mcp.copied') : t('settings.mcp.copy')}
+        </span>
       </button>
+    </div>
+  );
+}
+
+/** 상태 도트 + 라벨 */
+function StatusDot({
+  color,
+  label,
+}: {
+  color: string;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center" style={{ gap: 8 }}>
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 99,
+          background: color,
+          boxShadow: `0 0 8px ${color}`,
+        }}
+      />
+      <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{label}</span>
     </div>
   );
 }
@@ -37,7 +95,6 @@ export default function MCPSettings() {
   const [registered, setRegistered] = useState<boolean | null>(null);
   const [toggling, setToggling] = useState(false);
 
-  // 글로벌 등록 상태 확인
   useEffect(() => {
     invoke<boolean>('check_channel_registered')
       .then(setRegistered)
@@ -60,23 +117,19 @@ export default function MCPSettings() {
     setChecking(false);
   };
 
-  /** 항상 재등록하여 최신 경로 반영 (실패해도 계속 진행) */
   const ensureRegistered = async (): Promise<void> => {
     try {
       await invoke<string>('register_channel_global', { projectDir: null });
       setRegistered(true);
     } catch (err) {
-      // 등록 실패해도 토글은 진행 (수동 등록 안내)
       const msg = err instanceof Error ? err.message : String(err);
       console.warn('[MCPSettings] Auto-register failed:', msg);
     }
   };
 
-  /** ON: bridge 추출 → 등록 확인 → LLM을 claude_code로 전환 + bridge 상태 확인 */
   const handleToggleOn = async () => {
     setToggling(true);
     try {
-      // bridge 플러그인 추출 (번들 리소스 → ~/.mypartnerai/ama-bridge/)
       try {
         await invoke<string>('setup_bridge_plugin');
         window.dispatchEvent(new CustomEvent('ama-toast', {
@@ -88,10 +141,8 @@ export default function MCPSettings() {
         }));
       }
 
-      // 등록 시도
       await ensureRegistered();
 
-      // 현재 LLM 설정 백업 (이미 claude_code가 아닐 때만)
       const currentLlm = useSettingsStore.getState().settings.llm;
       const prevLlm = currentLlm.provider !== CLAUDE_CODE_PROVIDER ? { ...currentLlm } : settings.mcpPreviousLlm;
 
@@ -105,29 +156,24 @@ export default function MCPSettings() {
         endpoint: BRIDGE_DEFAULT_ENDPOINT,
       });
 
-      // bridge 상태 비동기 확인 (토글은 즉시 완료, 결과는 UI에 반영)
       checkBridgeStatus();
     } finally {
       setToggling(false);
     }
   };
 
-  /** OFF: 이전 LLM 설정으로 복원 */
   const handleToggleOff = () => {
     const prev = settings.mcpPreviousLlm;
     setSettings({ mcpEnabled: false });
-
     if (prev && prev.provider !== CLAUDE_CODE_PROVIDER) {
       setLLMSettings(prev);
     }
   };
 
-  const handleToggle = async () => {
-    if (settings.mcpEnabled) {
-      handleToggleOff();
-    } else {
-      await handleToggleOn();
-    }
+  const handleToggle = async (on: boolean) => {
+    if (on === settings.mcpEnabled) return;
+    if (on) await handleToggleOn();
+    else handleToggleOff();
   };
 
   const handleUnregister = async () => {
@@ -143,110 +189,133 @@ export default function MCPSettings() {
   };
 
   return (
-    <div className="space-y-4">
+    <div>
       {/* 리서치 프리뷰 배너 */}
-      <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-        <span className="text-amber-500 mt-0.5">&#9888;</span>
+      <div
+        className="flex items-start"
+        style={{
+          gap: 8,
+          padding: '10px 12px',
+          borderRadius: 12,
+          background: 'oklch(0.95 0.04 75 / 0.5)',
+          boxShadow: 'inset 0 0 0 1px oklch(0.7 0.15 75 / 0.3)',
+          marginBottom: 8,
+        }}
+      >
+        <AlertTriangle size={14} style={{ color: 'var(--warn)', marginTop: 2 }} />
         <div>
-          <span className="text-xs font-semibold text-amber-700">{t('settings.mcp.researchPreview')}</span>
-          <p className="text-xs text-amber-600 mt-0.5">{t('settings.mcp.researchPreviewDesc')}</p>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--warn)' }}>
+            {t('settings.mcp.researchPreview')}
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-2)', marginTop: 2 }}>
+            {t('settings.mcp.researchPreviewDesc')}
+          </div>
         </div>
       </div>
 
-      <p className="text-xs text-gray-500">
-        {t('settings.mcp.description')}
-      </p>
+      <SectionHint>{t('settings.mcp.description')}</SectionHint>
 
-      {/* Step 1: Claude Code 설치 확인 */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-gray-700">{t('settings.mcp.step1Title')}</p>
-        <p className="text-xs text-gray-500">
+      {/* Step 1 */}
+      <Field label={t('settings.mcp.step1Title')}>
+        <SectionHint>
           {t('settings.mcp.step1Desc')}{' '}
           <a
             href="https://docs.anthropic.com/en/docs/claude-code/overview"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-500 hover:text-blue-700 underline"
+            style={{ color: 'var(--accent-ink)', textDecoration: 'underline' }}
+            data-interactive="true"
           >
-            Install Guide &rarr;
+            Install Guide →
           </a>
-        </p>
-      </div>
+        </SectionHint>
+      </Field>
 
-      {/* Step 2: 터미널에서 실행 */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-gray-700">{t('settings.mcp.step2Title')}</p>
+      {/* Step 2 */}
+      <Field label={t('settings.mcp.step2Title')}>
         <CopyableCommand command="claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions" />
-        <p className="text-xs text-gray-400 mt-1">{t('settings.mcp.step2Desc')}</p>
-        <p className="text-xs text-amber-600 mt-1">{t('settings.mcp.step2Caution')}</p>
-      </div>
+        <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 4 }}>
+          {t('settings.mcp.step2Desc')}
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--warn)', marginTop: 4 }}>
+          {t('settings.mcp.step2Caution')}
+        </div>
+      </Field>
 
-      {/* Step 3: AMA에서 활성화 */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-gray-700">{t('settings.mcp.step3Title')}</p>
-        <label className="flex items-center justify-between gap-3">
-          <div className="flex-1">
-            <span className="text-sm font-medium text-gray-700">
-              {t('settings.mcp.enabled')}
-            </span>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {t('settings.mcp.portInfo', { port: '8791' })}
-            </p>
-          </div>
-          <button
-            onClick={handleToggle}
+      {/* Step 3 */}
+      <Field label={t('settings.mcp.step3Title')}>
+        <Row
+          label={
+            <div>
+              <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
+                {t('settings.mcp.enabled')}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
+                {t('settings.mcp.portInfo', { port: '8791' })}
+              </div>
+            </div>
+          }
+        >
+          <Toggle
+            on={settings.mcpEnabled}
             disabled={toggling}
-            className={`relative w-10 h-5 rounded-full transition-colors ${
-              settings.mcpEnabled ? 'bg-blue-500' : 'bg-gray-300'
-            } ${toggling ? 'opacity-50' : ''}`}
-            role="switch"
-            aria-checked={settings.mcpEnabled}
-          >
-            <div
-              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                settings.mcpEnabled ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
-        </label>
-      </div>
+            onChange={(on) => void handleToggle(on)}
+          />
+        </Row>
+      </Field>
 
       {/* 상태 표시 */}
-      <div className="p-3 bg-gray-50 rounded-lg space-y-2">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${settings.mcpEnabled ? 'bg-green-400' : 'bg-gray-300'}`} />
-          <span className="text-xs text-gray-600">
-            {settings.mcpEnabled ? t('settings.mcp.statusOn') : t('settings.mcp.statusOff')}
-          </span>
-        </div>
+      <div
+        style={{
+          padding: 12,
+          borderRadius: 12,
+          background: 'oklch(1 0 0 / 0.55)',
+          boxShadow: 'inset 0 0 0 1px var(--hairline)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          marginTop: 8,
+        }}
+      >
+        <StatusDot
+          color={settings.mcpEnabled ? 'var(--ok)' : 'oklch(0.7 0.01 50)'}
+          label={settings.mcpEnabled ? t('settings.mcp.statusOn') : t('settings.mcp.statusOff')}
+        />
 
-        {/* AI 모델 잠금 안내 */}
         {settings.mcpEnabled && (
-          <p className="text-xs text-blue-600">
+          <div style={{ fontSize: 11.5, color: 'var(--accent-ink)' }}>
             {t('settings.mcp.llmLocked')}
-          </p>
+          </div>
         )}
 
-        {/* ama-bridge 연결 확인 */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${
-              bridgeStatus === 'ok' ? 'bg-green-400'
-                : bridgeStatus === 'no-channel' ? 'bg-amber-400'
-                  : bridgeStatus === 'offline' ? 'bg-red-400'
-                    : 'bg-gray-300'
-            }`} />
-            <span className="text-xs text-gray-600">
-              {bridgeStatus === 'ok' ? t('settings.mcp.bridgeConnected')
+          <StatusDot
+            color={
+              bridgeStatus === 'ok' ? 'var(--ok)'
+                : bridgeStatus === 'no-channel' ? 'var(--warn)'
+                  : bridgeStatus === 'offline' ? 'var(--danger)'
+                    : 'oklch(0.7 0.01 50)'
+            }
+            label={
+              bridgeStatus === 'ok' ? t('settings.mcp.bridgeConnected')
                 : bridgeStatus === 'no-channel' ? t('settings.mcp.bridgeNoChannel')
                   : bridgeStatus === 'offline' ? t('settings.mcp.bridgeOffline')
-                    : t('settings.mcp.bridgeUnknown')}
-            </span>
-          </div>
+                    : t('settings.mcp.bridgeUnknown')
+            }
+          />
           <button
             onClick={checkBridgeStatus}
             disabled={checking}
-            className="text-xs text-blue-500 hover:text-blue-700 disabled:text-gray-400"
+            className="focus-ring"
+            style={{
+              fontSize: 11.5,
+              color: 'var(--accent-ink)',
+              background: 'transparent',
+              padding: '2px 6px',
+              borderRadius: 6,
+              opacity: checking ? 0.5 : 1,
+            }}
+            data-interactive="true"
           >
             {checking ? '...' : t('settings.mcp.checkConnection')}
           </button>
@@ -254,28 +323,55 @@ export default function MCPSettings() {
       </div>
 
       {/* 등록 상태 */}
-      <div className="p-3 bg-purple-50 rounded-lg space-y-2">
-        <p className="text-xs font-medium text-purple-700">
+      <div
+        style={{
+          padding: 12,
+          borderRadius: 12,
+          background: 'var(--accent-soft)',
+          boxShadow: 'inset 0 0 0 1px oklch(0.85 0.07 50 / 0.5)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          marginTop: 8,
+        }}
+      >
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-ink)' }}>
           {t('settings.mcp.globalSetupTitle')}
-        </p>
-        <p className="text-xs text-purple-600">
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--accent-ink)', opacity: 0.8 }}>
           {t('settings.mcp.globalSetupDesc')}
-        </p>
-        <div className="flex items-center gap-2">
+        </div>
+        <div className="flex items-center" style={{ gap: 8 }}>
           {registered ? (
             <>
-              <span className="px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg">
+              <span
+                style={{
+                  padding: '5px 10px',
+                  fontSize: 11.5,
+                  background: 'oklch(0.95 0.05 160 / 0.6)',
+                  color: 'var(--ok)',
+                  borderRadius: 8,
+                }}
+              >
                 {t('settings.mcp.registered')}
               </span>
               <button
                 onClick={handleUnregister}
-                className="px-3 py-1.5 text-xs text-red-500 hover:text-red-700"
+                className="focus-ring"
+                style={{
+                  padding: '5px 10px',
+                  fontSize: 11.5,
+                  color: 'var(--danger)',
+                  background: 'transparent',
+                  borderRadius: 8,
+                }}
+                data-interactive="true"
               >
                 {t('settings.mcp.unregister')}
               </button>
             </>
           ) : (
-            <span className="text-xs text-gray-500">
+            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
               {t('settings.mcp.notRegistered')}
             </span>
           )}
@@ -283,9 +379,9 @@ export default function MCPSettings() {
       </div>
 
       {/* 리서치 프리뷰 안내 */}
-      <p className="text-xs text-amber-600">
+      <div style={{ fontSize: 11.5, color: 'var(--warn)', marginTop: 8 }}>
         {t('settings.mcp.testHint')}
-      </p>
+      </div>
     </div>
   );
 }
