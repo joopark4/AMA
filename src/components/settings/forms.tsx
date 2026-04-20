@@ -243,14 +243,14 @@ export function Toggle({
         }
       }}
       style={{
-        // 순수 <div> 스위치 — form 요소 제거. WKWebView가 가장 안정적으로 렌더.
-        display: 'inline-flex',
-        alignItems: 'center',
+        // 핵심: Tauri WKWebView가 inline-flex를 제대로 렌더하지 않음 (debug로 확인).
+        // inline-block으로 전환 + 핸들은 absolute positioning으로 배치.
+        display: 'inline-block',
         position: 'relative',
-        flex: '0 0 auto',
         width: 44,
         height: 24,
         minWidth: 44,
+        flex: '0 0 44px',
         flexShrink: 0,
         padding: 0,
         boxSizing: 'border-box',
@@ -264,19 +264,21 @@ export function Toggle({
         opacity: disabled ? 0.5 : 1,
         transition: 'background 200ms var(--ease), border-color 200ms var(--ease)',
         userSelect: 'none',
+        verticalAlign: 'middle',
       }}
       data-interactive="true"
     >
       <span
         style={{
-          display: 'block',
-          width: 18,
-          height: 18,
-          marginLeft: on ? 22 : 2,
+          position: 'absolute',
+          top: 1,
+          left: on ? 21 : 1,
+          width: 20,
+          height: 20,
           borderRadius: '50%',
           background: '#ffffff',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1)',
-          transition: 'margin-left 220ms var(--ease)',
+          transition: 'left 220ms var(--ease)',
           pointerEvents: 'none',
         }}
       />
