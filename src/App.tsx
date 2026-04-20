@@ -5,7 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
-import StatusIndicator from './components/ui/StatusIndicator';
+import ControlCluster from './components/ui/ControlCluster';
 import SettingsPanel from './components/ui/SettingsPanel';
 import HistoryPanel from './components/ui/HistoryPanel';
 import LightingControl from './components/avatar/LightingControl';
@@ -31,7 +31,7 @@ import { authService } from './services/auth/authService';
 function App() {
   const { i18n, t } = useTranslation();
   const { settings, isSettingsOpen, isHistoryOpen, setLLMSettings, setAvatarName } = useSettingsStore();
-  const { currentResponse, isProcessing } = useConversationStore();
+  const { currentResponse } = useConversationStore();
   const {
     pendingProvider,
     setUser,
@@ -218,9 +218,9 @@ function App() {
         </ErrorBoundary>
       )}
 
-      {/* Status Indicator - shows listening/processing state */}
-      <ErrorBoundary name="StatusIndicator">
-        <StatusIndicator isProcessing={isProcessing} />
+      {/* Control Cluster (v2 리디자인) - status pill + 입력/음성/기록/숨김/설정 */}
+      <ErrorBoundary name="ControlCluster">
+        <ControlCluster />
       </ErrorBoundary>
 
       {/* Settings Panel - slide-in panel */}

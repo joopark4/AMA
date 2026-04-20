@@ -487,6 +487,14 @@
     "startVoiceInput": "音声入力を開始",
     "voiceUnavailable": "音声入力は利用できません"
   },
+  "overlay": {
+    "toggleKeyboard": "キーボードで入力",
+    "closeKeyboard": "キーボードを閉じる",
+    "hideAvatar": "アバターを隠す",
+    "showAvatar": "アバターを表示",
+    "quickActions": "よく使う機能",
+    "quickActionsComingSoon": "よく使う機能は準備中です"
+  },
   "onboarding": {
     "avatarNameTitle": "アバター名の設定",
     "avatarNameDescription": "初回起動です。使用するアバター名を入力してください。",

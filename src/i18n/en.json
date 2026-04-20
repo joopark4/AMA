@@ -487,6 +487,14 @@
     "startVoiceInput": "Start voice input",
     "voiceUnavailable": "Voice input unavailable"
   },
+  "overlay": {
+    "toggleKeyboard": "Type with keyboard",
+    "closeKeyboard": "Close keyboard",
+    "hideAvatar": "Hide avatar",
+    "showAvatar": "Show avatar",
+    "quickActions": "Quick actions",
+    "quickActionsComingSoon": "Quick actions are coming soon"
+  },
   "onboarding": {
     "avatarNameTitle": "Set Avatar Name",
     "avatarNameDescription": "This is your first launch. Please enter the avatar name you want to use.",
