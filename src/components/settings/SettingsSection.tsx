@@ -33,7 +33,10 @@ export default function SettingsSection({
       style={{
         borderRadius: 18,
         background: 'oklch(1 0 0 / 0.55)',
-        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+        // 섹션 카드 경계를 hairline → hairline-strong로 강화 + 미세 drop shadow로
+        // 카드가 떠 있는 느낌을 살려 인접 섹션과 시각 구분을 명확히.
+        boxShadow:
+          'inset 0 0 0 1px var(--hairline-strong), 0 1px 3px rgba(0, 0, 0, 0.05)',
         transition: 'all 200ms var(--ease)',
       }}
     >
