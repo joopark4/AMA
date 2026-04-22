@@ -4,9 +4,11 @@
  * 사용자가 자주 변경하는 boolean 설정을 빠르게 토글할 수 있도록 모은 모음.
  * 핸드오프 spec의 9개 LLM 프롬프트 액션은 사용자 요청에 따라 설정 토글로 대체.
  *
- * 주의: 이 파일은 settingsStore를 import하지 않는다 (순환 의존 방지).
- * 실제 select/apply는 catalog.ts에서 store를 참조해 정의.
+ * 주의: 이 파일은 settingsStore의 값(런타임)을 import하지 않는다 (순환 의존 방지).
+ * 단, TypeScript의 `import type`은 런타임 의존을 만들지 않으므로
+ * SettingsState 타입은 안전하게 가져와 사용한다.
  */
+import type { SettingsState } from '../../stores/settingsStore';
 
 /** Quick Toggle 카테고리 — 설정 패널에서 그룹화 헤더로 사용 */
 export type QuickToggleCategory =
@@ -28,9 +30,9 @@ export interface QuickToggleDef {
   category: QuickToggleCategory;
   /**
    * Zustand selector — 컴포넌트가 useSettingsStore(def.select)로 구독.
-   * state 타입은 `any`로 두어 catalog.ts가 settingsStore의 구체 타입을 import하지 않아도 되게 함.
+   * `import type`로 가져온 SettingsState를 사용해 런타임 의존 없이 타입 안전성 확보.
    */
-  select: (state: any) => boolean;
+  select: (state: SettingsState) => boolean;
   /** 새 값 적용 — store action 호출 */
   apply: (value: boolean) => void;
 }
