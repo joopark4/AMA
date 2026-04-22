@@ -132,16 +132,8 @@ export default function AvatarSettings() {
 
       {/* Free Movement */}
       <Row
-        label={
-          <div>
-            <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
-              {t('settings.avatar.freeMovement.title')}
-            </div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-              {t('settings.avatar.freeMovement.description')}
-            </div>
-          </div>
-        }
+        label={t('settings.avatar.freeMovement.title')}
+        description={t('settings.avatar.freeMovement.description')}
       >
         <Toggle
           on={settings.avatar?.freeMovement ?? false}
@@ -151,16 +143,8 @@ export default function AvatarSettings() {
 
       {/* Speech Bubble */}
       <Row
-        label={
-          <div>
-            <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
-              {t('settings.avatar.speechBubble.title')}
-            </div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-              {t('settings.avatar.speechBubble.description')}
-            </div>
-          </div>
-        }
+        label={t('settings.avatar.speechBubble.title')}
+        description={t('settings.avatar.speechBubble.description')}
       >
         <Toggle
           on={settings.avatar?.showSpeechBubble !== false}
