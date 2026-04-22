@@ -39,6 +39,7 @@ import { permissions } from '../../services/tauri/permissions';
 import { ttsRouter } from '../../services/voice/ttsRouter';
 import { audioProcessor } from '../../services/voice/audioProcessor';
 import VoiceWaveform from './VoiceWaveform';
+import AvatarRestingBadge from './AvatarRestingBadge';
 
 interface DependencyIssue {
   id: string;
@@ -777,6 +778,13 @@ export default function ControlCluster() {
             label={t('status.voiceListeningOverlay')}
             width={menuBarWidth}
           />
+        </div>
+      )}
+
+      {/* ─── 아바타 숨김 안내: 메뉴바 위 슬롯 (이전: 화면 중앙) ─── */}
+      {avatarHidden && (
+        <div style={{ marginBottom: -4 }}>
+          <AvatarRestingBadge />
         </div>
       )}
 

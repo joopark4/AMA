@@ -6,7 +6,6 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
 import SpeechBubble from './components/ui/SpeechBubble';
 import ControlCluster from './components/ui/ControlCluster';
-import AvatarRestingBadge from './components/ui/AvatarRestingBadge';
 import SettingsPanel from './components/ui/SettingsPanel';
 import HistoryPanel from './components/ui/HistoryPanel';
 import LightingControl from './components/avatar/LightingControl';
@@ -223,12 +222,8 @@ function App() {
         </>
       )}
 
-      {/* 아바타 숨김 안내 pill (중앙) */}
-      {avatarHidden && (
-        <ErrorBoundary name="AvatarRestingBadge">
-          <AvatarRestingBadge />
-        </ErrorBoundary>
-      )}
+      {/* (이전: 화면 중앙 AvatarRestingBadge)
+          → ControlCluster 안 메뉴바 위 슬롯으로 이동. */}
 
       {/* Control Cluster (v2 리디자인) - status pill + 입력/음성/기록/숨김/설정 */}
       <ErrorBoundary name="ControlCluster">
