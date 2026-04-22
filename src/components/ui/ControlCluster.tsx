@@ -12,7 +12,7 @@
  *
  * 클릭스루: 모든 인터랙티브 wrapper에 data-interactive="true" 부여.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Eye,
@@ -37,6 +37,7 @@ import { CLAUDE_CODE_PROVIDER } from '../../features/channels';
 import { QuickActionsPalette } from '../../features/quick-actions';
 import { permissions } from '../../services/tauri/permissions';
 import { ttsRouter } from '../../services/voice/ttsRouter';
+import { audioProcessor } from '../../services/voice/audioProcessor';
 import VoiceWaveform from './VoiceWaveform';
 
 interface DependencyIssue {
@@ -241,11 +242,60 @@ function StatusPill({ kind, label }: { kind: StatusKind; label: string }) {
   );
 }
 
+/**
+ * ListeningBars — Voice 버튼 내 7개 막대.
+ * audioProcessor에서 실시간 amplitude를 읽어 각 막대의 scaleY를 동기화.
+ * 마운트는 voice button이 listening일 때만 (외부에서 조건부 렌더).
+ */
 function ListeningBars() {
-  const delays = [0, 0.1, 0.25, 0.15, 0.32, 0.18, 0.08];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const BAR_COUNT = 7;
+  const SAMPLES_PER_BAR = 4;
+  const SMOOTH = 0.4;
+  const FRAME_INTERVAL_MS = 1000 / 30;
+  const SENSITIVITY = 3.5;
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const bars = Array.from(container.children) as HTMLElement[];
+    let rafId: number | null = null;
+    let lastFrame = 0;
+    const smoothed = new Float32Array(BAR_COUNT);
+
+    const tick = (ts: number) => {
+      rafId = requestAnimationFrame(tick);
+      if (ts - lastFrame < FRAME_INTERVAL_MS) return;
+      lastFrame = ts;
+
+      const data = audioProcessor.getWaveformData(BAR_COUNT * SAMPLES_PER_BAR);
+      for (let i = 0; i < BAR_COUNT; i++) {
+        let peak = 0;
+        for (let j = 0; j < SAMPLES_PER_BAR; j++) {
+          const v = Math.abs(data[i * SAMPLES_PER_BAR + j] || 0);
+          if (v > peak) peak = v;
+        }
+        smoothed[i] = smoothed[i] * (1 - SMOOTH) + peak * SMOOTH;
+        const scaled = Math.max(0.2, Math.min(1, smoothed[i] * SENSITIVITY));
+        bars[i].style.transform = `scaleY(${scaled})`;
+      }
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      // 컴포넌트 언마운트 시 막대 초기화
+      bars.forEach((b) => (b.style.transform = 'scaleY(0.4)'));
+    };
+  }, []);
+
   return (
-    <div className="flex items-center justify-center gap-[3px]" style={{ height: 22 }}>
-      {delays.map((d, i) => (
+    <div
+      ref={containerRef}
+      className="flex items-center justify-center gap-[3px]"
+      style={{ height: 22 }}
+    >
+      {Array.from({ length: BAR_COUNT }, (_, i) => (
         <div
           key={i}
           style={{
@@ -254,7 +304,8 @@ function ListeningBars() {
             borderRadius: 2,
             background: 'white',
             transformOrigin: 'center',
-            animation: `wave ${0.7 + (i % 3) * 0.15}s ${d}s ease-in-out infinite`,
+            transform: 'scaleY(0.4)',
+            transition: 'transform 60ms linear',
           }}
         />
       ))}
@@ -701,10 +752,16 @@ export default function ControlCluster() {
         </div>
       )}
 
-      {/* ─── StatusPill (cluster 상단, 우측 정렬) ─── */}
-      <div style={{ paddingRight: 8, marginBottom: -4 }}>
-        <StatusPill kind={pillKind} label={pillLabel} />
-      </div>
+      {/* ─── StatusPill 또는 VoiceWaveform (cluster 상단 같은 슬롯) ─── */}
+      {isVoiceListening ? (
+        <div style={{ marginBottom: -4 }}>
+          <VoiceWaveform label={t('status.voiceListeningOverlay')} />
+        </div>
+      ) : (
+        <div style={{ paddingRight: 8, marginBottom: -4 }}>
+          <StatusPill kind={pillKind} label={pillLabel} />
+        </div>
+      )}
 
       {/* ─── Text input row (showTextInput 시) ─── */}
       {showTextInput && (
@@ -823,9 +880,9 @@ export default function ControlCluster() {
         </ClusterBtn>
         <Divider />
 
-        {/* Voice button (primary) */}
+        {/* Voice button (primary) — listening 시 ListeningBars로 amplitude 표시,
+            전체 waveform pill은 cluster 상단 슬롯에서 별도 렌더(StatusPill 자리). */}
         <div className="relative" data-interactive="true">
-          {isVoiceListening && <VoiceWaveform label={t('status.voiceListeningOverlay')} />}
           <button
             type="button"
             onClick={handleVoiceToggle}

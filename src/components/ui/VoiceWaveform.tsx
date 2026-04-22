@@ -107,9 +107,8 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
 
   return (
     <div
-      className="absolute bottom-full left-1/2 -translate-x-1/2 pointer-events-none"
+      className="pointer-events-none"
       style={{
-        marginBottom: 6,
         width: 320,
       }}
       data-interactive="false"
