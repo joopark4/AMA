@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   Eye,
   EyeOff,
@@ -64,70 +65,47 @@ const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string> = {
   gemini: 'gemini-2.5-flash',
 };
 
-function buildModelUnsetIssue(provider: LLMProvider): DependencyIssue {
-  if (provider === 'ollama') {
+/** i18n returnObjects helper (string[] 안전 캐스트) */
+function readSteps(t: TFunction, key: string, params?: Record<string, unknown>): string[] {
+  const v = t(key, { returnObjects: true, ...(params ?? {}) }) as unknown;
+  return Array.isArray(v) ? (v as string[]) : [];
+}
+
+function buildModelUnsetIssue(t: TFunction, provider: LLMProvider): DependencyIssue {
+  if (provider === 'ollama' || provider === 'localai') {
     return {
       id: 'llm-model-unset',
-      title: 'LLM 모델 설정 (Ollama)',
-      summary: 'Ollama 모델이 선택되지 않았습니다.',
-      steps: [
-        '옵션(설정)에서 LLM Provider를 Ollama로 선택합니다.',
-        '터미널에서 `ollama list`를 실행해 설치된 모델을 확인합니다.',
-        '모델이 없으면 `ollama pull deepseek-v3` 후 Model 항목에서 해당 모델을 선택합니다.',
-      ],
+      title: t(`dependency.issue.modelUnset.${provider}.title`),
+      summary: t(`dependency.issue.modelUnset.${provider}.summary`),
+      steps: readSteps(t, `dependency.issue.modelUnset.${provider}.steps`),
     };
   }
-  if (provider === 'localai') {
-    return {
-      id: 'llm-model-unset',
-      title: 'LLM 모델 설정 (LocalAI)',
-      summary: 'LocalAI 모델이 선택되지 않았습니다.',
-      steps: [
-        '옵션(설정)에서 LLM Provider를 LocalAI로 선택합니다.',
-        'LocalAI `/v1/models` 응답에 노출된 모델 id를 확인합니다.',
-        'Model 항목에 해당 id와 동일한 모델명을 선택/입력합니다.',
-      ],
-    };
-  }
+  const providerLabel = PROVIDER_LABELS[provider];
   const defaultModel = CLOUD_DEFAULT_MODELS[provider as 'claude' | 'openai' | 'gemini'];
   return {
     id: 'llm-model-unset',
-    title: `LLM 모델 설정 (${PROVIDER_LABELS[provider]})`,
-    summary: `${PROVIDER_LABELS[provider]} 모델이 선택되지 않았습니다.`,
-    steps: [
-      `옵션(설정)에서 LLM Provider를 ${PROVIDER_LABELS[provider]}로 선택합니다.`,
-      `Model 항목에서 사용 모델을 선택합니다. 예: \`${defaultModel}\``,
-      '설정 저장 후 다시 질문을 입력해 응답을 확인합니다.',
-    ],
+    title: t('dependency.issue.modelUnset.cloud.title', { provider: providerLabel }),
+    summary: t('dependency.issue.modelUnset.cloud.summary', { provider: providerLabel }),
+    steps: readSteps(t, 'dependency.issue.modelUnset.cloud.steps', {
+      provider: providerLabel,
+      defaultModel,
+    }),
   };
 }
 
-function buildEndpointUnsetIssue(provider: 'ollama' | 'localai'): DependencyIssue {
-  if (provider === 'ollama') {
-    return {
-      id: 'llm-endpoint-unset',
-      title: 'LLM 엔드포인트 설정 (Ollama)',
-      summary: 'Ollama 서버 주소가 비어 있습니다.',
-      steps: [
-        '옵션(설정)에서 LLM Provider를 Ollama로 유지합니다.',
-        'Endpoint에 `http://localhost:11434`를 입력합니다.',
-        '`ollama serve` 실행 후 다시 질문을 입력합니다.',
-      ],
-    };
-  }
+function buildEndpointUnsetIssue(t: TFunction, provider: 'ollama' | 'localai'): DependencyIssue {
   return {
     id: 'llm-endpoint-unset',
-    title: 'LLM 엔드포인트 설정 (LocalAI)',
-    summary: 'LocalAI 서버 주소가 비어 있습니다.',
-    steps: [
-      '옵션(설정)에서 LLM Provider를 LocalAI로 유지합니다.',
-      'Endpoint에 LocalAI OpenAI 호환 주소를 입력합니다. 예: `http://localhost:8080`',
-      'LocalAI 서버 실행 후 다시 질문을 입력합니다.',
-    ],
+    title: t(`dependency.issue.endpointUnset.${provider}.title`),
+    summary: t(`dependency.issue.endpointUnset.${provider}.summary`),
+    steps: readSteps(t, `dependency.issue.endpointUnset.${provider}.steps`),
   };
 }
 
-function buildCloudApiKeyIssue(provider: 'claude' | 'openai' | 'gemini'): DependencyIssue {
+function buildCloudApiKeyIssue(
+  t: TFunction,
+  provider: 'claude' | 'openai' | 'gemini'
+): DependencyIssue {
   const apiKeyGuide =
     provider === 'claude'
       ? 'console.anthropic.com'
@@ -135,72 +113,58 @@ function buildCloudApiKeyIssue(provider: 'claude' | 'openai' | 'gemini'): Depend
         ? 'platform.openai.com'
         : 'aistudio.google.com';
   const keyPrefix =
-    provider === 'openai' ? '`sk-...`' : provider === 'claude' ? '`sk-ant-...`' : '발급된 API 키';
+    provider === 'openai'
+      ? '`sk-...`'
+      : provider === 'claude'
+        ? '`sk-ant-...`'
+        : t('dependency.issue.apiKey.fallbackKeyPrefix', 'API key');
+  const providerLabel = PROVIDER_LABELS[provider];
   return {
     id: 'llm-api-key',
-    title: `LLM API 키 설정 (${PROVIDER_LABELS[provider]})`,
-    summary: `${PROVIDER_LABELS[provider]} API 키가 설정되지 않아 답변을 생성할 수 없습니다.`,
-    steps: [
-      `옵션(설정)에서 LLM Provider를 ${PROVIDER_LABELS[provider]}로 선택합니다.`,
-      `${apiKeyGuide}에서 API 키를 발급받습니다.`,
-      `API Key 입력란에 ${keyPrefix} 형식의 키를 입력하고 저장합니다.`,
-    ],
+    title: t('dependency.issue.apiKey.title', { provider: providerLabel }),
+    summary: t('dependency.issue.apiKey.summary', { provider: providerLabel }),
+    steps: readSteps(t, 'dependency.issue.apiKey.steps', {
+      provider: providerLabel,
+      apiKeyGuide,
+      keyPrefix,
+    }),
   };
 }
 
 function buildLocalServerIssue(
+  t: TFunction,
   provider: 'ollama' | 'localai',
   endpoint: string,
   model: string
 ): DependencyIssue {
-  if (provider === 'ollama') {
-    return {
-      id: 'llm-ollama-server',
-      title: 'LLM 서버 연결 실패 (Ollama)',
-      summary: 'Ollama 서버에 연결할 수 없습니다.',
-      steps: [
-        'macOS에서 `brew install ollama`로 설치합니다.',
-        '터미널에서 `ollama serve`를 실행합니다.',
-        `필요 모델을 \`ollama pull ${model || 'deepseek-v3'}\`로 내려받습니다.`,
-        `Endpoint가 올바른지 확인합니다. 현재 값: ${endpoint || 'http://localhost:11434'}`,
-      ],
-    };
-  }
+  const fallbackEndpoint =
+    provider === 'ollama' ? 'http://localhost:11434' : 'http://localhost:8080';
+  const fallbackModel = 'deepseek-v3';
   return {
-    id: 'llm-localai-server',
-    title: 'LLM 서버 연결 실패 (LocalAI)',
-    summary: 'LocalAI 서버에 연결할 수 없습니다.',
-    steps: [
-      'LocalAI 서버를 실행하고 OpenAI 호환 API가 활성화되어 있는지 확인합니다.',
-      '헬스체크로 `GET /v1/models` 응답이 오는지 확인합니다.',
-      `Endpoint를 LocalAI 주소로 맞춥니다. 현재 값: ${endpoint || 'http://localhost:8080'}`,
-      '모델 로드 로그를 확인한 뒤 다시 질문을 입력합니다.',
-    ],
+    id: provider === 'ollama' ? 'llm-ollama-server' : 'llm-localai-server',
+    title: t(`dependency.issue.localServer.${provider}.title`),
+    summary: t(`dependency.issue.localServer.${provider}.summary`),
+    steps: readSteps(t, `dependency.issue.localServer.${provider}.steps`, {
+      model: model || fallbackModel,
+      endpoint: endpoint || fallbackEndpoint,
+    }),
   };
 }
 
-function buildLocalModelIssue(provider: 'ollama' | 'localai', model: string): DependencyIssue {
-  if (provider === 'ollama') {
-    return {
-      id: 'llm-ollama-model',
-      title: 'LLM 모델 누락 (Ollama)',
-      summary: `선택된 모델(${model || '미설정'})이 Ollama에 준비되어 있지 않습니다.`,
-      steps: [
-        `터미널에서 \`ollama pull ${model || 'deepseek-v3'}\`를 실행합니다.`,
-        '`ollama list`로 모델이 내려받아졌는지 확인합니다.',
-        '앱 설정에서 동일한 모델명을 선택한 뒤 다시 질문합니다.',
-      ],
-    };
-  }
+function buildLocalModelIssue(
+  t: TFunction,
+  provider: 'ollama' | 'localai',
+  model: string
+): DependencyIssue {
+  const displayModel =
+    model || (t('dependency.issue.localModel.unsetLabel', '(unset)') as string);
   return {
-    id: 'llm-localai-model',
-    title: 'LLM 모델 누락 (LocalAI)',
-    summary: `선택된 모델(${model || '미설정'})이 LocalAI에 준비되어 있지 않습니다.`,
-    steps: [
-      'LocalAI 모델 디렉터리에 원하는 모델 파일을 배치합니다.',
-      'LocalAI 설정 파일/실행 옵션에서 모델을 로드합니다.',
-      '앱 설정의 Model 값을 LocalAI의 모델 id와 동일하게 맞춥니다.',
-    ],
+    id: provider === 'ollama' ? 'llm-ollama-model' : 'llm-localai-model',
+    title: t(`dependency.issue.localModel.${provider}.title`),
+    summary: t(`dependency.issue.localModel.${provider}.summary`, { model: displayModel }),
+    steps: readSteps(t, `dependency.issue.localModel.${provider}.steps`, {
+      model: model || 'deepseek-v3',
+    }),
   };
 }
 
@@ -285,8 +249,7 @@ function ListeningBars() {
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
-      // 컴포넌트 언마운트 시 막대 초기화
-      bars.forEach((b) => (b.style.transform = 'scaleY(0.4)'));
+      // 언마운트 직후 DOM이 제거되므로 transform 리셋은 불필요 (dead code 제거).
     };
   }, []);
 
@@ -401,6 +364,7 @@ export default function ControlCluster() {
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
 
   // 메뉴바 실제 폭을 추적해 VoiceWaveform pill 폭을 동기화 (ResizeObserver).
+  // 비교는 functional updater로 prev를 직접 받아 stale closure 회피.
   const menuBarRef = useRef<HTMLDivElement>(null);
   const [menuBarWidth, setMenuBarWidth] = useState<number>(320);
   useEffect(() => {
@@ -409,11 +373,11 @@ export default function ControlCluster() {
     setMenuBarWidth(el.offsetWidth);
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width;
-      if (w && Math.abs(w - menuBarWidth) > 0.5) setMenuBarWidth(w);
+      if (!w) return;
+      setMenuBarWidth((prev) => (Math.abs(w - prev) > 0.5 ? w : prev));
     });
     ro.observe(el);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const avatarHidden = settings.avatarHidden;
@@ -428,16 +392,16 @@ export default function ControlCluster() {
       const apiKey = settings.llm.apiKey || '';
 
       if (!model.trim()) {
-        if (!cancelled) setLlmDependencyIssue(buildModelUnsetIssue(provider));
+        if (!cancelled) setLlmDependencyIssue(buildModelUnsetIssue(t, provider));
         return;
       }
       if ((provider === 'ollama' || provider === 'localai') && !endpoint.trim()) {
-        if (!cancelled) setLlmDependencyIssue(buildEndpointUnsetIssue(provider));
+        if (!cancelled) setLlmDependencyIssue(buildEndpointUnsetIssue(t, provider));
         return;
       }
       if (provider === 'openai' || provider === 'claude' || provider === 'gemini') {
         if (!apiKey.trim()) {
-          if (!cancelled) setLlmDependencyIssue(buildCloudApiKeyIssue(provider));
+          if (!cancelled) setLlmDependencyIssue(buildCloudApiKeyIssue(t, provider));
           return;
         }
         if (!cancelled) setLlmDependencyIssue(null);
@@ -450,7 +414,7 @@ export default function ControlCluster() {
       const isAvailable = await llmRouter.isAvailable();
       if (!isAvailable) {
         if (!cancelled && (provider === 'ollama' || provider === 'localai')) {
-          setLlmDependencyIssue(buildLocalServerIssue(provider, endpoint, model));
+          setLlmDependencyIssue(buildLocalServerIssue(t, provider, endpoint, model));
         }
         return;
       }
@@ -458,7 +422,7 @@ export default function ControlCluster() {
         const models = await ollamaClient.getAvailableModels();
         if (!cancelled) {
           if (!model || !models.includes(model)) {
-            setLlmDependencyIssue(buildLocalModelIssue(provider, model));
+            setLlmDependencyIssue(buildLocalModelIssue(t, provider, model));
           } else {
             setLlmDependencyIssue(null);
           }
@@ -469,7 +433,7 @@ export default function ControlCluster() {
         const models = await localAiClient.getAvailableModels();
         if (!cancelled) {
           if (!model || !models.includes(model)) {
-            setLlmDependencyIssue(buildLocalModelIssue(provider, model));
+            setLlmDependencyIssue(buildLocalModelIssue(t, provider, model));
           } else {
             setLlmDependencyIssue(null);
           }
@@ -483,6 +447,7 @@ export default function ControlCluster() {
       cancelled = true;
     };
   }, [
+    t,
     hasTriedChat,
     settings.llm.provider,
     settings.llm.model,
@@ -511,30 +476,22 @@ export default function ControlCluster() {
     if (hasTriedVoiceInput && voiceInputUnavailableReason) {
       issues.push({
         id: 'stt-whisper',
-        title: '음성 인식 (Whisper)',
+        title: t('dependency.issue.voice.title'),
         summary: voiceInputUnavailableReason,
-        steps: isVoiceInputRuntimeBlocked
-          ? [
-              '원격 연결 세션을 종료한 뒤 앱을 다시 실행합니다.',
-              '로컬 환경에서 마이크 권한을 허용하고 다시 시도합니다.',
-            ]
-          : [
-              'macOS에서 `brew install whisper-cpp`로 whisper-cli를 설치합니다.',
-              '`ggml-base.bin` 파일을 `models/whisper/` 경로에 배치합니다.',
-              '필요 시 `WHISPER_MODEL_PATH` 환경 변수로 모델 경로를 지정합니다.',
-            ],
+        steps: readSteps(
+          t,
+          isVoiceInputRuntimeBlocked
+            ? 'dependency.issue.voice.remoteSteps'
+            : 'dependency.issue.voice.localSteps'
+        ),
       });
     }
     if (hasTriedChat && ttsUnavailableReason) {
       issues.push({
         id: 'tts-supertonic',
-        title: '음성 합성 (Supertonic)',
+        title: t('dependency.issue.tts.title'),
         summary: ttsUnavailableReason,
-        steps: [
-          '`models/supertonic/onnx` 폴더에 ONNX 모델 파일을 배치합니다.',
-          '`models/supertonic/voice_styles` 폴더에 보이스 스타일 JSON 파일을 배치합니다.',
-          '앱을 완전히 종료한 뒤 다시 실행합니다.',
-        ],
+        steps: readSteps(t, 'dependency.issue.tts.steps'),
       });
     }
     if ((hasTriedChat || isImmediateLlmConfigIssue) && llmDependencyIssue) {
@@ -542,6 +499,7 @@ export default function ControlCluster() {
     }
     return issues;
   }, [
+    t,
     voiceInputUnavailableReason,
     ttsUnavailableReason,
     llmDependencyIssue,
