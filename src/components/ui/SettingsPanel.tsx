@@ -12,7 +12,7 @@
  * 명시적 Save 버튼이 없어졌으므로 모든 close 경로(X, 백드롭, ESC)에서 호출.
  * Reset은 스크롤 하단에 작은 텍스트 버튼으로 유지.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -152,6 +152,29 @@ export default function SettingsPanel() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  /* ─── Settings 섹션 정의 — useMemo로 매 렌더 재할당 방지 ─── */
+  const sections = useMemo(
+    () => [
+      { key: 'lang', icon: <Globe size={16} />, title: t('settings.language'), Comp: LanguageSection, defaultOpen: true },
+      { key: 'llm', icon: <Brain size={16} />, title: t('settings.llm.title'), Comp: LLMSettings, defaultOpen: true },
+      { key: 'audio', icon: <Volume2 size={16} />, title: t('settings.audioDevice.title'), Comp: AudioDeviceSettings, defaultOpen: true },
+      { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings, defaultOpen: true },
+      { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings, defaultOpen: true },
+      { key: 'character', icon: <User size={16} />, title: t('settings.character.title'), Comp: CharacterSettings, defaultOpen: true },
+      { key: 'avatar', icon: <Box size={16} />, title: t('settings.avatar.title'), Comp: AvatarSettings, defaultOpen: true },
+      { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title'), Comp: ScreenWatchSettings, defaultOpen: true },
+      { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings, defaultOpen: true },
+      { key: 'mcp', icon: <Code size={16} />, title: t('settings.mcp.title'), Comp: MCPSettings, defaultOpen: true },
+      { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
+      { key: 'account', icon: <UserRound size={16} />, title: t('settings.account.title'), Comp: UserProfile, defaultOpen: true },
+      { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
+      { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
+      // Quick Actions(✨)는 다른 섹션에서 등록한 토글들의 모음이므로 마지막에 배치.
+      { key: 'quick', icon: <Sparkles size={16} />, title: t('settings.quickActions.title'), Comp: QuickActionsSettings, defaultOpen: true },
+    ],
+    [t]
+  );
+
   const updateScrollState = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -258,8 +281,8 @@ export default function SettingsPanel() {
                 cursor: canScrollLeft ? 'pointer' : 'not-allowed',
                 transition: 'opacity 160ms var(--ease)',
               }}
-              title="이전 페이지"
-              aria-label="Previous page"
+              title={t('settings.pageNav.previous')}
+              aria-label={t('settings.pageNav.previous')}
               data-interactive="true"
             >
               <ChevronLeft size={16} />
@@ -280,8 +303,8 @@ export default function SettingsPanel() {
                 cursor: canScrollRight ? 'pointer' : 'not-allowed',
                 transition: 'opacity 160ms var(--ease)',
               }}
-              title="다음 페이지"
-              aria-label="Next page"
+              title={t('settings.pageNav.next')}
+              aria-label={t('settings.pageNav.next')}
               data-interactive="true"
             >
               <ChevronRight size={16} />
@@ -328,24 +351,7 @@ export default function SettingsPanel() {
           }}
           data-interactive="true"
         >
-          {[
-            { key: 'lang', icon: <Globe size={16} />, title: t('settings.language'), Comp: LanguageSection, defaultOpen: true },
-            { key: 'llm', icon: <Brain size={16} />, title: t('settings.llm.title'), Comp: LLMSettings, defaultOpen: true },
-            { key: 'audio', icon: <Volume2 size={16} />, title: t('settings.audioDevice.title'), Comp: AudioDeviceSettings, defaultOpen: true },
-            { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings, defaultOpen: true },
-            { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings, defaultOpen: true },
-            { key: 'character', icon: <User size={16} />, title: t('settings.character.title'), Comp: CharacterSettings, defaultOpen: true },
-            { key: 'avatar', icon: <Box size={16} />, title: t('settings.avatar.title'), Comp: AvatarSettings, defaultOpen: true },
-            { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title', '화면 관찰'), Comp: ScreenWatchSettings, defaultOpen: true },
-            { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings, defaultOpen: true },
-            { key: 'mcp', icon: <Code size={16} />, title: t('settings.mcp.title'), Comp: MCPSettings, defaultOpen: true },
-            { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
-            { key: 'account', icon: <UserRound size={16} />, title: t('settings.account.title'), Comp: UserProfile, defaultOpen: true },
-            { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
-            { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
-            // Quick Actions(✨)는 다른 섹션에서 등록한 토글들의 모음이므로 마지막에 배치.
-            { key: 'quick', icon: <Sparkles size={16} />, title: t('settings.quickActions.title'), Comp: QuickActionsSettings, defaultOpen: true },
-          ].map(({ key, icon, title, Comp, defaultOpen }) => (
+          {sections.map(({ key, icon, title, Comp, defaultOpen }) => (
             <div
               key={key}
               style={{
