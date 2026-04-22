@@ -325,8 +325,8 @@ export default function ScreenWatchSettings() {
               step={30}
               value={watch.intervalSeconds}
               onChange={(e) => setScreenWatchSettings({ intervalSeconds: parseInt(e.target.value, 10) })}
-              className="w-full"
-              style={{ accentColor: 'var(--accent)' }}
+              className="ama-slider"
+              data-interactive="true"
             />
             <div className="flex justify-between text-xs" style={{ color: 'var(--ink-3)' }}>
               <span>30s</span>

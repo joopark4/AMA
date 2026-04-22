@@ -186,12 +186,8 @@ export default function HistoryPanel() {
             onChange={(e) =>
               setHistoryPanelSettings({ opacity: Number(e.target.value) })
             }
-            className="cursor-pointer"
-            style={{
-              width: 48,
-              height: 12,
-              accentColor: 'var(--accent)',
-            }}
+            className="ama-slider"
+            style={{ width: 48 }}
             title={t('history.opacity', { value: opacity })}
             data-interactive="true"
           />
