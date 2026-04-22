@@ -170,9 +170,9 @@ export default function SettingsPanel() {
       { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings, defaultOpen: true },
       { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title'), Comp: ScreenWatchSettings, defaultOpen: true },
       { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings, defaultOpen: true },
-      { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
       { key: 'quick', icon: <Sparkles size={16} />, title: t('settings.quickActions.title'), Comp: QuickActionsSettings, defaultOpen: true },
-      // 데이터 정리는 라이선스 직전에 배치 (정리·관리 메뉴 묶음).
+      // 앱 업데이트 → 데이터 정리 순서로 그룹화 (앱 유지보수 카테고리).
+      { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
       { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
       // 오픈소스 라이선스는 참조용 정보이므로 가장 마지막에 배치.
       { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
