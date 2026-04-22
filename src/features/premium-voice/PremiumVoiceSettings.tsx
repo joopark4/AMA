@@ -42,6 +42,8 @@ export default function PremiumVoiceSettings() {
   const [voiceFilter] = useState({ gender: '', language: '' });
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  // 현재 활성 preview의 blob URL을 추적해 unmount/재시작 시점에서 누수 방지.
+  const previewBlobUrlRef = useRef<string | null>(null);
   const apiSettings = settings.tts.supertoneApi;
   const defaultApiSettings = {
     voiceId: '',
@@ -144,8 +146,12 @@ export default function PremiumVoiceSettings() {
 
     if (!sample?.url) return;
 
-    // 기존 재생 중지
+    // 기존 재생 중지 + 이전 blob URL 회수
     previewAudioRef.current?.pause();
+    if (previewBlobUrlRef.current) {
+      URL.revokeObjectURL(previewBlobUrlRef.current);
+      previewBlobUrlRef.current = null;
+    }
     setPreviewingVoiceId(voice.voice_id);
 
     try {
@@ -154,6 +160,7 @@ export default function PremiumVoiceSettings() {
       const uint8 = new Uint8Array(bytes);
       const blob = new Blob([uint8], { type: 'audio/wav' });
       const blobUrl = URL.createObjectURL(blob);
+      previewBlobUrlRef.current = blobUrl;
 
       const audio = new Audio(blobUrl);
 
@@ -169,11 +176,13 @@ export default function PremiumVoiceSettings() {
 
       audio.onended = () => {
         URL.revokeObjectURL(blobUrl);
+        if (previewBlobUrlRef.current === blobUrl) previewBlobUrlRef.current = null;
         setPreviewingVoiceId(null);
         previewAudioRef.current = null;
       };
       audio.onerror = () => {
         URL.revokeObjectURL(blobUrl);
+        if (previewBlobUrlRef.current === blobUrl) previewBlobUrlRef.current = null;
         setPreviewingVoiceId(null);
         previewAudioRef.current = null;
       };
@@ -185,10 +194,14 @@ export default function PremiumVoiceSettings() {
     }
   }, [previewingVoiceId, effectiveApiSettings.language, effectiveApiSettings.style]);
 
-  // 컴포넌트 언마운트 시 재생 정지
+  // 컴포넌트 언마운트 시 재생 정지 + blob URL 회수 (누수 방지)
   useEffect(() => {
     return () => {
       previewAudioRef.current?.pause();
+      if (previewBlobUrlRef.current) {
+        URL.revokeObjectURL(previewBlobUrlRef.current);
+        previewBlobUrlRef.current = null;
+      }
     };
   }, []);
 
