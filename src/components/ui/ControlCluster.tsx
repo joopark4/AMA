@@ -126,6 +126,11 @@ export default function ControlCluster() {
           if (!cancelled) setLlmDependencyIssue(buildModelUnsetIssue(t, provider));
           return;
         }
+        // claude_code / codex 분기: 다음 단계(isAvailable 체크 등)는 이들 provider에
+        // 매치되는 분기가 없어 stale 이슈를 clear할 기회가 없다.
+        // 이전 provider(예: openai)에서 발생한 API key 경고가 그대로 남는 회귀를
+        // 방지하기 위해 여기서 명시적으로 null로 초기화한다.
+        if (!cancelled) setLlmDependencyIssue(null);
       }
       if ((provider === 'ollama' || provider === 'localai') && !endpoint.trim()) {
         if (!cancelled) setLlmDependencyIssue(buildEndpointUnsetIssue(t, provider));
