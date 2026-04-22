@@ -73,12 +73,13 @@ export default function CodexSettings() {
     setCodexSettings({ workingDir: '' });
   };
 
-  const statusColor = {
-    disconnected: 'bg-gray-400',
-    connecting: 'bg-yellow-400 animate-pulse',
-    connected: 'bg-green-500',
-    error: 'bg-red-500',
+  const statusDotStyle: React.CSSProperties = {
+    disconnected: { background: 'var(--ink-3)' },
+    connecting: { background: 'var(--warn)' },
+    connected: { background: 'var(--ok)' },
+    error: { background: 'var(--danger)' },
   }[connectionState];
+  const statusDotPulse = connectionState === 'connecting' ? 'animate-pulse' : '';
 
   const statusLabel = {
     disconnected: t('settings.codex.disconnected'),
@@ -91,7 +92,7 @@ export default function CodexSettings() {
     <div className="space-y-3">
       {/* 설치 상태 */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-600">{t('settings.codex.cliStatus')}</span>
+        <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.codex.cliStatus')}</span>
         <span className={`text-sm font-medium ${installed ? 'text-ok' : 'text-danger'}`}>
           {installed === null ? '...' : installed ? t('settings.codex.installed') : t('settings.codex.notInstalled')}
         </span>
@@ -100,7 +101,10 @@ export default function CodexSettings() {
       {installed === false && (
         <div className="p-3 bg-[oklch(0.95_0.04_75_/_0.5)] rounded-lg">
           <p className="text-xs text-warn">{t('settings.codex.installGuide')}</p>
-          <code className="block mt-1 text-xs bg-amber-100 px-2 py-1 rounded font-mono">
+          <code
+            className="block mt-1 text-xs px-2 py-1 rounded font-mono"
+            style={{ background: 'oklch(0.94 0.06 75 / 0.7)' }}
+          >
             npm install -g @openai/codex
           </code>
         </div>
@@ -108,7 +112,7 @@ export default function CodexSettings() {
 
       {/* 로그인 상태 */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-600">{t('settings.codex.authStatus')}</span>
+        <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.codex.authStatus')}</span>
         <span className={`text-sm font-medium ${authenticated ? 'text-ok' : 'text-danger'}`}>
           {authenticated === null ? '...' : authenticated ? t('settings.codex.loggedIn') : t('settings.codex.notLoggedIn')}
         </span>
@@ -117,7 +121,10 @@ export default function CodexSettings() {
       {authenticated === false && (
         <div className="p-3 bg-[oklch(0.95_0.04_75_/_0.5)] rounded-lg">
           <p className="text-xs text-warn">{t('settings.codex.loginGuide')}</p>
-          <code className="block mt-1 text-xs bg-amber-100 px-2 py-1 rounded font-mono">
+          <code
+            className="block mt-1 text-xs px-2 py-1 rounded font-mono"
+            style={{ background: 'oklch(0.94 0.06 75 / 0.7)' }}
+          >
             codex login
           </code>
         </div>
@@ -126,14 +133,15 @@ export default function CodexSettings() {
       {/* 연결 상태 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${statusColor}`} />
-          <span className="text-sm text-gray-600">{t('settings.codex.connection')}</span>
+          <div className={`w-2 h-2 rounded-full ${statusDotPulse}`} style={statusDotStyle} />
+          <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.codex.connection')}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">{statusLabel}</span>
+          <span className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>{statusLabel}</span>
           <button
             onClick={refreshStatus}
-            className="text-xs text-blue-500 hover:text-blue-700"
+            className="text-xs hover:underline"
+            style={{ color: 'var(--accent)' }}
           >
             {t('settings.codex.refresh')}
           </button>
@@ -141,11 +149,11 @@ export default function CodexSettings() {
       </div>
 
       {connectionState === 'error' && errorMessage && (
-        <div className="p-3 bg-red-50 rounded-lg">
-          <p className="text-xs text-red-700">{errorMessage}</p>
+        <div className="p-3 rounded-lg" style={{ background: 'oklch(0.95 0.04 25 / 0.5)' }}>
+          <p className="text-xs" style={{ color: 'oklch(0.45 0.18 25)' }}>{errorMessage}</p>
           <button
             onClick={reconnect}
-            className="mt-2 text-xs text-danger hover:text-red-800 underline"
+            className="mt-2 text-xs text-danger hover:underline"
           >
             {t('settings.codex.retry')}
           </button>
@@ -154,44 +162,51 @@ export default function CodexSettings() {
 
       {/* 작업 폴더 */}
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.codex.workingDir')}
         </label>
         <div className="flex items-center gap-2">
           <div
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 truncate text-gray-600 min-h-[38px] flex items-center"
+            className="flex-1 px-3 py-2 border rounded-lg text-sm truncate min-h-[38px] flex items-center"
+            style={{
+              borderColor: 'var(--hairline)',
+              background: 'oklch(1 0 0 / 0.45)',
+              color: 'var(--ink-2)',
+            }}
             title={settings.codex.workingDir || undefined}
           >
             {settings.codex.workingDir || (
-              <span className="text-gray-400">{t('settings.codex.workingDirPlaceholder')}</span>
+              <span style={{ color: 'var(--ink-3)' }}>{t('settings.codex.workingDirPlaceholder')}</span>
             )}
           </div>
           <button
             onClick={handleSelectFolder}
-            className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
+            className="px-3 py-2 text-sm rounded-lg whitespace-nowrap"
+            style={{ background: 'var(--accent)', color: 'white' }}
           >
             {t('settings.codex.selectFolder')}
           </button>
           {settings.codex.workingDir && (
             <button
               onClick={handleClearFolder}
-              className="px-2 py-2 text-sm text-gray-400 hover:text-red-500"
+              className="px-2 py-2 text-sm hover:text-danger"
+              style={{ color: 'var(--ink-3)' }}
               title={t('settings.codex.clearFolder')}
             >
               ✕
             </button>
           )}
         </div>
-        <p className="text-xs text-gray-500">{t('settings.codex.workingDirHelp')}</p>
+        <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.codex.workingDirHelp')}</p>
       </div>
 
       {/* 모델 선택 */}
       {connectionState === 'connected' && (
         <>
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
               {t('settings.codex.model')}
-              {loadingModels && <span className="ml-2 text-xs text-gray-400">...</span>}
+              {loadingModels && <span className="ml-2 text-xs" style={{ color: 'var(--ink-3)' }}>...</span>}
             </label>
             <select
               value={settings.codex.model}
@@ -202,7 +217,10 @@ export default function CodexSettings() {
                   reasoningEffort: (selected?.defaultReasoningEffort || 'medium') as CodexReasoningEffort,
                 });
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:border-transparent"
+              style={{ borderColor: 'var(--hairline)' }}
+              onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-soft)'; }}
+              onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
             >
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -211,19 +229,22 @@ export default function CodexSettings() {
               ))}
             </select>
             {currentModel && (
-              <p className="text-xs text-gray-500">{currentModel.description}</p>
+              <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{currentModel.description}</p>
             )}
           </div>
 
           {/* 성능 선택 */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
               {t('settings.codex.effort')}
             </label>
             <select
               value={settings.codex.reasoningEffort}
               onChange={(e) => setCodexSettings({ reasoningEffort: e.target.value as CodexReasoningEffort })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:border-transparent"
+              style={{ borderColor: 'var(--hairline)' }}
+              onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-soft)'; }}
+              onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
             >
               {availableEfforts.length > 0
                 ? availableEfforts.map((e) => (
@@ -237,7 +258,7 @@ export default function CodexSettings() {
               }
             </select>
             {availableEfforts.find((e) => e.reasoningEffort === settings.codex.reasoningEffort) && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
                 {availableEfforts.find((e) => e.reasoningEffort === settings.codex.reasoningEffort)?.description}
               </p>
             )}
@@ -245,33 +266,36 @@ export default function CodexSettings() {
 
           {/* 접근 권한 */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
               {t('settings.codex.approvalPolicy')}
             </label>
             <select
               value={settings.codex.approvalPolicy}
               onChange={(e) => setCodexSettings({ approvalPolicy: e.target.value as CodexApprovalPolicy })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:border-transparent"
+              style={{ borderColor: 'var(--hairline)' }}
+              onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-soft)'; }}
+              onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
             >
               <option value="on-request">{t('settings.codex.approvalOnRequest')}</option>
               <option value="never">{t('settings.codex.approvalNever')}</option>
               <option value="untrusted">{t('settings.codex.approvalUntrusted')}</option>
             </select>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
               {settings.codex.approvalPolicy === 'never' && t('settings.codex.approvalNeverDesc')}
               {settings.codex.approvalPolicy === 'on-request' && t('settings.codex.approvalOnRequestDesc')}
               {settings.codex.approvalPolicy === 'untrusted' && t('settings.codex.approvalUntrustedDesc')}
             </p>
             {settings.codex.approvalPolicy === 'never' && (
-              <p className="text-xs text-red-500 font-medium">{t('settings.codex.approvalNeverWarning')}</p>
+              <p className="text-xs font-medium" style={{ color: 'var(--danger)' }}>{t('settings.codex.approvalNeverWarning')}</p>
             )}
           </div>
         </>
       )}
 
       {/* Codex 안내 */}
-      <div className="p-3 bg-green-50 rounded-lg">
-        <p className="text-xs text-green-700">
+      <div className="p-3 rounded-lg" style={{ background: 'oklch(0.94 0.06 160 / 0.5)' }}>
+        <p className="text-xs" style={{ color: 'oklch(0.42 0.12 160)' }}>
           {t('settings.codex.info')}
         </p>
       </div>

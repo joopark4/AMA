@@ -184,11 +184,11 @@ export default function AvatarSettings() {
       </Field>
 
       {/* Initial View Rotation */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-2 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.avatar.initialView.title')}
         </h4>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
           {t('settings.avatar.initialView.description')}
         </p>
 
@@ -236,7 +236,7 @@ export default function AvatarSettings() {
           </button>
         </div>
 
-        <div className="text-xs text-gray-500 space-y-1">
+        <div className="text-xs space-y-1" style={{ color: 'var(--ink-3)' }}>
           <p>
             {t('settings.avatar.initialView.savedInfo', {
               vertical: formatDegrees(savedInitialView.x),
@@ -253,15 +253,15 @@ export default function AvatarSettings() {
       </div>
 
       {/* Animation Settings */}
-      <div className="space-y-3 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-3 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.avatar.animation.title')}
         </h4>
 
         {/* 표정 전용 모드 */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col flex-1 min-w-0 pr-3">
-            <label className="text-sm text-gray-600">{t('settings.avatar.animation.faceOnlyMode')}</label>
+            <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.faceOnlyMode')}</label>
             {faceOnlyModeEnabled && (
               <span className="text-xs text-ok">{t('settings.avatar.animation.faceOnlyDescription')}</span>
             )}
@@ -283,14 +283,17 @@ export default function AvatarSettings() {
               boxShadow: 'inset 0 0 0 1px var(--hairline)',
             }}
           >
-            <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+            <h5 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-2)' }}>
               {t('settings.avatar.animation.walkingTitle')}
             </h5>
 
             <div className="flex items-center justify-between">
               <div className="flex flex-col flex-1 min-w-0 pr-3">
-                <label className={`text-sm ${settings.avatar?.freeMovement ? 'text-gray-400' : 'text-gray-600'}`}>{t('settings.avatar.animation.autoRoam')}</label>
-                <span className="text-xs text-gray-400">
+                <label
+                  className="text-sm"
+                  style={{ color: settings.avatar?.freeMovement ? 'var(--ink-3)' : 'var(--ink-2)' }}
+                >{t('settings.avatar.animation.autoRoam')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
                   {settings.avatar?.freeMovement
                     ? t('settings.avatar.animation.autoRoamDisabledByFreeMove')
                     : t('settings.avatar.animation.autoRoamDesc')}
@@ -314,14 +317,14 @@ export default function AvatarSettings() {
               boxShadow: 'inset 0 0 0 1px var(--hairline)',
             }}
           >
-            <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+            <h5 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-2)' }}>
               {t('settings.avatar.animation.idleTitle')}
             </h5>
 
             <div className="flex items-center justify-between">
               <div className="flex flex-col flex-1 min-w-0 pr-3">
-                <label className="text-sm text-gray-600">{t('settings.avatar.animation.enableBreathing')}</label>
-                <span className="text-xs text-gray-400">{t('settings.avatar.animation.enableBreathingDesc')}</span>
+                <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.enableBreathing')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.avatar.animation.enableBreathingDesc')}</span>
               </div>
               <Toggle
                 on={settings.avatar?.animation?.enableBreathing ?? true}
@@ -333,8 +336,8 @@ export default function AvatarSettings() {
 
             <div className="flex items-center justify-between">
               <div className="flex flex-col flex-1 min-w-0 pr-3">
-                <label className="text-sm text-gray-600">{t('settings.avatar.animation.enableEyeDrift')}</label>
-                <span className="text-xs text-gray-400">{t('settings.avatar.animation.enableEyeDriftDesc')}</span>
+                <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.enableEyeDrift')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.avatar.animation.enableEyeDriftDesc')}</span>
               </div>
               <Toggle
                 on={settings.avatar?.animation?.enableEyeDrift ?? true}
@@ -346,8 +349,8 @@ export default function AvatarSettings() {
 
             <div className="flex items-center justify-between">
               <div className="flex flex-col flex-1 min-w-0 pr-3">
-                <label className="text-sm text-gray-600">{t('settings.avatar.animation.gazeFollow')}</label>
-                <span className="text-xs text-gray-400">{t('settings.avatar.animation.gazeFollowDesc')}</span>
+                <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.gazeFollow')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.avatar.animation.gazeFollowDesc')}</span>
               </div>
               <Toggle
                 on={settings.avatar?.animation?.gazeFollow ?? true}
@@ -359,8 +362,8 @@ export default function AvatarSettings() {
 
             <div className="flex items-center justify-between">
               <div className="flex flex-col flex-1 min-w-0 pr-3">
-                <label className="text-sm text-gray-600">{t('settings.avatar.animation.backchannel')}</label>
-                <span className="text-xs text-gray-400">{t('settings.avatar.animation.backchannelDesc')}</span>
+                <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.backchannel')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.avatar.animation.backchannelDesc')}</span>
               </div>
               <Toggle
                 on={settings.avatar?.animation?.backchannel ?? true}
@@ -374,13 +377,13 @@ export default function AvatarSettings() {
       </div>
 
       {/* Physics Settings */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-2 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.avatar.physics.title')}
         </h4>
 
         <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-600">
+          <label className="text-sm" style={{ color: 'var(--ink-2)' }}>
             {t('settings.avatar.physics.enable')}
           </label>
           <Toggle
@@ -394,7 +397,7 @@ export default function AvatarSettings() {
         {settings.avatar?.physics?.enabled && (
           <>
             <div className="space-y-1">
-              <label className="block text-xs text-gray-600">
+              <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
                 {t('settings.avatar.physics.gravity', {
                   value: (settings.avatar?.physics?.gravityMultiplier ?? 1.0).toFixed(1),
                 })}
@@ -403,12 +406,13 @@ export default function AvatarSettings() {
                 type="range" min="0.2" max="2.0" step="0.1"
                 value={settings.avatar?.physics?.gravityMultiplier ?? 1.0}
                 onChange={(e) => setAvatarSettings({ physics: { ...settings.avatar?.physics, gravityMultiplier: parseFloat(e.target.value) } })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
+                style={{ background: 'var(--surface-1)' }}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs text-gray-600">
+              <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
                 {t('settings.avatar.physics.stiffness', {
                   value: (settings.avatar?.physics?.stiffnessMultiplier ?? 1.0).toFixed(1),
                 })}
@@ -417,7 +421,8 @@ export default function AvatarSettings() {
                 type="range" min="0.2" max="2.0" step="0.1"
                 value={settings.avatar?.physics?.stiffnessMultiplier ?? 1.0}
                 onChange={(e) => setAvatarSettings({ physics: { ...settings.avatar?.physics, stiffnessMultiplier: parseFloat(e.target.value) } })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
+                style={{ background: 'var(--surface-1)' }}
               />
             </div>
           </>
@@ -425,13 +430,13 @@ export default function AvatarSettings() {
       </div>
 
       {/* Lighting Intensity */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-2 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.avatar.lighting.title')}
         </h4>
 
         <div className="space-y-1">
-          <label className="block text-xs text-gray-600">
+          <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
             {t('settings.avatar.lighting.ambient', {
               value: (settings.avatar?.lighting?.ambientIntensity ?? 1.0).toFixed(1),
             })}
@@ -440,12 +445,13 @@ export default function AvatarSettings() {
             type="range" min="0" max="3" step="0.1"
             value={settings.avatar?.lighting?.ambientIntensity ?? 1.0}
             onChange={(e) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, ambientIntensity: parseFloat(e.target.value) } })}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
+            className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
+            style={{ background: 'var(--surface-1)' }}
           />
         </div>
 
         <div className="space-y-1">
-          <label className="block text-xs text-gray-600">
+          <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
             {t('settings.avatar.lighting.directional', {
               value: (settings.avatar?.lighting?.directionalIntensity ?? 1.0).toFixed(1),
             })}
@@ -454,12 +460,13 @@ export default function AvatarSettings() {
             type="range" min="0" max="3" step="0.1"
             value={settings.avatar?.lighting?.directionalIntensity ?? 1.0}
             onChange={(e) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, directionalIntensity: parseFloat(e.target.value) } })}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
+            className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
+            style={{ background: 'var(--surface-1)' }}
           />
         </div>
 
         <div className="flex items-center justify-between mt-3">
-          <label className="text-sm text-gray-600">
+          <label className="text-sm" style={{ color: 'var(--ink-2)' }}>
             {t('settings.avatar.lighting.showIcon')}
           </label>
           <Toggle
@@ -468,7 +475,7 @@ export default function AvatarSettings() {
           />
         </div>
 
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs mt-2" style={{ color: 'var(--ink-3)' }}>
           {t('settings.avatar.lighting.dragHint')}
         </p>
       </div>
