@@ -116,10 +116,9 @@ function App() {
         setUser(result.user);
         setTokens(result.tokens);
 
-        // OAuth 닉네임을 아바타 이름 초기값으로 연동
-        if (result.user.nickname && !(settings.avatarName || '').trim()) {
-          setAvatarName(result.user.nickname);
-        }
+        // 의도적으로 OAuth 닉네임을 아바타 이름으로 자동 연동하지 않음.
+        // 사용자가 onboarding 또는 캐릭터 설정에서 직접 입력한 값만 표시되도록 한다.
+        // (AvatarRestingBadge 등 UI에서 OAuth 계정 이름이 노출되는 문제 방지)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(t('auth.errors.networkError') + ': ' + message);
