@@ -185,6 +185,13 @@ export interface Settings {
    */
   avatarHidden: boolean;
   /**
+   * 아바타 숨김 진입 직전의 proactive.enabled 값 (복구용).
+   * 숨김 ON 시 proactive를 강제로 OFF 하고 이 필드에 이전 값을 저장 →
+   * 숨김 해제 시 이 값으로 복구한다. 평상시에는 null.
+   * persist되어 앱 재시작 후 hidden=true 상태에서도 OFF가 유지되도록 보장.
+   */
+  proactivePreviousEnabled: boolean | null;
+  /**
    * 자주 쓰는 기능 (Phase 4) — ✨ 팔레트에 등록된 기능 ID 목록.
    * 사용자가 설정에서 체크박스로 등록/해제하며, 순서는 등록 순서.
    */
@@ -416,6 +423,7 @@ const defaultSettings: Settings = {
     silentHours: { enabled: false, start: 23, end: 7 },
   },
   avatarHidden: false,
+  proactivePreviousEnabled: null,
   enabledQuickActions: [
     'avatar.freeMovement',
     'avatar.showSpeechBubble',
@@ -544,11 +552,62 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
     proactive: normalizeProactiveSettings(source.proactive),
     screenWatch: normalizeScreenWatchSettings(source.screenWatch),
     avatarHidden: typeof source.avatarHidden === 'boolean' ? source.avatarHidden : false,
+    proactivePreviousEnabled:
+      typeof source.proactivePreviousEnabled === 'boolean'
+        ? source.proactivePreviousEnabled
+        : null,
     enabledQuickActions: Array.isArray(source.enabledQuickActions)
       ? source.enabledQuickActions.filter((id): id is QuickActionId =>
           typeof id === 'string' && ALL_QUICK_ACTION_IDS.has(id as QuickActionId)
         )
       : defaultSettings.enabledQuickActions,
+  };
+}
+
+/**
+ * 아바타 숨김 토글 시 자발적 대화(proactive)를 자동 OFF/복구.
+ *
+ * - hidden=true 진입: proactive.enabled가 true면 → previousEnabled에 저장 후 OFF.
+ *   이미 OFF였다면 previousEnabled는 null로 두어 복구 시점에 변화 없음.
+ * - hidden=false 해제: previousEnabled가 boolean(true 또는 false)이면
+ *   그 값으로 proactive.enabled 복구. null이면 그대로 둔다.
+ */
+function applyAvatarHiddenTransition(
+  current: Settings,
+  nextHidden: boolean
+): { settings: Settings } {
+  // 동일 상태로의 토글은 no-op (proactivePreviousEnabled 부수효과 방지)
+  if (nextHidden === current.avatarHidden) {
+    return { settings: { ...current, avatarHidden: nextHidden } };
+  }
+
+  if (nextHidden) {
+    // 숨김 진입
+    const wasEnabled = current.proactive?.enabled === true;
+    return {
+      settings: {
+        ...current,
+        avatarHidden: true,
+        proactive: wasEnabled
+          ? { ...current.proactive, enabled: false }
+          : current.proactive,
+        proactivePreviousEnabled: wasEnabled ? true : null,
+      },
+    };
+  }
+
+  // 숨김 해제 — previousEnabled가 명시적으로 저장돼 있으면 복구
+  const prev = current.proactivePreviousEnabled;
+  return {
+    settings: {
+      ...current,
+      avatarHidden: false,
+      proactive:
+        typeof prev === 'boolean'
+          ? { ...current.proactive, enabled: prev }
+          : current.proactive,
+      proactivePreviousEnabled: null,
+    },
   };
 }
 
@@ -836,14 +895,12 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       setAvatarHidden: (hidden) =>
-        set((state) => ({
-          settings: { ...state.settings, avatarHidden: Boolean(hidden) },
-        })),
+        set((state) => applyAvatarHiddenTransition(state.settings, Boolean(hidden))),
 
       toggleAvatarHidden: () =>
-        set((state) => ({
-          settings: { ...state.settings, avatarHidden: !state.settings.avatarHidden },
-        })),
+        set((state) =>
+          applyAvatarHiddenTransition(state.settings, !state.settings.avatarHidden)
+        ),
 
       setEnabledQuickActions: (ids) =>
         set((state) => ({
@@ -900,7 +957,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 18,
+      version: 19,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -959,6 +1016,22 @@ export const useSettingsStore = create<SettingsState>()(
             'voice.globalShortcut',
             'screen.watch',
           ];
+        }
+
+        // v18→v19: avatar 숨김 시 proactive 자동 OFF/복구 위한
+        // proactivePreviousEnabled 필드 추가 (기본 null).
+        if ((version ?? 0) < 19) {
+          const s = state.settings as Partial<Settings>;
+          if (typeof s.proactivePreviousEnabled !== 'boolean' && s.proactivePreviousEnabled !== null) {
+            s.proactivePreviousEnabled = null;
+          }
+          // 이미 hidden=true 상태로 persist돼 있고 proactive.enabled=true면
+          // 의도된 자동 OFF가 누락된 상태이므로 일관성 확보:
+          //   기존 enabled를 previousEnabled에 옮기고 proactive는 OFF.
+          if (s.avatarHidden === true && s.proactive?.enabled === true) {
+            s.proactivePreviousEnabled = true;
+            s.proactive = { ...s.proactive, enabled: false };
+          }
         }
 
         return {
