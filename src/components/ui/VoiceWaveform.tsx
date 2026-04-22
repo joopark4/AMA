@@ -109,7 +109,7 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
     <div
       className="pointer-events-none"
       style={{
-        width: 320,
+        width: 270,
       }}
       data-interactive="false"
     >
