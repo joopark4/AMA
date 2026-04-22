@@ -19,6 +19,10 @@
       "empty": "No actions registered yet. Tick one above to add it."
     },
     "language": "Language",
+    "pageNav": {
+      "previous": "Previous page",
+      "next": "Next page"
+    },
     "audioDevice": {
       "title": "Audio & Microphone",
       "microphone": "Microphone (Input)",
@@ -93,6 +97,10 @@
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",
           "melo": "MeloTTS-Korean"
+        },
+        "voiceLabel": {
+          "female": "Female {{num}}",
+          "male": "Male {{num}}"
         }
       },
       "globalShortcut": {
@@ -583,7 +591,129 @@
     "guideTitle": "Setup Guide",
     "openSettings": "Open Settings",
     "openSystemSettings": "Open System Settings",
-    "close": "Close"
+    "close": "Close",
+    "issue": {
+      "modelUnset": {
+        "ollama": {
+          "title": "LLM Model Setup (Ollama)",
+          "summary": "Ollama model is not selected.",
+          "steps": [
+            "In Settings, select Ollama as the LLM Provider.",
+            "Run `ollama list` in the terminal to see installed models.",
+            "If no model is installed, run `ollama pull deepseek-v3` and then choose that model in the Model field."
+          ]
+        },
+        "localai": {
+          "title": "LLM Model Setup (LocalAI)",
+          "summary": "LocalAI model is not selected.",
+          "steps": [
+            "In Settings, select LocalAI as the LLM Provider.",
+            "Check the model id exposed by the LocalAI `/v1/models` response.",
+            "Select or enter the matching model name in the Model field."
+          ]
+        },
+        "cloud": {
+          "title": "LLM Model Setup ({{provider}})",
+          "summary": "{{provider}} model is not selected.",
+          "steps": [
+            "In Settings, select {{provider}} as the LLM Provider.",
+            "Choose the model to use in the Model field. Example: `{{defaultModel}}`",
+            "Save the settings and send a new prompt to verify the response."
+          ]
+        }
+      },
+      "endpointUnset": {
+        "ollama": {
+          "title": "LLM Endpoint Setup (Ollama)",
+          "summary": "Ollama server address is empty.",
+          "steps": [
+            "In Settings, keep the LLM Provider set to Ollama.",
+            "Enter `http://localhost:11434` in the Endpoint field.",
+            "Run `ollama serve` and then send a new prompt."
+          ]
+        },
+        "localai": {
+          "title": "LLM Endpoint Setup (LocalAI)",
+          "summary": "LocalAI server address is empty.",
+          "steps": [
+            "In Settings, keep the LLM Provider set to LocalAI.",
+            "Enter the LocalAI OpenAI-compatible address in the Endpoint field. Example: `http://localhost:8080`",
+            "Start the LocalAI server and send a new prompt."
+          ]
+        }
+      },
+      "apiKey": {
+        "title": "LLM API Key Setup ({{provider}})",
+        "summary": "{{provider}} API key is not set, so responses cannot be generated.",
+        "steps": [
+          "In Settings, select {{provider}} as the LLM Provider.",
+          "Issue an API key from {{apiKeyGuide}}.",
+          "Enter the key in the API Key field in the format `{{keyPrefix}}` and save."
+        ]
+      },
+      "localServer": {
+        "ollama": {
+          "title": "LLM Server Connection Failed (Ollama)",
+          "summary": "Cannot connect to the Ollama server.",
+          "steps": [
+            "Install Ollama with `brew install ollama` on macOS.",
+            "Run `ollama serve` in the terminal.",
+            "Pull the required model with `ollama pull {{model}}`.",
+            "Check that the Endpoint is correct. Current value: {{endpoint}}"
+          ]
+        },
+        "localai": {
+          "title": "LLM Server Connection Failed (LocalAI)",
+          "summary": "Cannot connect to the LocalAI server.",
+          "steps": [
+            "Start the LocalAI server and confirm the OpenAI-compatible API is enabled.",
+            "Verify that `GET /v1/models` returns a healthy response.",
+            "Set the Endpoint to the LocalAI address. Current value: {{endpoint}}",
+            "Check the model loading logs and then send a new prompt."
+          ]
+        }
+      },
+      "localModel": {
+        "ollama": {
+          "title": "LLM Model Missing (Ollama)",
+          "summary": "The selected model ({{model}}) is not available in Ollama.",
+          "steps": [
+            "Run `ollama pull {{model}}` in the terminal.",
+            "Verify the model is downloaded with `ollama list`.",
+            "Select the same model name in the app settings and try again."
+          ]
+        },
+        "localai": {
+          "title": "LLM Model Missing (LocalAI)",
+          "summary": "The selected model ({{model}}) is not available in LocalAI.",
+          "steps": [
+            "Place the desired model file in the LocalAI models directory.",
+            "Load the model via the LocalAI config file or runtime options.",
+            "Match the Model value in the app settings to the LocalAI model id."
+          ]
+        }
+      },
+      "voice": {
+        "title": "Speech Recognition (Whisper)",
+        "remoteSteps": [
+          "End the remote connection session and then restart the app.",
+          "Allow microphone permission in the local environment and try again."
+        ],
+        "localSteps": [
+          "Install whisper-cli with `brew install whisper-cpp` on macOS.",
+          "Place the `ggml-base.bin` file under `models/whisper/`.",
+          "If needed, set the model path with the `WHISPER_MODEL_PATH` environment variable."
+        ]
+      },
+      "tts": {
+        "title": "Speech Synthesis (Supertonic)",
+        "steps": [
+          "Place the ONNX model files in the `models/supertonic/onnx` folder.",
+          "Place the voice style JSON files in the `models/supertonic/voice_styles` folder.",
+          "Quit the app completely and then relaunch it."
+        ]
+      }
+    }
   },
   "lightingControl": {
     "dragHint": "Drag to adjust light position"

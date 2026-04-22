@@ -19,6 +19,10 @@
       "empty": "登録された機能はまだありません。上でチェックしてください。"
     },
     "language": "言語",
+    "pageNav": {
+      "previous": "前のページ",
+      "next": "次のページ"
+    },
     "audioDevice": {
       "title": "オーディオ & マイク",
       "microphone": "マイク（入力）",
@@ -93,6 +97,10 @@
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",
           "melo": "MeloTTS-Korean"
+        },
+        "voiceLabel": {
+          "female": "女性 {{num}}",
+          "male": "男性 {{num}}"
         }
       },
       "globalShortcut": {
@@ -583,7 +591,129 @@
     "guideTitle": "セットアップガイド",
     "openSettings": "設定を開く",
     "openSystemSettings": "システム設定を開く",
-    "close": "閉じる"
+    "close": "閉じる",
+    "issue": {
+      "modelUnset": {
+        "ollama": {
+          "title": "LLM モデル設定 (Ollama)",
+          "summary": "Ollama モデルが選択されていません。",
+          "steps": [
+            "設定で LLM Provider を Ollama に選択します。",
+            "ターミナルで `ollama list` を実行し、インストール済みのモデルを確認します。",
+            "モデルがない場合は `ollama pull deepseek-v3` を実行し、Model 項目で該当モデルを選択します。"
+          ]
+        },
+        "localai": {
+          "title": "LLM モデル設定 (LocalAI)",
+          "summary": "LocalAI モデルが選択されていません。",
+          "steps": [
+            "設定で LLM Provider を LocalAI に選択します。",
+            "LocalAI の `/v1/models` レスポンスに表示されるモデル id を確認します。",
+            "Model 項目に同じモデル名を選択／入力します。"
+          ]
+        },
+        "cloud": {
+          "title": "LLM モデル設定 ({{provider}})",
+          "summary": "{{provider}} モデルが選択されていません。",
+          "steps": [
+            "設定で LLM Provider を {{provider}} に選択します。",
+            "Model 項目で使用するモデルを選択します。例: `{{defaultModel}}`",
+            "設定を保存してから再度プロンプトを入力し、応答を確認します。"
+          ]
+        }
+      },
+      "endpointUnset": {
+        "ollama": {
+          "title": "LLM エンドポイント設定 (Ollama)",
+          "summary": "Ollama サーバーアドレスが空です。",
+          "steps": [
+            "設定で LLM Provider を Ollama のままにします。",
+            "Endpoint に `http://localhost:11434` を入力します。",
+            "`ollama serve` を実行してから再度プロンプトを入力します。"
+          ]
+        },
+        "localai": {
+          "title": "LLM エンドポイント設定 (LocalAI)",
+          "summary": "LocalAI サーバーアドレスが空です。",
+          "steps": [
+            "設定で LLM Provider を LocalAI のままにします。",
+            "Endpoint に LocalAI の OpenAI 互換アドレスを入力します。例: `http://localhost:8080`",
+            "LocalAI サーバーを起動してから再度プロンプトを入力します。"
+          ]
+        }
+      },
+      "apiKey": {
+        "title": "LLM API キー設定 ({{provider}})",
+        "summary": "{{provider}} API キーが設定されていないため、応答を生成できません。",
+        "steps": [
+          "設定で LLM Provider を {{provider}} に選択します。",
+          "{{apiKeyGuide}} で API キーを発行します。",
+          "API Key 入力欄に `{{keyPrefix}}` 形式のキーを入力して保存します。"
+        ]
+      },
+      "localServer": {
+        "ollama": {
+          "title": "LLM サーバー接続失敗 (Ollama)",
+          "summary": "Ollama サーバーに接続できません。",
+          "steps": [
+            "macOS で `brew install ollama` を実行してインストールします。",
+            "ターミナルで `ollama serve` を実行します。",
+            "必要なモデルを `ollama pull {{model}}` で取得します。",
+            "Endpoint が正しいか確認します。現在の値: {{endpoint}}"
+          ]
+        },
+        "localai": {
+          "title": "LLM サーバー接続失敗 (LocalAI)",
+          "summary": "LocalAI サーバーに接続できません。",
+          "steps": [
+            "LocalAI サーバーを起動し、OpenAI 互換 API が有効になっていることを確認します。",
+            "ヘルスチェックとして `GET /v1/models` の応答が返るか確認します。",
+            "Endpoint を LocalAI のアドレスに合わせます。現在の値: {{endpoint}}",
+            "モデルロードのログを確認してから再度プロンプトを入力します。"
+          ]
+        }
+      },
+      "localModel": {
+        "ollama": {
+          "title": "LLM モデル不足 (Ollama)",
+          "summary": "選択されたモデル ({{model}}) が Ollama に準備されていません。",
+          "steps": [
+            "ターミナルで `ollama pull {{model}}` を実行します。",
+            "`ollama list` でモデルがダウンロードされたか確認します。",
+            "アプリ設定で同じモデル名を選択してから再度プロンプトを入力します。"
+          ]
+        },
+        "localai": {
+          "title": "LLM モデル不足 (LocalAI)",
+          "summary": "選択されたモデル ({{model}}) が LocalAI に準備されていません。",
+          "steps": [
+            "LocalAI のモデルディレクトリに目的のモデルファイルを配置します。",
+            "LocalAI の設定ファイルまたは実行オプションでモデルをロードします。",
+            "アプリ設定の Model 値を LocalAI のモデル id と同じにします。"
+          ]
+        }
+      },
+      "voice": {
+        "title": "音声認識 (Whisper)",
+        "remoteSteps": [
+          "リモート接続セッションを終了してからアプリを再起動します。",
+          "ローカル環境でマイクの権限を許可して再度お試しください。"
+        ],
+        "localSteps": [
+          "macOS で `brew install whisper-cpp` を実行して whisper-cli をインストールします。",
+          "`ggml-base.bin` ファイルを `models/whisper/` パスに配置します。",
+          "必要に応じて `WHISPER_MODEL_PATH` 環境変数でモデルパスを指定します。"
+        ]
+      },
+      "tts": {
+        "title": "音声合成 (Supertonic)",
+        "steps": [
+          "`models/supertonic/onnx` フォルダに ONNX モデルファイルを配置します。",
+          "`models/supertonic/voice_styles` フォルダにボイススタイル JSON ファイルを配置します。",
+          "アプリを完全に終了してから再起動します。"
+        ]
+      }
+    }
   },
   "lightingControl": {
     "dragHint": "ドラッグしてライティング位置を調整"
