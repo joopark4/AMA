@@ -44,15 +44,19 @@ export default function DataCleanupSettings() {
 
   return (
     <div className="space-y-4">
-      <div className="p-4 bg-gray-50 rounded-lg space-y-3">
-        <p className="text-sm text-gray-600">
+      <div
+        className="p-4 rounded-lg space-y-3"
+        style={{ background: 'oklch(1 0 0 / 0.45)' }}
+      >
+        <p className="text-sm" style={{ color: 'var(--ink-2)' }}>
           {t('settings.dataCleanup.description')}
         </p>
 
         {/* Open folder */}
         <button
           onClick={handleOpenFolder}
-          className="w-full px-3 py-2 text-xs text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-left"
+          className="w-full px-3 py-2 text-xs rounded-lg hover:bg-[oklch(0.92_0.02_60_/_0.7)] transition-colors text-left"
+          style={{ color: 'var(--ink-2)', background: 'oklch(1 0 0 / 0.45)' }}
         >
           {t('settings.dataCleanup.openFolder')}
         </button>
@@ -61,7 +65,8 @@ export default function DataCleanupSettings() {
         <button
           onClick={handleDeleteAll}
           disabled={deleting}
-          className="w-full px-3 py-2 text-sm text-white bg-danger rounded-lg hover:bg-danger disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full px-3 py-2 text-sm text-white bg-danger rounded-lg hover:bg-danger disabled:cursor-not-allowed transition-colors"
+          style={deleting ? { background: 'var(--surface-1)', color: 'var(--ink-3)' } : undefined}
         >
           {deleting ? t('settings.dataCleanup.deleting') : t('settings.dataCleanup.deleteAll')}
         </button>
@@ -72,7 +77,7 @@ export default function DataCleanupSettings() {
             <p className="text-sm text-ok">
               {t('settings.dataCleanup.success', { size: formatBytes(result.size ?? 0) })}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
               {t('settings.dataCleanup.restartHint')}
             </p>
           </div>

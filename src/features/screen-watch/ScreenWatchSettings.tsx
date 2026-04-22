@@ -125,7 +125,14 @@ export default function ScreenWatchSettings() {
   return (
     <div className="space-y-4">
       {!visionOk && (
-        <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+        <div
+          className="px-3 py-2 border rounded-lg text-sm"
+          style={{
+            background: 'oklch(0.95 0.04 75 / 0.5)',
+            borderColor: 'oklch(0.7 0.15 75 / 0.4)',
+            color: 'var(--warn)',
+          }}
+        >
           {t('settings.screenWatch.visionUnavailable', 'Vision 미지원 provider에서는 사용할 수 없습니다.')}
         </div>
       )}
@@ -133,10 +140,10 @@ export default function ScreenWatchSettings() {
       {/* Enable toggle */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.screenWatch.enabled', '화면 관찰 활성화')}
           </label>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
             {t('settings.screenWatch.enabledDesc', '주기적으로 화면을 관찰하고 상황에 맞는 한마디를 건넵니다')}
           </span>
         </div>
@@ -148,13 +155,21 @@ export default function ScreenWatchSettings() {
       </div>
 
       {watch.enabled && visionOk && hasPermission === false && (
-        <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 space-y-2">
+        <div
+          className="px-3 py-2 border rounded-lg text-sm space-y-2"
+          style={{
+            background: 'oklch(0.95 0.04 25 / 0.5)',
+            borderColor: 'oklch(0.7 0.15 25 / 0.4)',
+            color: 'oklch(0.45 0.18 25)',
+          }}
+        >
           <div>
             {t('settings.screenWatch.permissionDenied', '화면 녹화 권한이 없습니다. 관찰이 즉시 차단됩니다.')}
           </div>
           <button
             onClick={handleRequestPermission}
-            className="px-3 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700"
+            className="px-3 py-1 rounded text-white text-xs"
+            style={{ background: 'var(--danger)' }}
           >
             {t('settings.screenWatch.requestPermission', '권한 요청')}
           </button>
@@ -165,13 +180,14 @@ export default function ScreenWatchSettings() {
         <>
           {/* Capture target */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
               {t('settings.screenWatch.captureTarget', '캡처 대상')}
             </label>
             <select
               value={targetType}
               onChange={(e) => handleTargetChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-full px-3 py-2 border rounded-lg text-sm"
+              style={{ borderColor: 'var(--hairline)' }}
             >
               <option value="fullscreen">{t('settings.screenWatch.targets.fullscreen', '전체 화면')}</option>
               <option value="active-window">{t('settings.screenWatch.targets.activeWindow', '활성 창')}</option>
@@ -185,19 +201,23 @@ export default function ScreenWatchSettings() {
           {targetType === 'monitor' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
                   {t('settings.screenWatch.selectMonitor', '관찰할 모니터를 선택하세요')}
                 </span>
                 <button
                   onClick={() => void fetchMonitors()}
-                  className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50"
+                  className="text-xs px-2 py-1 rounded border hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
+                  style={{ borderColor: 'var(--hairline)' }}
                 >
                   {t('settings.screenWatch.refresh', '🔄 새로고침')}
                 </button>
               </div>
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {monitors.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-gray-500 border border-dashed border-gray-200 rounded-lg">
+                  <div
+                    className="px-3 py-2 text-xs border border-dashed rounded-lg"
+                    style={{ color: 'var(--ink-3)', borderColor: 'var(--hairline)' }}
+                  >
                     {t('settings.screenWatch.noMonitors', '모니터 정보를 읽을 수 없습니다')}
                   </div>
                 )}
@@ -208,13 +228,16 @@ export default function ScreenWatchSettings() {
                       key={`${m.name}-${i}`}
                       onClick={() => handleSelectMonitor(m.name)}
                       className={`w-full px-3 py-2 text-left rounded-lg border text-sm transition-colors ${
-                        isSelected
-                          ? 'border-[oklch(0.74_0.14_45)] bg-accent-soft text-accent-ink'
-                          : 'border-gray-200 hover:bg-gray-50'
+                        isSelected ? '' : 'hover:bg-[oklch(0.92_0.02_60_/_0.7)]'
                       }`}
+                      style={
+                        isSelected
+                          ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent-ink)' }
+                          : { borderColor: 'var(--hairline)' }
+                      }
                     >
                       <div className="font-medium truncate">{m.name}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs" style={{ color: 'var(--ink-3)' }}>
                         {m.width}×{m.height} @ {m.scale_factor}x ({m.x}, {m.y})
                       </div>
                     </button>
@@ -228,13 +251,14 @@ export default function ScreenWatchSettings() {
           {targetType === 'window' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
                   {t('settings.screenWatch.selectWindow', '관찰할 윈도우를 선택하세요')}
                 </span>
                 <button
                   onClick={() => void loadWindows()}
                   disabled={windowsLoading}
-                  className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                  className="text-xs px-2 py-1 rounded border hover:bg-[oklch(0.92_0.02_60_/_0.7)] disabled:opacity-50"
+                  style={{ borderColor: 'var(--hairline)' }}
                 >
                   {windowsLoading
                     ? t('settings.screenWatch.loading', '로딩...')
@@ -243,7 +267,10 @@ export default function ScreenWatchSettings() {
               </div>
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {windows.length === 0 && !windowsLoading && (
-                  <div className="px-3 py-2 text-xs text-gray-500 border border-dashed border-gray-200 rounded-lg space-y-2">
+                  <div
+                    className="px-3 py-2 text-xs border border-dashed rounded-lg space-y-2"
+                    style={{ color: 'var(--ink-3)', borderColor: 'var(--hairline)' }}
+                  >
                     <div>
                       {t(
                         'settings.screenWatch.noWindows',
@@ -254,7 +281,8 @@ export default function ScreenWatchSettings() {
                       onClick={() => {
                         invoke('open_accessibility_settings').catch(() => {});
                       }}
-                      className="px-2 py-1 rounded bg-gray-700 text-white text-xs hover:bg-gray-800"
+                      className="px-2 py-1 rounded text-white text-xs"
+                      style={{ background: 'var(--ink)' }}
                     >
                       {t('settings.screenWatch.openAccessibility', '접근성 설정 열기')}
                     </button>
@@ -268,13 +296,16 @@ export default function ScreenWatchSettings() {
                       key={`${w.appName}-${w.windowTitle}-${i}`}
                       onClick={() => handleSelectWindow(w)}
                       className={`w-full px-3 py-2 text-left rounded-lg border text-sm transition-colors ${
-                        isSelected
-                          ? 'border-[oklch(0.74_0.14_45)] bg-accent-soft text-accent-ink'
-                          : 'border-gray-200 hover:bg-gray-50'
+                        isSelected ? '' : 'hover:bg-[oklch(0.92_0.02_60_/_0.7)]'
                       }`}
+                      style={
+                        isSelected
+                          ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent-ink)' }
+                          : { borderColor: 'var(--hairline)' }
+                      }
                     >
                       <div className="font-medium truncate">{w.appName}</div>
-                      <div className="text-xs text-gray-500 truncate">{w.windowTitle}</div>
+                      <div className="text-xs truncate" style={{ color: 'var(--ink-3)' }}>{w.windowTitle}</div>
                     </button>
                   );
                 })}
@@ -284,7 +315,7 @@ export default function ScreenWatchSettings() {
 
           {/* Interval */}
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
               {t('settings.screenWatch.interval', '관찰 간격: {{value}}초', { value: watch.intervalSeconds })}
             </label>
             <input
@@ -294,9 +325,10 @@ export default function ScreenWatchSettings() {
               step={30}
               value={watch.intervalSeconds}
               onChange={(e) => setScreenWatchSettings({ intervalSeconds: parseInt(e.target.value, 10) })}
-              className="w-full accent-blue-600"
+              className="w-full"
+              style={{ accentColor: 'var(--accent)' }}
             />
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="flex justify-between text-xs" style={{ color: 'var(--ink-3)' }}>
               <span>30s</span>
               <span>2m</span>
               <span>10m</span>
@@ -305,7 +337,7 @@ export default function ScreenWatchSettings() {
 
           {/* Response style */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
               {t('settings.screenWatch.responseStyle', '응답 스타일')}
             </label>
             <div className="flex flex-wrap gap-2">
@@ -313,11 +345,12 @@ export default function ScreenWatchSettings() {
                 <button
                   key={style}
                   onClick={() => setScreenWatchSettings({ responseStyle: style })}
-                  className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                  className="px-3 py-1 rounded-full text-sm transition-colors hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
+                  style={
                     watch.responseStyle === style
-                      ? 'bg-accent text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                      ? { background: 'var(--accent)', color: 'white' }
+                      : { background: 'oklch(1 0 0 / 0.45)', color: 'var(--ink-2)' }
+                  }
                 >
                   {t(`settings.screenWatch.styles.${style}`, style)}
                 </button>
@@ -326,9 +359,9 @@ export default function ScreenWatchSettings() {
           </div>
 
           {/* Silent hours */}
-          <div className="space-y-2 border-t pt-3">
+          <div className="space-y-2 border-t pt-3" style={{ borderColor: 'var(--hairline)' }}>
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
                 {t('settings.screenWatch.silentHours', '조용한 시간 (관찰 중단)')}
               </label>
               <Toggle
@@ -352,9 +385,10 @@ export default function ScreenWatchSettings() {
                       silentHours: { ...watch.silentHours, start: parseInt(e.target.value, 10) || 0 },
                     })
                   }
-                  className="w-16 px-2 py-1 border border-gray-300 rounded"
+                  className="w-16 px-2 py-1 border rounded"
+                  style={{ borderColor: 'var(--hairline)' }}
                 />
-                <span className="text-gray-500">:00 ~</span>
+                <span style={{ color: 'var(--ink-3)' }}>:00 ~</span>
                 <input
                   type="number"
                   min={0}
@@ -365,9 +399,10 @@ export default function ScreenWatchSettings() {
                       silentHours: { ...watch.silentHours, end: parseInt(e.target.value, 10) || 0 },
                     })
                   }
-                  className="w-16 px-2 py-1 border border-gray-300 rounded"
+                  className="w-16 px-2 py-1 border rounded"
+                  style={{ borderColor: 'var(--hairline)' }}
                 />
-                <span className="text-gray-500">:00</span>
+                <span style={{ color: 'var(--ink-3)' }}>:00</span>
               </div>
             )}
           </div>
@@ -377,11 +412,14 @@ export default function ScreenWatchSettings() {
       {/* Privacy confirmation dialog */}
       {showPrivacy && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4 space-y-4 shadow-xl">
-            <h3 className="text-lg font-semibold">
+          <div
+            className="rounded-lg p-6 max-w-md mx-4 space-y-4 shadow-xl"
+            style={{ background: 'oklch(1 0 0 / 0.95)' }}
+          >
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>
               {t('settings.screenWatch.privacyTitle', '화면 관찰 안내')}
             </h3>
-            <p className="text-sm text-gray-700 whitespace-pre-line">
+            <p className="text-sm whitespace-pre-line" style={{ color: 'var(--ink-2)' }}>
               {t(
                 'settings.screenWatch.privacyBody',
                 '화면 데이터가 선택한 AI 서비스로 전송됩니다.\n\n민감 정보(비밀번호, 카드번호 등)가 화면에 노출되지 않도록 주의하세요. 조용한 시간 설정을 이용하면 특정 시간대 관찰을 중단할 수 있습니다.'
@@ -390,13 +428,15 @@ export default function ScreenWatchSettings() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowPrivacy(false)}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+                className="px-4 py-2 rounded-lg border text-sm hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
+                style={{ borderColor: 'var(--hairline)', color: 'var(--ink-2)' }}
               >
                 {t('settings.screenWatch.cancel', '취소')}
               </button>
               <button
                 onClick={confirmEnable}
-                className="px-4 py-2 rounded-lg bg-accent text-white text-sm hover:bg-blue-700"
+                className="px-4 py-2 rounded-lg text-sm"
+                style={{ background: 'var(--accent)', color: 'white' }}
               >
                 {t('settings.screenWatch.confirm', '동의하고 활성화')}
               </button>
