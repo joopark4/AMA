@@ -985,11 +985,14 @@ export const useSettingsStore = create<SettingsState>()(
         };
       },
       migrate: (persistedState, version) => {
+        // 1차 가드: persistedState 자체가 falsy/non-object인 경우 (clean install 등)
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState;
         }
 
         const state = persistedState as { settings?: Partial<Settings> } & Record<string, unknown>;
+        // 2차 가드: state.settings 누락 (스토어 schema가 크게 바뀌었거나 데이터 손상)
+        // 이후 모든 블록은 s.* 접근이 안전하다는 invariant 유지.
         if (!state.settings) return persistedState;
 
         // v14→v15: avatarName/avatarPersonalityPrompt → character 마이그레이션
@@ -1042,7 +1045,8 @@ export const useSettingsStore = create<SettingsState>()(
           // 이미 hidden=true 상태로 persist돼 있고 proactive.enabled=true면
           // 의도된 자동 OFF가 누락된 상태이므로 일관성 확보:
           //   기존 enabled를 previousEnabled에 옮기고 proactive는 OFF.
-          if (s.avatarHidden === true && s.proactive?.enabled === true) {
+          // s.proactive 명시 가드로 TS narrowing + spread 안전성 보장.
+          if (s.avatarHidden === true && s.proactive && s.proactive.enabled === true) {
             s.proactivePreviousEnabled = true;
             s.proactive = { ...s.proactive, enabled: false };
           }
