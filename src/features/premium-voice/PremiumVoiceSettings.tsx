@@ -6,7 +6,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { Play } from 'lucide-react';
-import { useSettingsStore, type SupertoneApiSettings } from '../../stores/settingsStore';
+import {
+  useSettingsStore,
+  type SupertoneApiSettings,
+  type TTSOutputLanguage,
+} from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { usePremiumStore, type SupertoneVoice } from './premiumStore';
 import { getModelLanguages } from './supertoneApiClient';
@@ -90,17 +94,28 @@ export default function PremiumVoiceSettings() {
     });
   }, [setTTSSettings, effectiveApiSettings]);
 
+  // 공용 TTS 출력 언어 우선 (auto 제외), 없으면 apiSettings 폴백
+  const effectiveTtsLanguage =
+    settings.tts.language && settings.tts.language !== 'auto'
+      ? settings.tts.language
+      : effectiveApiSettings.language || 'ko';
+
   const handleModelChange = useCallback((model: string) => {
     const supportedLangs = getModelLanguages(model);
-    const newLang = supportedLangs.includes(effectiveApiSettings.language) ? effectiveApiSettings.language : 'en';
+    const newLang = supportedLangs.includes(effectiveTtsLanguage) ? effectiveTtsLanguage : 'en';
     setTTSSettings({
       engine: 'supertone_api',
+      language: newLang as TTSOutputLanguage,
       supertoneApi: { ...effectiveApiSettings, model: model as SupertoneApiSettings['model'], language: newLang },
     });
-  }, [setTTSSettings, effectiveApiSettings]);
+  }, [setTTSSettings, effectiveApiSettings, effectiveTtsLanguage]);
 
   const handleLanguageChange = useCallback((language: string) => {
-    setTTSSettings({ supertoneApi: { ...effectiveApiSettings, language } });
+    // 공용 tts.language와 apiSettings.language 동시 업데이트 (호환 유지)
+    setTTSSettings({
+      language: language as TTSOutputLanguage,
+      supertoneApi: { ...effectiveApiSettings, language },
+    });
   }, [setTTSSettings, effectiveApiSettings]);
 
   const handleStyleChange = useCallback((style: string) => {
@@ -132,9 +147,9 @@ export default function PremiumVoiceSettings() {
       return;
     }
 
-    // 현재 언어 + 스타일에 맞는 샘플 찾기
+    // 현재 언어 + 스타일에 맞는 샘플 찾기 (공용 tts.language 우선)
     const samples = voice.samples || [];
-    const lang = effectiveApiSettings.language || 'ko';
+    const lang = effectiveTtsLanguage;
     const style = styleOverride || effectiveApiSettings.style || 'neutral';
     const sample =
       samples.find(s => s.language === lang && s.style === style) ||
@@ -192,7 +207,7 @@ export default function PremiumVoiceSettings() {
       setPreviewingVoiceId(null);
       previewAudioRef.current = null;
     }
-  }, [previewingVoiceId, effectiveApiSettings.language, effectiveApiSettings.style]);
+  }, [previewingVoiceId, effectiveTtsLanguage, effectiveApiSettings.style]);
 
   // 컴포넌트 언마운트 시 재생 정지 + blob URL 회수 (누수 방지)
   useEffect(() => {
@@ -207,9 +222,8 @@ export default function PremiumVoiceSettings() {
 
   const filteredVoices = voices.filter(v => {
     if (voiceFilter.gender && v.gender !== voiceFilter.gender) return false;
-    // 음성 출력 언어를 지원하는 음성만 표시
-    const ttsLang = effectiveApiSettings.language || 'ko';
-    if (!v.languages?.includes(ttsLang)) return false;
+    // 음성 출력 언어를 지원하는 음성만 표시 (공용 tts.language 우선)
+    if (!v.languages?.includes(effectiveTtsLanguage)) return false;
     if (voiceFilter.language && !v.languages?.includes(voiceFilter.language)) return false;
     return true;
   });
@@ -323,14 +337,14 @@ export default function PremiumVoiceSettings() {
 
           <Field label={t('settings.premium.ttsLanguage')} hint={t('settings.premium.ttsLanguageDesc')}>
             <Select
-              value={effectiveApiSettings.language || 'ko'}
+              value={supportedLanguages.includes(effectiveTtsLanguage) ? effectiveTtsLanguage : 'en'}
               onChange={handleLanguageChange}
               options={supportedLanguages.map((lang) => ({
                 value: lang,
                 label: LANGUAGE_LABELS[lang] || lang,
               }))}
             />
-            {effectiveApiSettings.language && !supportedLanguages.includes(effectiveApiSettings.language) && (
+            {!supportedLanguages.includes(effectiveTtsLanguage) && (
               <div style={{ fontSize: 11.5, color: 'var(--warn)', marginTop: 4 }}>
                 {t('settings.premium.ttsLanguageUnsupported')}
               </div>
@@ -394,24 +408,27 @@ export default function PremiumVoiceSettings() {
                           previewStyle
                         );
                       }}
-                      className="inline-flex items-center transition-all focus-ring"
+                      className="focus-ring"
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
                         gap: 4,
                         padding: '6px 10px',
                         fontSize: 12,
+                        whiteSpace: 'nowrap',
                         borderRadius: 99,
                         background: isSelected ? 'var(--accent)' : 'oklch(1 0 0 / 0.7)',
                         color: isSelected ? 'white' : 'var(--ink-2)',
                         boxShadow: isSelected ? 'none' : 'inset 0 0 0 1px var(--hairline)',
                         fontWeight: isSelected ? 500 : 400,
-                        transitionDuration: '160ms',
-                        transitionTimingFunction: 'var(--ease)',
+                        transition: 'all 160ms var(--ease)',
                       }}
                       data-interactive="true"
                     >
                       {isPreviewing && <Play size={10} fill="currentColor" />}
-                      <span>{voice.name}</span>
-                      <span style={{ opacity: 0.6 }}>({genderLabel})</span>
+                      {/* 이름과 성별을 단일 text node로 flatten — WKWebView에서
+                          inline-flex 버튼 내 중첩/형제 span이 렌더 누락되는 이슈 회피. */}
+                      <span>{voice.name} ({genderLabel})</span>
                     </button>
                   );
                 })}

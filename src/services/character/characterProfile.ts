@@ -70,6 +70,42 @@ export const DEFAULT_CHARACTER_PROFILE: CharacterProfile = {
 // ── 프롬프트 빌더 ──
 
 /**
+ * 시스템 프롬프트에서 사용하는 응답 언어.
+ *
+ * TTS 출력 언어(`settings.tts.language`)에 맞춰 LLM 응답 언어를 고정한다.
+ * UI 언어(`settings.language`)는 `auto`일 때의 폴백으로만 쓰이므로 ko/en/ja만
+ * 호환된다. es/pt/fr는 TTS 경로에서만 도달할 수 있다.
+ */
+export type PromptLanguage = 'ko' | 'en' | 'ja' | 'es' | 'pt' | 'fr';
+
+/**
+ * Layer 0: 응답 언어 강제 지시
+ *
+ * LLM은 시스템 프롬프트의 *지시 언어*와 유사한 언어로 응답하는 경향이 있다.
+ * 나머지 레이어가 한국어 지시로 작성되어 있어 영어/일본어 UI에서도 응답이
+ * 한국어로 고정되는 문제가 있으므로, 최상단에 명시적 언어 지시를 박아 넣는다.
+ *
+ * 텍스트는 해당 언어로 작성해 LLM이 확실히 그 언어로 응답하도록 유도한다.
+ */
+function buildLanguageLayer(language: PromptLanguage): string {
+  switch (language) {
+    case 'en':
+      return 'Always respond in English, regardless of the language used in the prompt above or below. Do not switch to another language unless the user explicitly asks for a translation.';
+    case 'ja':
+      return 'ユーザーが翻訳を明示的に要求しない限り、必ず日本語で応答してください。他の言語は使用しないでください。';
+    case 'es':
+      return 'Responde siempre en español, independientemente del idioma usado en los mensajes anteriores. No cambies de idioma a menos que el usuario pida explícitamente una traducción.';
+    case 'pt':
+      return 'Responda sempre em português, independentemente do idioma usado nas mensagens anteriores. Não mude de idioma a menos que o usuário peça explicitamente uma tradução.';
+    case 'fr':
+      return "Répondez toujours en français, quelle que soit la langue utilisée dans les messages précédents. Ne changez pas de langue sauf si l'utilisateur demande explicitement une traduction.";
+    case 'ko':
+    default:
+      return '사용자가 명시적으로 다른 언어를 요청하지 않는 한, 반드시 한국어로 응답합니다.';
+  }
+}
+
+/**
  * Layer 1: 코어 아이덴티티
  */
 function buildIdentityLayer(profile: CharacterProfile): string {
@@ -182,14 +218,23 @@ function buildExampleLayer(dialogues: ExampleDialogue[]): string | null {
 /**
  * 다층 시스템 프롬프트 빌드
  *
+ * Layer 0: 응답 언어 강제 (language 인자 기반)
  * Layer 1: 코어 아이덴티티
  * Layer 2: 행동 규칙
  * Layer 3: 배경/로어 (있을 때만)
  * Layer 4: Few-shot 예시 (있을 때만)
  * Layer 5: 메모리/컨텍스트 (Phase 2~4에서 추가 예정)
+ *
+ * @param language 응답 언어 (기본 'ko') — UI 언어와 일치시켜 호출
  */
-export function buildCharacterPrompt(profile: CharacterProfile): string {
+export function buildCharacterPrompt(
+  profile: CharacterProfile,
+  language: PromptLanguage = 'ko'
+): string {
   const layers: string[] = [];
+
+  // Layer 0 — 최상단 언어 강제 지시
+  layers.push(buildLanguageLayer(language));
 
   // Layer 1
   layers.push(buildIdentityLayer(profile));

@@ -17,6 +17,7 @@ import { buildCharacterPrompt } from '../character';
 import { buildMessageWindow } from './memoryManager';
 import type { Message as LLMMessage } from './types';
 import { presenceTracker, type Presence } from '../presence/presenceTracker';
+import { resolveResponseLanguage } from '../../hooks/useConversation';
 
 const debug = (...args: unknown[]) => {
   if (import.meta.env.DEV) console.log('[proactive]', ...args);
@@ -213,9 +214,11 @@ export async function generateProactiveMessage(trigger: ProactiveTrigger): Promi
   const { settings } = useSettingsStore.getState();
   const character = settings.character;
 
+  // 응답 언어는 TTS 출력 언어 기준 (엔진별 폴백 포함)
+  const responseLanguage = resolveResponseLanguage();
   const basePrompt =
     character?.name || character?.personality?.traits?.length
-      ? buildCharacterPrompt(character)
+      ? buildCharacterPrompt(character, responseLanguage)
       : '';
   if (!basePrompt) return null;
 

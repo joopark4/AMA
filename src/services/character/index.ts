@@ -13,6 +13,7 @@ export type {
 } from './characterProfile';
 
 // 프로필 + 프롬프트 빌더
+export type { PromptLanguage } from './characterProfile';
 export {
   DEFAULT_CHARACTER_PROFILE,
   buildCharacterPrompt,

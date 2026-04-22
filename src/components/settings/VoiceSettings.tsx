@@ -5,7 +5,7 @@
 import { type KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Play, Square } from 'lucide-react';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { useSettingsStore, type TTSOutputLanguage } from '../../stores/settingsStore';
 import {
   buildGlobalShortcutFromKeyboardEvent,
   DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR,
@@ -14,6 +14,8 @@ import {
 import { useAppStatusStore } from '../../stores/appStatusStore';
 import { useModelDownloadStore } from '../../stores/modelDownloadStore';
 import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
+import { resolveResponseLanguage } from '../../hooks/useConversation';
+import type { PromptLanguage } from '../../services/character';
 import { Field, FormCard, Pill, Row, SectionHint, Toggle } from './forms';
 
 const WHISPER_MODELS = ['base', 'small', 'medium'] as const;
@@ -29,6 +31,46 @@ const WHISPER_MODEL_SIZE: Record<string, string> = {
  * 라벨은 i18n 키 + 번호 보간 조합으로 동적 생성 (getSupertonicVoiceLabel).
  */
 const SUPERTONIC_VOICE_KEYS = ['F1', 'F2', 'F3', 'F4', 'F5', 'M1', 'M2', 'M3', 'M4', 'M5'];
+
+/** TTS 출력 언어 옵션 (로컬/프리미엄 공용). */
+const TTS_LANGUAGE_OPTIONS: { value: TTSOutputLanguage; label: string }[] = [
+  { value: 'auto', label: '' }, // label은 런타임에 t() 주입
+  { value: 'ko', label: '한국어' },
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: '日本語' },
+  { value: 'es', label: 'Español' },
+  { value: 'pt', label: 'Português' },
+  { value: 'fr', label: 'Français' },
+];
+
+/** Supertonic(로컬 TTS)이 지원하는 언어 — 이 외는 `en`으로 폴백된다. */
+const SUPERTONIC_SUPPORTED_LANGUAGES = new Set<TTSOutputLanguage>(['ko', 'en', 'es', 'pt', 'fr']);
+
+/**
+ * TTS 테스트용 샘플 문장 — 언어별 네이티브 문장.
+ *
+ * 현재 선택된 엔진 + TTS 언어에 맞는 언어로 발음되도록 `resolveResponseLanguage()` 결과를
+ * 키로 사용해 선택한다. 사용자가 UI 언어와 다른 TTS 언어를 고르면
+ * (예: UI=ko, TTS=en) 영어 샘플이 재생된다.
+ */
+const TTS_SAMPLE_BY_LANGUAGE: Record<PromptLanguage, (name: string) => string> = {
+  ko: (name) => `안녕하세요! 저는 ${name}이에요. 음성 테스트 중입니다.`,
+  en: (name) => `Hello! I'm ${name}. This is a voice test.`,
+  ja: (name) => `こんにちは!私は${name}です。音声テストをしています。`,
+  es: (name) => `¡Hola! Soy ${name}. Esta es una prueba de voz.`,
+  pt: (name) => `Olá! Eu sou ${name}. Este é um teste de voz.`,
+  fr: (name) => `Bonjour ! Je suis ${name}. Ceci est un test vocal.`,
+};
+
+/** 아바타 이름 미설정 시 사용할 언어별 기본값. */
+const DEFAULT_AVATAR_NAME_BY_LANGUAGE: Record<PromptLanguage, string> = {
+  ko: '아바타',
+  en: 'Avatar',
+  ja: 'アバター',
+  es: 'Avatar',
+  pt: 'Avatar',
+  fr: 'Avatar',
+};
 
 function getSupertonicVoiceLabel(t: ReturnType<typeof useTranslation>['t'], key: string): string {
   const isFemale = key.startsWith('F');
@@ -73,8 +115,17 @@ export default function VoiceSettings() {
     checkModelStatus,
   } = useModelDownloadStore();
   const { speak, isSpeaking, stop, error: ttsError } = useSpeechSynthesis();
-  const avatarName = settings.avatarName?.trim() || t('settings.avatar.defaultName');
-  const ttsSample = t('settings.avatar.ttsTest.sample', { name: avatarName });
+  // TTS 테스트 샘플은 **현재 엔진 + TTS 언어 조합**에 맞춰 생성 —
+  // resolveResponseLanguage()가 supertonic + 미지원 언어(ja 등)를 en으로 폴백해주므로
+  // 실제 재생되는 음성과 일치하는 언어로 발음된다.
+  const ttsLanguageForSample = useMemo<PromptLanguage>(
+    () => resolveResponseLanguage(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [settings.tts.engine, settings.tts.language, settings.language]
+  );
+  const avatarName =
+    settings.avatarName?.trim() || DEFAULT_AVATAR_NAME_BY_LANGUAGE[ttsLanguageForSample];
+  const ttsSample = TTS_SAMPLE_BY_LANGUAGE[ttsLanguageForSample](avatarName);
   const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
   const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
   const shortcutRegisterError = useAppStatusStore(
@@ -242,6 +293,37 @@ export default function VoiceSettings() {
         >
           {getSupertonicVoiceLabel(t, settings.tts.voice || 'F1')}
         </div>
+      </Field>
+
+      {/* TTS 출력 언어 (로컬/프리미엄 공용) —
+          Supertonic은 일본어 미지원이지만 UI에는 표시한다(사용자가 엔진 비교 시 혼란 방지).
+          ja가 선택되고 엔진이 supertonic이면 런타임에 TTS/LLM이 영어로 폴백되고 경고를 표시. */}
+      <Field label={<GroupTitle>{t('settings.voice.tts.language')}</GroupTitle>}>
+        <SectionHint>{t('settings.voice.tts.languageDesc')}</SectionHint>
+        <div className="flex flex-wrap" style={{ gap: 6 }}>
+          {TTS_LANGUAGE_OPTIONS.map((opt) => {
+            const label =
+              opt.value === 'auto' ? t('settings.voice.tts.languageAuto') : opt.label;
+            const currentLang = settings.tts.language ?? 'auto';
+            return (
+              <Pill
+                key={opt.value}
+                active={currentLang === opt.value}
+                onClick={() => setTTSSettings({ language: opt.value })}
+              >
+                {label}
+              </Pill>
+            );
+          })}
+        </div>
+        {settings.tts.engine === 'supertonic' &&
+          settings.tts.language &&
+          settings.tts.language !== 'auto' &&
+          !SUPERTONIC_SUPPORTED_LANGUAGES.has(settings.tts.language) && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--warn)' }}>
+              {t('settings.voice.tts.languageUnsupportedLocal')}
+            </div>
+          )}
       </Field>
 
       {/* TTS Test */}

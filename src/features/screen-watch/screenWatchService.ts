@@ -18,7 +18,7 @@ import { ClaudeClient } from '../../services/ai/claudeClient';
 import { OpenAIClient } from '../../services/ai/openaiClient';
 import { GeminiClient } from '../../services/ai/geminiClient';
 import { codexClient } from '../codex';
-import { buildSystemPrompt } from '../../hooks/useConversation';
+import { buildSystemPrompt, resolveResponseLanguage } from '../../hooks/useConversation';
 
 type RustCaptureResult =
   | { status: 'unchanged' }
@@ -231,7 +231,12 @@ export class ScreenWatchService {
 
   private buildObservationPrompt(style: ScreenWatchResponseStyle): string {
     const { settings } = useSettingsStore.getState();
-    const base = buildSystemPrompt(settings.avatarName || '', settings.avatarPersonalityPrompt || '');
+    // 응답 언어는 TTS 출력 언어 기준 (엔진별 폴백 포함)
+    const base = buildSystemPrompt(
+      settings.avatarName || '',
+      settings.avatarPersonalityPrompt || '',
+      resolveResponseLanguage()
+    );
     const recent =
       this.recentObservations.length > 0
         ? `\n[최근 관찰 발언 — 중복/반복 금지]\n${this.recentObservations.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
