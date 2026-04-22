@@ -20,10 +20,8 @@ import {
   History,
   Keyboard,
   Mic,
-  Send,
   Settings as SettingsIcon,
   Sparkles,
-  X,
 } from 'lucide-react';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -51,6 +49,8 @@ import {
 import { StatusPill, type StatusKind } from './controlCluster/StatusPill';
 import { ListeningBars } from './controlCluster/ListeningBars';
 import { ClusterBtn, Divider } from './controlCluster/clusterPrimitives';
+import { DependencyGuideModal } from './controlCluster/DependencyGuideModal';
+import { TextInputRow } from './controlCluster/TextInputRow';
 
 /* ────────────────────────────── 메인 컴포넌트 ────────────────────────────── */
 
@@ -473,83 +473,21 @@ export default function ControlCluster() {
 
       {/* ─── Text input row (showTextInput 시) ─── */}
       {showTextInput && (
-        <form
+        <TextInputRow
+          value={textInput}
+          onChange={setTextInput}
           onSubmit={handleTextSubmit}
-          className="flex items-center gap-2"
-          style={{
-            padding: 3,
-            paddingLeft: 14,
-            borderRadius: 999,
-            width: 440,
-            // glass-strong 효과를 인라인으로 적용하되, 외곽 shadow 제거 (겹쳐 보이는 잔상 방지).
-            background: 'var(--surface-2)',
-            backdropFilter: 'blur(40px) saturate(1.8)',
-            WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
-            boxShadow: 'inset 0 1px 0 var(--top-edge), inset 0 0 0 1px var(--hairline)',
-            animation: 'inputSlide 240ms var(--ease)',
+          onClose={() => {
+            setShowTextInput(false);
+            setTextInput('');
           }}
-          data-interactive="true"
-        >
-          <Keyboard size={14} style={{ color: 'var(--ink-3)' }} />
-          <input
-            type="text"
-            value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
-            placeholder={t('chat.placeholder')}
-            className="flex-1 bg-transparent border-0 outline-none"
-            style={{
-              padding: '4px 4px',
-              fontSize: 13,
-              letterSpacing: '-0.01em',
-              color: 'var(--ink)',
-            }}
-            autoFocus
-            data-interactive="true"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setShowTextInput(false);
-              setTextInput('');
-            }}
-            title={t('overlay.closeKeyboard')}
-            className="grid place-items-center transition-all"
-            style={{
-              width: 18,
-              height: 18,
-              borderRadius: 999,
-              background: 'transparent',
-              color: 'var(--ink-3)',
-              transitionDuration: '160ms',
-              transitionTimingFunction: 'var(--ease)',
-            }}
-            data-interactive="true"
-          >
-            <X size={12} />
-          </button>
-          <button
-            type="submit"
-            disabled={
-              !textInput.trim() ||
-              (status === 'processing' &&
-                settings.llm.provider !== CLAUDE_CODE_PROVIDER &&
-                settings.llm.provider !== 'codex')
-            }
-            className="grid place-items-center transition-all"
-            style={{
-              width: 24,
-              height: 18,
-              borderRadius: 999,
-              background: textInput.trim() ? 'var(--accent)' : 'oklch(0.88 0.01 60)',
-              color: textInput.trim() ? 'white' : 'var(--ink-3)',
-              transitionDuration: '200ms',
-              transitionTimingFunction: 'var(--ease)',
-            }}
-            data-interactive="true"
-          >
-            <Send size={12} />
-          </button>
-        </form>
+          submitDisabled={
+            !textInput.trim() ||
+            (status === 'processing' &&
+              settings.llm.provider !== CLAUDE_CODE_PROVIDER &&
+              settings.llm.provider !== 'codex')
+          }
+        />
       )}
 
       {/* ─── Button cluster row: 메뉴바 왼쪽에 StatusPill 상시 표시
@@ -625,69 +563,11 @@ export default function ControlCluster() {
 
       {/* ─── Dependency guide modal ─── */}
       {showDependencyGuide && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-          style={{ background: 'oklch(0.2 0 0 / 0.6)' }}
-          data-interactive="true"
-        >
-          <div
-            className="glass-strong w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5 scroll"
-            style={{ borderRadius: 'var(--r-lg)' }}
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>
-                {t('dependency.guideTitle')}
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={openSettings}
-                  className="px-3 py-1 text-xs rounded-md text-white"
-                  style={{ background: 'var(--accent)' }}
-                >
-                  {t('dependency.openSettings')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDependencyGuide(false)}
-                  className="px-3 py-1 text-xs rounded-md"
-                  style={{ background: 'oklch(1 0 0 / 0.6)', color: 'var(--ink)' }}
-                >
-                  {t('dependency.close')}
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-3 space-y-3">
-              {dependencyIssues.map((issue) => (
-                <div
-                  key={issue.id}
-                  className="p-3"
-                  style={{
-                    border: '1px solid var(--hairline)',
-                    borderRadius: 'var(--r-sm)',
-                    background: 'oklch(1 0 0 / 0.4)',
-                  }}
-                >
-                  <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-                    {issue.title}
-                  </div>
-                  <div className="mt-1 text-xs" style={{ color: 'var(--ink-2)' }}>
-                    {issue.summary}
-                  </div>
-                  <ol
-                    className="mt-2 list-decimal list-inside space-y-1 text-xs"
-                    style={{ color: 'var(--ink-2)' }}
-                  >
-                    {issue.steps.map((step, index) => (
-                      <li key={`${issue.id}-${index}`}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <DependencyGuideModal
+          issues={dependencyIssues}
+          onClose={() => setShowDependencyGuide(false)}
+          onOpenSettings={openSettings}
+        />
       )}
     </div>
   );
