@@ -52,16 +52,14 @@ export function Row({
       className="flex items-center justify-between"
       style={{ padding: '10px 0' }}
     >
-      {description ? (
-        <div className="flex flex-col">
-          <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>{label}</div>
+      <div className={description ? 'flex flex-col' : undefined}>
+        <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>{label}</div>
+        {description && (
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
             {description}
           </div>
-        </div>
-      ) : (
-        <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>{label}</div>
-      )}
+        )}
+      </div>
       <div className="flex items-center gap-2">{children}</div>
     </div>
   );
