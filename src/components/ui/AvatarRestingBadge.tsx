@@ -6,9 +6,11 @@
  * ControlCluster의 아바타 숨김 토글로 다시 띄울 수 있다.
  *
  * 이름 결정:
- *   character.name 만 사용. settings.avatarName은 OAuth 닉네임으로 자동
- *   덮어써지는 경우가 있어(App.tsx) 폴백에서 제외 — 계정 이름이 노출되는
- *   문제를 방지. character.name이 비어 있으면 i18n fallback("아바타").
+ *   1) settings.character.name (캐릭터 설정 입력)
+ *   2) settings.avatarName (onboarding 입력)
+ *   3) i18n fallback ("아바타")
+ *   App.tsx에서 OAuth 닉네임을 avatarName으로 자동 set 하던 로직은 제거되어,
+ *   여기서 노출되는 이름은 사용자가 명시적으로 입력한 값만 사용된다.
  *
  * pointer-events:none — 클릭스루 통과. 인터랙션 없음.
  */
@@ -18,8 +20,12 @@ import { useSettingsStore } from '../../stores/settingsStore';
 export default function AvatarRestingBadge() {
   const { t } = useTranslation();
   const characterName = useSettingsStore((s) => s.settings.character?.name);
+  const avatarName = useSettingsStore((s) => s.settings.avatarName);
 
-  const name = (characterName || '').trim() || t('app.avatarFallback', '아바타');
+  const name =
+    (characterName || '').trim() ||
+    (avatarName || '').trim() ||
+    t('app.avatarFallback', '아바타');
 
   return (
     <div
