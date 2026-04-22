@@ -53,6 +53,8 @@ function drawWaveform(
 
   // waveform (accent 톤) — 진폭은 midY 기준 위/아래 ±(midY × 0.85)로 클램프해
   // canvas 경계를 벗어나지 않도록 안전 한도 적용 (큰 음성에서도 잘리지 않음).
+  // audioProcessor가 [-1, 1]을 보장하지만 이상치/디바이스 비정상 입력 방어를 위해
+  // 샘플별로도 [-1, 1]로 한 번 더 clamp.
   ctx.strokeStyle = 'rgba(230, 144, 58, 0.95)';
   ctx.lineWidth = Math.max(1.5, width / 220);
   ctx.beginPath();
@@ -60,7 +62,8 @@ function drawWaveform(
   const safeAmplitude = midY * 0.85;
   for (let i = 0; i < waveform.length; i++) {
     const x = (i / (waveform.length - 1)) * width;
-    const y = midY + waveform[i] * safeAmplitude;
+    const sample = Math.max(-1, Math.min(1, waveform[i]));
+    const y = midY + sample * safeAmplitude;
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
