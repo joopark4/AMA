@@ -14,20 +14,17 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import {
   Eye,
   EyeOff,
   History,
   Keyboard,
   Mic,
-  Send,
   Settings as SettingsIcon,
   Sparkles,
-  X,
 } from 'lucide-react';
 import { useConversationStore } from '../../stores/conversationStore';
-import { useSettingsStore, type LLMProvider } from '../../stores/settingsStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useConversation } from '../../hooks/useConversation';
 import { useGlobalVoiceShortcut } from '../../hooks/useGlobalVoiceShortcut';
 import { DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR } from '../../services/tauri/globalShortcutUtils';
@@ -38,294 +35,22 @@ import { CLAUDE_CODE_PROVIDER } from '../../features/channels';
 import { QuickActionsPalette } from '../../features/quick-actions';
 import { permissions } from '../../services/tauri/permissions';
 import { ttsRouter } from '../../services/voice/ttsRouter';
-import { audioProcessor } from '../../services/voice/audioProcessor';
 import VoiceWaveform from './VoiceWaveform';
 import AvatarRestingBadge from './AvatarRestingBadge';
-
-interface DependencyIssue {
-  id: string;
-  title: string;
-  summary: string;
-  steps: string[];
-}
-
-const PROVIDER_LABELS: Record<LLMProvider, string> = {
-  ollama: 'Ollama',
-  localai: 'LocalAI',
-  claude: 'Claude',
-  openai: 'OpenAI',
-  gemini: 'Gemini',
-  claude_code: 'Claude Code',
-  codex: 'Codex',
-};
-
-const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string> = {
-  claude: 'claude-sonnet-4-5',
-  openai: 'gpt-5.1',
-  gemini: 'gemini-2.5-flash',
-};
-
-/** i18n returnObjects helper (string[] 안전 캐스트) */
-function readSteps(t: TFunction, key: string, params?: Record<string, unknown>): string[] {
-  const v = t(key, { returnObjects: true, ...(params ?? {}) }) as unknown;
-  return Array.isArray(v) ? (v as string[]) : [];
-}
-
-function buildModelUnsetIssue(t: TFunction, provider: LLMProvider): DependencyIssue {
-  if (provider === 'ollama' || provider === 'localai') {
-    return {
-      id: 'llm-model-unset',
-      title: t(`dependency.issue.modelUnset.${provider}.title`),
-      summary: t(`dependency.issue.modelUnset.${provider}.summary`),
-      steps: readSteps(t, `dependency.issue.modelUnset.${provider}.steps`),
-    };
-  }
-  const providerLabel = PROVIDER_LABELS[provider];
-  const defaultModel = CLOUD_DEFAULT_MODELS[provider as 'claude' | 'openai' | 'gemini'];
-  return {
-    id: 'llm-model-unset',
-    title: t('dependency.issue.modelUnset.cloud.title', { provider: providerLabel }),
-    summary: t('dependency.issue.modelUnset.cloud.summary', { provider: providerLabel }),
-    steps: readSteps(t, 'dependency.issue.modelUnset.cloud.steps', {
-      provider: providerLabel,
-      defaultModel,
-    }),
-  };
-}
-
-function buildEndpointUnsetIssue(t: TFunction, provider: 'ollama' | 'localai'): DependencyIssue {
-  return {
-    id: 'llm-endpoint-unset',
-    title: t(`dependency.issue.endpointUnset.${provider}.title`),
-    summary: t(`dependency.issue.endpointUnset.${provider}.summary`),
-    steps: readSteps(t, `dependency.issue.endpointUnset.${provider}.steps`),
-  };
-}
-
-function buildCloudApiKeyIssue(
-  t: TFunction,
-  provider: 'claude' | 'openai' | 'gemini'
-): DependencyIssue {
-  const apiKeyGuide =
-    provider === 'claude'
-      ? 'console.anthropic.com'
-      : provider === 'openai'
-        ? 'platform.openai.com'
-        : 'aistudio.google.com';
-  const keyPrefix =
-    provider === 'openai'
-      ? '`sk-...`'
-      : provider === 'claude'
-        ? '`sk-ant-...`'
-        : t('dependency.issue.apiKey.fallbackKeyPrefix', 'API key');
-  const providerLabel = PROVIDER_LABELS[provider];
-  return {
-    id: 'llm-api-key',
-    title: t('dependency.issue.apiKey.title', { provider: providerLabel }),
-    summary: t('dependency.issue.apiKey.summary', { provider: providerLabel }),
-    steps: readSteps(t, 'dependency.issue.apiKey.steps', {
-      provider: providerLabel,
-      apiKeyGuide,
-      keyPrefix,
-    }),
-  };
-}
-
-function buildLocalServerIssue(
-  t: TFunction,
-  provider: 'ollama' | 'localai',
-  endpoint: string,
-  model: string
-): DependencyIssue {
-  const fallbackEndpoint =
-    provider === 'ollama' ? 'http://localhost:11434' : 'http://localhost:8080';
-  const fallbackModel = 'deepseek-v3';
-  return {
-    id: provider === 'ollama' ? 'llm-ollama-server' : 'llm-localai-server',
-    title: t(`dependency.issue.localServer.${provider}.title`),
-    summary: t(`dependency.issue.localServer.${provider}.summary`),
-    steps: readSteps(t, `dependency.issue.localServer.${provider}.steps`, {
-      model: model || fallbackModel,
-      endpoint: endpoint || fallbackEndpoint,
-    }),
-  };
-}
-
-function buildLocalModelIssue(
-  t: TFunction,
-  provider: 'ollama' | 'localai',
-  model: string
-): DependencyIssue {
-  const displayModel =
-    model || (t('dependency.issue.localModel.unsetLabel', '(unset)') as string);
-  return {
-    id: provider === 'ollama' ? 'llm-ollama-model' : 'llm-localai-model',
-    title: t(`dependency.issue.localModel.${provider}.title`),
-    summary: t(`dependency.issue.localModel.${provider}.summary`, { model: displayModel }),
-    steps: readSteps(t, `dependency.issue.localModel.${provider}.steps`, {
-      model: model || 'deepseek-v3',
-    }),
-  };
-}
-
-/* ─────────────────────── 보조 컴포넌트 (v2 리디자인) ─────────────────────── */
-
-type StatusKind = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
-
-function StatusPill({ kind, label }: { kind: StatusKind; label: string }) {
-  const meta: Record<StatusKind, { dot: string; text: string; animate: boolean }> = {
-    idle: { dot: 'oklch(0.7 0.01 50)', text: 'var(--ink-3)', animate: false },
-    listening: { dot: 'var(--glow)', text: 'var(--glow)', animate: true },
-    processing: { dot: 'var(--accent)', text: 'var(--accent)', animate: true },
-    speaking: { dot: 'var(--ok)', text: 'var(--ok)', animate: true },
-    error: { dot: 'var(--danger)', text: 'var(--danger)', animate: true },
-  };
-  const m = meta[kind];
-  return (
-    <div
-      className="glass inline-flex items-center gap-2 px-3 py-1.5"
-      style={{
-        borderRadius: 999,
-        fontSize: 12.5,
-        fontWeight: 500,
-        color: m.text,
-        letterSpacing: '-0.01em',
-      }}
-    >
-      <span
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 99,
-          background: m.dot,
-          boxShadow: `0 0 12px ${m.dot}`,
-          animation: m.animate ? 'auraBreath 1.6s ease-in-out infinite' : 'none',
-        }}
-      />
-      {label}
-    </div>
-  );
-}
-
-/**
- * ListeningBars — Voice 버튼 내 7개 막대.
- * audioProcessor에서 실시간 amplitude를 읽어 각 막대의 scaleY를 동기화.
- * 마운트는 voice button이 listening일 때만 (외부에서 조건부 렌더).
- */
-function ListeningBars() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const BAR_COUNT = 7;
-  const SAMPLES_PER_BAR = 4;
-  const SMOOTH = 0.4;
-  const FRAME_INTERVAL_MS = 1000 / 30;
-  const SENSITIVITY = 3.5;
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const bars = Array.from(container.children) as HTMLElement[];
-    let rafId: number | null = null;
-    let lastFrame = 0;
-    const smoothed = new Float32Array(BAR_COUNT);
-
-    const tick = (ts: number) => {
-      rafId = requestAnimationFrame(tick);
-      if (ts - lastFrame < FRAME_INTERVAL_MS) return;
-      lastFrame = ts;
-
-      const data = audioProcessor.getWaveformData(BAR_COUNT * SAMPLES_PER_BAR);
-      for (let i = 0; i < BAR_COUNT; i++) {
-        let peak = 0;
-        for (let j = 0; j < SAMPLES_PER_BAR; j++) {
-          const v = Math.abs(data[i * SAMPLES_PER_BAR + j] || 0);
-          if (v > peak) peak = v;
-        }
-        smoothed[i] = smoothed[i] * (1 - SMOOTH) + peak * SMOOTH;
-        const scaled = Math.max(0.2, Math.min(1, smoothed[i] * SENSITIVITY));
-        bars[i].style.transform = `scaleY(${scaled})`;
-      }
-    };
-    rafId = requestAnimationFrame(tick);
-
-    return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      // 언마운트 직후 DOM이 제거되므로 transform 리셋은 불필요 (dead code 제거).
-    };
-  }, []);
-
-  return (
-    <div
-      ref={containerRef}
-      className="flex items-center justify-center gap-[3px]"
-      style={{ height: 22 }}
-    >
-      {Array.from({ length: BAR_COUNT }, (_, i) => (
-        <div
-          key={i}
-          style={{
-            width: 3,
-            height: 18,
-            borderRadius: 2,
-            background: 'white',
-            transformOrigin: 'center',
-            transform: 'scaleY(0.4)',
-            transition: 'transform 60ms linear',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ClusterBtn({
-  children,
-  onClick,
-  title,
-  active,
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  title: string;
-  active?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      disabled={disabled}
-      data-interactive="true"
-      className={[
-        'grid place-items-center transition-all',
-        'w-10 h-5 rounded-pill',
-        disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[oklch(0.92_0.02_60_/_0.7)]',
-      ].join(' ')}
-      style={{
-        background: active ? 'var(--accent-soft)' : 'transparent',
-        color: active ? 'var(--accent-ink)' : 'var(--ink-2)',
-        transitionDuration: '160ms',
-        transitionTimingFunction: 'var(--ease)',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Divider() {
-  return (
-    <div
-      style={{
-        width: 1,
-        height: 24,
-        background: 'var(--hairline-strong)',
-        margin: '0 4px',
-      }}
-    />
-  );
-}
+import {
+  type DependencyIssue,
+  readSteps,
+  buildModelUnsetIssue,
+  buildEndpointUnsetIssue,
+  buildCloudApiKeyIssue,
+  buildLocalServerIssue,
+  buildLocalModelIssue,
+} from './controlCluster/dependencyIssues';
+import { StatusPill, type StatusKind } from './controlCluster/StatusPill';
+import { ListeningBars } from './controlCluster/ListeningBars';
+import { ClusterBtn, Divider } from './controlCluster/clusterPrimitives';
+import { DependencyGuideModal } from './controlCluster/DependencyGuideModal';
+import { TextInputRow } from './controlCluster/TextInputRow';
 
 /* ────────────────────────────── 메인 컴포넌트 ────────────────────────────── */
 
@@ -748,83 +473,21 @@ export default function ControlCluster() {
 
       {/* ─── Text input row (showTextInput 시) ─── */}
       {showTextInput && (
-        <form
+        <TextInputRow
+          value={textInput}
+          onChange={setTextInput}
           onSubmit={handleTextSubmit}
-          className="flex items-center gap-2"
-          style={{
-            padding: 3,
-            paddingLeft: 14,
-            borderRadius: 999,
-            width: 440,
-            // glass-strong 효과를 인라인으로 적용하되, 외곽 shadow 제거 (겹쳐 보이는 잔상 방지).
-            background: 'var(--surface-2)',
-            backdropFilter: 'blur(40px) saturate(1.8)',
-            WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
-            boxShadow: 'inset 0 1px 0 var(--top-edge), inset 0 0 0 1px var(--hairline)',
-            animation: 'inputSlide 240ms var(--ease)',
+          onClose={() => {
+            setShowTextInput(false);
+            setTextInput('');
           }}
-          data-interactive="true"
-        >
-          <Keyboard size={14} style={{ color: 'var(--ink-3)' }} />
-          <input
-            type="text"
-            value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
-            placeholder={t('chat.placeholder')}
-            className="flex-1 bg-transparent border-0 outline-none"
-            style={{
-              padding: '4px 4px',
-              fontSize: 13,
-              letterSpacing: '-0.01em',
-              color: 'var(--ink)',
-            }}
-            autoFocus
-            data-interactive="true"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setShowTextInput(false);
-              setTextInput('');
-            }}
-            title={t('overlay.closeKeyboard')}
-            className="grid place-items-center transition-all"
-            style={{
-              width: 18,
-              height: 18,
-              borderRadius: 999,
-              background: 'transparent',
-              color: 'var(--ink-3)',
-              transitionDuration: '160ms',
-              transitionTimingFunction: 'var(--ease)',
-            }}
-            data-interactive="true"
-          >
-            <X size={12} />
-          </button>
-          <button
-            type="submit"
-            disabled={
-              !textInput.trim() ||
-              (status === 'processing' &&
-                settings.llm.provider !== CLAUDE_CODE_PROVIDER &&
-                settings.llm.provider !== 'codex')
-            }
-            className="grid place-items-center transition-all"
-            style={{
-              width: 24,
-              height: 18,
-              borderRadius: 999,
-              background: textInput.trim() ? 'var(--accent)' : 'oklch(0.88 0.01 60)',
-              color: textInput.trim() ? 'white' : 'var(--ink-3)',
-              transitionDuration: '200ms',
-              transitionTimingFunction: 'var(--ease)',
-            }}
-            data-interactive="true"
-          >
-            <Send size={12} />
-          </button>
-        </form>
+          submitDisabled={
+            !textInput.trim() ||
+            (status === 'processing' &&
+              settings.llm.provider !== CLAUDE_CODE_PROVIDER &&
+              settings.llm.provider !== 'codex')
+          }
+        />
       )}
 
       {/* ─── Button cluster row: 메뉴바 왼쪽에 StatusPill 상시 표시
@@ -900,69 +563,11 @@ export default function ControlCluster() {
 
       {/* ─── Dependency guide modal ─── */}
       {showDependencyGuide && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-          style={{ background: 'oklch(0.2 0 0 / 0.6)' }}
-          data-interactive="true"
-        >
-          <div
-            className="glass-strong w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5 scroll"
-            style={{ borderRadius: 'var(--r-lg)' }}
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold" style={{ color: 'var(--ink)' }}>
-                {t('dependency.guideTitle')}
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={openSettings}
-                  className="px-3 py-1 text-xs rounded-md text-white"
-                  style={{ background: 'var(--accent)' }}
-                >
-                  {t('dependency.openSettings')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDependencyGuide(false)}
-                  className="px-3 py-1 text-xs rounded-md"
-                  style={{ background: 'oklch(1 0 0 / 0.6)', color: 'var(--ink)' }}
-                >
-                  {t('dependency.close')}
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-3 space-y-3">
-              {dependencyIssues.map((issue) => (
-                <div
-                  key={issue.id}
-                  className="p-3"
-                  style={{
-                    border: '1px solid var(--hairline)',
-                    borderRadius: 'var(--r-sm)',
-                    background: 'oklch(1 0 0 / 0.4)',
-                  }}
-                >
-                  <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
-                    {issue.title}
-                  </div>
-                  <div className="mt-1 text-xs" style={{ color: 'var(--ink-2)' }}>
-                    {issue.summary}
-                  </div>
-                  <ol
-                    className="mt-2 list-decimal list-inside space-y-1 text-xs"
-                    style={{ color: 'var(--ink-2)' }}
-                  >
-                    {issue.steps.map((step, index) => (
-                      <li key={`${issue.id}-${index}`}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <DependencyGuideModal
+          issues={dependencyIssues}
+          onClose={() => setShowDependencyGuide(false)}
+          onOpenSettings={openSettings}
+        />
       )}
     </div>
   );

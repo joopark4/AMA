@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { Toggle } from './forms';
+import { Row, Toggle } from './forms';
 import {
   CHARACTER_PRESETS,
   DEFAULT_CHARACTER_PROFILE,
@@ -474,20 +474,15 @@ export default function CharacterSettings() {
           {t('settings.proactive.title')}
         </h4>
 
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-sm" style={{ color: 'var(--ink-2)' }}>
-              {t('settings.proactive.enabled')}
-            </span>
-            <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
-              {t('settings.proactive.enabledDesc')}
-            </span>
-          </div>
+        <Row
+          label={t('settings.proactive.enabled')}
+          description={t('settings.proactive.enabledDesc')}
+        >
           <Toggle
             on={settings.proactive?.enabled ?? false}
             onChange={(v) => setProactive({ enabled: v })}
           />
-        </div>
+        </Row>
 
         {settings.proactive?.enabled && (
           <>
