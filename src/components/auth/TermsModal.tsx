@@ -1,6 +1,7 @@
 /**
  * TermsModal — 이용약관/개인정보 처리방침 모달 (v2 리디자인).
  */
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 
@@ -26,9 +27,23 @@ export default function TermsModal({ type, onClose }: TermsModalProps) {
 
   const titleKey = type === 'terms' ? 'auth.termsModalTitle' : 'auth.privacyModalTitle';
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const titleId = `terms-modal-title-${type}`;
+
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
       data-interactive="true"
     >
       {/* 배경 오버레이 */}
@@ -63,6 +78,7 @@ export default function TermsModal({ type, onClose }: TermsModalProps) {
         >
           <div>
             <h2
+              id={titleId}
               style={{
                 fontSize: 16,
                 fontWeight: 700,
@@ -96,7 +112,7 @@ export default function TermsModal({ type, onClose }: TermsModalProps) {
               boxShadow: 'inset 0 0 0 1px var(--hairline)',
               color: 'var(--ink-2)',
             }}
-            aria-label="닫기"
+            aria-label={t('history.close')}
             data-interactive="true"
           >
             <X size={14} />
