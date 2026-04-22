@@ -49,45 +49,9 @@ import {
   buildLocalServerIssue,
   buildLocalModelIssue,
 } from './controlCluster/dependencyIssues';
+import { StatusPill, type StatusKind } from './controlCluster/StatusPill';
 
 /* ─────────────────────── 보조 컴포넌트 (v2 리디자인) ─────────────────────── */
-
-type StatusKind = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
-
-function StatusPill({ kind, label }: { kind: StatusKind; label: string }) {
-  const meta: Record<StatusKind, { dot: string; text: string; animate: boolean }> = {
-    idle: { dot: 'oklch(0.7 0.01 50)', text: 'var(--ink-3)', animate: false },
-    listening: { dot: 'var(--glow)', text: 'var(--glow)', animate: true },
-    processing: { dot: 'var(--accent)', text: 'var(--accent)', animate: true },
-    speaking: { dot: 'var(--ok)', text: 'var(--ok)', animate: true },
-    error: { dot: 'var(--danger)', text: 'var(--danger)', animate: true },
-  };
-  const m = meta[kind];
-  return (
-    <div
-      className="glass inline-flex items-center gap-2 px-3 py-1.5"
-      style={{
-        borderRadius: 999,
-        fontSize: 12.5,
-        fontWeight: 500,
-        color: m.text,
-        letterSpacing: '-0.01em',
-      }}
-    >
-      <span
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 99,
-          background: m.dot,
-          boxShadow: `0 0 12px ${m.dot}`,
-          animation: m.animate ? 'auraBreath 1.6s ease-in-out infinite' : 'none',
-        }}
-      />
-      {label}
-    </div>
-  );
-}
 
 /**
  * ListeningBars — Voice 버튼 내 7개 막대.
