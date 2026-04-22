@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { screenWatchService, isVisionAvailable } from './screenWatchService';
 import { useMonitorStore } from '../../stores/monitorStore';
-import { Toggle } from '../../components/settings/forms';
+import { Row, Toggle } from '../../components/settings/forms';
 import type { CaptureTarget, ScreenWatchResponseStyle } from '../../stores/settingsStore';
 
 const STYLES: ScreenWatchResponseStyle[] = ['balanced', 'advisor', 'comedian', 'analyst'];
@@ -138,21 +138,19 @@ export default function ScreenWatchSettings() {
       )}
 
       {/* Enable toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col">
-          <label className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
-            {t('settings.screenWatch.enabled', '화면 관찰 활성화')}
-          </label>
-          <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
-            {t('settings.screenWatch.enabledDesc', '주기적으로 화면을 관찰하고 상황에 맞는 한마디를 건넵니다')}
-          </span>
-        </div>
+      <Row
+        label={t('settings.screenWatch.enabled', '화면 관찰 활성화')}
+        description={t(
+          'settings.screenWatch.enabledDesc',
+          '주기적으로 화면을 관찰하고 상황에 맞는 한마디를 건넵니다'
+        )}
+      >
         <Toggle
           on={watch.enabled && visionOk}
           disabled={!visionOk}
           onChange={() => handleToggleEnabled()}
         />
-      </div>
+      </Row>
 
       {watch.enabled && visionOk && hasPermission === false && (
         <div
