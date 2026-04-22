@@ -172,9 +172,9 @@ export default function SettingsPanel() {
       { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings, defaultOpen: true },
       { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
       { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
-      { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
-      // Quick Actions(✨)는 다른 섹션에서 등록한 토글들의 모음이므로 마지막에 배치.
       { key: 'quick', icon: <Sparkles size={16} />, title: t('settings.quickActions.title'), Comp: QuickActionsSettings, defaultOpen: true },
+      // 오픈소스 라이선스는 참조용 정보이므로 가장 마지막에 배치.
+      { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
     ],
     [t]
   );
