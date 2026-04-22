@@ -712,8 +712,8 @@ export default function ControlCluster() {
           onSubmit={handleTextSubmit}
           className="flex items-center gap-2"
           style={{
-            padding: 6,
-            paddingLeft: 18,
+            padding: 3,
+            paddingLeft: 14,
             borderRadius: 999,
             width: 440,
             // glass-strong 효과를 인라인으로 적용하되, 외곽 shadow 제거 (겹쳐 보이는 잔상 방지).
@@ -725,7 +725,7 @@ export default function ControlCluster() {
           }}
           data-interactive="true"
         >
-          <Keyboard size={16} style={{ color: 'var(--ink-3)' }} />
+          <Keyboard size={14} style={{ color: 'var(--ink-3)' }} />
           <input
             type="text"
             value={textInput}
@@ -733,8 +733,8 @@ export default function ControlCluster() {
             placeholder={t('chat.placeholder')}
             className="flex-1 bg-transparent border-0 outline-none"
             style={{
-              padding: '10px 4px',
-              fontSize: 14.5,
+              padding: '4px 4px',
+              fontSize: 13,
               letterSpacing: '-0.01em',
               color: 'var(--ink)',
             }}
@@ -750,8 +750,8 @@ export default function ControlCluster() {
             title={t('overlay.closeKeyboard')}
             className="grid place-items-center transition-all"
             style={{
-              width: 28,
-              height: 28,
+              width: 18,
+              height: 18,
               borderRadius: 999,
               background: 'transparent',
               color: 'var(--ink-3)',
@@ -760,7 +760,7 @@ export default function ControlCluster() {
             }}
             data-interactive="true"
           >
-            <X size={14} />
+            <X size={12} />
           </button>
           <button
             type="submit"
@@ -772,8 +772,8 @@ export default function ControlCluster() {
             }
             className="grid place-items-center transition-all"
             style={{
-              width: 36,
-              height: 36,
+              width: 24,
+              height: 18,
               borderRadius: 999,
               background: textInput.trim() ? 'var(--accent)' : 'oklch(0.88 0.01 60)',
               color: textInput.trim() ? 'white' : 'var(--ink-3)',
@@ -782,7 +782,7 @@ export default function ControlCluster() {
             }}
             data-interactive="true"
           >
-            <Send size={15} />
+            <Send size={12} />
           </button>
         </form>
       )}
