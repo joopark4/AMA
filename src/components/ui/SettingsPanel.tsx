@@ -347,7 +347,8 @@ export default function SettingsPanel() {
           className="scroll flex-1"
           style={{
             padding: '0 22px 22px',
-            columnWidth: 340,
+            // i18n(en/ja) 라벨이 길어 카드 헤더가 잘리는 케이스 대응 — 340 → 360.
+            columnWidth: 360,
             columnGap: 14,
             columnFill: 'auto',
             overflowX: 'auto',

@@ -72,7 +72,13 @@ function StatusDot({
   label: string;
 }) {
   return (
-    <div className="flex items-center" style={{ gap: 8 }}>
+    <div
+      className="flex items-center"
+      // min-w-0 + flex-1 없이 부모 row에서 wrap 시 여러 줄 가능 — 버튼과의 정렬을 위해
+      // dot은 shrink 안 하고, label만 남는 폭에서 wrap 또는 ellipsis 처리.
+      style={{ gap: 8, minWidth: 0, flex: '1 1 auto' }}
+      title={label}
+    >
       <span
         style={{
           width: 8,
@@ -80,9 +86,21 @@ function StatusDot({
           borderRadius: 99,
           background: color,
           boxShadow: `0 0 8px ${color}`,
+          flexShrink: 0,
         }}
       />
-      <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{label}</span>
+      <span
+        style={{
+          fontSize: 12,
+          color: 'var(--ink-2)',
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
