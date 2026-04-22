@@ -161,13 +161,14 @@ export default function SettingsPanel() {
       // 프리미엄은 계정·언어 직후에 노출 (구독 상태/혜택 빠른 확인).
       { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings, defaultOpen: true },
       { key: 'llm', icon: <Brain size={16} />, title: t('settings.llm.title'), Comp: LLMSettings, defaultOpen: true },
+      // Claude Code Channels는 AI 모델 설정의 연장선이므로 바로 뒤에 배치.
+      { key: 'mcp', icon: <Code size={16} />, title: t('settings.mcp.title'), Comp: MCPSettings, defaultOpen: true },
       { key: 'audio', icon: <Volume2 size={16} />, title: t('settings.audioDevice.title'), Comp: AudioDeviceSettings, defaultOpen: true },
       { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings, defaultOpen: true },
       { key: 'character', icon: <User size={16} />, title: t('settings.character.title'), Comp: CharacterSettings, defaultOpen: true },
       { key: 'avatar', icon: <Box size={16} />, title: t('settings.avatar.title'), Comp: AvatarSettings, defaultOpen: true },
       { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title'), Comp: ScreenWatchSettings, defaultOpen: true },
       { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings, defaultOpen: true },
-      { key: 'mcp', icon: <Code size={16} />, title: t('settings.mcp.title'), Comp: MCPSettings, defaultOpen: true },
       { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
       { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
       { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
