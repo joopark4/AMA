@@ -752,14 +752,10 @@ export default function ControlCluster() {
         </div>
       )}
 
-      {/* ─── StatusPill 또는 VoiceWaveform (cluster 상단 같은 슬롯) ─── */}
-      {isVoiceListening ? (
+      {/* ─── VoiceWaveform: listening 시 cluster 상단 슬롯에 단독 노출 ─── */}
+      {isVoiceListening && (
         <div style={{ marginBottom: -4 }}>
           <VoiceWaveform label={t('status.voiceListeningOverlay')} />
-        </div>
-      ) : (
-        <div style={{ paddingRight: 8, marginBottom: -4 }}>
-          <StatusPill kind={pillKind} label={pillLabel} />
         </div>
       )}
 
@@ -844,64 +840,67 @@ export default function ControlCluster() {
         </form>
       )}
 
-      {/* ─── Button cluster ─── */}
-      <div
-        className="glass-strong flex items-center"
-        style={{ padding: 6, gap: 4, borderRadius: 999 }}
-        data-interactive="true"
-      >
-        <ClusterBtn
-          onClick={handleSparklesClick}
-          title={t('overlay.quickActions')}
-          active={quickActionsOpen}
+      {/* ─── Button cluster row: 비-listening 시 메뉴바 왼쪽에 StatusPill, listening 시는 위 슬롯 ─── */}
+      <div className="flex items-center gap-2">
+        {!isVoiceListening && <StatusPill kind={pillKind} label={pillLabel} />}
+        <div
+          className="glass-strong flex items-center"
+          style={{ padding: 6, gap: 4, borderRadius: 999 }}
+          data-interactive="true"
         >
-          <Sparkles size={17} />
-        </ClusterBtn>
-        <ClusterBtn
-          onClick={toggleHistory}
-          title={t('history.button')}
-          active={isHistoryOpen}
-        >
-          <History size={17} />
-        </ClusterBtn>
-        <ClusterBtn
-          onClick={() => setShowTextInput((v) => !v)}
-          title={showTextInput ? t('overlay.closeKeyboard') : t('overlay.toggleKeyboard')}
-          active={showTextInput}
-        >
-          <Keyboard size={17} />
-        </ClusterBtn>
-        <ClusterBtn
-          onClick={toggleAvatarHidden}
-          title={avatarHidden ? t('overlay.showAvatar') : t('overlay.hideAvatar')}
-          active={avatarHidden}
-        >
-          {avatarHidden ? <EyeOff size={17} /> : <Eye size={17} />}
-        </ClusterBtn>
-        <Divider />
-
-        {/* Voice button (primary) — listening 시 ListeningBars로 amplitude 표시,
-            전체 waveform pill은 cluster 상단 슬롯에서 별도 렌더(StatusPill 자리). */}
-        <div className="relative" data-interactive="true">
-          <button
-            type="button"
-            onClick={handleVoiceToggle}
-            title={
-              isVoiceListening
-                ? t('chat.stopListening')
-                : voiceInputUnavailableReason || t('chat.startVoiceInput')
-            }
-            style={voiceBtnStyle}
-            data-interactive="true"
+          <ClusterBtn
+            onClick={handleSparklesClick}
+            title={t('overlay.quickActions')}
+            active={quickActionsOpen}
           >
-            {isVoiceListening ? <ListeningBars /> : <Mic size={20} />}
-          </button>
-        </div>
+            <Sparkles size={17} />
+          </ClusterBtn>
+          <ClusterBtn
+            onClick={toggleHistory}
+            title={t('history.button')}
+            active={isHistoryOpen}
+          >
+            <History size={17} />
+          </ClusterBtn>
+          <ClusterBtn
+            onClick={() => setShowTextInput((v) => !v)}
+            title={showTextInput ? t('overlay.closeKeyboard') : t('overlay.toggleKeyboard')}
+            active={showTextInput}
+          >
+            <Keyboard size={17} />
+          </ClusterBtn>
+          <ClusterBtn
+            onClick={toggleAvatarHidden}
+            title={avatarHidden ? t('overlay.showAvatar') : t('overlay.hideAvatar')}
+            active={avatarHidden}
+          >
+            {avatarHidden ? <EyeOff size={17} /> : <Eye size={17} />}
+          </ClusterBtn>
+          <Divider />
 
-        <Divider />
-        <ClusterBtn onClick={openSettings} title={t('settings.title')}>
-          <SettingsIcon size={17} />
-        </ClusterBtn>
+          {/* Voice button (primary) — listening 시 ListeningBars로 amplitude 표시,
+              전체 waveform pill은 cluster 상단 슬롯에서 별도 렌더(StatusPill 자리). */}
+          <div className="relative" data-interactive="true">
+            <button
+              type="button"
+              onClick={handleVoiceToggle}
+              title={
+                isVoiceListening
+                  ? t('chat.stopListening')
+                  : voiceInputUnavailableReason || t('chat.startVoiceInput')
+              }
+              style={voiceBtnStyle}
+              data-interactive="true"
+            >
+              {isVoiceListening ? <ListeningBars /> : <Mic size={20} />}
+            </button>
+          </div>
+
+          <Divider />
+          <ClusterBtn onClick={openSettings} title={t('settings.title')}>
+            <SettingsIcon size={17} />
+          </ClusterBtn>
+        </div>
       </div>
 
       {/* ─── Quick Actions Palette (✨) ─── */}
