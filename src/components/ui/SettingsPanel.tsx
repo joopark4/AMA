@@ -158,10 +158,11 @@ export default function SettingsPanel() {
       // 계정은 사용자가 가장 먼저 확인하는 정보이므로 맨 앞에 배치.
       { key: 'account', icon: <UserRound size={16} />, title: t('settings.account.title'), Comp: UserProfile, defaultOpen: true },
       { key: 'lang', icon: <Globe size={16} />, title: t('settings.language'), Comp: LanguageSection, defaultOpen: true },
+      // 프리미엄은 계정·언어 직후에 노출 (구독 상태/혜택 빠른 확인).
+      { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings, defaultOpen: true },
       { key: 'llm', icon: <Brain size={16} />, title: t('settings.llm.title'), Comp: LLMSettings, defaultOpen: true },
       { key: 'audio', icon: <Volume2 size={16} />, title: t('settings.audioDevice.title'), Comp: AudioDeviceSettings, defaultOpen: true },
       { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings, defaultOpen: true },
-      { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings, defaultOpen: true },
       { key: 'character', icon: <User size={16} />, title: t('settings.character.title'), Comp: CharacterSettings, defaultOpen: true },
       { key: 'avatar', icon: <Box size={16} />, title: t('settings.avatar.title'), Comp: AvatarSettings, defaultOpen: true },
       { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title'), Comp: ScreenWatchSettings, defaultOpen: true },
