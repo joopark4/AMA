@@ -406,8 +406,8 @@ export default function AvatarSettings() {
                 type="range" min="0.2" max="2.0" step="0.1"
                 value={settings.avatar?.physics?.gravityMultiplier ?? 1.0}
                 onChange={(e) => setAvatarSettings({ physics: { ...settings.avatar?.physics, gravityMultiplier: parseFloat(e.target.value) } })}
-                className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
-                style={{ background: 'var(--surface-1)' }}
+                className="ama-slider"
+                data-interactive="true"
               />
             </div>
 
@@ -421,8 +421,8 @@ export default function AvatarSettings() {
                 type="range" min="0.2" max="2.0" step="0.1"
                 value={settings.avatar?.physics?.stiffnessMultiplier ?? 1.0}
                 onChange={(e) => setAvatarSettings({ physics: { ...settings.avatar?.physics, stiffnessMultiplier: parseFloat(e.target.value) } })}
-                className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
-                style={{ background: 'var(--surface-1)' }}
+                className="ama-slider"
+                data-interactive="true"
               />
             </div>
           </>
@@ -445,8 +445,8 @@ export default function AvatarSettings() {
             type="range" min="0" max="3" step="0.1"
             value={settings.avatar?.lighting?.ambientIntensity ?? 1.0}
             onChange={(e) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, ambientIntensity: parseFloat(e.target.value) } })}
-            className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
-            style={{ background: 'var(--surface-1)' }}
+            className="ama-slider"
+            data-interactive="true"
           />
         </div>
 
@@ -460,8 +460,8 @@ export default function AvatarSettings() {
             type="range" min="0" max="3" step="0.1"
             value={settings.avatar?.lighting?.directionalIntensity ?? 1.0}
             onChange={(e) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, directionalIntensity: parseFloat(e.target.value) } })}
-            className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-[oklch(0.74_0.14_45)]"
-            style={{ background: 'var(--surface-1)' }}
+            className="ama-slider"
+            data-interactive="true"
           />
         </div>
 

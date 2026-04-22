@@ -502,8 +502,8 @@ export default function CharacterSettings() {
                 step="1"
                 value={settings.proactive?.idleMinutes ?? 5}
                 onChange={(e) => setProactive({ idleMinutes: parseInt(e.target.value) })}
-                className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                style={{ background: 'var(--surface-1)', accentColor: 'var(--accent)' }}
+                className="ama-slider"
+                data-interactive="true"
               />
             </div>
             <div className="space-y-1">
@@ -517,8 +517,8 @@ export default function CharacterSettings() {
                 step="1"
                 value={settings.proactive?.cooldownMinutes ?? 10}
                 onChange={(e) => setProactive({ cooldownMinutes: parseInt(e.target.value) })}
-                className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                style={{ background: 'var(--surface-1)', accentColor: 'var(--accent)' }}
+                className="ama-slider"
+                data-interactive="true"
               />
             </div>
           </>

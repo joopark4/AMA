@@ -329,12 +329,7 @@ export function Slider({
         value={value}
         onChange={(e) => onChange?.(Number(e.target.value))}
         disabled={disabled}
-        className="flex-1"
-        style={{
-          accentColor: 'oklch(0.74 0.14 45)',
-          opacity: disabled ? 0.5 : 1,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-        }}
+        className="ama-slider flex-1"
         data-interactive="true"
       />
       <div

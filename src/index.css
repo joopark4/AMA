@@ -179,3 +179,85 @@ body {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   .ama-slider — input[type=range] WKWebView 호환 슬라이더
+   원인: WKWebView에서 <input type="range">의 default appearance는
+   accentColor / inline background를 트랙에 반영하지 않아
+   트랙이 투명하게 렌더되는 문제 발생.
+   해결: -webkit-slider-runnable-track / ::-webkit-slider-thumb
+        명시 스타일로 토큰 기반 트랙 + 핸들 직접 그림.
+   ───────────────────────────────────────────────────────────────── */
+input[type='range'].ama-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px; /* 클릭 영역 (실제 트랙은 6px) */
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+/* WebKit (Chromium / WKWebView) — 트랙 */
+input[type='range'].ama-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-1, oklch(0.91 0.015 65));
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* WebKit — 핸들 */
+input[type='range'].ama-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 99px;
+  background: #fff;
+  border: 2px solid var(--accent);
+  margin-top: -5px; /* (thumb_h - track_h) / 2 = (16-6)/2 = 5 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+input[type='range'].ama-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+input[type='range'].ama-slider:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+/* Firefox — 트랙 */
+input[type='range'].ama-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-1, oklch(0.91 0.015 65));
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* Firefox — 핸들 */
+input[type='range'].ama-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 99px;
+  background: #fff;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+input[type='range'].ama-slider:focus::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+/* Disabled */
+input[type='range'].ama-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+input[type='range'].ama-slider:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+input[type='range'].ama-slider:disabled::-moz-range-thumb {
+  cursor: not-allowed;
+}
