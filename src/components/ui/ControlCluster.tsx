@@ -659,6 +659,10 @@ export default function ControlCluster() {
   })();
 
   /* ─── 음성 버튼 비주얼 ─── */
+  // outer drop shadow / outer ring / scale을 모두 제거.
+  // 이전 구조는 listening 시 button이 메뉴바 inner 영역을 벗어나며
+  // 메뉴바의 hairline과 겹쳐 하단에 회색 잔상 선이 보였음.
+  // listening 강조는 background gradient + inset white highlight로만 처리.
   const voiceBtnStyle: React.CSSProperties = {
     width: 52,
     height: 26,
@@ -669,13 +673,10 @@ export default function ControlCluster() {
       ? 'linear-gradient(135deg, var(--glow) 0%, var(--accent) 100%)'
       : 'var(--accent)',
     color: 'white',
-    // idle 그림자: 클러스터 pill 하단으로 튀어나오지 않도록 짧게(Y 2, blur 6) 줄임.
-    // listening 시에만 살짝 강조 (scale + 은은한 accent ring).
     boxShadow: isVoiceListening
-      ? '0 0 0 4px rgba(230, 144, 58, 0.18), 0 2px 8px rgba(230, 144, 58, 0.25)'
-      : '0 1px 3px rgba(0, 0, 0, 0.12)',
-    transition: 'all 240ms var(--ease)',
-    transform: isVoiceListening ? 'scale(1.05)' : 'scale(1)',
+      ? 'inset 0 0 0 1.5px rgba(255, 255, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
+      : 'inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+    transition: 'background 240ms var(--ease), box-shadow 240ms var(--ease)',
     position: 'relative',
   };
 
