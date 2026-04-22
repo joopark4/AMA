@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AMA — AI 데스크톱 컴패니언</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── design tokens ─── */
+  :root {
+    /* warm neutral base */
+    --bg:        oklch(0.97 0.008 70);
+    --bg-2:      oklch(0.94 0.012 70);
+    --bg-3:      oklch(0.91 0.015 65);
+    --surface:   oklch(1 0 0 / 0.62);
+    --surface-2: oklch(1 0 0 / 0.78);
+    --surface-3: oklch(1 0 0 / 0.92);
+    --ink:       oklch(0.22 0.012 50);
+    --ink-2:     oklch(0.42 0.012 50);
+    --ink-3:     oklch(0.62 0.012 55);
+    --ink-4:     oklch(0.78 0.010 60);
+    --hairline:  oklch(0.20 0.01 50 / 0.10);
+    --hairline-strong: oklch(0.20 0.01 50 / 0.18);
+    --top-edge:  oklch(1 0 0 / 0.7);
+
+    /* warm peach accent */
+    --accent:    oklch(0.74 0.14 45);
+    --accent-2:  oklch(0.82 0.11 50);
+    --accent-soft: oklch(0.93 0.05 50);
+    --accent-ink: oklch(0.32 0.10 40);
+
+    /* secondary glow (avatar aura) */
+    --glow:      oklch(0.85 0.12 320);
+    --glow-2:    oklch(0.88 0.10 25);
+
+    --ok:        oklch(0.72 0.14 160);
+    --warn:      oklch(0.78 0.14 75);
+    --danger:    oklch(0.65 0.20 25);
+
+    --r-sm: 10px;
+    --r:    16px;
+    --r-lg: 22px;
+    --r-xl: 28px;
+
+    --shadow-sm: 0 1px 2px oklch(0.2 0.01 50 / 0.06), 0 4px 12px oklch(0.2 0.01 50 / 0.05);
+    --shadow:    0 2px 4px oklch(0.2 0.01 50 / 0.08), 0 12px 32px oklch(0.2 0.01 50 / 0.10);
+    --shadow-lg: 0 6px 16px oklch(0.2 0.01 50 / 0.10), 0 30px 80px oklch(0.2 0.01 50 / 0.18);
+
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body, #root { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+    letter-spacing: -0.011em;
+  }
+  button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
+  input, textarea { font-family: inherit; color: inherit; }
+  ::selection { background: var(--accent-soft); color: var(--accent-ink); }
+
+  /* ─── desktop background (neutral, subtly textured) ─── */
+  .desktop-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(900px 600px at 18% 20%, oklch(0.92 0.04 50 / 0.55), transparent 60%),
+      radial-gradient(800px 700px at 82% 80%, oklch(0.90 0.05 320 / 0.45), transparent 65%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  }
+  .desktop-bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(oklch(0.20 0.01 50 / 0.025) 1px, transparent 1px);
+    background-size: 22px 22px;
+    pointer-events: none;
+  }
+
+  /* ─── glass card ─── */
+  .glass {
+    background: var(--surface);
+    backdrop-filter: blur(28px) saturate(1.6);
+    -webkit-backdrop-filter: blur(28px) saturate(1.6);
+    border-radius: var(--r-lg);
+    box-shadow:
+      inset 0 1px 0 var(--top-edge),
+      inset 0 0 0 1px var(--hairline),
+      var(--shadow);
+  }
+  .glass-strong {
+    background: var(--surface-2);
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    border-radius: var(--r-lg);
+    box-shadow:
+      inset 0 1px 0 var(--top-edge),
+      inset 0 0 0 1px var(--hairline),
+      var(--shadow-lg);
+  }
+
+  /* ─── scrollbars ─── */
+  .scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+  .scroll::-webkit-scrollbar-thumb {
+    background: oklch(0.5 0.01 50 / 0.18); border-radius: 99px;
+  }
+  .scroll::-webkit-scrollbar-thumb:hover { background: oklch(0.5 0.01 50 / 0.32); }
+
+  /* ─── avatar glow ─── */
+  @keyframes auraBreath {
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50%      { transform: scale(1.05); opacity: 1; }
+  }
+  @keyframes auraSpin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes ringPulse {
+    0%   { transform: scale(0.92); opacity: 0.6; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.4); }
+    50%      { transform: scaleY(1); }
+  }
+  @keyframes thinking {
+    0%, 80%, 100% { transform: scale(0.4); opacity: 0.4; }
+    40%           { transform: scale(1); opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translate(-50%, 8px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes inputSlide {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ─── nav bar (prototype-only chrome) ─── */
+  .proto-chrome {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 9999;
+    display: flex; gap: 4px;
+    padding: 5px;
+    background: oklch(0.18 0.01 50 / 0.78);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+    color: oklch(0.95 0 0);
+    font-size: 12px;
+  }
+  .proto-chrome button {
+    padding: 7px 14px;
+    border-radius: 999px;
+    color: oklch(0.85 0 0);
+    transition: all 180ms var(--ease);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .proto-chrome button:hover { color: white; background: oklch(1 0 0 / 0.08); }
+  .proto-chrome button.active {
+    color: var(--ink);
+    background: oklch(0.97 0.01 60);
+  }
+</style>
+
+<script type="application/json" id="speaker-notes">[]</script>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="src/icons.jsx"></script>
+<script type="text/babel" src="src/features.jsx"></script>
+<script type="text/babel" src="src/Avatar.jsx"></script>
+<script type="text/babel" src="src/Overlay.jsx"></script>
+<script type="text/babel" src="src/Settings.jsx"></script>
+<script type="text/babel" src="src/History.jsx"></script>
+<script type="text/babel" src="src/QuickActions.jsx"></script>
+<script type="text/babel" src="src/Onboarding.jsx"></script>
+<script type="text/babel" src="src/Auth.jsx"></script>
+<script type="text/babel" src="src/Premium.jsx"></script>
+<script type="text/babel" src="src/Landing.jsx"></script>
+<script type="text/babel" src="src/Tweaks.jsx"></script>
+<script type="text/babel" src="src/App.jsx"></script>
+
+</body>
+</html>

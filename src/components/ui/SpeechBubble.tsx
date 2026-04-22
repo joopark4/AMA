@@ -122,25 +122,47 @@ export default function SpeechBubble({ message }: SpeechBubbleProps) {
   return (
     <div
       ref={bubbleRef}
-      className="speech-bubble fixed z-50 max-w-xs pointer-events-none"
-      style={bubbleStyle}
+      className="speech-bubble fixed z-50 pointer-events-none"
+      style={{
+        ...bubbleStyle,
+        maxWidth: 460,
+      }}
     >
-      {/* 꼬리: 버블 바깥에서 버블 뒤에 배치 (z-index 0) */}
+      {/* 꼬리: 본체와 동일한 글래시 톤. 우상/우하측 hairline만 표시해 회전 시 본체 경계와 매끄럽게 연결. */}
       <div
-        className="absolute w-4 h-4 bg-white border border-gray-200"
+        className="absolute"
         style={{
           ...tailStyle,
-          zIndex: 0,
+          width: 12,
+          height: 12,
+          background: 'var(--surface-2)',
+          borderRight: '1px solid var(--hairline)',
+          borderBottom: '1px solid var(--hairline)',
+          backdropFilter: 'blur(40px) saturate(1.8)',
+          WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
           transform: 'rotate(45deg)',
+          zIndex: 0,
         }}
       />
 
-      {/* 버블 본체: 꼬리 위에 렌더링 (z-index 1), 꼬리 상단 반을 덮어 깔끔하게 처리 */}
+      {/* 버블 본체: glass-strong, ink 색상. 꼬리 상단 반을 덮어 깔끔하게 처리. */}
       <div
-        className="relative bg-white rounded-2xl px-4 py-3 border border-gray-200"
-        style={{ zIndex: 1 }}
+        className="relative glass-strong"
+        style={{
+          padding: '14px 18px',
+          borderRadius: 'var(--r-lg)',
+          zIndex: 1,
+        }}
       >
-        <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+        <p
+          className="whitespace-pre-wrap"
+          style={{
+            color: 'var(--ink)',
+            fontSize: 14,
+            lineHeight: 1.55,
+            letterSpacing: '-0.01em',
+          }}
+        >
           {message}
         </p>
       </div>

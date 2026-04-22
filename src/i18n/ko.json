@@ -5,7 +5,24 @@
   },
   "settings": {
     "title": "설정",
+    "subtitle": "AMA를 내 방식대로 다듬기",
+    "manage": "관리",
+    "guestUser": "게스트",
+    "loggedOut": "로그인되지 않음",
+    "resetAll": "전체 초기화",
+    "resetConfirm": "모든 설정을 초기화하시겠어요? 되돌릴 수 없어요.",
+    "quickActions": {
+      "title": "자주 쓰는 기능",
+      "description": "자주 사용하는 기능을 등록하면 ✨ 아이콘에서 바로 불러올 수 있어요. 음성으로도 호출 가능해요.",
+      "registered": "등록됨 · {{count}}개",
+      "clearAll": "모두 해제",
+      "empty": "아직 등록된 기능이 없어요. 위에서 체크해보세요."
+    },
     "language": "언어",
+    "pageNav": {
+      "previous": "이전 페이지",
+      "next": "다음 페이지"
+    },
     "audioDevice": {
       "title": "오디오 & 마이크",
       "microphone": "마이크 (입력)",
@@ -80,6 +97,10 @@
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",
           "melo": "MeloTTS-Korean"
+        },
+        "voiceLabel": {
+          "female": "여성 {{num}}",
+          "male": "남성 {{num}}"
         }
       },
       "globalShortcut": {
@@ -487,6 +508,56 @@
     "startVoiceInput": "음성 입력 시작",
     "voiceUnavailable": "음성 입력 사용 불가"
   },
+  "overlay": {
+    "toggleKeyboard": "키보드로 입력",
+    "closeKeyboard": "키보드 닫기",
+    "hideAvatar": "아바타 숨기기",
+    "showAvatar": "아바타 보이기",
+    "quickActions": "자주 쓰는 기능",
+    "avatarResting": "{{name}}는(은) 잠깐 쉬는 중이에요"
+  },
+  "quick": {
+    "category": {
+      "avatar": "아바타",
+      "animation": "애니메이션",
+      "voice": "음성",
+      "screen": "화면",
+      "channels": "Channels",
+      "proactive": "자발적 대화"
+    },
+    "avatarHidden": { "title": "아바타 숨기기", "desc": "아바타를 화면에서 일시 숨김" },
+    "freeMovement": { "title": "자유 이동 모드", "desc": "마우스 드래그로 어디든 배치" },
+    "autoRoam": { "title": "자동 배회", "desc": "주기적으로 천천히 움직임" },
+    "showSpeechBubble": { "title": "말풍선 표시", "desc": "AI 응답을 말풍선으로 표시" },
+    "physics": { "title": "물리 시뮬레이션", "desc": "머리카락·옷자락 흔들림" },
+    "lightingControl": { "title": "조명 컨트롤", "desc": "드래그 가능한 태양 아이콘 표시" },
+    "faceOnly": { "title": "표정 전용 모드", "desc": "몸 동작 없이 표정만" },
+    "breathing": { "title": "호흡 애니메이션", "desc": "조용한 가슴 움직임" },
+    "eyeDrift": { "title": "눈동자 드리프트", "desc": "랜덤하게 시선 이동" },
+    "gazeFollow": { "title": "시선 따라오기", "desc": "마우스 커서를 따라 시선 이동" },
+    "backchannel": { "title": "끄덕임", "desc": "듣고 있을 때 살짝 끄덕임" },
+    "gestures": { "title": "제스처", "desc": "감정에 따른 손 동작" },
+    "motionClips": { "title": "모션 클립", "desc": "다양한 모션 라이브러리 사용" },
+    "dancing": { "title": "춤추기", "desc": "기쁠 때 춤" },
+    "globalShortcut": { "title": "글로벌 단축키", "desc": "단축키로 음성 입력 시작/중지" },
+    "screenWatch": { "title": "화면 관찰", "desc": "주기적으로 화면 보고 능동 발화" },
+    "silentHours": { "title": "조용한 시간대", "desc": "지정한 시간엔 화면 관찰 끔" },
+    "channels": { "title": "Claude Code Channels", "desc": "외부 Claude Code와 양방향 연결" },
+    "proactive": { "title": "자발적 대화", "desc": "할 말이 있으면 먼저 말 걸기" }
+  },
+  "quickActions": {
+    "title": "자주 쓰는 기능",
+    "searchPlaceholder": "기능 찾기…",
+    "manage": "설정에서 관리",
+    "empty": "등록된 기능이 없어요",
+    "emptyDesc": "설정에서 자주 사용할 기능을 체크하면 여기에 토글로 나타나요.",
+    "noResults": "검색 결과가 없어요",
+    "noResultsDesc": "다른 키워드로 검색해보세요.",
+    "register": "기능 등록하러 가기",
+    "registeredCount": "등록된 기능 · {{count}}개",
+    "footerToggleHint": "토글로 즉시 적용",
+    "footerClose": "닫기"
+  },
   "onboarding": {
     "avatarNameTitle": "아바타 이름 설정",
     "avatarNameDescription": "첫 실행입니다. 사용할 아바타 이름을 입력해 주세요.",
@@ -520,7 +591,129 @@
     "guideTitle": "설치 안내",
     "openSettings": "설정 열기",
     "openSystemSettings": "시스템 설정 열기",
-    "close": "닫기"
+    "close": "닫기",
+    "issue": {
+      "modelUnset": {
+        "ollama": {
+          "title": "LLM 모델 설정 (Ollama)",
+          "summary": "Ollama 모델이 선택되지 않았습니다.",
+          "steps": [
+            "옵션(설정)에서 LLM Provider를 Ollama로 선택합니다.",
+            "터미널에서 `ollama list`를 실행해 설치된 모델을 확인합니다.",
+            "모델이 없으면 `ollama pull deepseek-v3` 후 Model 항목에서 해당 모델을 선택합니다."
+          ]
+        },
+        "localai": {
+          "title": "LLM 모델 설정 (LocalAI)",
+          "summary": "LocalAI 모델이 선택되지 않았습니다.",
+          "steps": [
+            "옵션(설정)에서 LLM Provider를 LocalAI로 선택합니다.",
+            "LocalAI `/v1/models` 응답에 노출된 모델 id를 확인합니다.",
+            "Model 항목에 해당 id와 동일한 모델명을 선택/입력합니다."
+          ]
+        },
+        "cloud": {
+          "title": "LLM 모델 설정 ({{provider}})",
+          "summary": "{{provider}} 모델이 선택되지 않았습니다.",
+          "steps": [
+            "옵션(설정)에서 LLM Provider를 {{provider}}로 선택합니다.",
+            "Model 항목에서 사용 모델을 선택합니다. 예: `{{defaultModel}}`",
+            "설정 저장 후 다시 질문을 입력해 응답을 확인합니다."
+          ]
+        }
+      },
+      "endpointUnset": {
+        "ollama": {
+          "title": "LLM 엔드포인트 설정 (Ollama)",
+          "summary": "Ollama 서버 주소가 비어 있습니다.",
+          "steps": [
+            "옵션(설정)에서 LLM Provider를 Ollama로 유지합니다.",
+            "Endpoint에 `http://localhost:11434`를 입력합니다.",
+            "`ollama serve` 실행 후 다시 질문을 입력합니다."
+          ]
+        },
+        "localai": {
+          "title": "LLM 엔드포인트 설정 (LocalAI)",
+          "summary": "LocalAI 서버 주소가 비어 있습니다.",
+          "steps": [
+            "옵션(설정)에서 LLM Provider를 LocalAI로 유지합니다.",
+            "Endpoint에 LocalAI OpenAI 호환 주소를 입력합니다. 예: `http://localhost:8080`",
+            "LocalAI 서버 실행 후 다시 질문을 입력합니다."
+          ]
+        }
+      },
+      "apiKey": {
+        "title": "LLM API 키 설정 ({{provider}})",
+        "summary": "{{provider}} API 키가 설정되지 않아 답변을 생성할 수 없습니다.",
+        "steps": [
+          "옵션(설정)에서 LLM Provider를 {{provider}}로 선택합니다.",
+          "{{apiKeyGuide}}에서 API 키를 발급받습니다.",
+          "API Key 입력란에 {{keyPrefix}} 형식의 키를 입력하고 저장합니다."
+        ]
+      },
+      "localServer": {
+        "ollama": {
+          "title": "LLM 서버 연결 실패 (Ollama)",
+          "summary": "Ollama 서버에 연결할 수 없습니다.",
+          "steps": [
+            "macOS에서 `brew install ollama`로 설치합니다.",
+            "터미널에서 `ollama serve`를 실행합니다.",
+            "필요 모델을 `ollama pull {{model}}`로 내려받습니다.",
+            "Endpoint가 올바른지 확인합니다. 현재 값: {{endpoint}}"
+          ]
+        },
+        "localai": {
+          "title": "LLM 서버 연결 실패 (LocalAI)",
+          "summary": "LocalAI 서버에 연결할 수 없습니다.",
+          "steps": [
+            "LocalAI 서버를 실행하고 OpenAI 호환 API가 활성화되어 있는지 확인합니다.",
+            "헬스체크로 `GET /v1/models` 응답이 오는지 확인합니다.",
+            "Endpoint를 LocalAI 주소로 맞춥니다. 현재 값: {{endpoint}}",
+            "모델 로드 로그를 확인한 뒤 다시 질문을 입력합니다."
+          ]
+        }
+      },
+      "localModel": {
+        "ollama": {
+          "title": "LLM 모델 누락 (Ollama)",
+          "summary": "선택된 모델({{model}})이 Ollama에 준비되어 있지 않습니다.",
+          "steps": [
+            "터미널에서 `ollama pull {{model}}`를 실행합니다.",
+            "`ollama list`로 모델이 내려받아졌는지 확인합니다.",
+            "앱 설정에서 동일한 모델명을 선택한 뒤 다시 질문합니다."
+          ]
+        },
+        "localai": {
+          "title": "LLM 모델 누락 (LocalAI)",
+          "summary": "선택된 모델({{model}})이 LocalAI에 준비되어 있지 않습니다.",
+          "steps": [
+            "LocalAI 모델 디렉터리에 원하는 모델 파일을 배치합니다.",
+            "LocalAI 설정 파일/실행 옵션에서 모델을 로드합니다.",
+            "앱 설정의 Model 값을 LocalAI의 모델 id와 동일하게 맞춥니다."
+          ]
+        }
+      },
+      "voice": {
+        "title": "음성 인식 (Whisper)",
+        "remoteSteps": [
+          "원격 연결 세션을 종료한 뒤 앱을 다시 실행합니다.",
+          "로컬 환경에서 마이크 권한을 허용하고 다시 시도합니다."
+        ],
+        "localSteps": [
+          "macOS에서 `brew install whisper-cpp`로 whisper-cli를 설치합니다.",
+          "`ggml-base.bin` 파일을 `models/whisper/` 경로에 배치합니다.",
+          "필요 시 `WHISPER_MODEL_PATH` 환경 변수로 모델 경로를 지정합니다."
+        ]
+      },
+      "tts": {
+        "title": "음성 합성 (Supertonic)",
+        "steps": [
+          "`models/supertonic/onnx` 폴더에 ONNX 모델 파일을 배치합니다.",
+          "`models/supertonic/voice_styles` 폴더에 보이스 스타일 JSON 파일을 배치합니다.",
+          "앱을 완전히 종료한 뒤 다시 실행합니다."
+        ]
+      }
+    }
   },
   "lightingControl": {
     "dragHint": "드래그하여 조명 위치 조정"

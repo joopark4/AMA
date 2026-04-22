@@ -5,10 +5,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
+import { Play } from 'lucide-react';
 import { useSettingsStore, type SupertoneApiSettings } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { usePremiumStore, type SupertoneVoice } from './premiumStore';
 import { getModelLanguages } from './supertoneApiClient';
+import { Field, Pill, Select, Slider, Toggle, SectionHint } from '../../components/settings/forms';
 
 const SUPERTONE_MODELS = [
   { id: 'sona_speech_1', labelKey: 'settings.premium.models.sona_speech_1' },
@@ -40,6 +42,8 @@ export default function PremiumVoiceSettings() {
   const [voiceFilter] = useState({ gender: '', language: '' });
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  // 현재 활성 preview의 blob URL을 추적해 unmount/재시작 시점에서 누수 방지.
+  const previewBlobUrlRef = useRef<string | null>(null);
   const apiSettings = settings.tts.supertoneApi;
   const defaultApiSettings = {
     voiceId: '',
@@ -142,8 +146,12 @@ export default function PremiumVoiceSettings() {
 
     if (!sample?.url) return;
 
-    // 기존 재생 중지
+    // 기존 재생 중지 + 이전 blob URL 회수
     previewAudioRef.current?.pause();
+    if (previewBlobUrlRef.current) {
+      URL.revokeObjectURL(previewBlobUrlRef.current);
+      previewBlobUrlRef.current = null;
+    }
     setPreviewingVoiceId(voice.voice_id);
 
     try {
@@ -152,6 +160,7 @@ export default function PremiumVoiceSettings() {
       const uint8 = new Uint8Array(bytes);
       const blob = new Blob([uint8], { type: 'audio/wav' });
       const blobUrl = URL.createObjectURL(blob);
+      previewBlobUrlRef.current = blobUrl;
 
       const audio = new Audio(blobUrl);
 
@@ -167,11 +176,13 @@ export default function PremiumVoiceSettings() {
 
       audio.onended = () => {
         URL.revokeObjectURL(blobUrl);
+        if (previewBlobUrlRef.current === blobUrl) previewBlobUrlRef.current = null;
         setPreviewingVoiceId(null);
         previewAudioRef.current = null;
       };
       audio.onerror = () => {
         URL.revokeObjectURL(blobUrl);
+        if (previewBlobUrlRef.current === blobUrl) previewBlobUrlRef.current = null;
         setPreviewingVoiceId(null);
         previewAudioRef.current = null;
       };
@@ -183,10 +194,14 @@ export default function PremiumVoiceSettings() {
     }
   }, [previewingVoiceId, effectiveApiSettings.language, effectiveApiSettings.style]);
 
-  // 컴포넌트 언마운트 시 재생 정지
+  // 컴포넌트 언마운트 시 재생 정지 + blob URL 회수 (누수 방지)
   useEffect(() => {
     return () => {
       previewAudioRef.current?.pause();
+      if (previewBlobUrlRef.current) {
+        URL.revokeObjectURL(previewBlobUrlRef.current);
+        previewBlobUrlRef.current = null;
+      }
     };
   }, []);
 
@@ -206,136 +221,159 @@ export default function PremiumVoiceSettings() {
   // 비로그인 상태
   if (!isAuthenticated) {
     return (
-      <div className="text-center py-6 text-gray-500">
-        <div className="text-lg font-medium mb-1">{t('settings.premium.locked')}</div>
-        <div className="text-sm">{t('settings.premium.loginRequired')}</div>
+      <div className="text-center py-6">
+        <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
+          {t('settings.premium.locked')}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
+          {t('settings.premium.loginRequired')}
+        </div>
       </div>
     );
   }
 
   // 로딩 중
   if (isChecking) {
-    return <div className="text-center py-6 text-gray-400 text-sm">{t('app.loading')}</div>;
+    return (
+      <div className="text-center py-6" style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
+        {t('app.loading')}
+      </div>
+    );
   }
 
   // 비프리미엄
   if (!isPremium) {
     return (
-      <div className="text-center py-6 text-gray-500">
-        <div className="inline-block px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-medium mb-3">
+      <div className="text-center py-6">
+        <div
+          className="inline-block"
+          style={{
+            padding: '4px 10px',
+            background: 'oklch(1 0 0 / 0.7)',
+            boxShadow: 'inset 0 0 0 1px var(--hairline)',
+            color: 'var(--ink-2)',
+            borderRadius: 99,
+            fontSize: 11,
+            fontWeight: 600,
+            marginBottom: 10,
+          }}
+        >
           {t('settings.premium.badge')}
         </div>
-        <div className="text-lg font-medium mb-1">{t('settings.premium.locked')}</div>
-        <div className="text-sm">{t('settings.premium.lockedDesc')}</div>
+        <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
+          {t('settings.premium.locked')}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
+          {t('settings.premium.lockedDesc')}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div>
       {/* 프리미엄 배지 */}
-      <div className="flex items-center gap-2">
-        <span className="inline-block px-2.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+      <div style={{ marginBottom: 4 }}>
+        <span
+          className="inline-block"
+          style={{
+            padding: '3px 10px',
+            background: 'var(--accent-soft)',
+            color: 'var(--accent-ink)',
+            borderRadius: 99,
+            fontSize: 11,
+            fontWeight: 600,
+          }}
+        >
           {t('settings.premium.active')}
         </span>
       </div>
 
       {/* TTS 엔진 선택 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          {t('settings.premium.engineSelect')}
-        </label>
-        <div className="flex gap-2">
-          <button
+      <Field label={t('settings.premium.engineSelect')}>
+        <div className="flex" style={{ gap: 6 }}>
+          <Pill
+            active={settings.tts.engine === 'supertonic'}
             onClick={() => handleEngineChange('supertonic')}
-            className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
-              settings.tts.engine === 'supertonic'
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-            }`}
           >
             {t('settings.premium.engineLocal')}
-          </button>
-          <button
+          </Pill>
+          <Pill
+            active={settings.tts.engine === 'supertone_api'}
             onClick={() => handleEngineChange('supertone_api')}
-            className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
-              settings.tts.engine === 'supertone_api'
-                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-            }`}
           >
             {t('settings.premium.engineCloud')}
-          </button>
+          </Pill>
         </div>
-      </div>
+      </Field>
 
       {/* Supertone API 설정 (엔진이 supertone_api일 때만) */}
       {settings.tts.engine === 'supertone_api' && (
         <>
-          {/* 모델 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('settings.premium.modelSelect')}
-            </label>
-            <select
+          <Field label={t('settings.premium.modelSelect')}>
+            <Select
               value={currentModel}
-              onChange={(e) => handleModelChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {SUPERTONE_MODELS.map(m => (
-                <option key={m.id} value={m.id}>{t(m.labelKey)}</option>
-              ))}
-            </select>
-          </div>
+              onChange={handleModelChange}
+              options={SUPERTONE_MODELS.map((m) => ({
+                value: m.id,
+                label: t(m.labelKey),
+              }))}
+            />
+          </Field>
 
-          {/* 음성 출력 언어 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('settings.premium.ttsLanguage')}
-            </label>
-            <p className="text-xs text-gray-500 mb-1">{t('settings.premium.ttsLanguageDesc')}</p>
-            <select
+          <Field label={t('settings.premium.ttsLanguage')} hint={t('settings.premium.ttsLanguageDesc')}>
+            <Select
               value={effectiveApiSettings.language || 'ko'}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {supportedLanguages.map(lang => (
-                <option key={lang} value={lang}>
-                  {LANGUAGE_LABELS[lang] || lang}
-                </option>
-              ))}
-            </select>
+              onChange={handleLanguageChange}
+              options={supportedLanguages.map((lang) => ({
+                value: lang,
+                label: LANGUAGE_LABELS[lang] || lang,
+              }))}
+            />
             {effectiveApiSettings.language && !supportedLanguages.includes(effectiveApiSettings.language) && (
-              <p className="text-xs text-amber-600 mt-1">{t('settings.premium.ttsLanguageUnsupported')}</p>
+              <div style={{ fontSize: 11.5, color: 'var(--warn)', marginTop: 4 }}>
+                {t('settings.premium.ttsLanguageUnsupported')}
+              </div>
             )}
-          </div>
+          </Field>
 
           {/* 음성 선택 */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-sm font-medium text-gray-700">
+          <Field
+            label={
+              <>
                 {t('settings.premium.voiceSelect')}
                 {!isLoadingVoices && (
-                  <span className="ml-1.5 text-xs font-normal text-gray-400">({filteredVoices.length})</span>
+                  <span style={{ marginLeft: 6, color: 'var(--ink-3)', fontWeight: 400 }}>
+                    ({filteredVoices.length})
+                  </span>
                 )}
-              </label>
+              </>
+            }
+            hint={
               <button
                 onClick={() => refreshVoices()}
                 disabled={isLoadingVoices}
-                className="text-xs text-purple-600 hover:text-purple-800 disabled:text-gray-400"
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--accent-ink)',
+                  background: 'transparent',
+                  padding: '2px 6px',
+                  borderRadius: 6,
+                }}
                 title={t('settings.premium.voiceRefresh')}
+                data-interactive="true"
               >
                 {t('settings.premium.voiceRefresh')}
               </button>
-            </div>
-
+            }
+          >
             {isLoadingVoices ? (
-              <div className="text-sm text-gray-400 py-3 text-center">{t('settings.premium.loadingVoices')}</div>
+              <SectionHint>{t('settings.premium.loadingVoices')}</SectionHint>
             ) : filteredVoices.length === 0 ? (
-              <div className="text-sm text-gray-400 py-3 text-center">{t('settings.premium.noVoicesFound')}</div>
+              <SectionHint>{t('settings.premium.noVoicesFound')}</SectionHint>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {filteredVoices.map(voice => {
+              <div className="flex flex-wrap" style={{ gap: 6 }}>
+                {filteredVoices.map((voice) => {
                   const isSelected = effectiveApiSettings.voiceId === voice.voice_id;
                   const isPreviewing = previewingVoiceId === voice.voice_id;
                   const genderLabel = voice.gender === 'female'
@@ -346,107 +384,117 @@ export default function PremiumVoiceSettings() {
                       key={voice.voice_id}
                       onClick={() => {
                         const isAlreadySelected = effectiveApiSettings.voiceId === voice.voice_id;
-                        const previewStyle = isAlreadySelected ? effectiveApiSettings.style : voice.styles?.[0] || 'neutral';
+                        const previewStyle = isAlreadySelected
+                          ? effectiveApiSettings.style
+                          : voice.styles?.[0] || 'neutral';
                         handleVoiceSelect(voice);
-                        handlePreview(voice, { stopPropagation: () => {} } as React.MouseEvent, previewStyle);
+                        handlePreview(
+                          voice,
+                          { stopPropagation: () => {} } as React.MouseEvent,
+                          previewStyle
+                        );
                       }}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
-                        isSelected
-                          ? 'border-purple-500 bg-purple-50 text-purple-700 font-medium'
-                          : 'border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50/50'
-                      }`}
+                      className="inline-flex items-center transition-all focus-ring"
+                      style={{
+                        gap: 4,
+                        padding: '6px 10px',
+                        fontSize: 12,
+                        borderRadius: 99,
+                        background: isSelected ? 'var(--accent)' : 'oklch(1 0 0 / 0.7)',
+                        color: isSelected ? 'white' : 'var(--ink-2)',
+                        boxShadow: isSelected ? 'none' : 'inset 0 0 0 1px var(--hairline)',
+                        fontWeight: isSelected ? 500 : 400,
+                        transitionDuration: '160ms',
+                        transitionTimingFunction: 'var(--ease)',
+                      }}
+                      data-interactive="true"
                     >
-                      {isPreviewing && (
-                        <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" className="shrink-0 text-purple-500">
-                          <path d="M3 1.5v9l7.5-4.5z"/>
-                        </svg>
-                      )}
+                      {isPreviewing && <Play size={10} fill="currentColor" />}
                       <span>{voice.name}</span>
-                      <span className="text-gray-400">({genderLabel})</span>
+                      <span style={{ opacity: 0.6 }}>({genderLabel})</span>
                     </button>
                   );
                 })}
               </div>
             )}
-          </div>
+          </Field>
 
           {/* 스타일 선택 */}
           {selectedVoice && selectedVoice.styles?.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('settings.premium.styleSelect')}
-              </label>
-              <select
+            <Field label={t('settings.premium.styleSelect')}>
+              <Select
                 value={effectiveApiSettings.style || 'neutral'}
-                onChange={(e) => handleStyleChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                {selectedVoice.styles.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
+                onChange={handleStyleChange}
+                options={selectedVoice.styles.map((s) => ({ value: s, label: s }))}
+              />
+            </Field>
           )}
 
           {/* 감정 자동 매핑 토글 */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" style={{ padding: '10px 0' }}>
             <div>
-              <div className="text-sm font-medium text-gray-700">{t('settings.premium.autoEmotion')}</div>
-              <div className="text-xs text-gray-500">{t('settings.premium.autoEmotionDesc')}</div>
+              <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
+                {t('settings.premium.autoEmotion')}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
+                {t('settings.premium.autoEmotionDesc')}
+              </div>
             </div>
-            <button
-              onClick={handleAutoEmotionToggle}
-              className={`relative w-10 h-5 rounded-full transition-colors ${
-                effectiveApiSettings.autoEmotionStyle ? 'bg-purple-500' : 'bg-gray-300'
-              }`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                effectiveApiSettings.autoEmotionStyle ? 'translate-x-5' : 'translate-x-0.5'
-              }`} />
-            </button>
+            <Toggle
+              on={effectiveApiSettings.autoEmotionStyle}
+              onChange={handleAutoEmotionToggle}
+            />
           </div>
 
           {/* 음성 미세 조정 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('settings.premium.voiceSettings')}
-            </label>
-            <div className="space-y-3">
+          <Field label={t('settings.premium.voiceSettings')}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <div className="text-xs text-gray-600 mb-1">
-                  {t('settings.premium.pitchShift', { value: effectiveApiSettings.voiceSettings?.pitchShift ?? 0 })}
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  {t('settings.premium.pitchShift', {
+                    value: effectiveApiSettings.voiceSettings?.pitchShift ?? 0,
+                  })}
                 </div>
-                <input
-                  type="range" min={-24} max={24} step={1}
+                <Slider
                   value={effectiveApiSettings.voiceSettings?.pitchShift ?? 0}
-                  onChange={(e) => handleVoiceSettingChange('pitchShift', Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  min={-24}
+                  max={24}
+                  step={1}
+                  onChange={(v) => handleVoiceSettingChange('pitchShift', v)}
                 />
               </div>
               <div>
-                <div className="text-xs text-gray-600 mb-1">
-                  {t('settings.premium.pitchVariance', { value: effectiveApiSettings.voiceSettings?.pitchVariance ?? 1 })}
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  {t('settings.premium.pitchVariance', {
+                    value: effectiveApiSettings.voiceSettings?.pitchVariance ?? 1,
+                  })}
                 </div>
-                <input
-                  type="range" min={0} max={2} step={0.1}
+                <Slider
                   value={effectiveApiSettings.voiceSettings?.pitchVariance ?? 1}
-                  onChange={(e) => handleVoiceSettingChange('pitchVariance', Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  format={(v) => v.toFixed(1)}
+                  onChange={(v) => handleVoiceSettingChange('pitchVariance', v)}
                 />
               </div>
               <div>
-                <div className="text-xs text-gray-600 mb-1">
-                  {t('settings.premium.speed', { value: effectiveApiSettings.voiceSettings?.speed ?? 1 })}
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  {t('settings.premium.speed', {
+                    value: effectiveApiSettings.voiceSettings?.speed ?? 1,
+                  })}
                 </div>
-                <input
-                  type="range" min={0.5} max={2} step={0.1}
+                <Slider
                   value={effectiveApiSettings.voiceSettings?.speed ?? 1}
-                  onChange={(e) => handleVoiceSettingChange('speed', Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  min={0.5}
+                  max={2}
+                  step={0.1}
+                  format={(v) => `${v.toFixed(1)}x`}
+                  onChange={(v) => handleVoiceSettingChange('speed', v)}
                 />
               </div>
             </div>
-          </div>
+          </Field>
         </>
       )}
 
@@ -480,16 +528,38 @@ function UsageCard({
 }) {
   const { t } = useTranslation();
 
+  const accentColor = isAdmin ? 'var(--warn)' : 'var(--accent)';
   return (
-    <div className={`rounded-lg p-3 space-y-3 ${isAdmin ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
+    <div
+      style={{
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 14,
+        background: 'oklch(1 0 0 / 0.55)',
+        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">
+        <div className="flex items-center" style={{ gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
             {isAdmin ? t('settings.premium.usage.adminTitle') : t('settings.premium.usage.title')}
           </span>
           {isAdmin && (
-            <span className="inline-block px-1.5 py-0.5 bg-amber-200 text-amber-800 rounded text-[10px] font-semibold">
+            <span
+              className="inline-block"
+              style={{
+                padding: '2px 6px',
+                background: 'var(--warn)',
+                color: 'white',
+                borderRadius: 4,
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            >
               Admin
             </span>
           )}
@@ -497,52 +567,91 @@ function UsageCard({
         <button
           onClick={onRefresh}
           disabled={isLoading}
-          className="text-xs text-purple-600 hover:text-purple-800 disabled:text-gray-400"
+          style={{
+            fontSize: 11.5,
+            color: 'var(--accent-ink)',
+            background: 'transparent',
+            opacity: isLoading ? 0.5 : 1,
+            padding: '2px 6px',
+            borderRadius: 6,
+          }}
+          data-interactive="true"
         >
           {t('settings.premium.usage.refresh')}
         </button>
       </div>
 
       {isLoading && !quota && !apiCredits ? (
-        <div className="text-xs text-gray-400 text-center py-2">{t('settings.premium.usage.loading')}</div>
+        <div
+          className="text-center"
+          style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
+        >
+          {t('settings.premium.usage.loading')}
+        </div>
       ) : (
         <>
           {/* 관리자: Supertone API 크레딧 잔액 + 총 할당량 */}
           {isAdmin && apiCredits && (
             <div>
-              <div className="text-xs text-gray-600 mb-1">{t('settings.premium.quota.adminTitle')}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                {t('settings.premium.quota.adminTitle')}
+              </div>
               {(() => {
                 const { balance, used, total } = apiCredits;
                 const usedPercent = total > 0 ? Math.round((used / total) * 100) : 0;
                 const remainPercent = 100 - usedPercent;
                 return (
-                  <div className="p-2.5 bg-amber-100/60 border border-amber-200 rounded-lg space-y-2">
-                    {/* 잔액 큰 숫자 */}
+                  <div
+                    style={{
+                      padding: 10,
+                      borderRadius: 12,
+                      background: 'oklch(1 0 0 / 0.6)',
+                      boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                    }}
+                  >
                     <div className="flex items-baseline justify-between">
-                      <span className="text-lg font-bold text-amber-800">
+                      <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--warn)' }}>
                         {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
                       </span>
-                      <span className="text-xs text-amber-600">{t('settings.premium.quota.adminBalanceUnit')}</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
+                        {t('settings.premium.quota.adminBalanceUnit')}
+                      </span>
                     </div>
-                    <div className="text-xs text-amber-700">
+                    <div style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
                       {t('settings.premium.quota.adminBalanceDesc', {
                         minutes: Math.floor(balance / 60),
                         seconds: Math.round(balance % 60),
                       })}
                     </div>
                     {/* 프로그레스 바 */}
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      style={{
+                        width: '100%',
+                        height: 6,
+                        background: 'oklch(0.85 0.005 60)',
+                        borderRadius: 99,
+                        overflow: 'hidden',
+                      }}
+                    >
                       <div
-                        className="h-2.5 rounded-full transition-all bg-amber-500"
-                        style={{ width: `${usedPercent}%` }}
+                        style={{
+                          width: `${usedPercent}%`,
+                          height: '100%',
+                          background: accentColor,
+                          transition: 'width 220ms var(--ease)',
+                        }}
                       />
                     </div>
-                    {/* 총 할당량 / 사용량 / 남은 % */}
-                    <div className="flex justify-between text-xs text-amber-700">
-                      <span>{t('settings.premium.quota.adminTotal', {
-                        used: Math.round(used),
-                        total: Math.round(total),
-                      })}</span>
+                    <div className="flex justify-between" style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
+                      <span>
+                        {t('settings.premium.quota.adminTotal', {
+                          used: Math.round(used),
+                          total: Math.round(total),
+                        })}
+                      </span>
                       <span>{t('settings.premium.quota.adminRemainPercent', { value: remainPercent })}</span>
                     </div>
                   </div>
@@ -554,46 +663,82 @@ function UsageCard({
           {/* 일반 사용자: 할당량 바 */}
           {!isAdmin && quota && (
             <div>
-              <div className="text-xs text-gray-600 mb-1">{t('settings.premium.quota.title')}</div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                {t('settings.premium.quota.title')}
+              </div>
+              <div
+                style={{
+                  width: '100%',
+                  height: 6,
+                  background: 'oklch(0.85 0.005 60)',
+                  borderRadius: 99,
+                  overflow: 'hidden',
+                }}
+              >
                 <div
-                  className={`h-2.5 rounded-full transition-all ${
-                    isQuotaExceeded ? 'bg-red-500' :
-                    quota.used / quota.limit > 0.8 ? 'bg-amber-500' : 'bg-purple-500'
-                  }`}
-                  style={{ width: `${Math.min(100, (quota.used / Math.max(1, quota.limit)) * 100)}%` }}
+                  style={{
+                    height: '100%',
+                    background: isQuotaExceeded
+                      ? 'var(--danger)'
+                      : quota.used / quota.limit > 0.8
+                        ? 'var(--warn)'
+                        : 'var(--accent)',
+                    width: `${Math.min(100, (quota.used / Math.max(1, quota.limit)) * 100)}%`,
+                    transition: 'width 220ms var(--ease)',
+                  }}
                 />
               </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-gray-500">
+              <div className="flex justify-between" style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ink-3)' }}>
+                <span>
                   {t('settings.premium.quota.used', {
                     used: Math.round(quota.used),
                     limit: Math.round(quota.limit),
                   })}
                 </span>
-                <span className="text-xs text-gray-500">
+                <span>
                   {t('settings.premium.quota.percent', {
                     value: Math.round((quota.used / Math.max(1, quota.limit)) * 100),
                   })}
                 </span>
               </div>
 
-              {/* 경고/소진 메시지 */}
               {isQuotaExceeded && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                  <div className="font-medium">{t('settings.premium.quota.exceeded')}</div>
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: 8,
+                    borderRadius: 8,
+                    background: 'oklch(0.95 0.04 25 / 0.6)',
+                    boxShadow: 'inset 0 0 0 1px oklch(0.7 0.15 25 / 0.4)',
+                    fontSize: 11.5,
+                    color: 'var(--danger)',
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>{t('settings.premium.quota.exceeded')}</div>
                   <div>{t('settings.premium.quota.exceededDesc')}</div>
-                  <div className="mt-1 text-red-500">{t('settings.premium.quota.resetInfo')}</div>
+                  <div style={{ marginTop: 4 }}>{t('settings.premium.quota.resetInfo')}</div>
                 </div>
               )}
               {!isQuotaExceeded && quota.used / quota.limit > 0.8 && (
-                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
-                  <div className="font-medium">{t('settings.premium.quota.warning')}</div>
-                  <div>{t('settings.premium.quota.remaining', {
-                    value: Math.round(quota.remaining),
-                    minutes: Math.floor(quota.remaining / 60),
-                    seconds: Math.round(quota.remaining % 60),
-                  })}</div>
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: 8,
+                    borderRadius: 8,
+                    background: 'oklch(0.95 0.04 75 / 0.6)',
+                    boxShadow: 'inset 0 0 0 1px oklch(0.7 0.15 75 / 0.4)',
+                    fontSize: 11.5,
+                    color: 'var(--warn)',
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>{t('settings.premium.quota.warning')}</div>
+                  <div>
+                    {t('settings.premium.quota.remaining', {
+                      value: Math.round(quota.remaining),
+                      minutes: Math.floor(quota.remaining / 60),
+                      seconds: Math.round(quota.remaining % 60),
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -601,37 +746,77 @@ function UsageCard({
 
           {/* 이번 달 요약 */}
           {usageSummary && (
-            <div className="text-xs text-gray-600">
-              <div className="font-medium mb-0.5">
-                {isAdmin ? t('settings.premium.usage.adminThisMonth') : t('settings.premium.usage.thisMonth')}
+            <div style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>
+                {isAdmin
+                  ? t('settings.premium.usage.adminThisMonth')
+                  : t('settings.premium.usage.thisMonth')}
               </div>
-              <div>{t('settings.premium.usage.summary', {
-                seconds: Math.round(usageSummary.totalSeconds),
-                characters: usageSummary.totalCharacters.toLocaleString(),
-                requests: usageSummary.totalRequests,
-              })}</div>
+              <div>
+                {t('settings.premium.usage.summary', {
+                  seconds: Math.round(usageSummary.totalSeconds),
+                  characters: usageSummary.totalCharacters.toLocaleString(),
+                  requests: usageSummary.totalRequests,
+                })}
+              </div>
             </div>
           )}
 
           {/* 최근 7일 차트 */}
           {usageDaily && usageDaily.length > 0 && (
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1.5">{t('settings.premium.usage.recent7days')}</div>
-              <div className="space-y-1">
-                {usageDaily.slice(0, 7).map(day => {
-                  const maxSeconds = Math.max(...usageDaily.slice(0, 7).map(d => d.seconds), 1);
+              <div
+                style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 6 }}
+              >
+                {t('settings.premium.usage.recent7days')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {usageDaily.slice(0, 7).map((day) => {
+                  const maxSeconds = Math.max(...usageDaily.slice(0, 7).map((d) => d.seconds), 1);
                   const barWidth = Math.max(2, (day.seconds / maxSeconds) * 100);
                   return (
-                    <div key={day.date} className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-400 w-12 shrink-0">{day.date.slice(5)}</span>
-                      <div className="flex-1 bg-gray-200 rounded h-2">
+                    <div
+                      key={day.date}
+                      className="flex items-center"
+                      style={{ gap: 8, fontSize: 11 }}
+                    >
+                      <span style={{ color: 'var(--ink-3)', width: 48, flexShrink: 0 }}>
+                        {day.date.slice(5)}
+                      </span>
+                      <div
+                        style={{
+                          flex: 1,
+                          background: 'oklch(0.85 0.005 60)',
+                          borderRadius: 4,
+                          height: 6,
+                          overflow: 'hidden',
+                        }}
+                      >
                         <div
-                          className={`rounded h-2 transition-all ${isAdmin ? 'bg-amber-400' : 'bg-purple-400'}`}
-                          style={{ width: `${barWidth}%` }}
+                          style={{
+                            width: `${barWidth}%`,
+                            height: '100%',
+                            background: accentColor,
+                            transition: 'width 220ms var(--ease)',
+                          }}
                         />
                       </div>
-                      <span className="text-gray-500 w-14 text-right shrink-0">
-                        {Math.round(day.seconds)}{t('settings.premium.usage.seconds', { value: '' }).replace('{{value}}', '').trim().charAt(0) === 's' ? 's' : '초'}
+                      <span
+                        style={{
+                          color: 'var(--ink-3)',
+                          width: 56,
+                          textAlign: 'right',
+                          flexShrink: 0,
+                          fontFamily: '"JetBrains Mono", monospace',
+                        }}
+                      >
+                        {Math.round(day.seconds)}
+                        {t('settings.premium.usage.seconds', { value: '' })
+                          .replace('{{value}}', '')
+                          .trim()
+                          .charAt(0) === 's'
+                          ? 's'
+                          : '초'}
                       </span>
                     </div>
                   );
@@ -641,7 +826,12 @@ function UsageCard({
           )}
 
           {!usageSummary && !usageDaily?.length && (
-            <div className="text-xs text-gray-400 text-center py-2">{t('settings.premium.usage.noUsage')}</div>
+            <div
+              className="text-center"
+              style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
+            >
+              {t('settings.premium.usage.noUsage')}
+            </div>
           )}
         </>
       )}

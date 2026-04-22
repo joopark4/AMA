@@ -9,6 +9,33 @@ import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from '../../features/channels';
 import { CODEX_PROVIDER, CODEX_DEFAULT_MODEL, CodexSettings } from '../../features/codex';
 import { isVisionAvailable } from '../../features/screen-watch';
+import { Field, Pill, Select, TextInput } from './forms';
+
+/** 글래시 인포 카드 — 안내/주의/잠금 메시지용 (블루 배경 대신 톤 통일) */
+function InfoCard({
+  tone = 'neutral',
+  children,
+}: {
+  tone?: 'neutral' | 'warn';
+  children: React.ReactNode;
+}) {
+  const color = tone === 'warn' ? 'var(--warn)' : 'var(--ink-2)';
+  return (
+    <div
+      className="text-xs"
+      style={{
+        padding: '10px 12px',
+        borderRadius: 12,
+        background: 'oklch(1 0 0 / 0.5)',
+        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+        color,
+        lineHeight: 1.55,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 const CLOUD_MODELS: Record<'claude' | 'openai' | 'gemini', string[]> = {
   claude: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-6'],
@@ -577,172 +604,170 @@ export default function LLMSettings() {
 
   const mcpLocked = settings.mcpEnabled;
 
+  const PROVIDER_PILL_OPTIONS: { value: LLMProvider; label: string }[] = [
+    { value: 'ollama', label: t('settings.llm.providers.ollama') },
+    { value: 'localai', label: t('settings.llm.providers.localai') },
+    { value: 'claude', label: t('settings.llm.providers.claude') },
+    { value: 'openai', label: t('settings.llm.providers.openai') },
+    { value: 'gemini', label: t('settings.llm.providers.gemini') },
+    { value: CLAUDE_CODE_PROVIDER, label: t('settings.llm.providers.claude_code') },
+    { value: CODEX_PROVIDER, label: t('settings.llm.providers.codex') },
+  ];
+
+  const handleProviderChange = (provider: LLMProvider) => {
+    if (mcpLocked) return;
+    const models = provider === CLAUDE_CODE_PROVIDER
+      ? [BRIDGE_DEFAULT_MODEL]
+      : provider === CODEX_PROVIDER
+        ? [CODEX_DEFAULT_MODEL]
+        : provider === 'ollama' || provider === 'localai'
+          ? localModels
+          : buildCloudCandidateModels(provider, '', cloudModels[provider]);
+    const endpoint = getDefaultEndpoint(provider);
+    setLLMSettings({
+      provider,
+      model: models[0] || '',
+      endpoint,
+    });
+    // Vision 미지원 provider(Ollama/LocalAI/Claude Code) 또는
+    // 비macOS 런타임으로 전환 시 Screen Watch 자동 비활성
+    if (!isVisionAvailable(provider) && settings.screenWatch?.enabled) {
+      setScreenWatchSettings({ enabled: false });
+    }
+  };
+
+  const apiKeyHint =
+    currentProvider === 'claude'
+      ? 'console.anthropic.com'
+      : currentProvider === 'openai'
+        ? 'platform.openai.com'
+        : currentProvider === 'gemini'
+          ? 'aistudio.google.com'
+          : undefined;
+
   return (
-    <div className="space-y-4">
-          {/* Channels 활성 시 잠금 안내 */}
-          {mcpLocked && (
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700">
-                {t('settings.mcp.llmLocked')}
-              </p>
-            </div>
-          )}
+    <div>
+      {/* Channels 활성 시 잠금 안내 */}
+      {mcpLocked && <InfoCard>{t('settings.mcp.llmLocked')}</InfoCard>}
 
-          {/* Provider Selection */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {t('settings.llm.provider')}
-            </label>
-            <select
-              value={currentProvider}
+      {/* Provider — pills */}
+      <Field label={t('settings.llm.provider')}>
+        <div className="flex flex-wrap" style={{ gap: 6 }}>
+          {PROVIDER_PILL_OPTIONS.map((o) => (
+            <Pill
+              key={o.value}
+              active={currentProvider === o.value}
               disabled={mcpLocked}
-              onChange={(e) => {
-                const provider = e.target.value as LLMProvider;
-                const models = provider === CLAUDE_CODE_PROVIDER
-                  ? [BRIDGE_DEFAULT_MODEL]
-                  : provider === CODEX_PROVIDER
-                    ? [CODEX_DEFAULT_MODEL]
-                    : provider === 'ollama' || provider === 'localai'
-                      ? localModels
-                      : buildCloudCandidateModels(provider, '', cloudModels[provider]);
-                const endpoint = getDefaultEndpoint(provider);
-                setLLMSettings({
-                  provider,
-                  model: models[0] || '',
-                  endpoint,
-                });
-                // Vision 미지원 provider(Ollama/LocalAI/Claude Code) 또는
-                // 비macOS 런타임으로 전환 시 Screen Watch 자동 비활성
-                // (isVisionAvailable이 플랫폼 + provider 가용성을 함께 판단)
-                if (!isVisionAvailable(provider) && settings.screenWatch?.enabled) {
-                  setScreenWatchSettings({ enabled: false });
-                }
-              }}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${mcpLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+              onClick={() => handleProviderChange(o.value)}
             >
-              <option value="ollama">{t('settings.llm.providers.ollama')}</option>
-              <option value="localai">{t('settings.llm.providers.localai')}</option>
-              <option value="claude">{t('settings.llm.providers.claude')}</option>
-              <option value="openai">{t('settings.llm.providers.openai')}</option>
-              <option value="gemini">{t('settings.llm.providers.gemini')}</option>
-              <option value={CLAUDE_CODE_PROVIDER}>{t('settings.llm.providers.claude_code')}</option>
-              <option value={CODEX_PROVIDER}>{t('settings.llm.providers.codex')}</option>
-            </select>
-          </div>
+              {o.label}
+            </Pill>
+          ))}
+        </div>
+      </Field>
 
-          {/* Model Selection */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {t('settings.llm.model')}
-              {isLoadingModels && <span className="ml-2 text-xs text-gray-400">Loading...</span>}
-            </label>
+      {/* Model — Select */}
+      <Field
+        label={t('settings.llm.model')}
+        hint={isLoadingModels ? 'Loading…' : undefined}
+      >
+        {visibleModels.length > 0 ? (
+          <Select
+            value={settings.llm.model}
+            disabled={mcpLocked}
+            onChange={(value) => setLLMSettings({ model: value })}
+            options={visibleModels.map((model) => {
+              const status = modelStatuses[model] || 'unknown';
+              const shouldAnnotate = isCloudProvider;
+              return {
+                value: model,
+                label: shouldAnnotate
+                  ? `${model} (${getModelStatusLabel(status)})`
+                  : model,
+                disabled: isCloudProvider && status === 'unavailable',
+              };
+            })}
+          />
+        ) : (
+          <InfoCard tone="warn">
+            {isLocalProvider
+              ? 'No models found. Run: ollama pull <model-name>'
+              : 'No models available'}
+          </InfoCard>
+        )}
+      </Field>
 
-            {visibleModels.length > 0 ? (
-              <select
-                value={settings.llm.model}
-                disabled={mcpLocked}
-                onChange={(e) => setLLMSettings({ model: e.target.value })}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${mcpLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
-              >
-                {visibleModels.map((model) => {
-                  const status = modelStatuses[model] || 'unknown';
-                  const shouldAnnotate = isCloudProvider;
-                  return (
-                    <option
-                      key={model}
-                      value={model}
-                      disabled={isCloudProvider && status === 'unavailable'}
-                    >
-                      {shouldAnnotate ? `${model} (${getModelStatusLabel(status)})` : model}
-                    </option>
-                  );
-                })}
-              </select>
-            ) : (
-              <div className="px-3 py-2 border border-orange-300 rounded-lg bg-orange-50 text-sm text-orange-700">
-                {isLocalProvider
-                  ? 'No models found. Run: ollama pull <model-name>'
-                  : 'No models available'}
-              </div>
+      {/* Cloud 모델 점검 안내 */}
+      {isCloudProvider && (
+        <div style={{ paddingTop: 4 }}>
+          <InfoCard>
+            <div>선택한 Provider에서 모델 사용 가능 여부를 자동 점검합니다.</div>
+            {modelCheckNote && (
+              <div style={{ marginTop: 4, color: 'var(--warn)' }}>{modelCheckNote}</div>
             )}
-          </div>
+          </InfoCard>
+        </div>
+      )}
 
-          {isCloudProvider && (
-            <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-700 space-y-1">
-              <p>선택한 Provider에서 모델 사용 가능 여부를 자동 점검합니다.</p>
-              {modelCheckNote && (
-                <p className="text-amber-700">{modelCheckNote}</p>
-              )}
-            </div>
-          )}
+      {/* API Key */}
+      {isCloudProvider && (
+        <Field
+          label={t('settings.llm.apiKey')}
+          hint={apiKeyHint}
+        >
+          <TextInput
+            type="password"
+            mono
+            value={settings.llm.apiKey || ''}
+            onChange={(value) => setLLMSettings({ apiKey: value })}
+            placeholder="sk-..."
+          />
+        </Field>
+      )}
 
-          {/* API Key (for cloud providers) */}
-          {isCloudProvider && (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                {t('settings.llm.apiKey')}
-              </label>
-              <input
-                type="password"
-                value={settings.llm.apiKey || ''}
-                onChange={(e) => setLLMSettings({ apiKey: e.target.value })}
-                placeholder="sk-..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="text-xs text-gray-500">
-                {currentProvider === 'claude' && 'Get your API key from console.anthropic.com'}
-                {currentProvider === 'openai' && 'Get your API key from platform.openai.com'}
-                {currentProvider === 'gemini' && 'Get your API key from aistudio.google.com'}
-              </p>
-            </div>
-          )}
+      {/* Endpoint */}
+      {(isLocalProvider || isClaudeCode) && (
+        <Field label={t('settings.llm.endpoint')}>
+          <TextInput
+            mono
+            value={settings.llm.endpoint || ''}
+            disabled={mcpLocked}
+            onChange={(value) => setLLMSettings({ endpoint: value })}
+            placeholder={
+              currentProvider === 'ollama'
+                ? 'http://localhost:11434'
+                : currentProvider === CLAUDE_CODE_PROVIDER
+                  ? BRIDGE_DEFAULT_ENDPOINT
+                  : 'http://localhost:8080'
+            }
+          />
+        </Field>
+      )}
 
-          {/* Endpoint (for local providers + Claude Code) */}
-          {(isLocalProvider || isClaudeCode) && (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                {t('settings.llm.endpoint')}
-              </label>
-              <input
-                type="text"
-                value={settings.llm.endpoint || ''}
-                disabled={mcpLocked}
-                onChange={(e) => setLLMSettings({ endpoint: e.target.value })}
-                placeholder={
-                  currentProvider === 'ollama' ? 'http://localhost:11434'
-                    : currentProvider === CLAUDE_CODE_PROVIDER ? BRIDGE_DEFAULT_ENDPOINT
-                      : 'http://localhost:8080'
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          )}
+      {/* Provider별 안내 */}
+      {isClaudeCode && (
+        <div style={{ paddingTop: 4 }}>
+          <InfoCard>{t('settings.llm.providers.claudeCodeInfo')}</InfoCard>
+        </div>
+      )}
+      {isLocalProvider && (
+        <div style={{ paddingTop: 4 }}>
+          <InfoCard>
+            {currentProvider === 'ollama' ? (
+              <>Make sure Ollama is running: <code style={{ fontFamily: '"JetBrains Mono", monospace' }}>ollama serve</code></>
+            ) : (
+              <>Make sure LocalAI is running with OpenAI-compatible API</>
+            )}
+          </InfoCard>
+        </div>
+      )}
 
-          {/* Claude Code info */}
-          {isClaudeCode && (
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <p className="text-xs text-purple-700">
-                {t('settings.llm.providers.claudeCodeInfo')}
-              </p>
-            </div>
-          )}
-
-          {/* Codex settings */}
-          {isCodex && <CodexSettings />}
-
-          {/* Local provider info */}
-          {isLocalProvider && (
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700">
-                {currentProvider === 'ollama' && (
-                  <>Make sure Ollama is running: <code className="bg-blue-100 px-1 rounded">ollama serve</code></>
-                )}
-                {currentProvider === 'localai' && (
-                  <>Make sure LocalAI is running with OpenAI-compatible API</>
-                )}
-              </p>
-            </div>
-          )}
+      {/* Codex 하위 설정 */}
+      {isCodex && (
+        <div style={{ paddingTop: 8 }}>
+          <CodexSettings />
+        </div>
+      )}
     </div>
   );
 }
