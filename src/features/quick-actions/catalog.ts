@@ -7,6 +7,7 @@
  */
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { AnimationSettings } from '../../stores/settingsStore';
+import { ALL_QUICK_ACTION_IDS } from './types';
 import type { QuickToggleCategory, QuickToggleDef } from './types';
 
 /** avatar.animation.<key> boolean 토글용 헬퍼 */
@@ -207,10 +208,33 @@ export const QUICK_TOGGLES_BY_CATEGORY: Record<QuickToggleCategory, QuickToggleD
     return acc;
   }, {} as Record<QuickToggleCategory, QuickToggleDef[]>);
 
-/** Settings persist 마이그레이션/검증에 사용 */
-export const ALL_QUICK_ACTION_IDS: ReadonlySet<string> = new Set(
-  QUICK_TOGGLES.map((d) => d.id)
-);
+/**
+ * Settings persist 마이그레이션/검증에 사용.
+ *
+ * SoT는 types.ts (settingsStore와의 순환 의존을 피하기 위함).
+ * catalog.ts에서는 단순 re-export 하고, dev 환경에서는 catalog↔types
+ * 동기화를 검증한다 (아래 dev-only console.warn).
+ */
+export { ALL_QUICK_ACTION_IDS };
+
+if (import.meta.env?.DEV) {
+  const catalogIds = new Set(QUICK_TOGGLES.map((d) => d.id));
+  const missing: string[] = [];
+  const extra: string[] = [];
+  catalogIds.forEach((id) => {
+    if (!ALL_QUICK_ACTION_IDS.has(id)) extra.push(id);
+  });
+  ALL_QUICK_ACTION_IDS.forEach((id) => {
+    if (!catalogIds.has(id)) missing.push(id);
+  });
+  if (missing.length || extra.length) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[quick-actions] catalog ↔ types ALL_QUICK_ACTION_IDS 불일치:',
+      { catalogOnly: extra, typesOnly: missing }
+    );
+  }
+}
 
 /** 카테고리 표시 순서 + i18n 키 */
 export const CATEGORY_ORDER: QuickToggleCategory[] = [

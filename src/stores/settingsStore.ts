@@ -198,7 +198,7 @@ export interface Settings {
   enabledQuickActions: QuickActionId[];
 }
 
-interface SettingsState {
+export interface SettingsState {
   settings: Settings;
   isSettingsOpen: boolean;
   isHistoryOpen: boolean;
@@ -556,11 +556,18 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       typeof source.proactivePreviousEnabled === 'boolean'
         ? source.proactivePreviousEnabled
         : null,
-    enabledQuickActions: Array.isArray(source.enabledQuickActions)
-      ? source.enabledQuickActions.filter((id): id is QuickActionId =>
-          typeof id === 'string' && ALL_QUICK_ACTION_IDS.has(id as QuickActionId)
-        )
-      : defaultSettings.enabledQuickActions,
+    // enabledQuickActions: source가 없거나, source 항목이 있는데 모두 invalid한 경우만
+    // default로 복구. 사용자가 의도적으로 모두 해제한 빈 배열은 존중.
+    enabledQuickActions: (() => {
+      const arr = Array.isArray(source.enabledQuickActions) ? source.enabledQuickActions : null;
+      if (arr === null) return defaultSettings.enabledQuickActions;
+      const filtered = arr.filter((id): id is QuickActionId =>
+        typeof id === 'string' && ALL_QUICK_ACTION_IDS.has(id as QuickActionId)
+      );
+      // source는 있는데 모두 invalid → 마이그레이션 누락 가능성, default로 복구
+      if (arr.length > 0 && filtered.length === 0) return defaultSettings.enabledQuickActions;
+      return filtered;
+    })(),
   };
 }
 
@@ -887,12 +894,19 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       setProactive: (proactive) =>
-        set((state) => ({
-          settings: {
+        set((state) => {
+          const next = {
             ...state.settings,
             proactive: { ...DEFAULT_PROACTIVE_SETTINGS, ...state.settings.proactive, ...proactive },
-          },
-        })),
+          };
+          // 사용자가 enabled를 직접 변경했고 현재 avatar 숨김 진입 중이면
+          // 자동 복구(proactivePreviousEnabled)를 비활성화한다.
+          // 그렇지 않으면 hidden 해제 시 사용자 의도가 무시되고 이전 값으로 되돌아감.
+          if (proactive.enabled !== undefined && state.settings.avatarHidden) {
+            next.proactivePreviousEnabled = null;
+          }
+          return { settings: next };
+        }),
 
       setAvatarHidden: (hidden) =>
         set((state) => applyAvatarHiddenTransition(state.settings, Boolean(hidden))),
