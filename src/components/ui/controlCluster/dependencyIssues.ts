@@ -13,6 +13,15 @@ export interface DependencyIssue {
   steps: string[];
 }
 
+/**
+ * `model` 필드가 사용자 선택 의미를 가지는 provider 집합.
+ *
+ * `claude_code`는 외부 Claude Code 세션이, `codex`는 Codex CLI(app-server)가
+ * 자체적으로 모델을 결정하므로 `settings.llm.model`이 비어 있어도 이슈가 아니다.
+ * 이 두 provider는 모델 미설정 가이드 흐름에서 제외한다.
+ */
+export type ModelSelectableProvider = Exclude<LLMProvider, 'claude_code' | 'codex'>;
+
 export const PROVIDER_LABELS: Record<LLMProvider, string> = {
   ollama: 'Ollama',
   localai: 'LocalAI',
@@ -29,6 +38,16 @@ export const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string
   gemini: 'gemini-2.5-flash',
 };
 
+/**
+ * provider가 모델 선택이 필요한 종류인지 (claude_code/codex 제외).
+ * 호출 지점에서 좁히기 가드로 사용 — 좁힌 결과를 buildModelUnsetIssue 등에 전달.
+ */
+export function isModelSelectableProvider(
+  provider: LLMProvider
+): provider is ModelSelectableProvider {
+  return provider !== 'claude_code' && provider !== 'codex';
+}
+
 /** i18n returnObjects helper (string[] 안전 캐스트) */
 export function readSteps(
   t: TFunction,
@@ -39,7 +58,19 @@ export function readSteps(
   return Array.isArray(v) ? (v as string[]) : [];
 }
 
-export function buildModelUnsetIssue(t: TFunction, provider: LLMProvider): DependencyIssue {
+/**
+ * 모델 미설정 이슈 빌더.
+ *
+ * provider 타입을 ModelSelectableProvider로 좁혀 받아
+ * claude_code/codex가 도달해 CLOUD_DEFAULT_MODELS lookup이 undefined가 되는
+ * 케이스를 컴파일 단계에서 차단한다 (이전 `as` 단언 제거).
+ *
+ * 호출 지점은 `isModelSelectableProvider` 가드로 먼저 좁혀 호출할 것.
+ */
+export function buildModelUnsetIssue(
+  t: TFunction,
+  provider: ModelSelectableProvider
+): DependencyIssue {
   if (provider === 'ollama' || provider === 'localai') {
     return {
       id: 'llm-model-unset',
@@ -48,8 +79,9 @@ export function buildModelUnsetIssue(t: TFunction, provider: LLMProvider): Depen
       steps: readSteps(t, `dependency.issue.modelUnset.${provider}.steps`),
     };
   }
+  // 여기서 provider는 'claude' | 'openai' | 'gemini'로 좁혀짐 — as 단언 불필요.
   const providerLabel = PROVIDER_LABELS[provider];
-  const defaultModel = CLOUD_DEFAULT_MODELS[provider as 'claude' | 'openai' | 'gemini'];
+  const defaultModel = CLOUD_DEFAULT_MODELS[provider];
   return {
     id: 'llm-model-unset',
     title: t('dependency.issue.modelUnset.cloud.title', { provider: providerLabel }),
