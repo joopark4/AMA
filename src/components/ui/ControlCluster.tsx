@@ -860,9 +860,10 @@ export default function ControlCluster() {
         </form>
       )}
 
-      {/* ─── Button cluster row: 비-listening 시 메뉴바 왼쪽에 StatusPill, listening 시는 위 슬롯 ─── */}
+      {/* ─── Button cluster row: 메뉴바 왼쪽에 StatusPill 상시 표시
+              (listening 시에는 transcript / '듣는 중' 라벨로 자동 전환) ─── */}
       <div className="flex items-center gap-2">
-        {!isVoiceListening && <StatusPill kind={pillKind} label={pillLabel} />}
+        <StatusPill kind={pillKind} label={pillLabel} />
         <div
           ref={menuBarRef}
           className="glass-strong flex items-center"
