@@ -45,6 +45,7 @@ import {
   buildCloudApiKeyIssue,
   buildLocalServerIssue,
   buildLocalModelIssue,
+  isModelSelectableProvider,
 } from './controlCluster/dependencyIssues';
 import { StatusPill, type StatusKind } from './controlCluster/StatusPill';
 import { ListeningBars } from './controlCluster/ListeningBars';
@@ -117,8 +118,14 @@ export default function ControlCluster() {
       const apiKey = settings.llm.apiKey || '';
 
       if (!model.trim()) {
-        if (!cancelled) setLlmDependencyIssue(buildModelUnsetIssue(t, provider));
-        return;
+        // claude_code / codex는 외부 세션·CLI에서 모델을 결정하므로
+        // settings.llm.model이 비어 있어도 이슈가 아니다 → 다음 흐름으로.
+        // isModelSelectableProvider 가드로 좁혀 buildModelUnsetIssue가
+        // 안전한 provider 타입만 받도록 한다 (cloud lookup undefined 차단).
+        if (isModelSelectableProvider(provider)) {
+          if (!cancelled) setLlmDependencyIssue(buildModelUnsetIssue(t, provider));
+          return;
+        }
       }
       if ((provider === 'ollama' || provider === 'localai') && !endpoint.trim()) {
         if (!cancelled) setLlmDependencyIssue(buildEndpointUnsetIssue(t, provider));
