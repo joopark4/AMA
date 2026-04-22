@@ -13,7 +13,11 @@ interface VoiceWaveformProps {
 
 const SAMPLE_COUNT = 96;
 const FRAME_INTERVAL_MS = 1000 / 30;
-const EMA_ALPHA = 0.38;
+// EMA 반응 속도: 값이 클수록 즉각적 (0~1)
+const EMA_ALPHA = 0.55;
+// raw amplitude 증폭 배수 — 일반 음성은 보통 ±0.1~0.25라
+// 5배 증폭한 뒤 ±1로 클램프하면 시각적으로 흔들림이 잘 보임.
+const AMPLIFY = 5.0;
 
 function ensureCanvasSize(canvas: HTMLCanvasElement): { width: number; height: number } {
   const ratio = window.devicePixelRatio || 1;
@@ -49,14 +53,18 @@ function drawWaveform(
   ctx.lineTo(width, midY);
   ctx.stroke();
 
-  // waveform (accent 톤)
+  // waveform (accent 톤) — 라인 두께 ↑, 진폭 한도 ↑로 흔들림 시각 강조.
   ctx.strokeStyle = 'rgba(230, 144, 58, 0.95)';
-  ctx.lineWidth = Math.max(1.5, width / 220);
+  ctx.lineWidth = Math.max(2, width / 180);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
   ctx.beginPath();
+
+  const amplitude = height * 0.46; // midY 기준 위/아래 최대치 (height의 92%까지 사용)
 
   for (let i = 0; i < waveform.length; i++) {
     const x = (i / (waveform.length - 1)) * width;
-    const y = midY + waveform[i] * (height * 0.85);
+    const y = midY + waveform[i] * amplitude;
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
@@ -88,7 +96,9 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
 
       const raw = audioProcessor.getWaveformData(SAMPLE_COUNT);
       for (let i = 0; i < SAMPLE_COUNT; i++) {
-        smoothed[i] = smoothed[i] * (1 - EMA_ALPHA) + raw[i] * EMA_ALPHA;
+        // amplify + clamp [-1, 1] → 작은 음성도 잘 보이게.
+        const amplified = Math.max(-1, Math.min(1, raw[i] * AMPLIFY));
+        smoothed[i] = smoothed[i] * (1 - EMA_ALPHA) + amplified * EMA_ALPHA;
       }
 
       const { width, height } = ensureCanvasSize(canvas);
