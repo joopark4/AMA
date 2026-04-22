@@ -24,11 +24,20 @@ const WHISPER_MODEL_SIZE: Record<string, string> = {
   medium: '~1.5 GB',
 };
 
-const SUPERTONIC_VOICES: Record<string, string> = {
-  F1: '여성 1', F2: '여성 2', F3: '여성 3', F4: '여성 4', F5: '여성 5',
-  M1: '남성 1', M2: '남성 2', M3: '남성 3', M4: '남성 4', M5: '남성 5',
-};
-const SUPERTONIC_VOICE_KEYS = Object.keys(SUPERTONIC_VOICES);
+/**
+ * Supertonic voice ID 목록.
+ * 라벨은 i18n 키 + 번호 보간 조합으로 동적 생성 (getSupertonicVoiceLabel).
+ */
+const SUPERTONIC_VOICE_KEYS = ['F1', 'F2', 'F3', 'F4', 'F5', 'M1', 'M2', 'M3', 'M4', 'M5'];
+
+function getSupertonicVoiceLabel(t: ReturnType<typeof useTranslation>['t'], key: string): string {
+  const isFemale = key.startsWith('F');
+  const num = key.slice(1);
+  return t(
+    isFemale ? 'settings.voice.tts.voiceLabel.female' : 'settings.voice.tts.voiceLabel.male',
+    { num }
+  );
+}
 
 /** STT/TTS 그룹 헤더 — 14px ink, 살짝 강조 */
 function GroupTitle({ children }: { children: React.ReactNode }) {
@@ -218,7 +227,7 @@ export default function VoiceSettings() {
               key={voice}
               active={(settings.tts.voice || 'F1') === voice}
               onClick={() => setTTSSettings({ voice })}
-              title={SUPERTONIC_VOICES[voice]}
+              title={getSupertonicVoiceLabel(t, voice)}
             >
               {voice}
             </Pill>
@@ -231,7 +240,7 @@ export default function VoiceSettings() {
             color: 'var(--ink-3)',
           }}
         >
-          {SUPERTONIC_VOICES[settings.tts.voice || 'F1']}
+          {getSupertonicVoiceLabel(t, settings.tts.voice || 'F1')}
         </div>
       </Field>
 
