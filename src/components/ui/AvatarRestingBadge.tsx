@@ -48,7 +48,12 @@ export default function AvatarRestingBadge() {
           fontWeight: 500,
           letterSpacing: '-0.01em',
           textAlign: 'center',
+          // 영문 번역이 한국어보다 길어 화면 우측을 침범하는 것을 방지.
+          // 한 줄 우선 + 길어지면 ellipsis. (i18n 폭 회귀 대응)
+          maxWidth: 'min(320px, calc(100vw - 64px))',
           whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
         {t('overlay.avatarResting', { name })}

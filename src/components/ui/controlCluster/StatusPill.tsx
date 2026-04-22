@@ -25,6 +25,10 @@ export function StatusPill({ kind, label }: { kind: StatusKind; label: string })
         fontWeight: 500,
         color: m.text,
         letterSpacing: '-0.01em',
+        // i18n 라벨 / transcript가 길어지면 cluster 행이 화면 밖으로 밀리는 것 방지.
+        // pill 자체는 가변이지만 상한선 + 한 줄 ellipsis로 안정 폭 유지.
+        maxWidth: 'min(260px, calc(100vw - 360px))',
+        minWidth: 0,
       }}
     >
       <span
@@ -35,9 +39,19 @@ export function StatusPill({ kind, label }: { kind: StatusKind; label: string })
           background: m.dot,
           boxShadow: `0 0 12px ${m.dot}`,
           animation: m.animate ? 'auraBreath 1.6s ease-in-out infinite' : 'none',
+          flexShrink: 0,
         }}
       />
-      {label}
+      <span
+        style={{
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
