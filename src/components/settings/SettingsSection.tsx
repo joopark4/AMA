@@ -15,7 +15,14 @@ import { ChevronDown } from 'lucide-react';
 interface SettingsSectionProps {
   title: string;
   icon?: ReactNode;
+  /** uncontrolled 초기 열림 상태 (기본 false). `isOpen`이 지정되면 무시된다. */
   defaultOpen?: boolean;
+  /**
+   * controlled 모드: 외부에서 열림 상태를 주입. 제공되면 `onToggle`과 함께 사용해야 한다.
+   * SettingsPanel이 persist된 상태를 주입할 때 사용.
+   */
+  isOpen?: boolean;
+  onToggle?: () => void;
   children: ReactNode;
 }
 
@@ -23,9 +30,17 @@ export default function SettingsSection({
   title,
   icon,
   defaultOpen = false,
+  isOpen: controlledOpen,
+  onToggle,
   children,
 }: SettingsSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+  const handleToggle = () => {
+    if (isControlled) onToggle?.();
+    else setInternalOpen((v) => !v);
+  };
 
   return (
     <div
@@ -42,7 +57,7 @@ export default function SettingsSection({
     >
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="w-full flex items-center text-left focus-ring"
         style={{ padding: '14px 16px', gap: 12 }}
         data-interactive="true"

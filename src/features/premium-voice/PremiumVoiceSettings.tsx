@@ -76,9 +76,51 @@ export default function PremiumVoiceSettings() {
     }
   }, [isPremium, fetchVoices, fetchUsageSummary, fetchUsageDaily]);
 
+  /**
+   * 프리미엄 엔진에서 voiceId가 비어있으면 기본 음성으로 **Bella**를 자동 지정한다.
+   * voices가 아직 로드되지 않았으면 false를 반환하고, 이후 `voices` useEffect에서 보정.
+   *
+   * 로컬 → 프리미엄 전환 시 voiceId가 비어서 synthesize가 실패 → 로컬로 폴백되는 이슈를 방지.
+   */
+  const ensureDefaultPremiumVoice = useCallback((): boolean => {
+    if (voices.length === 0) return false;
+    const bella =
+      voices.find((v) => v.name.toLowerCase() === 'bella') || voices[0];
+    if (!bella) return false;
+    setTTSSettings({
+      engine: 'supertone_api',
+      supertoneApi: {
+        ...effectiveApiSettings,
+        voiceId: bella.voice_id,
+        voiceName: bella.name,
+        style: bella.styles?.[0] || 'neutral',
+      },
+    });
+    return true;
+  }, [voices, setTTSSettings, effectiveApiSettings]);
+
   const handleEngineChange = useCallback((engine: 'supertonic' | 'supertone_api') => {
+    if (engine === 'supertone_api' && !effectiveApiSettings.voiceId) {
+      if (ensureDefaultPremiumVoice()) return;
+    }
     setTTSSettings({ engine });
-  }, [setTTSSettings]);
+  }, [setTTSSettings, effectiveApiSettings.voiceId, ensureDefaultPremiumVoice]);
+
+  // voices가 뒤늦게 로드되는 경우도 보정 — 엔진이 프리미엄인데 voiceId 비어있으면 Bella 주입.
+  useEffect(() => {
+    if (
+      settings.tts.engine === 'supertone_api' &&
+      !effectiveApiSettings.voiceId &&
+      voices.length > 0
+    ) {
+      ensureDefaultPremiumVoice();
+    }
+  }, [
+    settings.tts.engine,
+    effectiveApiSettings.voiceId,
+    voices,
+    ensureDefaultPremiumVoice,
+  ]);
 
   const handleVoiceSelect = useCallback((voice: SupertoneVoice) => {
     const isAlreadySelected = effectiveApiSettings.voiceId === voice.voice_id;

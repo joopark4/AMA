@@ -483,7 +483,7 @@
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLI must be installed.",
       "step2Title": "Step 2: Run in Terminal",
-      "step2Desc": "Run the following command in the AMA project directory.",
+      "step2Desc": "Run the command above in any project folder of your choice.",
       "step3Title": "Step 3: Enable in AMA",
       "copy": "Copy",
       "copied": "Copied",
