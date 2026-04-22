@@ -131,15 +131,20 @@ export default function SettingsPanel() {
     closeSettings();
   };
 
-  // ESC로 닫기
+  // 최신 handleClose를 ref로 추적 (PR #37 Gemini 리뷰 M1 반영).
+  // 이전 구현은 deps에 manualRotation.{x,y}가 들어 있어 회전마다 ESC 리스너가
+  // 재등록되었다. ref 패턴으로 listener는 마운트 1회만 등록 + 호출 시점에
+  // 최신 manualRotation을 사용.
+  const handleCloseRef = useRef(handleClose);
+  handleCloseRef.current = handleClose;
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === 'Escape') handleCloseRef.current();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualRotation.x, manualRotation.y]);
+  }, []);
 
   const handleResetAll = () => {
     if (window.confirm(t('settings.resetConfirm'))) {
