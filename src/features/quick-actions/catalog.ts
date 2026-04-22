@@ -22,14 +22,7 @@ function applyAnim(key: keyof AnimationSettings) {
 
 export const QUICK_TOGGLES: QuickToggleDef[] = [
   /* ─── 아바타 ─── */
-  {
-    id: 'avatar.hidden',
-    titleKey: 'quick.avatarHidden.title',
-    descKey: 'quick.avatarHidden.desc',
-    category: 'avatar',
-    select: (s) => s.settings.avatarHidden,
-    apply: (v) => useSettingsStore.getState().setAvatarHidden(v),
-  },
+  // (avatar.hidden 제외 — 컨트롤 클러스터에 이미 Eye/EyeOff 버튼이 있어서 중복)
   {
     id: 'avatar.freeMovement',
     titleKey: 'quick.freeMovement.title',
@@ -182,15 +175,8 @@ export const QUICK_TOGGLES: QuickToggleDef[] = [
     },
   },
 
-  /* ─── Channels ─── */
-  {
-    id: 'channels.enabled',
-    titleKey: 'quick.channels.title',
-    descKey: 'quick.channels.desc',
-    category: 'channels',
-    select: (s) => s.settings.mcpEnabled,
-    apply: (v) => useSettingsStore.getState().setSettings({ mcpEnabled: v }),
-  },
+  // (channels.enabled 제외 — provider 전환·플러그인 setup 등 사이드 이펙트가 커서
+  //  빠른 토글로는 부적절. 설정 패널의 Channels 섹션에서만 토글)
 
   /* ─── 자발적 대화 ─── */
   {

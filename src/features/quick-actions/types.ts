@@ -46,7 +46,7 @@ export type QuickActionId = string;
  */
 export const ALL_QUICK_ACTION_IDS: ReadonlySet<string> = new Set([
   // 아바타
-  'avatar.hidden',
+  // (avatar.hidden 제외 — 컨트롤 클러스터에 Eye/EyeOff 버튼이 이미 있음)
   'avatar.freeMovement',
   'avatar.autoRoam',
   'avatar.showSpeechBubble',
@@ -66,8 +66,7 @@ export const ALL_QUICK_ACTION_IDS: ReadonlySet<string> = new Set([
   // 화면
   'screen.watch',
   'screen.silentHours',
-  // Channels
-  'channels.enabled',
+  // (channels.enabled 제외 — provider 전환·플러그인 setup 등 사이드 이펙트로 부적절)
   // 자발적 대화
   'proactive.enabled',
 ]);
