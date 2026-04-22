@@ -210,6 +210,11 @@ export interface Settings {
    * 사용자가 설정에서 체크박스로 등록/해제하며, 순서는 등록 순서.
    */
   enabledQuickActions: QuickActionId[];
+  /**
+   * 설정 패널 섹션별 펼침 상태 — key는 섹션 key(account/lang/premium/llm/...).
+   * `true`면 열림. 명시되지 않은 섹션은 접힘으로 간주되어 첫 실행 시 모든 섹션이 접힌다.
+   */
+  settingsPanelExpanded: Record<string, boolean>;
 }
 
 export interface SettingsState {
@@ -245,6 +250,8 @@ export interface SettingsState {
   openSettings: () => void;
   closeSettings: () => void;
   resetSettings: () => void;
+  /** 설정 패널 특정 섹션의 펼침 상태 토글. */
+  toggleSettingsPanelSection: (key: string) => void;
   toggleHistory: () => void;
   openHistory: () => void;
   closeHistory: () => void;
@@ -456,6 +463,7 @@ const defaultSettings: Settings = {
     'voice.globalShortcut',
     'screen.watch',
   ],
+  settingsPanelExpanded: {},
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -594,6 +602,15 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       // source는 있는데 모두 invalid → 마이그레이션 누락 가능성, default로 복구
       if (arr.length > 0 && filtered.length === 0) return defaultSettings.enabledQuickActions;
       return filtered;
+    })(),
+    settingsPanelExpanded: (() => {
+      const raw = source.settingsPanelExpanded;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+      const out: Record<string, boolean> = {};
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+        if (typeof v === 'boolean') out[k] = v;
+      }
+      return out;
     })(),
   };
 }
@@ -980,6 +997,18 @@ export const useSettingsStore = create<SettingsState>()(
 
       resetSettings: () => set({ settings: defaultSettings }),
 
+      toggleSettingsPanelSection: (key) =>
+        set((state) => {
+          const current = state.settings.settingsPanelExpanded ?? {};
+          const next = { ...current, [key]: !current[key] };
+          return {
+            settings: {
+              ...state.settings,
+              settingsPanelExpanded: next,
+            },
+          };
+        }),
+
       toggleHistory: () =>
         set((state) => ({ isHistoryOpen: !state.isHistoryOpen })),
 
@@ -1001,7 +1030,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 20,
+      version: 21,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -1087,6 +1116,14 @@ export const useSettingsStore = create<SettingsState>()(
           const s = state.settings as Partial<Settings>;
           if (s.tts && typeof (s.tts as TTSSettings).language !== 'string') {
             s.tts = { ...(s.tts as TTSSettings), language: 'auto' };
+          }
+        }
+
+        // v20→v21: 설정 패널 섹션 펼침 상태 필드 추가 (빈 객체 = 모두 접힘).
+        if ((version ?? 0) < 21) {
+          const s = state.settings as Partial<Settings>;
+          if (!s.settingsPanelExpanded || typeof s.settingsPanelExpanded !== 'object') {
+            s.settingsPanelExpanded = {};
           }
         }
 

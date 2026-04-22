@@ -117,7 +117,15 @@ function HeaderUserPill() {
 
 export default function SettingsPanel() {
   const { t } = useTranslation();
-  const { closeSettings, resetSettings, setAvatarSettings } = useSettingsStore();
+  const {
+    closeSettings,
+    resetSettings,
+    setAvatarSettings,
+    toggleSettingsPanelSection,
+  } = useSettingsStore();
+  const expandedSections = useSettingsStore(
+    (s) => s.settings.settingsPanelExpanded ?? {}
+  );
   const { manualRotation } = useAvatarStore();
 
   /** 닫기 + 현재 manualRotation을 initialViewRotation에 저장 */
@@ -158,29 +166,31 @@ export default function SettingsPanel() {
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   /* ─── Settings 섹션 정의 — useMemo로 매 렌더 재할당 방지 ─── */
+  // 섹션의 펼침 상태는 `settings.settingsPanelExpanded`로 persist되며,
+  // 첫 실행 시 빈 객체라서 모든 섹션이 접힌 상태로 시작한다.
   const sections = useMemo(
     () => [
       // 계정은 사용자가 가장 먼저 확인하는 정보이므로 맨 앞에 배치.
-      { key: 'account', icon: <UserRound size={16} />, title: t('settings.account.title'), Comp: UserProfile, defaultOpen: true },
-      { key: 'lang', icon: <Globe size={16} />, title: t('settings.language'), Comp: LanguageSection, defaultOpen: true },
+      { key: 'account', icon: <UserRound size={16} />, title: t('settings.account.title'), Comp: UserProfile },
+      { key: 'lang', icon: <Globe size={16} />, title: t('settings.language'), Comp: LanguageSection },
       // 프리미엄은 계정·언어 직후에 노출 (구독 상태/혜택 빠른 확인).
-      { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings, defaultOpen: true },
-      { key: 'llm', icon: <Brain size={16} />, title: t('settings.llm.title'), Comp: LLMSettings, defaultOpen: true },
+      { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings },
+      { key: 'llm', icon: <Brain size={16} />, title: t('settings.llm.title'), Comp: LLMSettings },
       // Claude Code Channels는 AI 모델 설정의 연장선이므로 바로 뒤에 배치.
-      { key: 'mcp', icon: <Code size={16} />, title: t('settings.mcp.title'), Comp: MCPSettings, defaultOpen: true },
-      { key: 'audio', icon: <Volume2 size={16} />, title: t('settings.audioDevice.title'), Comp: AudioDeviceSettings, defaultOpen: true },
+      { key: 'mcp', icon: <Code size={16} />, title: t('settings.mcp.title'), Comp: MCPSettings },
+      { key: 'audio', icon: <Volume2 size={16} />, title: t('settings.audioDevice.title'), Comp: AudioDeviceSettings },
       // 아바타 → 캐릭터 → 음성 순으로 그룹화 (외형 → 인격 → 발화).
-      { key: 'avatar', icon: <Box size={16} />, title: t('settings.avatar.title'), Comp: AvatarSettings, defaultOpen: true },
-      { key: 'character', icon: <User size={16} />, title: t('settings.character.title'), Comp: CharacterSettings, defaultOpen: true },
-      { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings, defaultOpen: true },
-      { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title'), Comp: ScreenWatchSettings, defaultOpen: true },
-      { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings, defaultOpen: true },
-      { key: 'quick', icon: <Sparkles size={16} />, title: t('settings.quickActions.title'), Comp: QuickActionsSettings, defaultOpen: true },
+      { key: 'avatar', icon: <Box size={16} />, title: t('settings.avatar.title'), Comp: AvatarSettings },
+      { key: 'character', icon: <User size={16} />, title: t('settings.character.title'), Comp: CharacterSettings },
+      { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings },
+      { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title'), Comp: ScreenWatchSettings },
+      { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings },
+      { key: 'quick', icon: <Sparkles size={16} />, title: t('settings.quickActions.title'), Comp: QuickActionsSettings },
       // 앱 업데이트 → 데이터 정리 순서로 그룹화 (앱 유지보수 카테고리).
-      { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
-      { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
+      { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings },
+      { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings },
       // 오픈소스 라이선스는 참조용 정보이므로 가장 마지막에 배치.
-      { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
+      { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings },
     ],
     [t]
   );
@@ -238,8 +248,9 @@ export default function SettingsPanel() {
           top: 'max(env(safe-area-inset-top), 64px)',
           right: 12,
           bottom: 12,
-          // 화면 너비에 비례해 확장 (단일 컬럼 ~420 → 최대 3컬럼 ~1200)
-          width: 'min(1200px, calc(100vw - 24px))',
+          // 화면 너비에 비례해 확장 (단일 컬럼 ~420 → 최대 2컬럼 ~800)
+          // columnWidth 360 * 2 + gap 14 + 좌우 padding 44 ≈ 778 → 여유 있게 800px.
+          width: 'min(800px, calc(100vw - 24px))',
           minWidth: 'min(420px, calc(100vw - 24px))',
           padding: 0,
           animation: 'panelIn 320ms var(--ease)',
@@ -362,7 +373,7 @@ export default function SettingsPanel() {
           }}
           data-interactive="true"
         >
-          {sections.map(({ key, icon, title, Comp, defaultOpen }) => (
+          {sections.map(({ key, icon, title, Comp }) => (
             <div
               key={key}
               style={{
@@ -371,7 +382,12 @@ export default function SettingsPanel() {
                 marginBottom: 12,
               }}
             >
-              <SettingsSection icon={icon} title={title} defaultOpen={defaultOpen}>
+              <SettingsSection
+                icon={icon}
+                title={title}
+                isOpen={expandedSections[key] ?? false}
+                onToggle={() => toggleSettingsPanelSection(key)}
+              >
                 <Comp />
               </SettingsSection>
             </div>
