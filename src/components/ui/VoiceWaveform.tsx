@@ -138,6 +138,11 @@ export default function VoiceWaveform({ label, width = 320 }: VoiceWaveformProps
             whiteSpace: 'nowrap',
             fontWeight: 500,
             letterSpacing: '-0.01em',
+            // i18n 라벨이 너무 길면 canvas 가시 영역 잠식. 최대 폭 + ellipsis 가드.
+            maxWidth: 96,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            flexShrink: 0,
           }}
         >
           {label}

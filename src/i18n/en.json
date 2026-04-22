@@ -495,7 +495,7 @@
     "processing": "Processing...",
     "speaking": "Speaking...",
     "error": "Error",
-    "voiceListeningOverlay": "Voice input active",
+    "voiceListeningOverlay": "Listening",
     "recognizing": "Recognizing: {{transcript}}",
     "llmProcessing": "Thinking..."
   },
