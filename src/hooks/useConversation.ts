@@ -15,7 +15,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
 import { useClaudeCodeChat } from '../features/channels';
-import { buildCharacterPrompt, analyzeEmotion, emotionToVec, NEUTRAL_MOOD } from '../services/character';
+import {
+  buildCharacterPrompt,
+  analyzeEmotion,
+  emotionToVec,
+  NEUTRAL_MOOD,
+  type PromptLanguage,
+} from '../services/character';
 import { ttsQueue } from '../services/voice/ttsQueue';
 import { buildMessageWindow, summarizeIfNeeded } from '../services/ai/memoryManager';
 import { proactiveEngine } from '../services/ai/proactiveEngine';
@@ -30,28 +36,110 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
-/**
- * 시스템 프롬프트 빌드 — 캐릭터 프로필 기반
- *
- * @deprecated 레거시 시그니처, sendMessage 내에서 직접 character 프로필 사용 권장
- */
-export function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
-  // 레거시 호환: 캐릭터 프로필이 설정되어 있으면 그것을 사용
-  const character = useSettingsStore.getState().settings.character;
-  if (character && (character.name || character.personality.traits.length > 0)) {
-    return buildCharacterPrompt(character);
-  }
+/** Supertonic(로컬 TTS)이 네이티브 지원하는 언어 — 이 외는 런타임에 `en`으로 폴백된다. */
+const SUPERTONIC_NATIVE_LANGS: ReadonlySet<PromptLanguage> = new Set<PromptLanguage>([
+  'ko', 'en', 'es', 'pt', 'fr',
+]);
 
-  // 폴백: 프로필이 없으면 기존 방식 유지
-  const normalizedName = avatarName.trim() || '아바타';
-  const basePrompt = `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
+/**
+ * LLM 응답 언어 결정 — **TTS 출력 언어 기준**.
+ *
+ * - `settings.tts.language`가 'auto'가 아니면 그 값을 사용 (ko/en/ja/es/pt/fr)
+ * - 'auto'(기본)면 UI 언어(`settings.language`, ko/en/ja)로 폴백
+ * - **엔진이 Supertonic(로컬)인데 언어가 ja 등 미지원이면 `en`으로 강제** —
+ *   LLM이 일본어로 응답했는데 로컬 TTS가 영어로만 읽어 깨지는 현상을 방지.
+ *
+ * 참고: `settings.language`는 앱 UI에만 사용되며, 대화/응답 언어에는 영향을 주지 않는다.
+ */
+export function resolveResponseLanguage(): PromptLanguage {
+  const { settings } = useSettingsStore.getState();
+  const tts = settings.tts.language;
+  const base: PromptLanguage =
+    tts && tts !== 'auto' ? (tts as PromptLanguage) : (settings.language as PromptLanguage);
+
+  if (settings.tts.engine === 'supertonic' && !SUPERTONIC_NATIVE_LANGS.has(base)) {
+    return 'en';
+  }
+  return base;
+}
+
+/** 응답 언어별 폴백 기본 프롬프트 지시문 — 캐릭터 프로필이 비었을 때만 사용. */
+const LEGACY_PROMPT_TEMPLATES: Record<
+  Language,
+  { header: (name: string) => string; languageDirective: string; personalityHeader: string; personalityFooter: string }
+> = {
+  ko: {
+    header: (name: string) => `당신은 "${name}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
 말투: 반말을 사용하고, 짧고 자연스러운 대화체로 말합니다.
 특징:
 - 이모티콘은 사용하지 않습니다
 - 답변은 2-3문장 정도로 짧게 합니다
-- 공감과 감정 표현을 잘합니다
-- 한국어로 대화합니다`;
+- 공감과 감정 표현을 잘합니다`,
+    languageDirective: '- 사용자가 다른 언어를 명시적으로 요청하지 않는 한 한국어로 대화합니다',
+    personalityHeader: '추가 성격 가이드(사용자 지정):',
+    personalityFooter: '위 사용자 지정 가이드를 기본 성격과 함께 우선 반영하세요.',
+  },
+  en: {
+    header: (name: string) => `You are an AI assistant named "${name}" — friendly and cute.
+Personality: Bright, positive, treating the user like a friend.
+Tone: Casual, short, natural conversational style.
+Rules:
+- Do not use emoji
+- Keep replies to about 2-3 sentences
+- Show empathy and emotional expression`,
+    languageDirective: '- Always respond in English unless the user explicitly asks for another language',
+    personalityHeader: 'Additional personality guide (user-specified):',
+    personalityFooter: 'Apply the user-specified guide above together with the base personality, giving it priority.',
+  },
+  ja: {
+    header: (name: string) => `あなたは "${name}" という名前のフレンドリーで可愛いAIアシスタントです。
+性格: 明るくポジティブで、ユーザーを友達のように扱います。
+話し方: カジュアルで短く、自然な会話スタイル。
+ルール:
+- 絵文字は使いません
+- 返答は2〜3文程度に留めます
+- 共感と感情表現を大切にします`,
+    languageDirective: '- ユーザーが他の言語を明示的に要求しない限り、必ず日本語で応答します',
+    personalityHeader: '追加の性格ガイド(ユーザー指定):',
+    personalityFooter: '上記のユーザー指定ガイドを基本性格と共に優先的に反映してください。',
+  },
+};
+
+/**
+ * 시스템 프롬프트 빌드 — 캐릭터 프로필 기반
+ *
+ * @param avatarName 레거시 아바타 이름
+ * @param personalityPrompt 레거시 사용자 지정 성격 프롬프트
+ * @param language 응답 언어 (기본값은 `resolveResponseLanguage()` — TTS 언어 기준)
+ *
+ * @deprecated 레거시 시그니처, sendMessage 내에서 직접 character 프로필 사용 권장
+ */
+export function buildSystemPrompt(
+  avatarName: string,
+  personalityPrompt: string,
+  language?: PromptLanguage
+): string {
+  const effectiveLanguage: PromptLanguage = language ?? resolveResponseLanguage();
+
+  // 레거시 호환: 캐릭터 프로필이 설정되어 있으면 그것을 사용
+  const character = useSettingsStore.getState().settings.character;
+  if (character && (character.name || character.personality.traits.length > 0)) {
+    return buildCharacterPrompt(character, effectiveLanguage);
+  }
+
+  // 폴백: 프로필이 없으면 기본 템플릿 (ko/en/ja만 네이티브 — 그 외는 en으로 폴백).
+  // Layer 0 언어 지시는 buildCharacterPrompt 경로에서만 박히므로, legacy 경로에서는
+  // template 내부의 languageDirective가 LLM 응답 언어를 강제한다.
+  const templateLanguage: Language =
+    effectiveLanguage === 'ko' || effectiveLanguage === 'en' || effectiveLanguage === 'ja'
+      ? effectiveLanguage
+      : 'en';
+  const template = LEGACY_PROMPT_TEMPLATES[templateLanguage];
+  const fallbackName = templateLanguage === 'ja' ? 'アバター' : templateLanguage === 'en' ? 'Avatar' : '아바타';
+  const normalizedName = avatarName.trim() || fallbackName;
+  const basePrompt = `${template.header(normalizedName)}
+${template.languageDirective}`;
 
   const normalizedPersonalityPrompt = personalityPrompt.trim();
   if (!normalizedPersonalityPrompt) {
@@ -60,10 +148,10 @@ export function buildSystemPrompt(avatarName: string, personalityPrompt: string)
 
   return `${basePrompt}
 
-추가 성격 가이드(사용자 지정):
+${template.personalityHeader}
 ${normalizedPersonalityPrompt}
 
-위 사용자 지정 가이드를 기본 성격과 함께 우선 반영하세요.`;
+${template.personalityFooter}`;
 }
 
 function isTauriDesktopRuntime(): boolean {
@@ -669,9 +757,15 @@ export function useConversation(): UseConversationReturn {
       const currentMessages = storeState.messages;
       const currentMemory = storeState.memory;
 
+      // 응답 언어는 TTS 출력 언어 기준 — UI 언어(settings.language)와는 독립.
+      const responseLanguage = resolveResponseLanguage();
       const systemPrompt = currentCharacter?.name || currentCharacter?.personality?.traits?.length
-        ? buildCharacterPrompt(currentCharacter)
-        : buildSystemPrompt(settings.avatarName || '', settings.avatarPersonalityPrompt || '');
+        ? buildCharacterPrompt(currentCharacter, responseLanguage)
+        : buildSystemPrompt(
+            settings.avatarName || '',
+            settings.avatarPersonalityPrompt || '',
+            responseLanguage
+          );
 
       // Phase 2: 메모리 기반 메시지 윈도우 구성
       const { memoryContext, recentMessages } = buildMessageWindow(currentMessages, currentMemory);

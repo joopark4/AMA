@@ -319,10 +319,12 @@ export default function CharacterSettings() {
         </p>
       </div>
 
-      {/* Likes & Dislikes */}
+      {/* Likes & Dislikes
+          grid cell과 input에 min-w-0을 달아 placeholder가 컬럼을 침범하지 않게 한다
+          (flex/grid item의 기본 min-width: auto가 input min-content를 따라가 오버플로우 발생). */}
       <div className="grid grid-cols-2 gap-3">
         {/* Likes */}
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           <label className="block text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.character.likes')}
           </label>
@@ -351,12 +353,12 @@ export default function CharacterSettings() {
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTag('likes', newLike, setNewLike)}
                 placeholder={t('settings.character.likesPlaceholder')}
                 maxLength={20}
-                className="flex-1 px-2 py-1 border rounded text-xs"
+                className="flex-1 min-w-0 px-2 py-1 border rounded text-xs"
                 style={{ borderColor: 'var(--hairline)' }}
               />
               <button
                 onClick={() => handleAddTag('likes', newLike, setNewLike)}
-                className="px-2 py-1 text-xs rounded hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
+                className="shrink-0 px-2 py-1 text-xs rounded hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
                 style={{ background: 'var(--surface-1)', color: 'var(--ink-2)' }}
               >
                 {t('settings.character.addLike')}
@@ -366,7 +368,7 @@ export default function CharacterSettings() {
         </div>
 
         {/* Dislikes */}
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0">
           <label className="block text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.character.dislikes')}
           </label>
@@ -395,12 +397,12 @@ export default function CharacterSettings() {
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTag('dislikes', newDislike, setNewDislike)}
                 placeholder={t('settings.character.dislikesPlaceholder')}
                 maxLength={20}
-                className="flex-1 px-2 py-1 border rounded text-xs"
+                className="flex-1 min-w-0 px-2 py-1 border rounded text-xs"
                 style={{ borderColor: 'var(--hairline)' }}
               />
               <button
                 onClick={() => handleAddTag('dislikes', newDislike, setNewDislike)}
-                className="px-2 py-1 text-xs rounded hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
+                className="shrink-0 px-2 py-1 text-xs rounded hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
                 style={{ background: 'var(--surface-1)', color: 'var(--ink-2)' }}
               >
                 {t('settings.character.addDislike')}

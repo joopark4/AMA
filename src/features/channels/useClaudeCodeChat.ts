@@ -12,7 +12,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { llmRouter } from '../../services/ai/llmRouter';
 import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
 import { emotionTuningGlobal, getEmotionTuning } from '../../config/emotionTuning';
-import { buildSystemPrompt } from '../../hooks/useConversation';
+import { buildSystemPrompt, resolveResponseLanguage } from '../../hooks/useConversation';
 import type { Message as LLMMessage } from '../../services/ai/types';
 import { invoke } from '@tauri-apps/api/core';
 import { analyzeEmotion, triggerEmotionMotion } from './responseProcessor';
@@ -55,9 +55,11 @@ export function useClaudeCodeChat() {
 
     try {
       const currentMessages = useConversationStore.getState().messages;
+      // 응답 언어는 TTS 출력 언어 기준 (엔진별 폴백 포함)
       const systemPrompt = buildSystemPrompt(
         settings.avatarName || '',
-        settings.avatarPersonalityPrompt || ''
+        settings.avatarPersonalityPrompt || '',
+        resolveResponseLanguage()
       );
       const llmMessages: LLMMessage[] = [
         { role: 'system', content: systemPrompt },

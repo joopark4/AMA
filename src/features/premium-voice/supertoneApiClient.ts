@@ -148,9 +148,16 @@ export class SupertoneApiClient implements TTSClient {
       await new Promise(resolve => setTimeout(resolve, this.minRequestInterval - elapsed));
     }
 
-    // 언어 결정: 설정 언어가 모델에서 지원되지 않으면 'en' 폴백
+    // 언어 결정: 공용 tts.language (auto 제외) > apiSettings.language > UI 언어 > 'ko'
+    // 최종적으로 모델에서 지원되지 않으면 'en' 폴백
     const supportedLanguages = getModelLanguages(apiSettings.model);
-    let language = apiSettings.language || 'ko';
+    const ttsOutputLang = settings.tts.language;
+    let language: string;
+    if (ttsOutputLang && ttsOutputLang !== 'auto') {
+      language = ttsOutputLang;
+    } else {
+      language = apiSettings.language || settings.language || 'ko';
+    }
     if (!supportedLanguages.includes(language)) {
       log(`Language '${language}' not supported by ${apiSettings.model}, falling back to 'en'`);
       language = 'en';

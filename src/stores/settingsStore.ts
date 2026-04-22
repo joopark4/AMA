@@ -26,6 +26,18 @@ export type STTEngine = 'whisper';
 export type TTSEngine = 'supertonic' | 'supertone_api';
 export type Language = 'ko' | 'en' | 'ja';
 
+/**
+ * TTS 출력 언어 — UI 언어(`settings.language`)와 독립된 음성·대화 언어 설정.
+ *
+ * - `auto`: 텍스트 내용 + UI 언어로 자동 결정 (기존 동작)
+ * - 그 외: 선택한 언어로 강제. 엔진이 지원하지 않으면 런타임에 폴백(보통 `en`).
+ *
+ * 지원 범위:
+ * - Supertonic(로컬): en/ko/es/pt/fr — 일본어는 지원하지 않아 UI에서도 노출하지 않는다.
+ * - Supertone API(프리미엄): 모델별로 상이(sona_speech_1 = ko/en/ja, sona_speech_2 = 23개)
+ */
+export type TTSOutputLanguage = 'auto' | 'ko' | 'en' | 'ja' | 'es' | 'pt' | 'fr';
+
 export interface LLMSettings {
   provider: LLMProvider;
   model: string;
@@ -58,6 +70,8 @@ export interface SupertoneApiSettings {
 export interface TTSSettings {
   engine: TTSEngine;
   voice?: string;                       // supertonic용 (F1-M5)
+  /** 음성 출력 언어 (로컬/프리미엄 공용). `auto`면 텍스트 감지 + UI 언어 폴백. */
+  language?: TTSOutputLanguage;
   supertoneApi?: SupertoneApiSettings;  // supertone_api용
   audioOutputDeviceId?: string;
 }
@@ -329,6 +343,17 @@ function normalizeTTSEngine(engine: unknown): TTSEngine {
   return 'supertonic';
 }
 
+const SUPPORTED_TTS_OUTPUT_LANGUAGES = new Set<TTSOutputLanguage>([
+  'auto', 'ko', 'en', 'ja', 'es', 'pt', 'fr',
+]);
+
+function normalizeTTSOutputLanguage(language: unknown): TTSOutputLanguage {
+  if (typeof language === 'string' && SUPPORTED_TTS_OUTPUT_LANGUAGES.has(language as TTSOutputLanguage)) {
+    return language as TTSOutputLanguage;
+  }
+  return 'auto';
+}
+
 function normalizeAvatarName(name: unknown): string {
   if (typeof name !== 'string') return '';
   return name.trim().slice(0, 40);
@@ -352,6 +377,7 @@ const defaultSettings: Settings = {
   tts: {
     engine: 'supertonic',
     voice: 'F1',
+    language: 'auto',
   },
   globalShortcut: {
     enabled: true,
@@ -504,6 +530,7 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       ...(source.tts || defaultSettings.tts),
       engine: normalizeTTSEngine(source.tts?.engine),
       voice: normalizeSupertonicVoice(source.tts?.voice),
+      language: normalizeTTSOutputLanguage(source.tts?.language),
       audioOutputDeviceId: typeof source.tts?.audioOutputDeviceId === 'string'
         ? source.tts.audioOutputDeviceId
         : undefined,
@@ -796,6 +823,9 @@ export const useSettingsStore = create<SettingsState>()(
               ...tts,
               engine: normalizeTTSEngine(tts.engine ?? state.settings.tts.engine),
               voice: normalizeSupertonicVoice(tts.voice ?? state.settings.tts.voice),
+              language: 'language' in tts
+                ? normalizeTTSOutputLanguage(tts.language)
+                : (state.settings.tts.language ?? 'auto'),
               audioOutputDeviceId: 'audioOutputDeviceId' in tts
                 ? (typeof tts.audioOutputDeviceId === 'string' ? tts.audioOutputDeviceId : undefined)
                 : state.settings.tts.audioOutputDeviceId,
@@ -971,7 +1001,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 19,
+      version: 20,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -1049,6 +1079,14 @@ export const useSettingsStore = create<SettingsState>()(
           if (s.avatarHidden === true && s.proactive && s.proactive.enabled === true) {
             s.proactivePreviousEnabled = true;
             s.proactive = { ...s.proactive, enabled: false };
+          }
+        }
+
+        // v19→v20: TTS 출력 언어 필드 추가. 기본 'auto'(기존 동작 유지).
+        if ((version ?? 0) < 20) {
+          const s = state.settings as Partial<Settings>;
+          if (s.tts && typeof (s.tts as TTSSettings).language !== 'string') {
+            s.tts = { ...(s.tts as TTSSettings), language: 'auto' };
           }
         }
 
