@@ -9,6 +9,8 @@ import { audioProcessor } from '../../services/voice/audioProcessor';
 
 interface VoiceWaveformProps {
   label: string;
+  /** pill 외곽 폭(px). 미지정 시 320. ControlCluster에서 메뉴바 폭과 동기화. */
+  width?: number;
 }
 
 const SAMPLE_COUNT = 96;
@@ -49,14 +51,16 @@ function drawWaveform(
   ctx.lineTo(width, midY);
   ctx.stroke();
 
-  // waveform (accent 톤)
+  // waveform (accent 톤) — 진폭은 midY 기준 위/아래 ±(midY × 0.85)로 클램프해
+  // canvas 경계를 벗어나지 않도록 안전 한도 적용 (큰 음성에서도 잘리지 않음).
   ctx.strokeStyle = 'rgba(230, 144, 58, 0.95)';
   ctx.lineWidth = Math.max(1.5, width / 220);
   ctx.beginPath();
 
+  const safeAmplitude = midY * 0.85;
   for (let i = 0; i < waveform.length; i++) {
     const x = (i / (waveform.length - 1)) * width;
-    const y = midY + waveform[i] * (height * 0.85);
+    const y = midY + waveform[i] * safeAmplitude;
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
@@ -67,7 +71,7 @@ function drawWaveform(
   ctx.stroke();
 }
 
-export default function VoiceWaveform({ label }: VoiceWaveformProps) {
+export default function VoiceWaveform({ label, width = 320 }: VoiceWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -109,7 +113,7 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
     <div
       className="pointer-events-none"
       style={{
-        width: 270,
+        width,
       }}
       data-interactive="false"
     >
@@ -123,6 +127,8 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
           backdropFilter: 'blur(40px) saturate(1.8)',
           WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
           boxShadow: 'inset 0 1px 0 var(--top-edge), inset 0 0 0 1px var(--hairline)',
+          // canvas 가장자리가 둥근 pill 경계를 살짝 벗어나는 시각적 잔상 방지
+          overflow: 'hidden',
         }}
       >
         <span

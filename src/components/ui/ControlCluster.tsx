@@ -399,6 +399,22 @@ export default function ControlCluster() {
   const [globalShortcutToast, setGlobalShortcutToast] = useState<string | null>(null);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
 
+  // 메뉴바 실제 폭을 추적해 VoiceWaveform pill 폭을 동기화 (ResizeObserver).
+  const menuBarRef = useRef<HTMLDivElement>(null);
+  const [menuBarWidth, setMenuBarWidth] = useState<number>(320);
+  useEffect(() => {
+    const el = menuBarRef.current;
+    if (!el) return;
+    setMenuBarWidth(el.offsetWidth);
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && Math.abs(w - menuBarWidth) > 0.5) setMenuBarWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const avatarHidden = settings.avatarHidden;
 
   /* ─── 의존성 이슈 추적 (LLM provider/key/endpoint/model) ─── */
@@ -752,10 +768,14 @@ export default function ControlCluster() {
         </div>
       )}
 
-      {/* ─── VoiceWaveform: listening 시 cluster 상단 슬롯에 단독 노출 ─── */}
+      {/* ─── VoiceWaveform: listening 시 cluster 상단 슬롯에 단독 노출
+              폭은 메뉴바와 동기화 (ResizeObserver) ─── */}
       {isVoiceListening && (
         <div style={{ marginBottom: -4 }}>
-          <VoiceWaveform label={t('status.voiceListeningOverlay')} />
+          <VoiceWaveform
+            label={t('status.voiceListeningOverlay')}
+            width={menuBarWidth}
+          />
         </div>
       )}
 
@@ -844,6 +864,7 @@ export default function ControlCluster() {
       <div className="flex items-center gap-2">
         {!isVoiceListening && <StatusPill kind={pillKind} label={pillLabel} />}
         <div
+          ref={menuBarRef}
           className="glass-strong flex items-center"
           style={{ padding: 6, gap: 4, borderRadius: 999 }}
           data-interactive="true"
