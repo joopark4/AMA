@@ -284,7 +284,7 @@ function ClusterBtn({
       data-interactive="true"
       className={[
         'grid place-items-center transition-all',
-        'w-10 h-10 rounded-pill',
+        'w-10 h-5 rounded-pill',
         disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[oklch(0.92_0.02_60_/_0.7)]',
       ].join(' ')}
       style={{
@@ -594,7 +594,7 @@ export default function ControlCluster() {
   /* ─── 음성 버튼 비주얼 ─── */
   const voiceBtnStyle: React.CSSProperties = {
     width: 52,
-    height: 52,
+    height: 26,
     borderRadius: 999,
     display: 'grid',
     placeItems: 'center',
