@@ -85,11 +85,22 @@
   --hairline-strong: rgba(255, 255, 255, 0.15);
   --top-edge:        rgba(255, 255, 255, 0.1);
 
+  /* accent: 라이트와 동일 hue 유지하되 다크 위 가독성 위해 살짝 밝게 */
+  --accent:        oklch(0.78 0.14 45);
+  --accent-2:      oklch(0.85 0.11 50);
   --accent-soft:   oklch(0.30 0.08 50);
   --accent-ink:    oklch(0.85 0.12 45);
+  --accent-border: oklch(0.85 0.14 45);
 
   --toggle-off-track:  oklch(0.40 0.008 60);
   --toggle-off-border: oklch(0.50 0.008 60);
+
+  /* status / glow: 다크 배경에서 채도 유지 + 명도 미세 조정 */
+  --glow:    oklch(0.78 0.14 320);
+  --glow-2:  oklch(0.82 0.12 25);
+  --ok:      oklch(0.74 0.14 160);
+  --warn:    oklch(0.80 0.14 75);
+  --danger:  oklch(0.68 0.20 25);
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.30);
   --shadow:    0 2px 10px rgba(0, 0, 0, 0.40);
