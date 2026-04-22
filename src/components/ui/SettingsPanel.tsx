@@ -1,4 +1,41 @@
+/**
+ * SettingsPanel — 우측 슬라이드 인 글래시 패널 (v2 리디자인).
+ *
+ * 핸드오프 04-components.md spec:
+ * - top:64+, right:12, bottom:12, width:420
+ * - .glass-strong + panelIn 320ms
+ * - 헤더: 설정 / 부제 / X 버튼
+ * - 사용자 pill (헤더 아래) — 아바타 이니셜 + 이름 + 이메일 · "관리"
+ * - 섹션 리스트(스크롤): 새 SettingsSection(아이콘 칩) + forms 프리미티브
+ *
+ * 주의: 기존 handleSave는 manualRotation을 initialViewRotation에 저장한다.
+ * 명시적 Save 버튼이 없어졌으므로 모든 close 경로(X, 백드롭, ESC)에서 호출.
+ * Reset은 스크롤 하단에 작은 텍스트 버튼으로 유지.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Box,
+  Brain,
+  ChevronLeft,
+  ChevronRight,
+  Cloud,
+  Code,
+  Download,
+  Globe,
+  Mic,
+  Monitor as MonitorIcon,
+  ScanEye,
+  ScrollText,
+  Settings as SettingsIcon,
+  Sparkles,
+  Trash2,
+  User,
+  UserRound,
+  Volume2,
+  X,
+} from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import SettingsSection from '../settings/SettingsSection';
@@ -14,13 +51,77 @@ import UpdateSettings from '../settings/UpdateSettings';
 import DataCleanupSettings from '../settings/DataCleanupSettings';
 import { MCPSettings } from '../../features/channels';
 import { ScreenWatchSettings } from '../../features/screen-watch';
+import { QuickActionsSettings } from '../../features/quick-actions';
 import MonitorSettings from '../settings/MonitorSettings';
+
+/* ─────────────────────── User pill (헤더용 컴팩트) ─────────────────────── */
+
+function HeaderUserPill() {
+  const { t } = useTranslation();
+  const { user, isAuthenticated } = useAuthStore();
+
+  const displayName = isAuthenticated && user
+    ? user.nickname
+    : t('settings.guestUser');
+  const subtitle = isAuthenticated && user
+    ? user.email
+    : t('settings.loggedOut');
+  const initial = isAuthenticated && user && user.nickname
+    ? user.nickname.charAt(0).toUpperCase()
+    : '?';
+
+  return (
+    <div
+      className="flex items-center"
+      style={{
+        padding: '12px 14px',
+        borderRadius: 16,
+        background: 'oklch(1 0 0 / 0.55)',
+        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+        gap: 12,
+      }}
+    >
+      <div
+        className="grid place-items-center shrink-0"
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, var(--accent), var(--glow))',
+          color: 'white',
+          fontWeight: 600,
+          fontSize: 14,
+        }}
+      >
+        {initial}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div
+          className="truncate"
+          style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}
+        >
+          {displayName}
+        </div>
+        <div
+          className="truncate"
+          style={{ fontSize: 11.5, color: 'var(--ink-3)' }}
+        >
+          {subtitle}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────── 메인 SettingsPanel ─────────────────────── */
+
 export default function SettingsPanel() {
   const { t } = useTranslation();
-  const { closeSettings, setLanguage, settings, resetSettings, setAvatarSettings } = useSettingsStore();
+  const { closeSettings, resetSettings, setAvatarSettings } = useSettingsStore();
   const { manualRotation } = useAvatarStore();
 
-  const handleSave = () => {
+  /** 닫기 + 현재 manualRotation을 initialViewRotation에 저장 */
+  const handleClose = () => {
     setAvatarSettings({
       initialViewRotation: {
         x: Math.max(-0.5, Math.min(0.5, manualRotation.x)),
@@ -30,139 +131,321 @@ export default function SettingsPanel() {
     closeSettings();
   };
 
+  // 최신 handleClose를 ref로 추적 (PR #37 Gemini 리뷰 M1 반영).
+  // 이전 구현은 deps에 manualRotation.{x,y}가 들어 있어 회전마다 ESC 리스너가
+  // 재등록되었다. ref 패턴으로 listener는 마운트 1회만 등록 + 호출 시점에
+  // 최신 manualRotation을 사용.
+  const handleCloseRef = useRef(handleClose);
+  handleCloseRef.current = handleClose;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCloseRef.current();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const handleResetAll = () => {
+    if (window.confirm(t('settings.resetConfirm'))) {
+      resetSettings();
+    }
+  };
+
+  /* ─── 가로 스크롤 페이지 네비게이션 ─── */
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  /* ─── Settings 섹션 정의 — useMemo로 매 렌더 재할당 방지 ─── */
+  const sections = useMemo(
+    () => [
+      // 계정은 사용자가 가장 먼저 확인하는 정보이므로 맨 앞에 배치.
+      { key: 'account', icon: <UserRound size={16} />, title: t('settings.account.title'), Comp: UserProfile, defaultOpen: true },
+      { key: 'lang', icon: <Globe size={16} />, title: t('settings.language'), Comp: LanguageSection, defaultOpen: true },
+      // 프리미엄은 계정·언어 직후에 노출 (구독 상태/혜택 빠른 확인).
+      { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings, defaultOpen: true },
+      { key: 'llm', icon: <Brain size={16} />, title: t('settings.llm.title'), Comp: LLMSettings, defaultOpen: true },
+      // Claude Code Channels는 AI 모델 설정의 연장선이므로 바로 뒤에 배치.
+      { key: 'mcp', icon: <Code size={16} />, title: t('settings.mcp.title'), Comp: MCPSettings, defaultOpen: true },
+      { key: 'audio', icon: <Volume2 size={16} />, title: t('settings.audioDevice.title'), Comp: AudioDeviceSettings, defaultOpen: true },
+      // 아바타 → 캐릭터 → 음성 순으로 그룹화 (외형 → 인격 → 발화).
+      { key: 'avatar', icon: <Box size={16} />, title: t('settings.avatar.title'), Comp: AvatarSettings, defaultOpen: true },
+      { key: 'character', icon: <User size={16} />, title: t('settings.character.title'), Comp: CharacterSettings, defaultOpen: true },
+      { key: 'voice', icon: <Mic size={16} />, title: t('settings.voice.title'), Comp: VoiceSettings, defaultOpen: true },
+      { key: 'screen', icon: <ScanEye size={16} />, title: t('settings.screenWatch.title'), Comp: ScreenWatchSettings, defaultOpen: true },
+      { key: 'monitor', icon: <MonitorIcon size={16} />, title: t('settings.monitor.title'), Comp: MonitorSettings, defaultOpen: true },
+      { key: 'quick', icon: <Sparkles size={16} />, title: t('settings.quickActions.title'), Comp: QuickActionsSettings, defaultOpen: true },
+      // 앱 업데이트 → 데이터 정리 순서로 그룹화 (앱 유지보수 카테고리).
+      { key: 'update', icon: <Download size={16} />, title: t('settings.update.title'), Comp: UpdateSettings, defaultOpen: true },
+      { key: 'cleanup', icon: <Trash2 size={16} />, title: t('settings.dataCleanup.title'), Comp: DataCleanupSettings, defaultOpen: true },
+      // 오픈소스 라이선스는 참조용 정보이므로 가장 마지막에 배치.
+      { key: 'licenses', icon: <ScrollText size={16} />, title: t('settings.licenses.title'), Comp: LicensesSettings, defaultOpen: false },
+    ],
+    [t]
+  );
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // 1px 미만 차이는 노이즈 (트랙패드 스크롤 등) — 작은 epsilon으로 양 끝 판단
+    const SCROLL_EDGE_EPSILON = 4;
+    setCanScrollLeft(el.scrollLeft > SCROLL_EDGE_EPSILON);
+    setCanScrollRight(
+      el.scrollLeft + el.clientWidth < el.scrollWidth - SCROLL_EDGE_EPSILON
+    );
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => updateScrollState();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      ro.disconnect();
+    };
+  }, [updateScrollState]);
+
+  const scrollByPage = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' });
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" data-interactive="true">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[100]" data-interactive="true">
+      {/* Backdrop — 클릭 시 닫힘 */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={closeSettings}
+        className="absolute inset-0"
+        onClick={handleClose}
+        style={{
+          background: 'oklch(0.2 0 0 / 0.16)',
+          backdropFilter: 'blur(2px)',
+          WebkitBackdropFilter: 'blur(2px)',
+          animation: 'fadeOverlay 200ms var(--ease)',
+        }}
+        data-interactive="true"
       />
 
-      {/* Panel */}
-      <div className="relative bg-gray-100 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
+      {/* Panel — 우측 슬라이드 인 (멀티컬럼: 너비에 따라 자동 분배) */}
+      <div
+        className="glass-strong absolute flex flex-col overflow-hidden"
+        style={{
+          top: 'max(env(safe-area-inset-top), 64px)',
+          right: 12,
+          bottom: 12,
+          // 화면 너비에 비례해 확장 (단일 컬럼 ~420 → 최대 3컬럼 ~1200)
+          width: 'min(1200px, calc(100vw - 24px))',
+          minWidth: 'min(420px, calc(100vw - 24px))',
+          padding: 0,
+          animation: 'panelIn 320ms var(--ease)',
+        }}
+        data-interactive="true"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
-          <h2 className="text-xl font-semibold text-gray-800">
-            {t('settings.title')}
-          </h2>
-          <button
-            onClick={closeSettings}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <svg
-              className="w-6 h-6 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div
+          className="flex items-center justify-between"
+          style={{ padding: '20px 22px 16px', gap: 12 }}
+        >
+          <div className="min-w-0">
+            <div
+              style={{
+                fontSize: 19,
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                color: 'var(--ink)',
+              }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="px-4 py-4 overflow-y-auto max-h-[calc(80vh-140px)] custom-scrollbar space-y-3">
-          {/* Account */}
-          <SettingsSection title={t('settings.account.title')}>
-            <UserProfile />
-          </SettingsSection>
-
-          {/* General: Language + Monitor */}
-          <SettingsSection title={t('settings.general.title')} defaultOpen>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                {t('settings.language')}
-              </label>
-              <select
-                value={settings.language}
-                onChange={(e) => setLanguage(e.target.value as 'ko' | 'en' | 'ja')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="ko">한국어</option>
-                <option value="en">English</option>
-                <option value="ja">日本語</option>
-              </select>
+              {t('settings.title')}
             </div>
-            <MonitorSettings />
-          </SettingsSection>
+            <div
+              style={{
+                fontSize: 12.5,
+                color: 'var(--ink-3)',
+                marginTop: 2,
+              }}
+            >
+              {t('settings.subtitle')}
+            </div>
+          </div>
 
-          {/* LLM Settings */}
-          <SettingsSection title={t('settings.llm.title')}>
-            <LLMSettings />
-          </SettingsSection>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            {/* 페이지 네비게이션 (가로 스크롤 양 끝 도달 시 비활성) */}
+            <button
+              type="button"
+              onClick={() => scrollByPage(-1)}
+              disabled={!canScrollLeft}
+              className="grid place-items-center focus-ring"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 99,
+                background: 'oklch(1 0 0 / 0.5)',
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                color: canScrollLeft ? 'var(--ink-2)' : 'var(--ink-4)',
+                opacity: canScrollLeft ? 1 : 0.4,
+                cursor: canScrollLeft ? 'pointer' : 'not-allowed',
+                transition: 'opacity 160ms var(--ease)',
+              }}
+              title={t('settings.pageNav.previous')}
+              aria-label={t('settings.pageNav.previous')}
+              data-interactive="true"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollByPage(1)}
+              disabled={!canScrollRight}
+              className="grid place-items-center focus-ring"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 99,
+                background: 'oklch(1 0 0 / 0.5)',
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                color: canScrollRight ? 'var(--ink-2)' : 'var(--ink-4)',
+                opacity: canScrollRight ? 1 : 0.4,
+                cursor: canScrollRight ? 'pointer' : 'not-allowed',
+                transition: 'opacity 160ms var(--ease)',
+              }}
+              title={t('settings.pageNav.next')}
+              aria-label={t('settings.pageNav.next')}
+              data-interactive="true"
+            >
+              <ChevronRight size={16} />
+            </button>
 
-          {/* Audio Device Settings */}
-          <SettingsSection title={t('settings.audioDevice.title')}>
-            <AudioDeviceSettings />
-          </SettingsSection>
-
-          {/* Voice Settings */}
-          <SettingsSection title={t('settings.voice.title')}>
-            <VoiceSettings />
-          </SettingsSection>
-
-          {/* Premium Voice Settings */}
-          <SettingsSection title={t('settings.premium.title')}>
-            <PremiumVoiceSettings />
-          </SettingsSection>
-
-          {/* Character Settings */}
-          <SettingsSection title={t('settings.character.title')}>
-            <CharacterSettings />
-          </SettingsSection>
-
-          {/* Avatar Settings */}
-          <SettingsSection title={t('settings.avatar.title')}>
-            <AvatarSettings />
-          </SettingsSection>
-
-          {/* Screen Watch */}
-          <SettingsSection title={t('settings.screenWatch.title', '화면 관찰')}>
-            <ScreenWatchSettings />
-          </SettingsSection>
-
-          {/* Claude Code Channels */}
-          <SettingsSection title={t('settings.mcp.title')}>
-            <MCPSettings />
-          </SettingsSection>
-
-          {/* Update Settings */}
-          <SettingsSection title={t('settings.update.title')}>
-            <UpdateSettings />
-          </SettingsSection>
-
-          {/* Data Cleanup Settings */}
-          <SettingsSection title={t('settings.dataCleanup.title')}>
-            <DataCleanupSettings />
-          </SettingsSection>
-
-          {/* License Settings */}
-          <SettingsSection title={t('settings.licenses.title')}>
-            <LicensesSettings />
-          </SettingsSection>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="grid place-items-center focus-ring"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 99,
+                background: 'oklch(1 0 0 / 0.5)',
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                color: 'var(--ink-2)',
+              }}
+              title={t('history.close')}
+              data-interactive="true"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white">
-          <button
-            onClick={resetSettings}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+        {/* User pill */}
+        <div style={{ padding: '0 22px 14px' }}>
+          <HeaderUserPill />
+        </div>
+
+        {/* Sections — CSS columns 가로 흐름 + overflow-x로 페이지 스크롤.
+            높이는 패널 가용 영역에 고정되어 콘텐츠가 가로로 흘러 페이지 단위로 이동. */}
+        <div
+          ref={scrollRef}
+          className="scroll flex-1"
+          style={{
+            padding: '0 22px 22px',
+            // i18n(en/ja) 라벨이 길어 카드 헤더가 잘리는 케이스 대응 — 340 → 360.
+            columnWidth: 360,
+            columnGap: 14,
+            columnFill: 'auto',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollBehavior: 'smooth',
+          }}
+          data-interactive="true"
+        >
+          {sections.map(({ key, icon, title, Comp, defaultOpen }) => (
+            <div
+              key={key}
+              style={{
+                breakInside: 'avoid',
+                pageBreakInside: 'avoid',
+                marginBottom: 12,
+              }}
+            >
+              <SettingsSection icon={icon} title={title} defaultOpen={defaultOpen}>
+                <Comp />
+              </SettingsSection>
+            </div>
+          ))}
+
+          {/* 전체 초기화 — 마지막 컬럼 끝에 위치 */}
+          <div
+            style={{
+              breakInside: 'avoid',
+              pageBreakInside: 'avoid',
+              textAlign: 'center',
+              marginTop: 4,
+            }}
           >
-            {t('settings.reset')}
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            {t('settings.save')}
-          </button>
+            <button
+              type="button"
+              onClick={handleResetAll}
+              className="focus-ring"
+              style={{
+                padding: '10px 14px',
+                fontSize: 11.5,
+                color: 'var(--ink-3)',
+                background: 'transparent',
+                borderRadius: 8,
+              }}
+              data-interactive="true"
+            >
+              <SettingsIcon size={11} className="inline mr-1.5 align-text-bottom" />
+              {t('settings.resetAll')}
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─────────────────────── 작은 인라인 섹션: 언어 ─────────────────────── */
+
+function LanguageSection() {
+  const { t } = useTranslation();
+  const { settings, setLanguage } = useSettingsStore();
+  return (
+    <div style={{ padding: '4px 0' }}>
+      <label
+        className="block"
+        style={{
+          fontSize: 12.5,
+          fontWeight: 500,
+          color: 'var(--ink-2)',
+          marginBottom: 6,
+        }}
+      >
+        {t('settings.language')}
+      </label>
+      <select
+        value={settings.language}
+        onChange={(e) => setLanguage(e.target.value as 'ko' | 'en' | 'ja')}
+        className="focus-ring w-full appearance-none"
+        style={{
+          padding: '9px 12px',
+          fontSize: 13.5,
+          borderRadius: 10,
+          border: 0,
+          background: 'oklch(1 0 0 / 0.7)',
+          boxShadow: 'inset 0 0 0 1px var(--hairline)',
+          color: 'var(--ink)',
+        }}
+        data-interactive="true"
+      >
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+      </select>
     </div>
   );
 }

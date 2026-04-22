@@ -1,4 +1,9 @@
+/**
+ * TermsModal — 이용약관/개인정보 처리방침 모달 (v2 리디자인).
+ */
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { X } from 'lucide-react';
 
 interface Section {
   heading: string;
@@ -22,56 +27,157 @@ export default function TermsModal({ type, onClose }: TermsModalProps) {
 
   const titleKey = type === 'terms' ? 'auth.termsModalTitle' : 'auth.privacyModalTitle';
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const titleId = `terms-modal-title-${type}`;
+
   return (
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center"
+      className="fixed inset-0 z-[300] flex items-center justify-center px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
       data-interactive="true"
     >
       {/* 배경 오버레이 */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={onClose}
+        style={{
+          background: 'oklch(0.2 0 0 / 0.55)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+        }}
       />
 
       {/* 모달 카드 */}
-      <div className="relative w-full max-w-lg mx-4 rounded-2xl bg-white shadow-2xl flex flex-col max-h-[80vh]">
+      <div
+        className="glass-strong relative w-full max-w-lg flex flex-col"
+        style={{
+          maxHeight: '80vh',
+          padding: 0,
+          borderRadius: 'var(--r-lg)',
+          animation: 'scaleIn 280ms var(--ease)',
+        }}
+        data-interactive="true"
+      >
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+        <div
+          className="flex items-center justify-between flex-shrink-0"
+          style={{
+            padding: '18px 22px 16px',
+            borderBottom: '1px solid var(--hairline)',
+          }}
+        >
           <div>
-            <h2 className="text-base font-semibold text-gray-900">{t(titleKey)}</h2>
+            <h2
+              id={titleId}
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: 'var(--ink)',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              {t(titleKey)}
+            </h2>
             {version && (
-              <p className="text-xs text-gray-400 mt-0.5">{t('auth.termsVersion', { version })}</p>
+              <p
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--ink-3)',
+                  marginTop: 2,
+                }}
+              >
+                {t('auth.termsVersion', { version })}
+              </p>
             )}
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-            aria-label="닫기"
+            className="grid place-items-center focus-ring"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 99,
+              background: 'oklch(1 0 0 / 0.5)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+              color: 'var(--ink-2)',
+            }}
+            aria-label={t('history.close')}
+            data-interactive="true"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X size={14} />
           </button>
         </div>
 
-        {/* 본문 (스크롤) */}
-        <div className="overflow-y-auto px-6 py-4 space-y-4 text-sm">
+        {/* 본문 */}
+        <div
+          className="scroll overflow-y-auto"
+          style={{
+            padding: '16px 22px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+          }}
+        >
           {doc?.lastUpdated && (
-            <p className="text-xs text-gray-400">{doc.lastUpdated}</p>
+            <p style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{doc.lastUpdated}</p>
           )}
           {sections.map((section, i) => (
             <div key={i}>
-              <h4 className="font-semibold text-gray-800 mb-1">{section.heading}</h4>
-              <p className="text-gray-600 leading-relaxed">{section.body}</p>
+              <h4
+                style={{
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: 'var(--ink)',
+                  marginBottom: 4,
+                }}
+              >
+                {section.heading}
+              </h4>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: 'var(--ink-2)',
+                  lineHeight: 1.6,
+                }}
+              >
+                {section.body}
+              </p>
             </div>
           ))}
         </div>
 
         {/* 푸터 */}
-        <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
+        <div
+          className="flex-shrink-0"
+          style={{
+            padding: '14px 22px',
+            borderTop: '1px solid var(--hairline)',
+          }}
+        >
           <button
+            type="button"
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
+            className="w-full focus-ring"
+            style={{
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: 'var(--accent)',
+              color: 'white',
+              fontSize: 13.5,
+              fontWeight: 500,
+            }}
+            data-interactive="true"
           >
             {t('settings.cancel')}
           </button>

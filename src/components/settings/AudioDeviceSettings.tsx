@@ -148,16 +148,19 @@ export default function AudioDeviceSettings() {
   return (
     <div className="space-y-5">
       {/* 마이크 (입력) */}
-      <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
-        <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        className="space-y-3 p-4 rounded-lg"
+        style={{ background: 'oklch(1 0 0 / 0.45)' }}
+      >
+        <h4 className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--ink-2)' }}>
+          <svg className="w-4 h-4" style={{ color: 'var(--ink-3)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
           {t('settings.audioDevice.microphone')}
         </h4>
 
         {microphones.length === 0 ? (
-          <p className="text-xs text-gray-400">{t('settings.audioDevice.micNotFound')}</p>
+          <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.audioDevice.micNotFound')}</p>
         ) : (
           <select
             value={settings.stt.audioInputDeviceId || ''}
@@ -165,7 +168,10 @@ export default function AudioDeviceSettings() {
               setSTTSettings({ audioInputDeviceId: e.target.value || undefined });
               setMicFallbackMessage(null);
             }}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 text-sm border rounded-lg focus:border-transparent"
+            style={{ borderColor: 'var(--hairline)' }}
+            onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-soft)'; }}
+            onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
           >
             <option value="">{t('settings.audioDevice.default')}</option>
             {microphones.map((mic, i) => {
@@ -181,24 +187,26 @@ export default function AudioDeviceSettings() {
           </select>
         )}
         {micFallbackMessage && (
-          <p className="text-xs text-amber-600">{micFallbackMessage}</p>
+          <p className="text-xs" style={{ color: 'var(--warn)' }}>{micFallbackMessage}</p>
         )}
 
         {/* 마이크 피크 미터 — 세그먼트 게이지 */}
         <div className="space-y-1">
-          <span className="text-xs text-gray-500">{t('settings.audioDevice.inputLevel')}</span>
+          <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.audioDevice.inputLevel')}</span>
           <div className="flex gap-[2px] h-3">
             {Array.from({ length: 20 }, (_, i) => {
               const threshold = (i + 1) / 20;
               const active = micLevel >= threshold;
-              let colorClass: string;
-              if (i >= 16) colorClass = active ? 'bg-red-500' : 'bg-red-200';
-              else if (i >= 12) colorClass = active ? 'bg-amber-500' : 'bg-amber-100';
-              else colorClass = active ? 'bg-green-500' : 'bg-gray-200';
+              // 의도적 의미 색상 (red/amber/green) — 게이지 영역으로 유지
+              let bg: string;
+              if (i >= 16) bg = active ? 'var(--danger)' : 'oklch(0.92 0.05 25 / 0.6)';
+              else if (i >= 12) bg = active ? 'var(--warn)' : 'oklch(0.95 0.05 75 / 0.55)';
+              else bg = active ? 'var(--ok)' : 'var(--surface-1)';
               return (
                 <div
                   key={i}
-                  className={`flex-1 rounded-sm transition-colors duration-75 ${colorClass}`}
+                  className="flex-1 rounded-sm transition-colors duration-75"
+                  style={{ background: bg }}
                 />
               );
             })}
@@ -207,16 +215,19 @@ export default function AudioDeviceSettings() {
       </div>
 
       {/* 스피커 (출력) */}
-      <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
-        <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div
+        className="space-y-3 p-4 rounded-lg"
+        style={{ background: 'oklch(1 0 0 / 0.45)' }}
+      >
+        <h4 className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--ink-2)' }}>
+          <svg className="w-4 h-4" style={{ color: 'var(--ink-3)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
           </svg>
           {t('settings.audioDevice.speaker')}
         </h4>
 
         {speakers.length === 0 ? (
-          <p className="text-xs text-gray-400">{t('settings.audioDevice.speakerNotFound')}</p>
+          <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.audioDevice.speakerNotFound')}</p>
         ) : (
           <select
             value={settings.tts.audioOutputDeviceId || ''}
@@ -225,7 +236,10 @@ export default function AudioDeviceSettings() {
               setTTSSettings({ audioOutputDeviceId: deviceId });
               ttsRouter.prepareOutputDevice(deviceId);
             }}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 text-sm border rounded-lg focus:border-transparent"
+            style={{ borderColor: 'var(--hairline)' }}
+            onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-soft)'; }}
+            onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
           >
             <option value="">{t('settings.audioDevice.default')}</option>
             {speakers.map((spk, i) => {
@@ -287,7 +301,8 @@ export default function AudioDeviceSettings() {
               }
             }}
             disabled={isTesting}
-            className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 text-xs text-accent-ink hover:bg-[oklch(0.92_0.04_50_/_0.7)] rounded-lg transition-colors disabled:opacity-50"
+            style={{ background: 'var(--accent-soft)' }}
           >
             {isTesting ? t('settings.audioDevice.testing') : t('settings.audioDevice.testSpeaker')}
           </button>

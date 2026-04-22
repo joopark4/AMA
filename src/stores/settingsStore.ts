@@ -15,6 +15,7 @@ import {
   type ExampleDialogue,
 } from '../services/character';
 import { DEFAULT_PROACTIVE_SETTINGS, type ProactiveSettings } from '../services/ai/proactiveEngine';
+import { ALL_QUICK_ACTION_IDS, type QuickActionId } from '../features/quick-actions/types';
 
 export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
 
@@ -178,9 +179,26 @@ export interface Settings {
   proactive: ProactiveSettings;
   /** 화면 관찰 설정 */
   screenWatch: ScreenWatchSettings;
+  /**
+   * 아바타 숨김 토글 (v2 리디자인) — true면 ControlCluster에서 AvatarCanvas/LightingControl 언마운트.
+   * persist되어 앱 재시작 후에도 유지된다.
+   */
+  avatarHidden: boolean;
+  /**
+   * 아바타 숨김 진입 직전의 proactive.enabled 값 (복구용).
+   * 숨김 ON 시 proactive를 강제로 OFF 하고 이 필드에 이전 값을 저장 →
+   * 숨김 해제 시 이 값으로 복구한다. 평상시에는 null.
+   * persist되어 앱 재시작 후 hidden=true 상태에서도 OFF가 유지되도록 보장.
+   */
+  proactivePreviousEnabled: boolean | null;
+  /**
+   * 자주 쓰는 기능 (Phase 4) — ✨ 팔레트에 등록된 기능 ID 목록.
+   * 사용자가 설정에서 체크박스로 등록/해제하며, 순서는 등록 순서.
+   */
+  enabledQuickActions: QuickActionId[];
 }
 
-interface SettingsState {
+export interface SettingsState {
   settings: Settings;
   isSettingsOpen: boolean;
   isHistoryOpen: boolean;
@@ -205,6 +223,10 @@ interface SettingsState {
    */
   applyCharacterPreset: (profile: CharacterProfile) => void;
   setProactive: (proactive: Partial<ProactiveSettings>) => void;
+  setAvatarHidden: (hidden: boolean) => void;
+  toggleAvatarHidden: () => void;
+  setEnabledQuickActions: (ids: QuickActionId[]) => void;
+  toggleQuickAction: (id: QuickActionId) => void;
   toggleSettings: () => void;
   openSettings: () => void;
   closeSettings: () => void;
@@ -400,6 +422,14 @@ const defaultSettings: Settings = {
     responseStyle: 'balanced',
     silentHours: { enabled: false, start: 23, end: 7 },
   },
+  avatarHidden: false,
+  proactivePreviousEnabled: null,
+  enabledQuickActions: [
+    'avatar.freeMovement',
+    'avatar.showSpeechBubble',
+    'voice.globalShortcut',
+    'screen.watch',
+  ],
 };
 
 function normalizeAvatarSettings(avatar: Partial<AvatarSettings> | undefined): AvatarSettings {
@@ -521,6 +551,70 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
     character: normalizeCharacterProfile(source.character),
     proactive: normalizeProactiveSettings(source.proactive),
     screenWatch: normalizeScreenWatchSettings(source.screenWatch),
+    avatarHidden: typeof source.avatarHidden === 'boolean' ? source.avatarHidden : false,
+    proactivePreviousEnabled:
+      typeof source.proactivePreviousEnabled === 'boolean'
+        ? source.proactivePreviousEnabled
+        : null,
+    // enabledQuickActions: source가 없거나, source 항목이 있는데 모두 invalid한 경우만
+    // default로 복구. 사용자가 의도적으로 모두 해제한 빈 배열은 존중.
+    enabledQuickActions: (() => {
+      const arr = Array.isArray(source.enabledQuickActions) ? source.enabledQuickActions : null;
+      if (arr === null) return defaultSettings.enabledQuickActions;
+      const filtered = arr.filter((id): id is QuickActionId =>
+        typeof id === 'string' && ALL_QUICK_ACTION_IDS.has(id as QuickActionId)
+      );
+      // source는 있는데 모두 invalid → 마이그레이션 누락 가능성, default로 복구
+      if (arr.length > 0 && filtered.length === 0) return defaultSettings.enabledQuickActions;
+      return filtered;
+    })(),
+  };
+}
+
+/**
+ * 아바타 숨김 토글 시 자발적 대화(proactive)를 자동 OFF/복구.
+ *
+ * - hidden=true 진입: proactive.enabled가 true면 → previousEnabled에 저장 후 OFF.
+ *   이미 OFF였다면 previousEnabled는 null로 두어 복구 시점에 변화 없음.
+ * - hidden=false 해제: previousEnabled가 boolean(true 또는 false)이면
+ *   그 값으로 proactive.enabled 복구. null이면 그대로 둔다.
+ */
+function applyAvatarHiddenTransition(
+  current: Settings,
+  nextHidden: boolean
+): { settings: Settings } {
+  // 동일 상태로의 토글은 no-op (proactivePreviousEnabled 부수효과 방지)
+  if (nextHidden === current.avatarHidden) {
+    return { settings: { ...current, avatarHidden: nextHidden } };
+  }
+
+  if (nextHidden) {
+    // 숨김 진입
+    const wasEnabled = current.proactive?.enabled === true;
+    return {
+      settings: {
+        ...current,
+        avatarHidden: true,
+        proactive: wasEnabled
+          ? { ...current.proactive, enabled: false }
+          : current.proactive,
+        proactivePreviousEnabled: wasEnabled ? true : null,
+      },
+    };
+  }
+
+  // 숨김 해제 — previousEnabled가 명시적으로 저장돼 있으면 복구
+  const prev = current.proactivePreviousEnabled;
+  return {
+    settings: {
+      ...current,
+      avatarHidden: false,
+      proactive:
+        typeof prev === 'boolean'
+          ? { ...current.proactive, enabled: prev }
+          : current.proactive,
+      proactivePreviousEnabled: null,
+    },
   };
 }
 
@@ -800,12 +894,47 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       setProactive: (proactive) =>
+        set((state) => {
+          const next = {
+            ...state.settings,
+            proactive: { ...DEFAULT_PROACTIVE_SETTINGS, ...state.settings.proactive, ...proactive },
+          };
+          // 사용자가 enabled를 직접 변경했고 현재 avatar 숨김 진입 중이면
+          // 자동 복구(proactivePreviousEnabled)를 비활성화한다.
+          // 그렇지 않으면 hidden 해제 시 사용자 의도가 무시되고 이전 값으로 되돌아감.
+          if (proactive.enabled !== undefined && state.settings.avatarHidden) {
+            next.proactivePreviousEnabled = null;
+          }
+          return { settings: next };
+        }),
+
+      setAvatarHidden: (hidden) =>
+        set((state) => applyAvatarHiddenTransition(state.settings, Boolean(hidden))),
+
+      toggleAvatarHidden: () =>
+        set((state) =>
+          applyAvatarHiddenTransition(state.settings, !state.settings.avatarHidden)
+        ),
+
+      setEnabledQuickActions: (ids) =>
         set((state) => ({
           settings: {
             ...state.settings,
-            proactive: { ...DEFAULT_PROACTIVE_SETTINGS, ...state.settings.proactive, ...proactive },
+            enabledQuickActions: ids.filter((id) => ALL_QUICK_ACTION_IDS.has(id)),
           },
         })),
+
+      toggleQuickAction: (id) =>
+        set((state) => {
+          if (!ALL_QUICK_ACTION_IDS.has(id)) return state;
+          const curr = state.settings.enabledQuickActions ?? [];
+          const next = curr.includes(id)
+            ? curr.filter((x) => x !== id)
+            : [...curr, id];
+          return {
+            settings: { ...state.settings, enabledQuickActions: next },
+          };
+        }),
 
       setVrmModelPath: (path) =>
         set((state) => ({
@@ -842,7 +971,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 15,
+      version: 19,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -856,11 +985,14 @@ export const useSettingsStore = create<SettingsState>()(
         };
       },
       migrate: (persistedState, version) => {
+        // 1차 가드: persistedState 자체가 falsy/non-object인 경우 (clean install 등)
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState;
         }
 
         const state = persistedState as { settings?: Partial<Settings> } & Record<string, unknown>;
+        // 2차 가드: state.settings 누락 (스토어 schema가 크게 바뀌었거나 데이터 손상)
+        // 이후 모든 블록은 s.* 접근이 안전하다는 invariant 유지.
         if (!state.settings) return persistedState;
 
         // v14→v15: avatarName/avatarPersonalityPrompt → character 마이그레이션
@@ -872,6 +1004,51 @@ export const useSettingsStore = create<SettingsState>()(
             if (name || prompt) {
               s.character = migrateFromLegacy(name, prompt);
             }
+          }
+        }
+
+        // v15→v16: avatarHidden 필드 추가 (기본 false)
+        if ((version ?? 0) < 16) {
+          const s = state.settings;
+          if (typeof s.avatarHidden !== 'boolean') {
+            s.avatarHidden = false;
+          }
+        }
+
+        // v16→v17: enabledQuickActions 필드 추가 (기본: calendar/mail/translate/capture)
+        if ((version ?? 0) < 17) {
+          const s = state.settings;
+          if (!Array.isArray(s.enabledQuickActions)) {
+            s.enabledQuickActions = ['calendar', 'mail', 'translate', 'capture'];
+          }
+        }
+
+        // v17→v18: Quick Actions 모델 변경 (LLM 프롬프트 → 설정 토글).
+        // 기존 ID(calendar/mail/...)는 모두 무효이므로 새 기본값으로 교체.
+        if ((version ?? 0) < 18) {
+          const s = state.settings;
+          s.enabledQuickActions = [
+            'avatar.freeMovement',
+            'avatar.showSpeechBubble',
+            'voice.globalShortcut',
+            'screen.watch',
+          ];
+        }
+
+        // v18→v19: avatar 숨김 시 proactive 자동 OFF/복구 위한
+        // proactivePreviousEnabled 필드 추가 (기본 null).
+        if ((version ?? 0) < 19) {
+          const s = state.settings as Partial<Settings>;
+          if (typeof s.proactivePreviousEnabled !== 'boolean' && s.proactivePreviousEnabled !== null) {
+            s.proactivePreviousEnabled = null;
+          }
+          // 이미 hidden=true 상태로 persist돼 있고 proactive.enabled=true면
+          // 의도된 자동 OFF가 누락된 상태이므로 일관성 확보:
+          //   기존 enabled를 previousEnabled에 옮기고 proactive는 OFF.
+          // s.proactive 명시 가드로 TS narrowing + spread 안전성 보장.
+          if (s.avatarHidden === true && s.proactive && s.proactive.enabled === true) {
+            s.proactivePreviousEnabled = true;
+            s.proactive = { ...s.proactive, enabled: false };
           }
         }
 

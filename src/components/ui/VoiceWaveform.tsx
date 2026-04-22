@@ -1,11 +1,19 @@
+/**
+ * VoiceWaveform — 음성 입력 중 표시되는 audio level 바 (v2 리디자인).
+ *
+ * 단일 라인 글래시 pill 형태 (label + 가로로 길게 늘어선 canvas).
+ * 클러스터 바와 비슷한 폭(~320px), 텍스트 입력 pill과 비슷한 높이(~22px).
+ */
 import { useEffect, useRef } from 'react';
 import { audioProcessor } from '../../services/voice/audioProcessor';
 
 interface VoiceWaveformProps {
   label: string;
+  /** pill 외곽 폭(px). 미지정 시 320. ControlCluster에서 메뉴바 폭과 동기화. */
+  width?: number;
 }
 
-const SAMPLE_COUNT = 64;
+const SAMPLE_COUNT = 96;
 const FRAME_INTERVAL_MS = 1000 / 30;
 const EMA_ALPHA = 0.38;
 
@@ -35,20 +43,27 @@ function drawWaveform(
 
   const midY = height / 2;
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-  ctx.lineWidth = Math.max(1, Math.floor(width / 280));
+  // baseline (글래시 위에서 보이는 어두운 hairline)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+  ctx.lineWidth = Math.max(1, Math.floor(width / 320));
   ctx.beginPath();
   ctx.moveTo(0, midY);
   ctx.lineTo(width, midY);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-  ctx.lineWidth = Math.max(1.5, width / 180);
+  // waveform (accent 톤) — 진폭은 midY 기준 위/아래 ±(midY × 0.85)로 클램프해
+  // canvas 경계를 벗어나지 않도록 안전 한도 적용 (큰 음성에서도 잘리지 않음).
+  // audioProcessor가 [-1, 1]을 보장하지만 이상치/디바이스 비정상 입력 방어를 위해
+  // 샘플별로도 [-1, 1]로 한 번 더 clamp.
+  ctx.strokeStyle = 'rgba(230, 144, 58, 0.95)';
+  ctx.lineWidth = Math.max(1.5, width / 220);
   ctx.beginPath();
 
+  const safeAmplitude = midY * 0.85;
   for (let i = 0; i < waveform.length; i++) {
     const x = (i / (waveform.length - 1)) * width;
-    const y = midY + waveform[i] * (height * 0.8);
+    const sample = Math.max(-1, Math.min(1, waveform[i]));
+    const y = midY + sample * safeAmplitude;
     if (i === 0) {
       ctx.moveTo(x, y);
     } else {
@@ -59,7 +74,7 @@ function drawWaveform(
   ctx.stroke();
 }
 
-export default function VoiceWaveform({ label }: VoiceWaveformProps) {
+export default function VoiceWaveform({ label, width = 320 }: VoiceWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -99,14 +114,47 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
 
   return (
     <div
-      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 pointer-events-none"
+      className="pointer-events-none"
+      style={{
+        width,
+      }}
       data-interactive="false"
     >
-      <div className="px-2 py-1 text-[11px] text-white text-center rounded-t-md bg-slate-900/85 border border-slate-600 border-b-0">
-        {label}
-      </div>
-      <div className="px-2 py-1 rounded-b-md bg-slate-900/85 border border-slate-600 border-t-0">
-        <canvas ref={canvasRef} className="block w-full h-12" />
+      <div
+        className="flex items-center"
+        style={{
+          gap: 8,
+          padding: '2px 12px',
+          borderRadius: 999,
+          background: 'var(--surface-2)',
+          backdropFilter: 'blur(40px) saturate(1.8)',
+          WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+          boxShadow: 'inset 0 1px 0 var(--top-edge), inset 0 0 0 1px var(--hairline)',
+          // canvas 가장자리가 둥근 pill 경계를 살짝 벗어나는 시각적 잔상 방지
+          overflow: 'hidden',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--ink-2)',
+            whiteSpace: 'nowrap',
+            fontWeight: 500,
+            letterSpacing: '-0.01em',
+            // i18n 라벨이 너무 길면 canvas 가시 영역 잠식. 최대 폭 + ellipsis 가드.
+            maxWidth: 96,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            flexShrink: 0,
+          }}
+        >
+          {label}
+        </span>
+        <canvas
+          ref={canvasRef}
+          className="block flex-1"
+          style={{ height: 18 }}
+        />
       </div>
     </div>
   );

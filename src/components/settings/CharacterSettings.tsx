@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { Row, Toggle } from './forms';
 import {
   CHARACTER_PRESETS,
   DEFAULT_CHARACTER_PROFILE,
@@ -91,7 +92,7 @@ export default function CharacterSettings() {
     <div className="space-y-4">
       {/* Preset Selection */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.character.preset')}
         </label>
         <div className="flex flex-wrap gap-2">
@@ -99,29 +100,31 @@ export default function CharacterSettings() {
             <button
               key={preset.meta.id}
               onClick={() => handlePresetApply(preset.meta.id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
+              style={
                 character.personality.archetype === preset.meta.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
+                  ? { background: 'var(--accent)', color: 'white' }
+                  : { background: 'var(--surface-1)', color: 'var(--ink-2)' }
+              }
               title={t(preset.meta.descriptionKey)}
             >
               {t(preset.meta.labelKey)}
             </button>
           ))}
           <button
-            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+            className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
+            style={
               character.personality.archetype === 'custom'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+                ? { background: 'var(--accent)', color: 'white' }
+                : { background: 'var(--surface-1)', color: 'var(--ink-2)' }
+            }
             onClick={() => setCharacter({ personality: { ...character.personality, archetype: 'custom' } })}
           >
             {t('settings.character.presetCustom')}
           </button>
         </div>
         {selectedPreset && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
             {t(selectedPreset.meta.descriptionKey)}
             {' · '}
             {t('settings.character.recommendedVoice', { voice: selectedPreset.meta.recommendedVoice })}
@@ -131,7 +134,7 @@ export default function CharacterSettings() {
 
       {/* Character Name */}
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.character.name')}
         </label>
         <input
@@ -140,14 +143,17 @@ export default function CharacterSettings() {
           onChange={(e) => setCharacter({ name: e.target.value })}
           placeholder={t('settings.character.namePlaceholder')}
           maxLength={40}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          className="w-full px-3 py-2 border rounded-lg focus:border-transparent text-sm"
+          style={{ borderColor: 'var(--hairline)', boxShadow: 'none' }}
+          onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-soft)'; }}
+          onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
         />
       </div>
 
       {/* Age & Species */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600">
+          <label className="block text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.character.age')}
           </label>
           <input
@@ -156,11 +162,12 @@ export default function CharacterSettings() {
             onChange={(e) => setCharacter({ age: e.target.value || undefined })}
             placeholder={t('settings.character.agePlaceholder')}
             maxLength={40}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+            className="w-full px-3 py-1.5 border rounded-lg text-sm"
+            style={{ borderColor: 'var(--hairline)' }}
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600">
+          <label className="block text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.character.species')}
           </label>
           <input
@@ -169,26 +176,29 @@ export default function CharacterSettings() {
             onChange={(e) => setCharacter({ species: e.target.value || undefined })}
             placeholder={t('settings.character.speciesPlaceholder')}
             maxLength={40}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+            className="w-full px-3 py-1.5 border rounded-lg text-sm"
+            style={{ borderColor: 'var(--hairline)' }}
           />
         </div>
       </div>
 
       {/* Personality Traits */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.character.traits')}
         </label>
         <div className="flex flex-wrap gap-1.5">
           {(character.personality.traits || []).map((trait, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full"
+              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full"
+              style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}
             >
               {trait}
               <button
                 onClick={() => handleRemoveTrait(i)}
-                className="text-blue-500 hover:text-blue-800"
+                className="hover:underline"
+                style={{ color: 'var(--accent)' }}
               >
                 x
               </button>
@@ -204,11 +214,13 @@ export default function CharacterSettings() {
               onKeyDown={(e) => e.key === 'Enter' && handleAddTrait()}
               placeholder={t('settings.character.traitsPlaceholder')}
               maxLength={20}
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+              className="flex-1 px-3 py-1.5 border rounded-lg text-sm"
+              style={{ borderColor: 'var(--hairline)' }}
             />
             <button
               onClick={handleAddTrait}
-              className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-300"
+              className="px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
+              style={{ background: 'var(--surface-1)', color: 'var(--ink-2)' }}
             >
               {t('settings.character.addTrait')}
             </button>
@@ -218,7 +230,7 @@ export default function CharacterSettings() {
 
       {/* Speech Style */}
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.character.speechStyle')}
         </label>
         <input
@@ -227,13 +239,14 @@ export default function CharacterSettings() {
           onChange={(e) => setCharacter({ personality: { ...character.personality, speechStyle: e.target.value } })}
           placeholder={t('settings.character.speechStylePlaceholder')}
           maxLength={100}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          className="w-full px-3 py-2 border rounded-lg text-sm"
+          style={{ borderColor: 'var(--hairline)' }}
         />
       </div>
 
       {/* Emotional Tendency */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.character.emotionalTendency')}
         </label>
         <div className="flex flex-wrap gap-2">
@@ -241,11 +254,12 @@ export default function CharacterSettings() {
             <button
               key={tendency}
               onClick={() => setCharacter({ personality: { ...character.personality, emotionalTendency: tendency } })}
-              className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+              className="px-3 py-1 text-xs font-medium rounded-full transition-colors"
+              style={
                 character.personality.emotionalTendency === tendency
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
+                  ? { background: 'var(--accent)', color: 'white' }
+                  : { background: 'var(--surface-1)', color: 'var(--ink-2)' }
+              }
             >
               {t(`settings.character.tendency${tendency.charAt(0).toUpperCase() + tendency.slice(1)}`)}
             </button>
@@ -256,7 +270,7 @@ export default function CharacterSettings() {
       {/* User Relation & Honorific */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600">
+          <label className="block text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.character.userRelation')}
           </label>
           <input
@@ -265,17 +279,19 @@ export default function CharacterSettings() {
             onChange={(e) => setCharacter({ userRelation: e.target.value })}
             placeholder={t('settings.character.userRelationPlaceholder')}
             maxLength={40}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+            className="w-full px-3 py-1.5 border rounded-lg text-sm"
+            style={{ borderColor: 'var(--hairline)' }}
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600">
+          <label className="block text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.character.honorific')}
           </label>
           <select
             value={character.honorific}
             onChange={(e) => setCharacter({ honorific: e.target.value as Honorific })}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+            className="w-full px-3 py-1.5 border rounded-lg text-sm"
+            style={{ borderColor: 'var(--hairline)' }}
           >
             <option value="casual">{t('settings.character.honorificCasual')}</option>
             <option value="polite">{t('settings.character.honorificPolite')}</option>
@@ -286,7 +302,7 @@ export default function CharacterSettings() {
 
       {/* Background */}
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.character.background')}
         </label>
         <textarea
@@ -295,9 +311,10 @@ export default function CharacterSettings() {
           placeholder={t('settings.character.backgroundPlaceholder')}
           maxLength={500}
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-y"
+          className="w-full px-3 py-2 border rounded-lg text-sm resize-y"
+          style={{ borderColor: 'var(--hairline)' }}
         />
-        <p className="text-xs text-gray-500 text-right">
+        <p className="text-xs text-right" style={{ color: 'var(--ink-3)' }}>
           {(character.background || '').length}/500
         </p>
       </div>
@@ -306,14 +323,22 @@ export default function CharacterSettings() {
       <div className="grid grid-cols-2 gap-3">
         {/* Likes */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-gray-600">
+          <label className="block text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.character.likes')}
           </label>
           <div className="flex flex-wrap gap-1">
             {(character.likes || []).map((like, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full"
+                style={{ background: 'oklch(0.94 0.06 160 / 0.6)', color: 'oklch(0.42 0.12 160)' }}
+              >
                 {like}
-                <button onClick={() => handleRemoveTag('likes', i)} className="text-green-500 hover:text-green-800">x</button>
+                <button
+                  onClick={() => handleRemoveTag('likes', i)}
+                  className="hover:underline"
+                  style={{ color: 'var(--ok)' }}
+                >x</button>
               </span>
             ))}
           </div>
@@ -326,11 +351,13 @@ export default function CharacterSettings() {
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTag('likes', newLike, setNewLike)}
                 placeholder={t('settings.character.likesPlaceholder')}
                 maxLength={20}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                className="flex-1 px-2 py-1 border rounded text-xs"
+                style={{ borderColor: 'var(--hairline)' }}
               />
               <button
                 onClick={() => handleAddTag('likes', newLike, setNewLike)}
-                className="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded hover:bg-gray-300"
+                className="px-2 py-1 text-xs rounded hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
+                style={{ background: 'var(--surface-1)', color: 'var(--ink-2)' }}
               >
                 {t('settings.character.addLike')}
               </button>
@@ -340,14 +367,22 @@ export default function CharacterSettings() {
 
         {/* Dislikes */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-gray-600">
+          <label className="block text-xs font-medium" style={{ color: 'var(--ink-2)' }}>
             {t('settings.character.dislikes')}
           </label>
           <div className="flex flex-wrap gap-1">
             {(character.dislikes || []).map((dislike, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full"
+                style={{ background: 'oklch(0.95 0.04 25 / 0.6)', color: 'oklch(0.45 0.18 25)' }}
+              >
                 {dislike}
-                <button onClick={() => handleRemoveTag('dislikes', i)} className="text-red-500 hover:text-red-800">x</button>
+                <button
+                  onClick={() => handleRemoveTag('dislikes', i)}
+                  className="hover:underline"
+                  style={{ color: 'var(--danger)' }}
+                >x</button>
               </span>
             ))}
           </div>
@@ -360,11 +395,13 @@ export default function CharacterSettings() {
                 onKeyDown={(e) => e.key === 'Enter' && handleAddTag('dislikes', newDislike, setNewDislike)}
                 placeholder={t('settings.character.dislikesPlaceholder')}
                 maxLength={20}
-                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                className="flex-1 px-2 py-1 border rounded text-xs"
+                style={{ borderColor: 'var(--hairline)' }}
               />
               <button
                 onClick={() => handleAddTag('dislikes', newDislike, setNewDislike)}
-                className="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded hover:bg-gray-300"
+                className="px-2 py-1 text-xs rounded hover:bg-[oklch(0.92_0.02_60_/_0.7)]"
+                style={{ background: 'var(--surface-1)', color: 'var(--ink-2)' }}
               >
                 {t('settings.character.addDislike')}
               </button>
@@ -374,40 +411,47 @@ export default function CharacterSettings() {
       </div>
 
       {/* Example Dialogues */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <label className="block text-sm font-medium text-gray-700">
+      <div className="space-y-2 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <label className="block text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.character.exampleDialogues')}
         </label>
 
         {(character.exampleDialogues || []).map((example, i) => (
-          <div key={i} className="space-y-1 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div
+            key={i}
+            className="space-y-1 p-3 rounded-lg border"
+            style={{ background: 'oklch(1 0 0 / 0.45)', borderColor: 'var(--hairline)' }}
+          >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-500">#{i + 1}</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--ink-3)' }}>#{i + 1}</span>
               <button
                 onClick={() => handleRemoveExample(i)}
-                className="text-xs text-red-500 hover:text-red-700"
+                className="text-xs hover:underline"
+                style={{ color: 'var(--danger)' }}
               >
                 {t('settings.character.removeExample')}
               </button>
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-gray-500">{t('settings.character.exampleUser')}</label>
+              <label className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.character.exampleUser')}</label>
               <input
                 type="text"
                 value={example.user}
                 onChange={(e) => handleUpdateExample(i, 'user', e.target.value)}
                 maxLength={100}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full px-2 py-1 border rounded text-sm"
+                style={{ borderColor: 'var(--hairline)' }}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-gray-500">{t('settings.character.exampleAssistant')}</label>
+              <label className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.character.exampleAssistant')}</label>
               <input
                 type="text"
                 value={example.assistant}
                 onChange={(e) => handleUpdateExample(i, 'assistant', e.target.value)}
                 maxLength={200}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full px-2 py-1 border rounded text-sm"
+                style={{ borderColor: 'var(--hairline)' }}
               />
             </div>
           </div>
@@ -416,7 +460,8 @@ export default function CharacterSettings() {
         {(character.exampleDialogues || []).length < 5 && (
           <button
             onClick={handleAddExample}
-            className="w-full px-3 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+            className="w-full px-3 py-2 text-sm font-medium rounded-lg hover:bg-[oklch(0.92_0.02_60_/_0.7)] transition-colors"
+            style={{ background: 'var(--surface-1)', color: 'var(--ink-2)' }}
           >
             {t('settings.character.addExample')}
           </button>
@@ -424,38 +469,25 @@ export default function CharacterSettings() {
       </div>
 
       {/* Proactive Chat (Phase 3) */}
-      <div className="space-y-3 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-3 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.proactive.title')}
         </h4>
 
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-sm text-gray-600">
-              {t('settings.proactive.enabled')}
-            </span>
-            <span className="text-xs text-gray-400">
-              {t('settings.proactive.enabledDesc')}
-            </span>
-          </div>
-          <button
-            onClick={() => setProactive({ enabled: !(settings.proactive?.enabled ?? false) })}
-            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-              settings.proactive?.enabled ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                settings.proactive?.enabled ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
-        </div>
+        <Row
+          label={t('settings.proactive.enabled')}
+          description={t('settings.proactive.enabledDesc')}
+        >
+          <Toggle
+            on={settings.proactive?.enabled ?? false}
+            onChange={(v) => setProactive({ enabled: v })}
+          />
+        </Row>
 
         {settings.proactive?.enabled && (
           <>
             <div className="space-y-1">
-              <label className="block text-xs text-gray-600">
+              <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
                 {t('settings.proactive.idleMinutes', { value: settings.proactive?.idleMinutes ?? 5 })}
               </label>
               <input
@@ -465,11 +497,12 @@ export default function CharacterSettings() {
                 step="1"
                 value={settings.proactive?.idleMinutes ?? 5}
                 onChange={(e) => setProactive({ idleMinutes: parseInt(e.target.value) })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="ama-slider"
+                data-interactive="true"
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-xs text-gray-600">
+              <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
                 {t('settings.proactive.cooldownMinutes', { value: settings.proactive?.cooldownMinutes ?? 10 })}
               </label>
               <input
@@ -479,7 +512,8 @@ export default function CharacterSettings() {
                 step="1"
                 value={settings.proactive?.cooldownMinutes ?? 10}
                 onChange={(e) => setProactive({ cooldownMinutes: parseInt(e.target.value) })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="ama-slider"
+                data-interactive="true"
               />
             </div>
           </>
