@@ -109,15 +109,15 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
     <div
       className="pointer-events-none"
       style={{
-        width: 320,
+        width: 420,
       }}
       data-interactive="false"
     >
       <div
         className="flex items-center"
         style={{
-          gap: 8,
-          padding: '2px 12px',
+          gap: 10,
+          padding: '8px 16px',
           borderRadius: 999,
           background: 'var(--surface-2)',
           backdropFilter: 'blur(40px) saturate(1.8)',
@@ -127,7 +127,7 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
       >
         <span
           style={{
-            fontSize: 11,
+            fontSize: 12,
             color: 'var(--ink-2)',
             whiteSpace: 'nowrap',
             fontWeight: 500,
@@ -139,7 +139,7 @@ export default function VoiceWaveform({ label }: VoiceWaveformProps) {
         <canvas
           ref={canvasRef}
           className="block flex-1"
-          style={{ height: 18 }}
+          style={{ height: 36 }}
         />
       </div>
     </div>
