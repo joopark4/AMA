@@ -63,6 +63,8 @@ export default function SettingsSection({
         )}
         <div
           className="flex-1 min-w-0 truncate"
+          // 길어진 i18n 라벨이 ellipsis로 잘릴 때 전체 텍스트를 hover tooltip으로 노출.
+          title={typeof title === 'string' ? title : undefined}
           style={{
             fontSize: 14.5,
             fontWeight: 600,
