@@ -45,6 +45,7 @@ import {
   buildCloudApiKeyIssue,
   buildLocalServerIssue,
   buildLocalModelIssue,
+  isModelSelectableProvider,
 } from './controlCluster/dependencyIssues';
 import { StatusPill, type StatusKind } from './controlCluster/StatusPill';
 import { ListeningBars } from './controlCluster/ListeningBars';
@@ -117,8 +118,19 @@ export default function ControlCluster() {
       const apiKey = settings.llm.apiKey || '';
 
       if (!model.trim()) {
-        if (!cancelled) setLlmDependencyIssue(buildModelUnsetIssue(t, provider));
-        return;
+        // claude_code / codex는 외부 세션·CLI에서 모델을 결정하므로
+        // settings.llm.model이 비어 있어도 이슈가 아니다 → 다음 흐름으로.
+        // isModelSelectableProvider 가드로 좁혀 buildModelUnsetIssue가
+        // 안전한 provider 타입만 받도록 한다 (cloud lookup undefined 차단).
+        if (isModelSelectableProvider(provider)) {
+          if (!cancelled) setLlmDependencyIssue(buildModelUnsetIssue(t, provider));
+          return;
+        }
+        // claude_code / codex 분기: 다음 단계(isAvailable 체크 등)는 이들 provider에
+        // 매치되는 분기가 없어 stale 이슈를 clear할 기회가 없다.
+        // 이전 provider(예: openai)에서 발생한 API key 경고가 그대로 남는 회귀를
+        // 방지하기 위해 여기서 명시적으로 null로 초기화한다.
+        if (!cancelled) setLlmDependencyIssue(null);
       }
       if ((provider === 'ollama' || provider === 'localai') && !endpoint.trim()) {
         if (!cancelled) setLlmDependencyIssue(buildEndpointUnsetIssue(t, provider));
