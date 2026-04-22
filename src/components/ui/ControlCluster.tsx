@@ -14,7 +14,6 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import {
   Eye,
   EyeOff,
@@ -27,7 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import { useConversationStore } from '../../stores/conversationStore';
-import { useSettingsStore, type LLMProvider } from '../../stores/settingsStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { useConversation } from '../../hooks/useConversation';
 import { useGlobalVoiceShortcut } from '../../hooks/useGlobalVoiceShortcut';
 import { DEFAULT_GLOBAL_SHORTCUT_ACCELERATOR } from '../../services/tauri/globalShortcutUtils';
@@ -41,132 +40,15 @@ import { ttsRouter } from '../../services/voice/ttsRouter';
 import { audioProcessor } from '../../services/voice/audioProcessor';
 import VoiceWaveform from './VoiceWaveform';
 import AvatarRestingBadge from './AvatarRestingBadge';
-
-interface DependencyIssue {
-  id: string;
-  title: string;
-  summary: string;
-  steps: string[];
-}
-
-const PROVIDER_LABELS: Record<LLMProvider, string> = {
-  ollama: 'Ollama',
-  localai: 'LocalAI',
-  claude: 'Claude',
-  openai: 'OpenAI',
-  gemini: 'Gemini',
-  claude_code: 'Claude Code',
-  codex: 'Codex',
-};
-
-const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string> = {
-  claude: 'claude-sonnet-4-5',
-  openai: 'gpt-5.1',
-  gemini: 'gemini-2.5-flash',
-};
-
-/** i18n returnObjects helper (string[] 안전 캐스트) */
-function readSteps(t: TFunction, key: string, params?: Record<string, unknown>): string[] {
-  const v = t(key, { returnObjects: true, ...(params ?? {}) }) as unknown;
-  return Array.isArray(v) ? (v as string[]) : [];
-}
-
-function buildModelUnsetIssue(t: TFunction, provider: LLMProvider): DependencyIssue {
-  if (provider === 'ollama' || provider === 'localai') {
-    return {
-      id: 'llm-model-unset',
-      title: t(`dependency.issue.modelUnset.${provider}.title`),
-      summary: t(`dependency.issue.modelUnset.${provider}.summary`),
-      steps: readSteps(t, `dependency.issue.modelUnset.${provider}.steps`),
-    };
-  }
-  const providerLabel = PROVIDER_LABELS[provider];
-  const defaultModel = CLOUD_DEFAULT_MODELS[provider as 'claude' | 'openai' | 'gemini'];
-  return {
-    id: 'llm-model-unset',
-    title: t('dependency.issue.modelUnset.cloud.title', { provider: providerLabel }),
-    summary: t('dependency.issue.modelUnset.cloud.summary', { provider: providerLabel }),
-    steps: readSteps(t, 'dependency.issue.modelUnset.cloud.steps', {
-      provider: providerLabel,
-      defaultModel,
-    }),
-  };
-}
-
-function buildEndpointUnsetIssue(t: TFunction, provider: 'ollama' | 'localai'): DependencyIssue {
-  return {
-    id: 'llm-endpoint-unset',
-    title: t(`dependency.issue.endpointUnset.${provider}.title`),
-    summary: t(`dependency.issue.endpointUnset.${provider}.summary`),
-    steps: readSteps(t, `dependency.issue.endpointUnset.${provider}.steps`),
-  };
-}
-
-function buildCloudApiKeyIssue(
-  t: TFunction,
-  provider: 'claude' | 'openai' | 'gemini'
-): DependencyIssue {
-  const apiKeyGuide =
-    provider === 'claude'
-      ? 'console.anthropic.com'
-      : provider === 'openai'
-        ? 'platform.openai.com'
-        : 'aistudio.google.com';
-  const keyPrefix =
-    provider === 'openai'
-      ? '`sk-...`'
-      : provider === 'claude'
-        ? '`sk-ant-...`'
-        : t('dependency.issue.apiKey.fallbackKeyPrefix', 'API key');
-  const providerLabel = PROVIDER_LABELS[provider];
-  return {
-    id: 'llm-api-key',
-    title: t('dependency.issue.apiKey.title', { provider: providerLabel }),
-    summary: t('dependency.issue.apiKey.summary', { provider: providerLabel }),
-    steps: readSteps(t, 'dependency.issue.apiKey.steps', {
-      provider: providerLabel,
-      apiKeyGuide,
-      keyPrefix,
-    }),
-  };
-}
-
-function buildLocalServerIssue(
-  t: TFunction,
-  provider: 'ollama' | 'localai',
-  endpoint: string,
-  model: string
-): DependencyIssue {
-  const fallbackEndpoint =
-    provider === 'ollama' ? 'http://localhost:11434' : 'http://localhost:8080';
-  const fallbackModel = 'deepseek-v3';
-  return {
-    id: provider === 'ollama' ? 'llm-ollama-server' : 'llm-localai-server',
-    title: t(`dependency.issue.localServer.${provider}.title`),
-    summary: t(`dependency.issue.localServer.${provider}.summary`),
-    steps: readSteps(t, `dependency.issue.localServer.${provider}.steps`, {
-      model: model || fallbackModel,
-      endpoint: endpoint || fallbackEndpoint,
-    }),
-  };
-}
-
-function buildLocalModelIssue(
-  t: TFunction,
-  provider: 'ollama' | 'localai',
-  model: string
-): DependencyIssue {
-  const displayModel =
-    model || (t('dependency.issue.localModel.unsetLabel', '(unset)') as string);
-  return {
-    id: provider === 'ollama' ? 'llm-ollama-model' : 'llm-localai-model',
-    title: t(`dependency.issue.localModel.${provider}.title`),
-    summary: t(`dependency.issue.localModel.${provider}.summary`, { model: displayModel }),
-    steps: readSteps(t, `dependency.issue.localModel.${provider}.steps`, {
-      model: model || 'deepseek-v3',
-    }),
-  };
-}
+import {
+  type DependencyIssue,
+  readSteps,
+  buildModelUnsetIssue,
+  buildEndpointUnsetIssue,
+  buildCloudApiKeyIssue,
+  buildLocalServerIssue,
+  buildLocalModelIssue,
+} from './controlCluster/dependencyIssues';
 
 /* ─────────────────────── 보조 컴포넌트 (v2 리디자인) ─────────────────────── */
 
