@@ -272,6 +272,7 @@
       "quota": {
         "title": "월간 할당량",
         "adminTitle": "API 총 할당량",
+        "betaSharedTitle": "베타 공유 할당량 (모든 사용자 공동 소비)",
         "used": "{{used}} / {{limit}} 크레딧",
         "adminBalanceUnit": "크레딧 잔액",
         "adminBalanceDesc": "약 {{minutes}}분 {{seconds}}초 사용 가능",

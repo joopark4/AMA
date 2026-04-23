@@ -272,6 +272,7 @@
       "quota": {
         "title": "Monthly Quota",
         "adminTitle": "API Total Quota",
+        "betaSharedTitle": "Beta shared quota (consumed by all users)",
         "used": "{{used}} / {{limit}} credits",
         "adminBalanceUnit": "Credits Balance",
         "adminBalanceDesc": "~{{minutes}}m {{seconds}}s available",

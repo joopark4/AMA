@@ -636,11 +636,14 @@ function UsageCard({
         </div>
       ) : (
         <>
-          {/* 관리자: Supertone API 크레딧 잔액 + 총 할당량 */}
-          {isAdmin && apiCredits && (
+          {/* 관리자 + (베타) 일반 사용자: Supertone API 전체 크레딧을 공유 표시.
+              베타 기간에는 apiCredits가 공통 잔고이며 모든 로그인 사용자에게 노출된다. */}
+          {apiCredits && (
             <div>
               <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
-                {t('settings.premium.quota.adminTitle')}
+                {isAdmin
+                  ? t('settings.premium.quota.adminTitle')
+                  : t('settings.premium.quota.betaSharedTitle')}
               </div>
               {(() => {
                 const { balance, used, total } = apiCredits;
@@ -706,8 +709,9 @@ function UsageCard({
             </div>
           )}
 
-          {/* 일반 사용자: 할당량 바. quota가 아직 없으면 "사용 기록 없음" 안내 표시. */}
-          {!isAdmin && !quota && (
+          {/* 일반 사용자 개별 quota — 베타 기간에 공유 apiCredits가 있으면 숨기고,
+              그 외의 경우(서버가 apiCredits 제공 거부 시)에만 개인 quota 바로 폴백한다. */}
+          {!isAdmin && !apiCredits && !quota && (
             <div
               className="text-center"
               style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
@@ -715,7 +719,7 @@ function UsageCard({
               {t('settings.premium.usage.noUsage')}
             </div>
           )}
-          {!isAdmin && quota && (
+          {!isAdmin && !apiCredits && quota && (
             <div>
               <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
                 {t('settings.premium.quota.title')}

@@ -272,6 +272,7 @@
       "quota": {
         "title": "月間割り当て",
         "adminTitle": "API総割り当て",
+        "betaSharedTitle": "ベータ共有枠（全ユーザーで消費）",
         "used": "{{used}} / {{limit}} クレジット",
         "adminBalanceUnit": "クレジット残高",
         "adminBalanceDesc": "約{{minutes}}分{{seconds}}秒使用可能",
