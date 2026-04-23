@@ -857,34 +857,28 @@ export class SupertonicClient implements TTSClient {
   }
 
   /**
-   * TTS 출력 언어 결정
+   * TTS 출력 언어 결정 — **대화·음성 언어 계약과 동일**.
    *
-   * 우선순위:
-   *   1. 사용자가 `settings.tts.language`로 명시 (auto 제외)
-   *      - Supertonic 미지원 언어(예: ja)는 `en`으로 폴백
-   *   2. `auto`인 경우: 텍스트에 한글 포함 → `ko`, 아니면 UI 언어(`settings.language`) 폴백
+   * - `settings.tts.language`가 명시된 경우(auto 제외) 그 값을 사용.
+   *   Supertonic 미지원 언어(`ja` 등)는 `en`으로 폴백.
+   * - `auto`인 경우 UI 언어(`settings.language`)를 그대로 따라감.
+   *   UI 언어도 Supertonic 지원 목록에 없으면 `en`으로 폴백.
+   *
+   * 참고: 입력 텍스트에 기반한 언어 감지는 대화·음성 언어 계약상 존재하지 않는다 —
+   * LLM 응답 언어 결정(`resolveResponseLanguage`)과 동일한 기준으로 유지하여
+   * 합성 언어와 응답 언어가 엇갈리지 않도록 한다.
    */
   private detectLanguage(
-    text: string,
+    _text: string,
     ttsLanguage: string,
     uiLanguage: string
   ): SupertonicLanguage {
-    if (ttsLanguage && ttsLanguage !== 'auto') {
-      if (AVAILABLE_LANGS.includes(ttsLanguage as SupertonicLanguage)) {
-        return ttsLanguage as SupertonicLanguage;
-      }
-      // 사용자가 선택했지만 Supertonic이 지원하지 않는 언어 → en 폴백
-      log(`TTS language '${ttsLanguage}' not supported by Supertonic, falling back to 'en'`);
-      return 'en';
+    const requested = ttsLanguage && ttsLanguage !== 'auto' ? ttsLanguage : uiLanguage;
+    if (AVAILABLE_LANGS.includes(requested as SupertonicLanguage)) {
+      return requested as SupertonicLanguage;
     }
-
-    // auto: 한글 텍스트 휴리스틱 + UI 언어 폴백
-    if (/[\u3131-\u314e\u314f-\u3163\uac00-\ud7a3]/.test(text)) {
-      return 'ko';
-    }
-    return AVAILABLE_LANGS.includes(uiLanguage as SupertonicLanguage)
-      ? (uiLanguage as SupertonicLanguage)
-      : 'en';
+    log(`Language '${requested}' not supported by Supertonic, falling back to 'en'`);
+    return 'en';
   }
 
   /**

@@ -1,6 +1,8 @@
-# MyPartnerAI
+# AMA (MyPartnerAI)
 
 An AI avatar desktop app that moves freely on your screen and interacts with you through text and voice.
+
+> The display name is **AMA**. The internal package name and bundle ID remain `mypartnerai`.
 
 Korean version: [README.md](README.md)
 
@@ -16,12 +18,22 @@ Korean version: [README.md](README.md)
   - Voice recognition
   - Settings
 - Avatar:
+  - Ships with a built-in default VRM, so you can start without picking a file
   - Click/select, drag to move, drag to rotate
-  - Speech bubble is automatically positioned above the avatar
+  - Free-movement mode (place anywhere on screen) + speech bubble (toggleable)
+- Conversation & voice language (`Settings > Voice`):
+  - A **single language** setting shared by the AI response and the TTS playback, kept separate from the app UI language
+  - `Follow app language` uses the current UI language as-is
+  - Supported: Korean / English / Japanese / Spanish / Portuguese / French
+  - Local TTS (Supertonic) does not support Japanese — it falls back to English with an in-UI warning
 - Voice:
   - STT: Whisper local (`base/small/medium`)
-  - TTS: Supertonic (`F1~F5`, `M1~M5`)
+  - TTS local: Supertonic (`F1~F5`, `M1~M5`)
+  - TTS premium: Supertone API (subscribers; engine switch auto-assigns a default voice)
   - Global shortcut: default `Cmd+Shift+Space` (works regardless of focused app)
+- Settings panel:
+  - Each section's collapsed/expanded state is persisted across launches
+  - On first launch every section starts collapsed — expand only what you need
 - When a remote session is detected:
   - Voice input (STT) is blocked
   - Text chat remains available
@@ -115,14 +127,15 @@ npm run tauri build
 
 ## First-Run Guide
 
-1. Launch the app
-2. If no VRM is selected, choose a `.vrm` file in the center prompt
-3. Open Settings (bottom-right) and configure:
-   - LLM provider/model
-   - Whisper model (`base/small/medium`)
-   - Supertonic voice
-   - Global voice shortcut on/off and key binding
-4. Start chatting via microphone or text input
+1. Launch the app — the built-in default VRM appears automatically
+2. Open Settings (bottom-right) — every section starts collapsed, so expand only the ones you need:
+   - **AI Model**: provider, model, API key, endpoint
+   - **Voice (STT/TTS)**: Whisper model, Supertonic voice, **Conversation & Voice Language** (Korean / English / Japanese / Spanish / Portuguese / French)
+   - **Premium Voice** (optional): sign in + subscribe to switch to Supertone API voices (Bella is auto-assigned on first activation)
+   - **Global Shortcut**: enable/disable, bind a key combination
+   - **Avatar**: replace the built-in VRM if you prefer your own
+3. Chat via microphone or text input
+4. On subsequent visits, Settings restores your previous expanded/collapsed state
 
 ## Global Voice Shortcut
 
@@ -138,7 +151,7 @@ npm run tauri build
 
 - Whisper models: `base`, `small`, `medium`
 - Supertonic models: `onnx`, `voice_styles`
-- VRM is not bundled by default; user selects a local file on first run.
+- A default VRM avatar is bundled and shown on first launch; users can replace it from Settings > Avatar.
 
 ## Optional Environment Variables
 
@@ -224,15 +237,15 @@ User text/voice input is sent to Claude Code, and responses are spoken aloud by 
 
 ### Usage
 
-1. Install channel dependencies (one-time): `cd mcp-channels && npm install && cd ..`
-2. Run AMA: `npm run tauri dev`
-3. `Settings > Claude Code Channels > Toggle ON` (auto-registers with Claude Code + switches AI model)
-4. In a separate terminal, start Claude Code:
+1. Run AMA: `npm run tauri dev`
+2. `Settings > Claude Code Channels > Toggle ON`
+   - Turning the toggle on auto-installs the ama-bridge plugin globally and switches the AI model to Claude Code.
+3. Start Claude Code from any project folder you like:
    ```bash
    claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
    ```
-5. Select `Yes` at the initial confirmation prompt (once per session)
-6. Chat via AMA → Claude Code responds → avatar speaks via TTS
+4. Select `Yes` at the initial confirmation prompt (once per session)
+5. Chat via AMA → Claude Code responds → avatar speaks via TTS
 
 Toggling OFF automatically restores your previous AI model settings.
 
@@ -242,7 +255,7 @@ Toggling OFF automatically restores your previous AI model settings.
 - `--permission-mode bypassPermissions` auto-accepts tool execution permissions. **Use only in trusted local environments.**
 - AMA and Claude Code must run on the **same machine** (localhost).
 
-See [Claude Code Channels Guide](docs/channels-mcp.md) for details.
+See [Claude Code Channels Guide](docs/channels/channels-mcp.md) for details.
 
 ---
 

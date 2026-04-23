@@ -70,7 +70,10 @@ export interface SupertoneApiSettings {
 export interface TTSSettings {
   engine: TTSEngine;
   voice?: string;                       // supertonic용 (F1-M5)
-  /** 음성 출력 언어 (로컬/프리미엄 공용). `auto`면 텍스트 감지 + UI 언어 폴백. */
+  /**
+   * 대화·음성 언어 (로컬/프리미엄 공용) — LLM 응답과 TTS 합성이 공유하는 언어.
+   * `auto`면 앱 UI 언어(`settings.language`)를 그대로 따라간다 (텍스트 감지 아님).
+   */
   language?: TTSOutputLanguage;
   supertoneApi?: SupertoneApiSettings;  // supertone_api용
   audioOutputDeviceId?: string;
