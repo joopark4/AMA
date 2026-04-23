@@ -12,6 +12,7 @@ import {
   useSettingsStore,
   type GeminiCliApprovalMode,
 } from '../../stores/settingsStore';
+import { Select } from '../../components/settings/forms';
 import { useGeminiCliConnection } from './useGeminiCliConnection';
 
 const APPROVAL_MODES: { value: GeminiCliApprovalMode; labelKey: string }[] = [
@@ -251,7 +252,7 @@ export default function GeminiCliSettings() {
         </div>
       </div>
 
-      {/* 모델 선택 — 연결 후 session/new 응답의 availableModels로 표시 */}
+      {/* 모델 선택 — 연결 후 session/new 응답의 availableModels를 Select로 표시 */}
       {models.length > 0 && (
         <div>
           <div
@@ -259,76 +260,37 @@ export default function GeminiCliSettings() {
           >
             {t('settings.geminiCli.model')}
           </div>
-          <div className="flex flex-wrap" style={{ gap: 6 }}>
-            {models.map((m) => {
-              const active = settings.geminiCli.model === m.modelId;
-              return (
-                <button
-                  key={m.modelId}
-                  type="button"
-                  onClick={() => {
-                    void handleModelChange(m.modelId);
-                  }}
-                  title={m.description || m.name}
-                  className="focus-ring"
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: 12.5,
-                    borderRadius: 99,
-                    background: active ? 'var(--accent)' : 'oklch(1 0 0 / 0.7)',
-                    color: active ? 'white' : 'var(--ink-2)',
-                    boxShadow: active ? 'none' : 'inset 0 0 0 1px var(--hairline)',
-                    fontWeight: active ? 500 : 400,
-                  }}
-                  data-interactive="true"
-                >
-                  {m.name}
-                </button>
-              );
-            })}
-          </div>
+          <Select
+            value={settings.geminiCli.model}
+            onChange={(value) => {
+              void handleModelChange(value);
+            }}
+            options={models.map((m) => ({ value: m.modelId, label: m.name }))}
+          />
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 4 }}>
             {t('settings.geminiCli.modelInfo')}
           </div>
         </div>
       )}
 
-      {/* 승인 모드 */}
+      {/* 승인 모드 — Select */}
       <div>
         <div
           style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 4 }}
         >
           {t('settings.geminiCli.approvalMode')}
         </div>
-        <div className="flex flex-wrap" style={{ gap: 6 }}>
-          {APPROVAL_MODES.map(({ value, labelKey }) => {
-            const active = settings.geminiCli.approvalMode === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => {
-                  setGeminiCliSettings({ approvalMode: value });
-                  // 연결 중이면 session/set_mode로 즉시 동기화.
-                  void syncApprovalMode(value);
-                }}
-                className="focus-ring"
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 12.5,
-                  borderRadius: 99,
-                  background: active ? 'var(--accent)' : 'oklch(1 0 0 / 0.7)',
-                  color: active ? 'white' : 'var(--ink-2)',
-                  boxShadow: active ? 'none' : 'inset 0 0 0 1px var(--hairline)',
-                  fontWeight: active ? 500 : 400,
-                }}
-                data-interactive="true"
-              >
-                {t(labelKey)}
-              </button>
-            );
-          })}
-        </div>
+        <Select<GeminiCliApprovalMode>
+          value={settings.geminiCli.approvalMode}
+          onChange={(value) => {
+            setGeminiCliSettings({ approvalMode: value });
+            void syncApprovalMode(value);
+          }}
+          options={APPROVAL_MODES.map(({ value, labelKey }) => ({
+            value,
+            label: t(labelKey),
+          }))}
+        />
         <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 4 }}>
           {t('settings.geminiCli.approvalInfo')}
         </div>
