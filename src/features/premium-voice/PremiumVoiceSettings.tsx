@@ -708,13 +708,22 @@ function UsageCard({
           )}
 
           {/* 베타 기간에는 공유 apiCredits가 유일한 잔고 표시이며 개인 월간 quota 바는
-              노출하지 않는다. apiCredits가 아직 내려오지 않은 상태라면 로딩 안내만 표시. */}
-          {!isAdmin && !apiCredits && (
+              노출하지 않는다. 로딩 중이면 loading, 로딩이 끝났는데도 잔고가 없으면
+              불러오기 실패 문구로 구분 표시한다. */}
+          {!isAdmin && !apiCredits && isLoading && (
             <div
               className="text-center"
               style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
             >
               {t('settings.premium.usage.loading')}
+            </div>
+          )}
+          {!isAdmin && !apiCredits && !isLoading && (
+            <div
+              className="text-center"
+              style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--warn)' }}
+            >
+              {t('settings.premium.quota.betaSharedUnavailable')}
             </div>
           )}
           {/* 이번 달 요약 + 최근 7일 차트 — 관리자에게만 노출.

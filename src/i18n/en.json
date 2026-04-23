@@ -273,6 +273,7 @@
         "title": "Monthly Quota",
         "adminTitle": "API Total Quota",
         "betaSharedTitle": "Beta shared quota (consumed by all users)",
+        "betaSharedUnavailable": "Couldn't load the shared balance. Please ask an administrator to verify the Supertone API key.",
         "used": "{{used}} / {{limit}} credits",
         "adminBalanceUnit": "Credits Balance",
         "adminBalanceDesc": "~{{minutes}}m {{seconds}}s available",
