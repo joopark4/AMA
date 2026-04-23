@@ -44,7 +44,13 @@ Deno.serve(async (req) => {
       .single();
 
     const isAdmin = profile?.is_admin === true;
-    const isAllScope = isAdmin && scope === 'all';
+    // [BETA] 공용 잔고 공유 — admin이 아니어도 scope='all' 요청을 허용한다. 합성(supertone-tts)
+    // 측도 베타 기간에는 구독·개인 할당량 게이트를 해제했다.
+    // apiCredits 계산(하단 isAllScope 분기)은 전체 공용 잔고라 어떤 사용자가 호출하든 동일한 값.
+    // 단, 사용량 기록(tts_usage)의 user_id 필터링은 여전히 개인 단위로 필요하므로 별도로 분기.
+    const isAllScope = scope === 'all';
+    const includeApiCredits = isAllScope;
+    const aggregateAllUsers = isAdmin && scope === 'all';
 
     const { data: plan } = await supabaseUser
       .from('subscription_plans')
@@ -66,7 +72,8 @@ Deno.serve(async (req) => {
         .lt('created_at', defaultEnd)
         .order('created_at', { ascending: false });
 
-      if (!isAllScope) {
+      // 사용량 기록 필터: 관리자만 전체 범위로 조회 (비관리자 베타 사용자는 본인 기록만 반환).
+      if (!aggregateAllUsers) {
         query = query.eq('user_id', user.id);
       }
 
@@ -102,7 +109,7 @@ Deno.serve(async (req) => {
       .gte('created_at', defaultStart)
       .lt('created_at', defaultEnd);
 
-    if (!isAllScope) {
+    if (!aggregateAllUsers) {
       summaryQuery = summaryQuery.eq('user_id', user.id);
     }
 
@@ -114,9 +121,10 @@ Deno.serve(async (req) => {
     const totalCharacters = usageData?.reduce((s: number, r: { text_length: number | null }) => s + (r.text_length || 0), 0) ?? 0;
     const totalRequests = usageData?.length ?? 0;
 
-    // 관리자 전체 조회 시: Supertone API에서 크레딧 잔액 + 사용량 조회
+    // 베타: scope='all' 요청이면 Supertone API 전체 크레딧 잔액을 조회해 공유.
+    // 관리자뿐 아니라 일반 사용자에게도 노출해 공용 잔고 UI를 구동한다.
     let apiCreditsData: { balance: number; used: number; total: number } | null = null;
-    if (isAllScope) {
+    if (includeApiCredits) {
       const supertoneApiKey = Deno.env.get('SUPERTONE_API_KEY');
       if (supertoneApiKey) {
         try {
