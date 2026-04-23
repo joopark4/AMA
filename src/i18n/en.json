@@ -269,11 +269,20 @@
         "noUsage": "No usage history",
         "loading": "Loading usage..."
       },
+      "voiceUsage": {
+        "title": "Voice Usage (This Month)",
+        "minutes": "{{value}} min"
+      },
       "quota": {
         "title": "Monthly Quota",
         "adminTitle": "API Total Quota",
         "betaSharedTitle": "Beta shared quota (consumed by all users)",
         "betaSharedUnavailable": "Couldn't load the shared balance. Please ask an administrator to verify the Supertone API key.",
+        "betaSharedUnauthorized": "The Supertone API key is expired or invalid. Please ask an administrator to refresh it.",
+        "betaSharedRateLimit": "Supertone API rate limit exceeded. Please try again in a moment.",
+        "betaSharedServerError": "The Supertone service is temporarily unavailable. Please try again shortly.",
+        "betaSharedNetwork": "Network error while checking the shared balance.",
+        "betaSharedNoKey": "The Supertone API key has not been configured by an administrator.",
         "used": "{{used}} / {{limit}} credits",
         "adminBalanceUnit": "Credits Balance",
         "adminBalanceDesc": "~{{minutes}}m {{seconds}}s available",

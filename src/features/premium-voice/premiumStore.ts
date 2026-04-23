@@ -34,6 +34,36 @@ export interface ApiCreditsInfo {
   total: number;
 }
 
+export type ApiStatusCode =
+  | 'ok'
+  | 'unauthorized'
+  | 'rate_limit'
+  | 'server_error'
+  | 'network'
+  | 'no_key'
+  | 'skipped';
+
+export interface ApiStatus {
+  credits: ApiStatusCode;
+  usage: ApiStatusCode;
+  voiceUsage: ApiStatusCode;
+}
+
+export interface VoiceUsageEntry {
+  date: string;
+  voice_id: string;
+  name: string;
+  style?: string;
+  language?: string;
+  model?: string;
+  total_minutes_used: number;
+}
+
+export interface ApiVoiceUsageInfo {
+  usages: VoiceUsageEntry[];
+  totalMinutes: number;
+}
+
 export interface UsageRecord {
   date: string;
   seconds: number;
@@ -69,6 +99,8 @@ interface PremiumState {
   quota: QuotaInfo | null;
   isQuotaExceeded: boolean;
   apiCredits: ApiCreditsInfo | null;
+  apiVoiceUsage: ApiVoiceUsageInfo | null;
+  apiStatus: ApiStatus | null;
 
   usageSummary: UsageSummary | null;
   usageDaily: UsageRecord[] | null;
@@ -98,6 +130,8 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
   quota: null,
   isQuotaExceeded: false,
   apiCredits: null,
+  apiVoiceUsage: null,
+  apiStatus: null,
 
   usageSummary: null,
   usageDaily: null,
@@ -235,14 +269,15 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       const { isAdmin } = get();
 
       // 베타 기간: 모든 로그인 사용자가 API 전체 잔고를 공유. scope='all'을 항상 전송해
-      // Edge Function이 apiCredits 정보를 반환하도록 한다. 서버가 비관리자에게 거부하면
-      // apiCredits는 undefined로 떨어지고 quota 기반 폴백이 동작한다.
+      // Edge Function이 세 Supertone API (credits/usage/voice-usage) 상태를 반환하게 함.
       const data = await callEdgeFunction<{
         totalSeconds: number;
         totalCharacters: number;
         totalRequests: number;
         quota: QuotaInfo;
-        apiCredits?: ApiCreditsInfo;
+        apiCredits?: ApiCreditsInfo | null;
+        apiVoiceUsage?: ApiVoiceUsageInfo | null;
+        apiStatus?: ApiStatus;
       }>('supertone-usage', {
         body: { type: 'summary', startDate, endDate, scope: 'all' },
       });
@@ -262,9 +297,13 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
             ? false
             : data.quota.remaining <= 0,
         apiCredits: data.apiCredits ?? null,
+        apiVoiceUsage: data.apiVoiceUsage ?? null,
+        apiStatus: data.apiStatus ?? null,
       });
     } catch (err) {
-      console.error('[PremiumStore] Failed to fetch usage summary:', err);
+      const detail = (err as { detail?: string })?.detail;
+      const body = (err as { body?: Record<string, unknown> })?.body;
+      console.error('[PremiumStore] Failed to fetch usage summary:', err, 'detail=', detail, 'body=', body);
     } finally {
       set({ isLoadingUsage: false });
     }
@@ -283,7 +322,9 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 
       set({ usageDaily: data.records });
     } catch (err) {
-      console.error('[PremiumStore] Failed to fetch daily usage:', err);
+      const detail = (err as { detail?: string })?.detail;
+      const body = (err as { body?: Record<string, unknown> })?.body;
+      console.error('[PremiumStore] Failed to fetch daily usage:', err, 'detail=', detail, 'body=', body);
     }
   },
 
@@ -311,6 +352,8 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     quota: null,
     isQuotaExceeded: false,
     apiCredits: null,
+    apiVoiceUsage: null,
+    apiStatus: null,
     usageSummary: null,
     usageDaily: null,
     isLoadingUsage: false,
