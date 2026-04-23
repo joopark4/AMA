@@ -60,8 +60,23 @@ struct GeminiCliProcess {
     /// 사용자 선택 승인 모드 (`"default" | "auto_edit" | "yolo" | "plan"`).
     /// `session/request_permission` 자동 응답 기준이며 `gemini_cli_set_approval_mode` 로 갱신.
     approval_mode: std::sync::Mutex<String>,
+    /// 에이전트가 소유하는 실시간 터미널 인스턴스 맵. terminalId → Instance.
+    terminals: Mutex<HashMap<String, Arc<TerminalInstance>>>,
+    /// terminalId 발급 카운터.
+    next_terminal_id: AtomicU64,
     turn_ready: Arc<tokio::sync::Notify>,
     turn_active: Arc<std::sync::atomic::AtomicBool>,
+}
+
+/// ACP terminal 인스턴스 — `terminal/create` 결과. 도우미 task가 stdout+stderr를
+/// `output`에 누적하고, 자식 프로세스는 `child` lock으로 공유한다.
+///
+/// try_wait 폴링 기반으로 kill/wait 간 경합을 피한다 (Child::wait 과 Child::kill 이
+/// 모두 &mut self 를 요구하기 때문).
+struct TerminalInstance {
+    child: Arc<Mutex<Option<tokio::process::Child>>>,
+    output: Arc<Mutex<Vec<u8>>>,
+    truncated: Arc<std::sync::atomic::AtomicBool>,
 }
 
 // ─── JSON-RPC types ──────────────────────────────────────
@@ -376,12 +391,279 @@ async fn handle_fs_write(working_dir: &Option<PathBuf>, params: &Value) -> Resul
     Ok(json!({}))
 }
 
-/// approvalMode 기반 `session/request_permission` 자동 응답.
-/// - `plan`: 항상 거부(cancelled)
-/// - `yolo`: 첫 옵션 자동 승인
-/// - `auto_edit` / `default`: 첫 옵션 자동 승인 (MVP — UI 승인 플로우는 후속 과제)
+/// terminal 요청 허용 여부 — approvalMode에 따른 사전 정책.
+///
+/// 임의 명령 실행은 파일 쓰기보다 위험하므로 `yolo`일 때만 허용한다. 나머지 모드는
+/// -32603을 반환해 에이전트가 도구를 재시도하거나 다른 경로로 우회하게 한다.
+fn terminal_allowed(approval_mode: &str) -> bool {
+    approval_mode == "yolo"
+}
+
+/// `ExitStatus`를 ACP TerminalExitStatus JSON으로 변환.
+fn exit_status_to_value(status: &std::process::ExitStatus) -> Value {
+    let exit_code = status.code().map(|c| c as i64);
+    let signal: Option<String>;
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        signal = status.signal().map(|n| format!("SIG{n}"));
+    }
+    #[cfg(not(unix))]
+    {
+        signal = None;
+    }
+    let mut obj = serde_json::Map::new();
+    if let Some(c) = exit_code {
+        obj.insert("exitCode".to_string(), json!(c));
+    }
+    if let Some(s) = signal {
+        obj.insert("signal".to_string(), json!(s));
+    }
+    Value::Object(obj)
+}
+
+async fn handle_terminal_create(
+    process: &Arc<GeminiCliProcess>,
+    params: &Value,
+) -> Result<Value, String> {
+    let approval = process.approval_mode.lock().unwrap().clone();
+    if !terminal_allowed(&approval) {
+        return Err(format!(
+            "terminal not allowed under approvalMode={approval} (set to `yolo`)"
+        ));
+    }
+
+    let command_str = params
+        .get("command")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "command required".to_string())?;
+    let args: Vec<String> = params
+        .get("args")
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let cwd_opt = params
+        .get("cwd")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let env_vars: Vec<(String, String)> = params
+        .get("env")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| {
+                    let name = item.get("name").and_then(|v| v.as_str())?;
+                    let value = item.get("value").and_then(|v| v.as_str())?;
+                    Some((name.to_string(), value.to_string()))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let output_byte_limit = params
+        .get("outputByteLimit")
+        .and_then(|v| v.as_u64())
+        .map(|n| n as usize);
+
+    // cwd가 지정되면 workingDir 내부인지 검증, 아니면 workingDir 기본.
+    let working_dir = process.working_dir.lock().unwrap().clone();
+    let effective_cwd = match cwd_opt.as_deref() {
+        Some(p) if !p.is_empty() => Some(validate_path_in_workdir(&working_dir, p)?),
+        _ => working_dir,
+    };
+
+    let mut cmd = Command::new(command_str);
+    cmd.args(&args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .stdin(std::process::Stdio::null())
+        .kill_on_drop(true);
+    for (k, v) in env_vars {
+        cmd.env(k, v);
+    }
+    if let Some(ref dir) = effective_cwd {
+        cmd.current_dir(dir);
+    }
+
+    let mut child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "no stdout".to_string())?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| "no stderr".to_string())?;
+
+    let output = Arc::new(Mutex::new(Vec::<u8>::new()));
+    let truncated = Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+    // stdout/stderr 각각에 대해 output buffer에 순차 누적 (limit 도달 시 잘라냄).
+    fn spawn_reader<R>(
+        mut reader: R,
+        output: Arc<Mutex<Vec<u8>>>,
+        truncated: Arc<std::sync::atomic::AtomicBool>,
+        limit: Option<usize>,
+    ) where
+        R: tokio::io::AsyncRead + Unpin + Send + 'static,
+    {
+        tokio::spawn(async move {
+            use tokio::io::AsyncReadExt;
+            let mut buf = [0u8; 4096];
+            loop {
+                match reader.read(&mut buf).await {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        let mut guard = output.lock().await;
+                        if let Some(cap) = limit {
+                            let remaining = cap.saturating_sub(guard.len());
+                            if remaining == 0 {
+                                truncated.store(true, Ordering::SeqCst);
+                                break;
+                            }
+                            let take = remaining.min(n);
+                            guard.extend_from_slice(&buf[..take]);
+                            if take < n {
+                                truncated.store(true, Ordering::SeqCst);
+                                break;
+                            }
+                        } else {
+                            guard.extend_from_slice(&buf[..n]);
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+    }
+    spawn_reader(stdout, output.clone(), truncated.clone(), output_byte_limit);
+    spawn_reader(stderr, output.clone(), truncated.clone(), output_byte_limit);
+
+    let terminal_id = format!(
+        "term-{}",
+        process.next_terminal_id.fetch_add(1, Ordering::SeqCst) + 1
+    );
+    let instance = Arc::new(TerminalInstance {
+        child: Arc::new(Mutex::new(Some(child))),
+        output,
+        truncated,
+    });
+    {
+        let mut map = process.terminals.lock().await;
+        map.insert(terminal_id.clone(), instance);
+    }
+
+    Ok(json!({ "terminalId": terminal_id }))
+}
+
+async fn get_terminal(
+    process: &Arc<GeminiCliProcess>,
+    params: &Value,
+) -> Result<Arc<TerminalInstance>, String> {
+    let id = params
+        .get("terminalId")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "terminalId required".to_string())?;
+    let map = process.terminals.lock().await;
+    map.get(id)
+        .cloned()
+        .ok_or_else(|| format!("Terminal not found: {id}"))
+}
+
+async fn handle_terminal_output(
+    process: &Arc<GeminiCliProcess>,
+    params: &Value,
+) -> Result<Value, String> {
+    let inst = get_terminal(process, params).await?;
+    // try_wait 폴링 — child가 아직 살아 있으면 exitStatus 없음.
+    let exit_status = {
+        let mut child_guard = inst.child.lock().await;
+        if let Some(child) = child_guard.as_mut() {
+            match child.try_wait() {
+                Ok(Some(s)) => Some(exit_status_to_value(&s)),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    };
+    let output_bytes = inst.output.lock().await.clone();
+    let output_str = String::from_utf8_lossy(&output_bytes).to_string();
+    let truncated = inst.truncated.load(Ordering::SeqCst);
+
+    let mut result = serde_json::Map::new();
+    result.insert("output".to_string(), json!(output_str));
+    result.insert("truncated".to_string(), json!(truncated));
+    result.insert(
+        "exitStatus".to_string(),
+        exit_status.unwrap_or(Value::Null),
+    );
+    Ok(Value::Object(result))
+}
+
+async fn handle_terminal_wait_for_exit(
+    process: &Arc<GeminiCliProcess>,
+    params: &Value,
+) -> Result<Value, String> {
+    let inst = get_terminal(process, params).await?;
+    loop {
+        {
+            let mut child_guard = inst.child.lock().await;
+            if let Some(child) = child_guard.as_mut() {
+                if let Ok(Some(status)) = child.try_wait() {
+                    return Ok(exit_status_to_value(&status));
+                }
+            } else {
+                return Ok(json!({}));
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+    }
+}
+
+async fn handle_terminal_kill(
+    process: &Arc<GeminiCliProcess>,
+    params: &Value,
+) -> Result<Value, String> {
+    let inst = get_terminal(process, params).await?;
+    let mut child_guard = inst.child.lock().await;
+    if let Some(child) = child_guard.as_mut() {
+        let _ = child.start_kill();
+    }
+    Ok(json!({}))
+}
+
+async fn handle_terminal_release(
+    process: &Arc<GeminiCliProcess>,
+    params: &Value,
+) -> Result<Value, String> {
+    let id = params
+        .get("terminalId")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "terminalId required".to_string())?;
+    let mut map = process.terminals.lock().await;
+    // 제거 → Arc drop → 내부 child kill_on_drop으로 정리.
+    map.remove(id);
+    Ok(json!({}))
+}
+
+/// approvalMode 기반 `session/request_permission` 자동 응답 — **사전 정책 방식**.
+///
+/// Codex와 동일한 UX 철학으로 AMA에는 실시간 승인 모달이 없다(Codex의 approvalPolicy와
+/// 대응). 사용자는 설정에서 선택한 `approvalMode`로 대리 동의를 미리 표명한다.
+///
+/// - `yolo`: 모든 요청 자동 승인 (options[0] 선택)
+/// - `auto_edit`: 모든 요청 자동 승인 (Gemini가 `session/set_mode`로 edit만 요청하도록
+///   스스로 필터링 — 우리는 전달된 요청은 모두 승인)
+/// - `default`: 거부(cancelled) — UI 승인 모달이 아직 없으므로 안전하게 차단. 사용자가
+///   도구 실행을 원하면 `auto_edit`/`yolo`로 전환해야 한다.
+/// - `plan`: 거부(cancelled) — read-only 모드.
 fn auto_permission_outcome(mode: &str, params: &Value) -> Value {
-    if mode == "plan" {
+    let auto_approve = mode == "yolo" || mode == "auto_edit";
+    if !auto_approve {
         return json!({ "outcome": { "outcome": "cancelled" } });
     }
     let opts = params
@@ -518,6 +800,28 @@ async fn spawn_gemini_process(
                             id_val,
                             auto_permission_outcome(&approval_mode, &params),
                         ),
+                        "terminal/create" => match handle_terminal_create(&process, &params).await {
+                            Ok(result) => jsonrpc_result_response(id_val, result),
+                            Err(e) => jsonrpc_error_response(id_val, -32603, &e),
+                        },
+                        "terminal/output" => match handle_terminal_output(&process, &params).await {
+                            Ok(result) => jsonrpc_result_response(id_val, result),
+                            Err(e) => jsonrpc_error_response(id_val, -32603, &e),
+                        },
+                        "terminal/wait_for_exit" => {
+                            match handle_terminal_wait_for_exit(&process, &params).await {
+                                Ok(result) => jsonrpc_result_response(id_val, result),
+                                Err(e) => jsonrpc_error_response(id_val, -32603, &e),
+                            }
+                        }
+                        "terminal/kill" => match handle_terminal_kill(&process, &params).await {
+                            Ok(result) => jsonrpc_result_response(id_val, result),
+                            Err(e) => jsonrpc_error_response(id_val, -32603, &e),
+                        },
+                        "terminal/release" => match handle_terminal_release(&process, &params).await {
+                            Ok(result) => jsonrpc_result_response(id_val, result),
+                            Err(e) => jsonrpc_error_response(id_val, -32603, &e),
+                        },
                         _ => jsonrpc_error_response(
                             id_val,
                             -32601,
@@ -807,6 +1111,8 @@ pub async fn gemini_cli_start(
         applied_prompt: Mutex::new(None),
         working_dir: std::sync::Mutex::new(effective_wd),
         approval_mode: std::sync::Mutex::new(mode_str),
+        terminals: Mutex::new(HashMap::new()),
+        next_terminal_id: AtomicU64::new(0),
         turn_ready,
         turn_active,
     });
@@ -817,13 +1123,13 @@ pub async fn gemini_cli_start(
         *guard = Some(process.clone());
     }
 
-    // initialize — fs 활성화, terminal은 아직 미지원.
+    // initialize — fs + terminal 모두 활성화. 실제 허용 여부는 approvalMode로 런타임 gating.
     let init_params = json!({
         "protocolVersion": ACP_PROTOCOL_VERSION,
         "clientInfo": { "name": "AMA", "version": env!("CARGO_PKG_VERSION") },
         "clientCapabilities": {
             "fs": { "readTextFile": true, "writeTextFile": true },
-            "terminal": false
+            "terminal": true
         }
     });
 
