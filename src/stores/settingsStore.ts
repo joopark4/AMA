@@ -17,7 +17,7 @@ import {
 import { DEFAULT_PROACTIVE_SETTINGS, type ProactiveSettings } from '../services/ai/proactiveEngine';
 import { ALL_QUICK_ACTION_IDS, type QuickActionId } from '../features/quick-actions/types';
 
-export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
+export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex' | 'gemini_cli';
 
 // STT 엔진: whisper (로컬 whisper-cli)
 export type STTEngine = 'whisper';
@@ -149,6 +149,27 @@ export interface CodexSettings {
   approvalPolicy: CodexApprovalPolicy;
 }
 
+/**
+ * Gemini CLI ACP(Agent Client Protocol) 연동 설정.
+ *
+ * 인증 방식 3종: `oauth-personal`(Google 계정) / `gemini-api-key` / `vertex-ai`.
+ * CLI가 마지막 사용한 인증을 캐시(`~/.gemini/`)에 두고 재사용하므로, 앱에서는
+ * 기본값 `undefined`(CLI 기본 선택)로 두고 필요 시 사용자가 선택한다.
+ */
+export type GeminiCliApprovalMode = 'default' | 'auto_edit' | 'yolo' | 'plan';
+export type GeminiCliAuthMethod = 'oauth-personal' | 'gemini-api-key' | 'vertex-ai';
+
+export interface GeminiCliSettings {
+  /** Gemini 모델명. 빈 문자열이면 CLI 기본 모델 사용. */
+  model: string;
+  /** 승인 모드 (기본: `default`). `yolo`는 모든 도구 자동 승인. */
+  approvalMode: GeminiCliApprovalMode;
+  /** 작업 디렉터리(필수). 비어 있으면 런타임에 `~/Documents` 기본 적용. */
+  workingDir: string;
+  /** 인증 방식 override. `undefined`면 CLI 캐시된 기본 인증 재사용. */
+  authMethod?: GeminiCliAuthMethod;
+}
+
 export type CaptureTarget =
   | { type: 'fullscreen' }
   | { type: 'active-window' }
@@ -190,6 +211,7 @@ export interface Settings {
   /** Channels ON 전의 LLM 설정 (OFF 시 복원용) */
   mcpPreviousLlm: LLMSettings | null;
   codex: CodexSettings;
+  geminiCli: GeminiCliSettings;
   /** 캐릭터 프로필 (Phase 0) */
   character: CharacterProfile;
   /** 자발적 대화 설정 (Phase 3) */
@@ -232,6 +254,7 @@ export interface SettingsState {
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
   setLanguage: (language: Language) => void;
   setCodexSettings: (codex: Partial<CodexSettings>) => void;
+  setGeminiCliSettings: (geminiCli: Partial<GeminiCliSettings>) => void;
   setScreenWatchSettings: (screenWatch: Partial<ScreenWatchSettings>) => void;
   setAvatarName: (name: string) => void;
   setAvatarPersonalityPrompt: (prompt: string) => void;
@@ -449,6 +472,11 @@ const defaultSettings: Settings = {
     workingDir: '',
     approvalPolicy: 'on-request',
   },
+  geminiCli: {
+    model: '',              // 빈 문자열 = Gemini CLI 기본 모델 사용
+    approvalMode: 'default',
+    workingDir: '',
+  },
   character: DEFAULT_CHARACTER_PROFILE,
   proactive: DEFAULT_PROACTIVE_SETTINGS,
   screenWatch: {
@@ -586,6 +614,29 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       ...defaultSettings.codex,
       ...(source.codex || {}),
     },
+    geminiCli: (() => {
+      const raw = (source.geminiCli || {}) as Partial<GeminiCliSettings>;
+      const approvalMode: GeminiCliApprovalMode =
+        raw.approvalMode === 'default' ||
+        raw.approvalMode === 'auto_edit' ||
+        raw.approvalMode === 'yolo' ||
+        raw.approvalMode === 'plan'
+          ? raw.approvalMode
+          : defaultSettings.geminiCli.approvalMode;
+      const authMethod: GeminiCliAuthMethod | undefined =
+        raw.authMethod === 'oauth-personal' ||
+        raw.authMethod === 'gemini-api-key' ||
+        raw.authMethod === 'vertex-ai'
+          ? raw.authMethod
+          : undefined;
+      return {
+        model: typeof raw.model === 'string' ? raw.model : defaultSettings.geminiCli.model,
+        approvalMode,
+        workingDir:
+          typeof raw.workingDir === 'string' ? raw.workingDir : defaultSettings.geminiCli.workingDir,
+        authMethod,
+      };
+    })(),
     character: normalizeCharacterProfile(source.character),
     proactive: normalizeProactiveSettings(source.proactive),
     screenWatch: normalizeScreenWatchSettings(source.screenWatch),
@@ -880,6 +931,14 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
 
+      setGeminiCliSettings: (geminiCli) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            geminiCli: { ...state.settings.geminiCli, ...geminiCli },
+          },
+        })),
+
       setScreenWatchSettings: (screenWatch) =>
         set((state) => ({
           settings: {
@@ -1033,7 +1092,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 21,
+      version: 22,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -1127,6 +1186,18 @@ export const useSettingsStore = create<SettingsState>()(
           const s = state.settings as Partial<Settings>;
           if (!s.settingsPanelExpanded || typeof s.settingsPanelExpanded !== 'object') {
             s.settingsPanelExpanded = {};
+          }
+        }
+
+        // v21→v22: Gemini CLI(ACP) provider 도입. 설정 기본값 주입.
+        if ((version ?? 0) < 22) {
+          const s = state.settings as Partial<Settings>;
+          if (!s.geminiCli || typeof s.geminiCli !== 'object') {
+            s.geminiCli = {
+              model: '',
+              approvalMode: 'default',
+              workingDir: '',
+            };
           }
         }
 
