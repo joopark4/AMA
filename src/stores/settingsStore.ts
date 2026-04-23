@@ -956,9 +956,21 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       setAvatarName: (name) =>
-        set((state) => ({
-          settings: { ...state.settings, avatarName: normalizeAvatarName(name) },
-        })),
+        set((state) => {
+          const normalized = normalizeAvatarName(name);
+          // 온보딩/프로필 화면에서 아바타 이름을 바꾸면 character.name도 함께 동기화.
+          // 기존에는 avatarName만 갱신돼 설정 패널의 "캐릭터 이름" 필드가 비어 보였다.
+          return {
+            settings: {
+              ...state.settings,
+              avatarName: normalized,
+              character: {
+                ...state.settings.character,
+                name: normalized,
+              },
+            },
+          };
+        }),
 
       setAvatarPersonalityPrompt: (prompt) =>
         set((state) => ({
@@ -985,22 +997,31 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       applyCharacterPreset: (profile) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            // DEFAULT_CHARACTER_PROFILE을 baseline으로 하고 profile로 덮어씀 —
-            // 이전 상태의 optional 필드(background, likes, dislikes, 예시 등)는 모두 리셋된다.
-            character: normalizeCharacterProfile({
-              ...DEFAULT_CHARACTER_PROFILE,
-              ...profile,
-              personality: {
-                ...DEFAULT_CHARACTER_PROFILE.personality,
-                ...(profile.personality ?? {}),
-              },
-            }),
-            ...(profile.name !== undefined ? { avatarName: normalizeAvatarName(profile.name) } : {}),
-          },
-        })),
+        set((state) => {
+          // 사용자가 이미 설정한 아바타 이름은 프리셋이 덮어쓰지 않는다.
+          // 이름이 아직 비어있는 경우에만 프리셋 이름을 수용한다.
+          const existingName = (state.settings.character?.name || state.settings.avatarName || '').trim();
+          const nextName = existingName || (profile.name ?? '');
+          return {
+            settings: {
+              ...state.settings,
+              // DEFAULT_CHARACTER_PROFILE을 baseline으로 하고 profile로 덮어씀 —
+              // 이전 상태의 optional 필드(background, likes, dislikes, 예시 등)는 리셋되지만
+              // 이름만은 보존한다.
+              character: normalizeCharacterProfile({
+                ...DEFAULT_CHARACTER_PROFILE,
+                ...profile,
+                name: nextName,
+                personality: {
+                  ...DEFAULT_CHARACTER_PROFILE.personality,
+                  ...(profile.personality ?? {}),
+                },
+              }),
+              // avatarName은 nextName이 실제 값을 가질 때만 반영 (아직 빈 상태면 유지).
+              ...(nextName ? { avatarName: normalizeAvatarName(nextName) } : {}),
+            },
+          };
+        }),
 
       setProactive: (proactive) =>
         set((state) => {
