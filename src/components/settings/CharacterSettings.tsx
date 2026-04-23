@@ -96,32 +96,48 @@ export default function CharacterSettings() {
           {t('settings.character.preset')}
         </label>
         <div className="flex flex-wrap gap-2">
-          {CHARACTER_PRESETS.map((preset) => (
-            <button
-              key={preset.meta.id}
-              onClick={() => handlePresetApply(preset.meta.id)}
-              className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
-              style={
-                character.personality.archetype === preset.meta.id
-                  ? { background: 'var(--accent)', color: 'white' }
-                  : { background: 'var(--surface-1)', color: 'var(--ink-2)' }
-              }
-              title={t(preset.meta.descriptionKey)}
-            >
-              {t(preset.meta.labelKey)}
-            </button>
-          ))}
-          <button
-            className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
-            style={
-              character.personality.archetype === 'custom'
-                ? { background: 'var(--accent)', color: 'white' }
-                : { background: 'var(--surface-1)', color: 'var(--ink-2)' }
-            }
-            onClick={() => setCharacter({ personality: { ...character.personality, archetype: 'custom' } })}
-          >
-            {t('settings.character.presetCustom')}
-          </button>
+          {CHARACTER_PRESETS.map((preset) => {
+            const active = character.personality.archetype === preset.meta.id;
+            return (
+              <button
+                key={preset.meta.id}
+                onClick={() => handlePresetApply(preset.meta.id)}
+                className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
+                style={
+                  active
+                    ? { background: 'var(--accent)', color: 'white' }
+                    : {
+                        background: 'oklch(1 0 0 / 0.7)',
+                        color: 'var(--ink-2)',
+                        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                      }
+                }
+                title={t(preset.meta.descriptionKey)}
+              >
+                {t(preset.meta.labelKey)}
+              </button>
+            );
+          })}
+          {(() => {
+            const active = character.personality.archetype === 'custom';
+            return (
+              <button
+                className="px-3 py-1.5 text-xs font-medium rounded-full transition-colors"
+                style={
+                  active
+                    ? { background: 'var(--accent)', color: 'white' }
+                    : {
+                        background: 'oklch(1 0 0 / 0.7)',
+                        color: 'var(--ink-2)',
+                        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                      }
+                }
+                onClick={() => setCharacter({ personality: { ...character.personality, archetype: 'custom' } })}
+              >
+                {t('settings.character.presetCustom')}
+              </button>
+            );
+          })()}
         </div>
         {selectedPreset && (
           <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
