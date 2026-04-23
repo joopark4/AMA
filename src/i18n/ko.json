@@ -513,15 +513,15 @@
       "researchPreviewDesc": "Channels는 리서치 프리뷰 기능입니다. 공식 마켓플레이스 제출 전까지 개발 플래그가 필요합니다.",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLI가 설치되어 있어야 합니다.",
-      "step2Title": "Step 2: 터미널에서 실행",
-      "step2Desc": "원하는 프로젝트 폴더에서 위 명령을 실행하세요.",
-      "step3Title": "Step 3: AMA에서 활성화",
+      "step2Title": "Step 2: AMA에서 활성화",
+      "step3Title": "Step 3: 터미널에서 실행",
+      "step3Desc": "원하는 프로젝트 폴더에서 위 명령을 실행하세요.",
       "copy": "복사",
       "copied": "복사됨",
       "setupSuccess": "Bridge 플러그인이 설치되었습니다",
       "setupFail": "Bridge 플러그인 설치 실패",
       "setupFailManual": "자동 설치 실패. 터미널에서 실행: cd ~/.mypartnerai/ama-bridge && npm install",
-      "step2Caution": "--dangerously-load-development-channels는 리서치 프리뷰 기간에 필요한 플래그입니다. --permission-mode bypassPermissions는 모든 권한 확인을 건너뜁니다."
+      "step3Caution": "--dangerously-load-development-channels는 리서치 프리뷰 기간에 필요한 플래그입니다. --permission-mode bypassPermissions는 모든 권한 확인을 건너뜁니다."
     }
   },
   "status": {

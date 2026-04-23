@@ -513,15 +513,15 @@
       "researchPreviewDesc": "Channelsはリサーチプレビュー機能です。公式マーケットプレイス提出まで開発フラグが必要です。",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLIがインストールされている必要があります。",
-      "step2Title": "Step 2: ターミナルで実行",
-      "step2Desc": "お好きなプロジェクトフォルダで上記のコマンドを実行してください。",
-      "step3Title": "Step 3: AMAで有効化",
+      "step2Title": "Step 2: AMAで有効化",
+      "step3Title": "Step 3: ターミナルで実行",
+      "step3Desc": "お好きなプロジェクトフォルダで上記のコマンドを実行してください。",
       "copy": "コピー",
       "copied": "コピー済み",
       "setupSuccess": "Bridgeプラグインがインストールされました",
       "setupFail": "Bridgeプラグインのインストールに失敗しました",
       "setupFailManual": "自動インストールに失敗しました。ターミナルで実行: cd ~/.mypartnerai/ama-bridge && npm install",
-      "step2Caution": "--dangerously-load-development-channelsはリサーチプレビュー期間中に必要なフラグです。--permission-mode bypassPermissionsはすべての権限確認をスキップします。"
+      "step3Caution": "--dangerously-load-development-channelsはリサーチプレビュー期間中に必要なフラグです。--permission-mode bypassPermissionsはすべての権限確認をスキップします。"
     }
   },
   "status": {
