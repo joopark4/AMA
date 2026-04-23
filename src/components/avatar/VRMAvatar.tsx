@@ -449,18 +449,27 @@ export default function VRMAvatar() {
     setGroundY,
   ]);
 
-  // Check if click is on head area (upper 30% of the avatar)
+  // Head 클릭 판정 — VRM humanoid의 실제 `head` 본 world Y를 기준으로 한다.
+  //
+  // 예전 구현은 `Box3.setFromObject`의 상위 30%를 "머리"로 봤지만, 팔을 위로
+  // 들거나 손 위치가 상단에 있는 포즈에서는 box.max.y가 손끝이 되어 상위 30%가
+  // 어깨·가슴까지 내려왔다. 결과적으로 사용자가 몸통을 잡고 드래그해도 rotation
+  // 분기를 타서 `setManualRotation`이 `dx * sensitivity`로 적용, 드래그 방향
+  // 그대로 아바타가 회전하는 회귀가 발생했다.
+  //
+  // head bone 월드 Y를 기준으로 위쪽 영역만 머리로 판정하면 box 팔 영향을 받지
+  // 않는다. head bone을 못 구하면 안전하게 false(=body drag)로 폴백.
   const isHeadClick = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (!groupRef.current) return false;
+    const headBone = vrm?.humanoid?.getNormalizedBoneNode?.('head');
+    if (!headBone) return false;
 
-    // Get the bounding box of the avatar
-    const box = new THREE.Box3().setFromObject(groupRef.current);
-    const avatarHeight = box.max.y - box.min.y;
-    const headThreshold = box.max.y - avatarHeight * 0.3; // Top 30% is head
+    const headWorld = new THREE.Vector3();
+    headBone.getWorldPosition(headWorld);
 
-    // Check if click point Y is in head area
-    return e.point.y > headThreshold;
-  }, []);
+    // head bone(목-턱 경계) 기준 위쪽 + 약간의 여유(−5cm). 그 아래는 모두 body.
+    return e.point.y > headWorld.y - 0.05;
+  }, [vrm]);
 
   // Pointer event handlers for 3D model drag and rotation
   const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
