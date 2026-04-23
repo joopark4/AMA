@@ -64,7 +64,7 @@
         "claude_code": "Claude Code (외부 연동)",
         "claudeCodeInfo": "외부 터미널에서 Claude Code가 실행 중이어야 합니다. 프로젝트 디렉토리에서 claude 명령을 실행하면 ama-bridge가 자동 시작됩니다.",
         "codex": "OpenAI Codex",
-        "gemini_cli": "Gemini CLI (연동 준비 중)"
+        "gemini_cli": "Gemini CLI"
       },
       "expand": "펼치기",
       "collapse": "접기"
