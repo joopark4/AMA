@@ -234,6 +234,9 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       const endDate = now.toISOString();
       const { isAdmin } = get();
 
+      // 베타 기간: 모든 로그인 사용자가 API 전체 잔고를 공유. scope='all'을 항상 전송해
+      // Edge Function이 apiCredits 정보를 반환하도록 한다. 서버가 비관리자에게 거부하면
+      // apiCredits는 undefined로 떨어지고 quota 기반 폴백이 동작한다.
       const data = await callEdgeFunction<{
         totalSeconds: number;
         totalCharacters: number;
@@ -241,7 +244,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
         quota: QuotaInfo;
         apiCredits?: ApiCreditsInfo;
       }>('supertone-usage', {
-        body: { type: 'summary', startDate, endDate, ...(isAdmin ? { scope: 'all' } : {}) },
+        body: { type: 'summary', startDate, endDate, scope: 'all' },
       });
 
       set({
@@ -251,7 +254,13 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
           totalRequests: data.totalRequests,
         },
         quota: data.quota,
-        isQuotaExceeded: isAdmin ? false : data.quota.remaining <= 0,
+        // 베타 기간에는 공유 apiCredits가 잔고 판정의 기준. 이 값이 제공되면
+        // 관리자/일반 구분 없이 잔고 고갈 시 일괄 exceeded. 없으면 개인 quota 기준.
+        isQuotaExceeded: data.apiCredits
+          ? data.apiCredits.balance <= 0
+          : isAdmin
+            ? false
+            : data.quota.remaining <= 0,
         apiCredits: data.apiCredits ?? null,
       });
     } catch (err) {
