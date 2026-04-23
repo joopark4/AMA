@@ -50,7 +50,10 @@ impl GeminiCliState {
 
 struct GeminiCliProcess {
     stdin: Arc<Mutex<tokio::process::ChildStdin>>,
-    _child: std::sync::Mutex<Option<Child>>,
+    /// spawn한 Gemini CLI 자식 프로세스. `gemini_cli_stop`에서 명시적으로 kill하기 위해
+    /// 보관. `kill_on_drop(true)`로 spawn했지만 reader task가 Arc를 보유하는 구조 상
+    /// Arc drop만으로는 즉시 종료되지 않을 수 있어 명시 kill이 필요하다.
+    child_handle: std::sync::Mutex<Option<Child>>,
     next_id: AtomicU64,
     pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
     session_id: Mutex<Option<String>>,
@@ -68,6 +71,10 @@ struct GeminiCliProcess {
     available_models: Mutex<Option<Value>>,
     turn_ready: Arc<tokio::sync::Notify>,
     turn_active: Arc<std::sync::atomic::AtomicBool>,
+    /// 현재 진행 중인 턴의 client-side request id. 토큰/complete 이벤트 payload에
+    /// 그대로 실어 보내 TS 측 리스너가 자신의 요청 응답만 받을 수 있게 한다.
+    /// Screen Watch와 일반 채팅이 근접한 타이밍에 실행될 때 턴 간 응답 혼선 방지.
+    current_request_id: std::sync::Mutex<Option<String>>,
 }
 
 /// ACP terminal 인스턴스 — `terminal/create` 결과. 도우미 task가 stdout+stderr를
@@ -111,6 +118,8 @@ struct JsonRpcMessage {
 pub struct GeminiCliTokenEvent {
     pub text: String,
     pub session_id: Option<String>,
+    /// 턴 요청자가 발급한 request id. TS 리스너가 이 값으로 자기 턴만 필터링한다.
+    pub request_id: Option<String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -119,6 +128,7 @@ pub struct GeminiCliCompleteEvent {
     pub text: String,
     pub session_id: Option<String>,
     pub stop_reason: String,
+    pub request_id: Option<String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -353,6 +363,7 @@ async fn handle_fs_read(working_dir: &Option<PathBuf>, params: &Value) -> Result
 }
 
 /// ACP 스펙의 선택 인자 `line`(1-based start) + `limit`(max lines) 적용.
+/// 이터레이터 기반으로 파일 전체 `Vec` 수집을 피한다 (대용량 파일 대비).
 fn apply_read_range(content: &str, params: &Value) -> String {
     let line = params.get("line").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
     let limit = params.get("limit").and_then(|v| v.as_u64());
@@ -360,15 +371,11 @@ fn apply_read_range(content: &str, params: &Value) -> String {
         return content.to_string();
     }
     let start = line.saturating_sub(1);
-    let lines: Vec<&str> = content.lines().collect();
-    let end = match limit {
-        Some(l) => (start + l as usize).min(lines.len()),
-        None => lines.len(),
-    };
-    if start >= lines.len() {
-        return String::new();
+    let iter = content.lines().skip(start);
+    match limit {
+        Some(l) => iter.take(l as usize).collect::<Vec<&str>>().join("\n"),
+        None => iter.collect::<Vec<&str>>().join("\n"),
     }
-    lines[start..end].join("\n")
 }
 
 async fn handle_fs_write(working_dir: &Option<PathBuf>, params: &Value) -> Result<Value, String> {
@@ -855,11 +862,19 @@ async fn spawn_gemini_process(
                                     if let Some(content) = update.get("content") {
                                         let text = extract_content_block_text(content);
                                         if !text.is_empty() {
+                                            // 진행 중인 턴의 request id를 읽어 payload에 포함.
+                                            let req_id = {
+                                                let guard = process_for_reader.lock().await;
+                                                guard.as_ref().and_then(|pr| {
+                                                    pr.current_request_id.lock().unwrap().clone()
+                                                })
+                                            };
                                             let _ = app_clone.emit(
                                                 "gemini-cli-token",
                                                 GeminiCliTokenEvent {
                                                     text,
                                                     session_id: current_session_id.clone(),
+                                                    request_id: req_id,
                                                 },
                                             );
                                         }
@@ -1106,7 +1121,7 @@ pub async fn gemini_cli_start(
 
     let process = Arc::new(GeminiCliProcess {
         stdin: stdin_arc,
-        _child: std::sync::Mutex::new(Some(child)),
+        child_handle: std::sync::Mutex::new(Some(child)),
         next_id: AtomicU64::new(0),
         pending,
         session_id: Mutex::new(None),
@@ -1118,6 +1133,7 @@ pub async fn gemini_cli_start(
         available_models: Mutex::new(None),
         turn_ready,
         turn_active,
+        current_request_id: std::sync::Mutex::new(None),
     });
 
     // reader가 참조할 수 있도록 등록.
@@ -1141,9 +1157,9 @@ pub async fn gemini_cli_start(
         Ok(_) => {
             // 연결 직후 session/new를 미리 호출 — 응답의 `models`·`modes`를 캐시해 설정 UI가
             // 모델/모드 목록을 즉시 노출하도록 한다. 세션 자체도 재사용해 첫 대화를 빠르게 연다.
-            let cwd_for_session = spawn_dir
-                .clone()
-                .unwrap_or_else(|| "/tmp".to_string());
+            let cwd_for_session = spawn_dir.clone().unwrap_or_else(|| {
+                env::temp_dir().to_string_lossy().into_owned()
+            });
             if let Ok(new_res) = send_request(
                 &process,
                 "session/new",
@@ -1200,9 +1216,40 @@ pub async fn gemini_cli_stop(
     app_handle: AppHandle,
     state: tauri::State<'_, GeminiCliState>,
 ) -> Result<(), String> {
-    let mut guard = state.process.lock().await;
-    if guard.is_some() {
-        *guard = None;
+    // state에서 Arc를 꺼낸다. reader task가 process_for_reader로 별도 Arc를 보유하는 구조라
+    // state 초기화만으로는 Gemini CLI 자식 프로세스가 즉시 종료되지 않을 수 있다.
+    // child를 직접 꺼내 kill해 확실히 정리한다.
+    let process_opt = {
+        let mut guard = state.process.lock().await;
+        guard.take()
+    };
+
+    if let Some(process) = process_opt {
+        // 자식 프로세스 명시 종료. start_kill은 SIGKILL을 예약하고, 백그라운드에서 wait해
+        // zombie를 정리한다. kill_on_drop에만 의존하지 않는다.
+        let child_opt = {
+            let mut g = process.child_handle.lock().unwrap();
+            g.take()
+        };
+        if let Some(mut child) = child_opt {
+            let _ = child.start_kill();
+            tokio::spawn(async move {
+                let _ = child.wait().await;
+            });
+        }
+
+        // 응답을 기다리던 pending 요청들을 실패로 돌려 호출자 측 타임아웃 대기를 막는다.
+        {
+            let mut pending = process.pending.lock().await;
+            for (_, sender) in pending.drain() {
+                let _ = sender.send(Err("Gemini CLI stopped".to_string()));
+            }
+        }
+
+        // 턴 락 해제 — 혹시 다음 send_message가 대기 중이면 통과시킨다(연결이 없으므로 즉시 실패).
+        process.turn_active.store(false, Ordering::SeqCst);
+        process.turn_ready.notify_waiters();
+
         let _ = app_handle.emit(
             "gemini-cli-status",
             GeminiCliStatusEvent {
@@ -1253,6 +1300,7 @@ pub async fn gemini_cli_send_message(
     working_dir: Option<String>,
     approval_mode: Option<String>,
     image_path: Option<String>,
+    request_id: Option<String>,
 ) -> Result<String, String> {
     let process = {
         let guard = state.process.lock().await;
@@ -1271,6 +1319,8 @@ pub async fn gemini_cli_send_message(
         process.turn_ready.notified().await;
     }
     process.turn_active.store(true, Ordering::SeqCst);
+    // 이 턴의 request id를 확정해 토큰/complete 이벤트 payload에 실린다.
+    *process.current_request_id.lock().unwrap() = request_id.clone();
 
     let _ = app_handle.emit(
         "gemini-cli-status",
@@ -1297,7 +1347,7 @@ pub async fn gemini_cli_send_message(
                 dirs::home_dir()
                     .and_then(|h| h.join("Documents").to_str().map(|s| s.to_string()))
             })
-            .unwrap_or_else(|| "/tmp".to_string());
+            .unwrap_or_else(|| env::temp_dir().to_string_lossy().into_owned());
 
         // workingDir 상태를 동기화(샌드박스 기준).
         *process.working_dir.lock().unwrap() = Some(PathBuf::from(&cwd));
@@ -1309,6 +1359,7 @@ pub async fn gemini_cli_send_message(
         )
         .await
         .map_err(|e| {
+            *process.current_request_id.lock().unwrap() = None;
             process.turn_active.store(false, Ordering::SeqCst);
             process.turn_ready.notify_waiters();
             e
@@ -1319,6 +1370,7 @@ pub async fn gemini_cli_send_message(
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .ok_or_else(|| {
+                *process.current_request_id.lock().unwrap() = None;
                 process.turn_active.store(false, Ordering::SeqCst);
                 process.turn_ready.notify_waiters();
                 "Failed to get sessionId from session/new response".to_string()
@@ -1362,11 +1414,13 @@ pub async fn gemini_cli_send_message(
         if !trimmed.is_empty() {
             let abs = PathBuf::from(trimmed);
             if !abs.is_absolute() {
+                *process.current_request_id.lock().unwrap() = None;
                 process.turn_active.store(false, Ordering::SeqCst);
                 process.turn_ready.notify_waiters();
                 return Err(format!("image_path must be absolute: {trimmed}"));
             }
             let bytes = tokio::fs::read(&abs).await.map_err(|e| {
+                *process.current_request_id.lock().unwrap() = None;
                 process.turn_active.store(false, Ordering::SeqCst);
                 process.turn_ready.notify_waiters();
                 format!("Failed to read image: {e}")
@@ -1400,6 +1454,7 @@ pub async fn gemini_cli_send_message(
             text: String::new(),
             session_id: session_id.clone(),
             stop_reason: stop_reason.clone(),
+            request_id: request_id.clone(),
         },
     );
 
@@ -1416,6 +1471,8 @@ pub async fn gemini_cli_send_message(
         },
     );
 
+    // 턴 종료 — request_id clear + turn 락 해제.
+    *process.current_request_id.lock().unwrap() = None;
     process.turn_active.store(false, Ordering::SeqCst);
     process.turn_ready.notify_waiters();
 
@@ -1511,12 +1568,14 @@ pub async fn gemini_cli_get_status(
     })
 }
 
-/// 앱 종료 시 Gemini CLI 프로세스 정리.
+/// 앱 종료 시 Gemini CLI 프로세스 정리. `kill_on_drop(true)`로 spawn했으므로 Child를
+/// drop하면 SIGKILL이 예약된다. wait는 앱 종료 흐름에서 수행되지 않아 zombie가 남을 수
+/// 있으나, 프로세스가 곧 종료되므로 실질적 영향은 없다.
 pub fn cleanup_gemini_cli_on_exit(app_handle: &AppHandle) {
     if let Some(state) = app_handle.try_state::<GeminiCliState>() {
         if let Ok(guard) = state.process.try_lock() {
             if let Some(ref process) = *guard {
-                if let Ok(mut child_guard) = process._child.lock() {
+                if let Ok(mut child_guard) = process.child_handle.lock() {
                     child_guard.take();
                 }
             }

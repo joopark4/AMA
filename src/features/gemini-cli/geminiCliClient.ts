@@ -8,6 +8,9 @@
  * - 턴 완료: `session/prompt` 응답의 `stopReason`으로 판정 → `gemini-cli-complete` 이벤트
  *   에는 누적 text가 포함되지 않으므로 클라이언트가 token 이벤트로 직접 누적한다.
  * - 명시 취소: `gemini_cli_cancel` 커맨드 (ACP `session/cancel` notification)
+ * - 턴 correlation: 각 턴은 `requestId`(UUID)를 발급받아 Rust에 전달하며, 이벤트 payload에
+ *   실려 돌아온다. 리스너가 자기 턴의 이벤트만 받을 수 있어 Screen Watch와 일반 채팅이
+ *   근접 타이밍으로 실행될 때 턴 간 응답 혼선을 방지한다.
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -25,6 +28,8 @@ import { GEMINI_CLI_RESPONSE_TIMEOUT_MS } from './constants';
 interface GeminiCliTokenEvent {
   text: string;
   sessionId: string | null;
+  /** 이 이벤트를 촉발한 턴의 request id. 자기 턴이 아닌 이벤트는 필터링. */
+  requestId: string | null;
 }
 
 interface GeminiCliCompleteEvent {
@@ -33,6 +38,7 @@ interface GeminiCliCompleteEvent {
   sessionId: string | null;
   /** `"completed" | "cancelled" | "exceeded_max_iterations" | "error" | "error:..."` */
   stopReason: string;
+  requestId: string | null;
 }
 
 interface GeminiCliStatusEvent {
@@ -40,8 +46,24 @@ interface GeminiCliStatusEvent {
   message: string | null;
 }
 
+interface TurnResult {
+  accumulated: string;
+  stopReason: string;
+}
+
 function isErrorStopReason(reason: string): boolean {
   return reason === 'exceeded_max_iterations' || reason.startsWith('error');
+}
+
+function generateRequestId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `gemini-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function toError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
 }
 
 export class GeminiCliClient implements LLMClient {
@@ -50,63 +72,14 @@ export class GeminiCliClient implements LLMClient {
     const systemPrompt = this.extractSystemPrompt(messages, options);
     await this.ensureStarted();
 
-    const unlistens: UnlistenFn[] = [];
-    const cleanup = () => unlistens.forEach((fn) => fn());
-    let accumulated = '';
-
-    try {
-      return await new Promise<LLMResponse>(async (resolve, reject) => {
-        const timeout = setTimeout(() => {
-          cleanup();
-          reject(new Error('Gemini CLI response timeout'));
-        }, GEMINI_CLI_RESPONSE_TIMEOUT_MS);
-
-        try {
-          unlistens.push(
-            await listen<GeminiCliTokenEvent>('gemini-cli-token', (event) => {
-              accumulated += event.payload.text;
-            }),
-          );
-
-          unlistens.push(
-            await listen<GeminiCliCompleteEvent>('gemini-cli-complete', (event) => {
-              clearTimeout(timeout);
-              cleanup();
-              if (isErrorStopReason(event.payload.stopReason)) {
-                reject(new Error(event.payload.stopReason));
-                return;
-              }
-              resolve({
-                content: accumulated,
-                finishReason: event.payload.stopReason === 'cancelled' ? 'cancelled' : 'stop',
-              });
-            }),
-          );
-
-          unlistens.push(
-            await listen<GeminiCliStatusEvent>('gemini-cli-status', (event) => {
-              if (
-                event.payload.status === 'error' ||
-                event.payload.status === 'disconnected'
-              ) {
-                clearTimeout(timeout);
-                cleanup();
-                reject(new Error(event.payload.message || 'Gemini CLI disconnected'));
-              }
-            }),
-          );
-
-          await this.invokeMessage(userMessage, systemPrompt);
-        } catch (err) {
-          clearTimeout(timeout);
-          cleanup();
-          reject(err instanceof Error ? err : new Error(String(err)));
-        }
-      });
-    } catch (err) {
-      cleanup();
-      throw err;
+    const { accumulated, stopReason } = await this.runTurn(userMessage, systemPrompt);
+    if (isErrorStopReason(stopReason)) {
+      throw new Error(stopReason);
     }
+    return {
+      content: accumulated,
+      finishReason: stopReason === 'cancelled' ? 'cancelled' : 'stop',
+    };
   }
 
   async chatStream(
@@ -118,69 +91,22 @@ export class GeminiCliClient implements LLMClient {
     const systemPrompt = this.extractSystemPrompt(messages, options);
     await this.ensureStarted();
 
-    let fullResponse = '';
-    const unlistens: UnlistenFn[] = [];
-    const cleanup = () => unlistens.forEach((fn) => fn());
-
     try {
-      await new Promise<void>(async (resolve, reject) => {
-        const timeout = setTimeout(() => {
-          cleanup();
-          const err = new Error('Gemini CLI response timeout');
-          callbacks.onError?.(err);
-          reject(err);
-        }, GEMINI_CLI_RESPONSE_TIMEOUT_MS);
-
-        try {
-          unlistens.push(
-            await listen<GeminiCliTokenEvent>('gemini-cli-token', (event) => {
-              fullResponse += event.payload.text;
-              callbacks.onToken?.(event.payload.text);
-            }),
-          );
-
-          unlistens.push(
-            await listen<GeminiCliCompleteEvent>('gemini-cli-complete', (event) => {
-              clearTimeout(timeout);
-              cleanup();
-              if (isErrorStopReason(event.payload.stopReason)) {
-                const err = new Error(event.payload.stopReason);
-                callbacks.onError?.(err);
-                reject(err);
-                return;
-              }
-              callbacks.onComplete?.(fullResponse);
-              resolve();
-            }),
-          );
-
-          unlistens.push(
-            await listen<GeminiCliStatusEvent>('gemini-cli-status', (event) => {
-              if (
-                event.payload.status === 'error' ||
-                event.payload.status === 'disconnected'
-              ) {
-                clearTimeout(timeout);
-                cleanup();
-                const err = new Error(event.payload.message || 'Gemini CLI disconnected');
-                callbacks.onError?.(err);
-                reject(err);
-              }
-            }),
-          );
-
-          await this.invokeMessage(userMessage, systemPrompt);
-        } catch (err) {
-          clearTimeout(timeout);
-          cleanup();
-          const error = err instanceof Error ? err : new Error(String(err));
-          callbacks.onError?.(error);
-          reject(error);
-        }
-      });
+      const { accumulated, stopReason } = await this.runTurn(
+        userMessage,
+        systemPrompt,
+        (chunk) => callbacks.onToken?.(chunk),
+      );
+      if (isErrorStopReason(stopReason)) {
+        const err = new Error(stopReason);
+        callbacks.onError?.(err);
+        throw err;
+      }
+      callbacks.onComplete?.(accumulated);
     } catch (err) {
-      cleanup();
-      throw err;
+      const e = toError(err);
+      callbacks.onError?.(e);
+      throw e;
     }
   }
 
@@ -218,70 +144,108 @@ export class GeminiCliClient implements LLMClient {
     const systemPrompt = this.extractSystemPrompt(messages, options);
     await this.ensureStarted();
 
+    const { accumulated, stopReason } = await this.runTurn(
+      userMessage,
+      systemPrompt,
+      undefined,
+      imagePath,
+    );
+    if (isErrorStopReason(stopReason)) {
+      throw new Error(stopReason);
+    }
+    return {
+      content: accumulated,
+      finishReason: stopReason === 'cancelled' ? 'cancelled' : 'stop',
+    };
+  }
+
+  // ─── 내부 헬퍼 ────────────────────────────────
+
+  /**
+   * 한 턴을 실행한다.
+   *
+   * - `requestId`를 발급해 Rust 커맨드에 전달하고, 이벤트 payload의 `requestId`가
+   *   일치할 때만 소비한다. 다른 턴의 잔여 이벤트가 섞이는 것을 막는다.
+   * - `new Promise(async ...)` 안티패턴을 피하기 위해 executor는 동기로 두고,
+   *   내부 비동기 작업은 즉시 실행 함수로 감싼다. `settle` 가드로 중복 resolve/reject를
+   *   방지한다.
+   */
+  private async runTurn(
+    userMessage: string,
+    systemPrompt: string,
+    onToken?: (chunk: string) => void,
+    imagePath?: string,
+  ): Promise<TurnResult> {
+    const requestId = generateRequestId();
     const unlistens: UnlistenFn[] = [];
     const cleanup = () => unlistens.forEach((fn) => fn());
     let accumulated = '';
 
     try {
-      return await new Promise<LLMResponse>(async (resolve, reject) => {
+      return await new Promise<TurnResult>((resolve, reject) => {
+        let settled = false;
+        const settle = (fn: () => void) => {
+          if (settled) return;
+          settled = true;
+          fn();
+        };
+
         const timeout = setTimeout(() => {
-          cleanup();
-          reject(new Error('Gemini CLI response timeout'));
+          settle(() => reject(new Error('Gemini CLI response timeout')));
         }, GEMINI_CLI_RESPONSE_TIMEOUT_MS);
 
-        try {
-          unlistens.push(
-            await listen<GeminiCliTokenEvent>('gemini-cli-token', (event) => {
-              accumulated += event.payload.text;
-            }),
-          );
+        const isMine = (incoming: string | null): boolean =>
+          // 구버전 Rust가 requestId를 실어 보내지 않을 경우에도 관대하게 수용(null→mine).
+          incoming === null || incoming === requestId;
 
-          unlistens.push(
-            await listen<GeminiCliCompleteEvent>('gemini-cli-complete', (event) => {
-              clearTimeout(timeout);
-              cleanup();
-              if (isErrorStopReason(event.payload.stopReason)) {
-                reject(new Error(event.payload.stopReason));
-                return;
-              }
-              resolve({
-                content: accumulated,
-                finishReason: event.payload.stopReason === 'cancelled' ? 'cancelled' : 'stop',
-              });
-            }),
-          );
-
-          unlistens.push(
-            await listen<GeminiCliStatusEvent>('gemini-cli-status', (event) => {
-              if (
-                event.payload.status === 'error' ||
-                event.payload.status === 'disconnected'
-              ) {
+        void (async () => {
+          try {
+            unlistens.push(
+              await listen<GeminiCliTokenEvent>('gemini-cli-token', (event) => {
+                if (!isMine(event.payload.requestId)) return;
+                accumulated += event.payload.text;
+                onToken?.(event.payload.text);
+              }),
+            );
+            unlistens.push(
+              await listen<GeminiCliCompleteEvent>('gemini-cli-complete', (event) => {
+                if (!isMine(event.payload.requestId)) return;
                 clearTimeout(timeout);
-                cleanup();
-                reject(new Error(event.payload.message || 'Gemini CLI disconnected'));
-              }
-            }),
-          );
+                settle(() =>
+                  resolve({ accumulated, stopReason: event.payload.stopReason }),
+                );
+              }),
+            );
+            unlistens.push(
+              await listen<GeminiCliStatusEvent>('gemini-cli-status', (event) => {
+                if (
+                  event.payload.status === 'error' ||
+                  event.payload.status === 'disconnected'
+                ) {
+                  clearTimeout(timeout);
+                  settle(() =>
+                    reject(new Error(event.payload.message || 'Gemini CLI disconnected')),
+                  );
+                }
+              }),
+            );
 
-          await this.invokeMessage(userMessage, systemPrompt, imagePath);
-        } catch (err) {
-          clearTimeout(timeout);
-          cleanup();
-          reject(err instanceof Error ? err : new Error(String(err)));
-        }
+            await this.invokeMessage(userMessage, systemPrompt, requestId, imagePath);
+          } catch (err) {
+            clearTimeout(timeout);
+            settle(() => reject(toError(err)));
+          }
+        })();
       });
-    } catch (err) {
+    } finally {
       cleanup();
-      throw err;
     }
   }
-
-  // ─── 내부 헬퍼 ────────────────────────────────
 
   private async invokeMessage(
     text: string,
     systemPrompt: string,
+    requestId: string,
     imagePath?: string,
   ): Promise<string> {
     const { geminiCli } = useSettingsStore.getState().settings;
@@ -291,6 +255,7 @@ export class GeminiCliClient implements LLMClient {
       workingDir: geminiCli.workingDir || null,
       approvalMode: geminiCli.approvalMode,
       imagePath: imagePath ?? null,
+      requestId,
     });
   }
 
@@ -310,11 +275,22 @@ export class GeminiCliClient implements LLMClient {
 
   private async ensureStarted(): Promise<void> {
     const status = await invoke<{ connected: boolean }>('gemini_cli_get_status');
-    if (!status.connected) {
-      const { geminiCli } = useSettingsStore.getState().settings;
-      await invoke('gemini_cli_start', {
-        workingDir: geminiCli.workingDir || null,
-      });
+    if (status.connected) return;
+
+    const { geminiCli } = useSettingsStore.getState().settings;
+    await invoke('gemini_cli_start', {
+      workingDir: geminiCli.workingDir || null,
+      approvalMode: geminiCli.approvalMode,
+    });
+    // 저장된 모델을 현재 세션에 적용 — 재시작/프로바이더 전환 후 사용자가 마지막에 고른
+    // 모델이 유지되도록. `gemini_cli_set_model`은 unstable RPC라 실패 가능성이 있지만
+    // 치명적이지 않으므로 CLI 기본 모델로 진행.
+    if (geminiCli.model) {
+      try {
+        await invoke('gemini_cli_set_model', { modelId: geminiCli.model });
+      } catch {
+        // noop
+      }
     }
   }
 }
