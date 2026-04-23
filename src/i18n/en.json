@@ -394,7 +394,7 @@
       "presetCustom": "Custom",
       "applyPreset": "Apply Preset",
       "applyPresetConfirm": "Applying a preset will overwrite your current character settings. Continue?",
-      "name": "Character Name",
+      "name": "Avatar Name",
       "namePlaceholder": "e.g. Haru",
       "age": "Age",
       "agePlaceholder": "e.g. 17, Eternal Girl",
