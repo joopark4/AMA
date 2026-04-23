@@ -245,8 +245,8 @@ const { t } = useTranslation();
 - 승인 모드 동기화: `session/new` 직후 + UI 변경 시 `session/set_mode` 호출 (`default/autoEdit/yolo/plan`)
 - **클라이언트 메서드 실구현**:
   - `fs/read_text_file`/`fs/write_text_file`: `settings.geminiCli.workingDir` canonical prefix 내부만 허용 (라인/한도 파라미터 지원)
-  - `session/request_permission`: `approvalMode`에 따라 자동 응답 (`plan`=cancel, 그 외=첫 옵션 선택)
-  - `terminal/*`: 아직 미지원 (-32601)
+  - `session/request_permission`: `approvalMode` 사전 정책식 자동 응답 (Codex `approvalPolicy`와 동일 철학, UI 승인 모달 없음). `yolo`/`auto_edit`는 첫 옵션 선택, `default`/`plan`은 거부(cancelled)
+  - `terminal/create`/`output`/`wait_for_exit`/`kill`/`release`: `yolo`에서만 허용. stdout+stderr 누적 버퍼 + try_wait 폴링 + start_kill + workingDir 내부 cwd 검증
 - Vision: `gemini_cli_send_message(image_path)` + base64 + ACP `image` ContentBlock, `geminiCliClient.chatWithLocalImage()`
 - Screen Watch provider에 포함 (파일 경로 전달 경로로 Codex와 통합)
 - 설치/인증 상태 표시 + workingDir/승인 모드(default/auto_edit/yolo/plan) 설정 UI
