@@ -269,11 +269,20 @@
         "noUsage": "使用履歴がありません",
         "loading": "使用量を確認中..."
       },
+      "voiceUsage": {
+        "title": "音声別使用量（今月）",
+        "minutes": "{{value}}分"
+      },
       "quota": {
         "title": "月間割り当て",
         "adminTitle": "API総割り当て",
         "betaSharedTitle": "ベータ共有枠（全ユーザーで消費）",
         "betaSharedUnavailable": "共有残高情報を取得できませんでした。Supertone APIキーの状態を管理者にご確認ください。",
+        "betaSharedUnauthorized": "Supertone APIキーの有効期限が切れているか、無効です。管理者にキーの更新を依頼してください。",
+        "betaSharedRateLimit": "Supertone APIのリクエスト上限を超えました。しばらくしてから再度お試しください。",
+        "betaSharedServerError": "Supertoneサーバーが一時的に応答しません。しばらくしてから再度お試しください。",
+        "betaSharedNetwork": "ネットワークエラーにより共有残高を確認できませんでした。",
+        "betaSharedNoKey": "管理者がSupertone APIキーを設定していません。",
         "used": "{{used}} / {{limit}} クレジット",
         "adminBalanceUnit": "クレジット残高",
         "adminBalanceDesc": "約{{minutes}}分{{seconds}}秒使用可能",
