@@ -513,15 +513,15 @@
       "researchPreviewDesc": "Channels is a research preview feature. A development flag is required until official marketplace submission.",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLI must be installed.",
-      "step2Title": "Step 2: Run in Terminal",
-      "step2Desc": "Run the command above in any project folder of your choice.",
-      "step3Title": "Step 3: Enable in AMA",
+      "step2Title": "Step 2: Enable in AMA",
+      "step3Title": "Step 3: Run in Terminal",
+      "step3Desc": "Run the command above in any project folder of your choice.",
       "copy": "Copy",
       "copied": "Copied",
       "setupSuccess": "Bridge plugin has been installed",
       "setupFail": "Bridge plugin installation failed",
       "setupFailManual": "Auto-install failed. Run in terminal: cd ~/.mypartnerai/ama-bridge && npm install",
-      "step2Caution": "--dangerously-load-development-channels is required during the research preview period. --permission-mode bypassPermissions skips all permission prompts."
+      "step3Caution": "--dangerously-load-development-channels is required during the research preview period. --permission-mode bypassPermissions skips all permission prompts."
     }
   },
   "status": {
