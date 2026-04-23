@@ -64,7 +64,7 @@
         "claude_code": "Claude Code (External)",
         "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the ama-bridge.",
         "codex": "OpenAI Codex",
-        "gemini_cli": "Gemini CLI (integration in progress)"
+        "gemini_cli": "Gemini CLI"
       },
       "expand": "Expand",
       "collapse": "Collapse"
