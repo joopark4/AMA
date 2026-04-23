@@ -11,6 +11,7 @@ use tauri::menu::{MenuBuilder, MenuItem, SubmenuBuilder};
 fn main() {
     let app = tauri::Builder::default()
         .manage(commands::codex::CodexState::new())
+        .manage(commands::gemini_cli::GeminiCliState::new())
         .manage(commands::screenshot::ScreenWatchState::new())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -77,6 +78,13 @@ fn main() {
             commands::codex::codex_send_message,
             commands::codex::codex_get_status,
             commands::codex::codex_list_models,
+            commands::gemini_cli::gemini_cli_check_installed,
+            commands::gemini_cli::gemini_cli_check_auth,
+            commands::gemini_cli::gemini_cli_start,
+            commands::gemini_cli::gemini_cli_stop,
+            commands::gemini_cli::gemini_cli_send_message,
+            commands::gemini_cli::gemini_cli_cancel,
+            commands::gemini_cli::gemini_cli_get_status,
         ])
         .on_menu_event(|app, event| {
             if let Some(window) = app.get_webview_window("main") {
@@ -220,6 +228,7 @@ fn main() {
     app.run(|app_handle, event| {
         if let tauri::RunEvent::Exit = event {
             commands::codex::cleanup_codex_on_exit(app_handle);
+            commands::gemini_cli::cleanup_gemini_cli_on_exit(app_handle);
         }
     });
 }

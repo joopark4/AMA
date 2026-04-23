@@ -8,7 +8,11 @@ import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from '../../features/channels';
 import { CODEX_PROVIDER, CODEX_DEFAULT_MODEL, CodexSettings } from '../../features/codex';
-import { GEMINI_CLI_PROVIDER, GEMINI_CLI_DEFAULT_MODEL } from '../../features/gemini-cli';
+import {
+  GEMINI_CLI_PROVIDER,
+  GEMINI_CLI_DEFAULT_MODEL,
+  GeminiCliSettings,
+} from '../../features/gemini-cli';
 import { isVisionAvailable } from '../../features/screen-watch';
 import { Field, Pill, Select, TextInput } from './forms';
 
@@ -485,6 +489,7 @@ export default function LLMSettings() {
   const isLocalProvider = currentProvider === 'ollama' || currentProvider === 'localai';
   const isClaudeCode = currentProvider === CLAUDE_CODE_PROVIDER;
   const isCodex = currentProvider === CODEX_PROVIDER;
+  const isGeminiCli = currentProvider === GEMINI_CLI_PROVIDER;
 
   // Load local provider models (Ollama / LocalAI)
   useEffect(() => {
@@ -771,6 +776,13 @@ export default function LLMSettings() {
       {isCodex && (
         <div style={{ paddingTop: 8 }}>
           <CodexSettings />
+        </div>
+      )}
+
+      {/* Gemini CLI(ACP) 하위 설정 */}
+      {isGeminiCli && (
+        <div style={{ paddingTop: 8 }}>
+          <GeminiCliSettings />
         </div>
       )}
     </div>
