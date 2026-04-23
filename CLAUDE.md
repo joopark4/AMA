@@ -203,7 +203,13 @@ const { t } = useTranslation();
 - 프리미엄 구독 사용자 전용 클라우드 TTS
 - 앱 → `edgeFunctionClient` → Supabase Edge Function → Supertone API
 - Edge Functions: `supertone-tts` (TTS 프록시), `supertone-voices` (음성 목록), `supertone-usage` (사용량)
-- `premiumStore` (Zustand): 프리미엄 상태/음성 목록/할당량/사용량 관리
+- **Supertone 3-API 통합**: `supertone-usage`가 `/v1/credits` + `/v1/usage` + `/v1/voice-usage` 세 API를 통합 호출
+  - 권한별 응답 필터: `apiCredits`(전 사용자) / `apiVoiceUsage`(관리자) / `tts_usage aggregateAllUsers`(관리자)
+  - `ApiStatus` 코드(`ok/unauthorized/rate_limit/server_error/network/no_key/skipped`)로 부분 실패 보존
+  - 스테이지 라벨 에러 응답(`auth.getUser` / `profile.query` / `tts_usage.summary` / ...)으로 관찰성 확보
+  - UI 분기: 관리자는 잔고 + 7일 그래프 + voice-usage TOP 8, 비관리자는 진행 바 + `% 남음`만
+- **ES256 JWT 대응**: 7개 Edge Function(`supertone-usage/voices/tts` + `delete-account` + `admin-stats/subscriptions/users`)을 `--no-verify-jwt`로 배포, 함수 내부에서 `auth.getUser()`로 검증
+- `premiumStore` (Zustand): 프리미엄 상태/음성 목록/할당량/3-API 사용량 관리 (`apiCredits`/`apiVoiceUsage`/`apiStatus`)
 - `supertoneApiClient`: 텍스트 300자 청크 분할 + WAV 결합 + 할당량 업데이트
 - 구독 플랜: free(0) / basic(300크레딧, 5분) / pro(1200크레딧, 20분)
 - 할당량 소진 시 로컬 Supertonic 자동 폴백 + 토스트 알림
@@ -235,7 +241,7 @@ const { t } = useTranslation();
 - CLI 설치/인증 상태 표시 + 설치/로그인 가이드
 - **모듈화**: `src/features/codex/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수)
 
-### Gemini CLI(ACP) 연동 (진행 중, `feature/gemini-cli-integration`)
+### Gemini CLI(ACP) 연동 (develop PR 대기 · `feature/gemini-cli-integration`)
 - `gemini --experimental-acp` 자식 프로세스 + JSON-RPC 2.0 over stdio로 Codex와 동일 패턴
 - provider 키: `gemini_cli` (기존 클라우드 `gemini`와 별개)
 - 설정: `settings.geminiCli` (`model`/`approvalMode`/`workingDir`/`authMethod`), persist v22
@@ -255,7 +261,7 @@ const { t } = useTranslation();
 
 ### 화면 관찰 (Screen Watch, v1.5.0)
 - 주기적 화면 캡처 + Vision LLM 분석으로 아바타가 능동 발화
-- Provider: Claude / OpenAI / Gemini / Codex (Ollama·LocalAI·Claude Code·비macOS 제외)
+- Provider: Claude / OpenAI / Gemini / Codex / Gemini CLI (Ollama·LocalAI·Claude Code·비macOS 제외)
 - 캡처 대상: fullscreen / main-monitor / specific-monitor / active-window / specific-window
 - 2단 필터: Rust 픽셀 diff(비용 0) + LLM `[SKIP]` 규칙
 - OS 권한 preflight: `CGPreflightScreenCaptureAccess` FFI

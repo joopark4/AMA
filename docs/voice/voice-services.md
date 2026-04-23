@@ -122,6 +122,95 @@
 5. 사용량 기록 (1초 = 1크레딧)
 6. 오디오 바이너리 + 할당량 정보 헤더(`X-Quota-Used/Limit/Remaining`) 반환
 
+## Supertone 3-API 통합 (사용량 뷰)
+
+`PremiumVoiceSettings`의 사용량 카드는 Edge Function `supertone-usage`가 Supertone의
+세 API를 한 번에 집계해 반환한 결과로 렌더링한다. 개별 API를 클라이언트에서 직접 호출하지
+않는 이유는 (1) 서버 측 API 키 보호, (2) 권한별 필터링을 서버에서 일괄 적용, (3) 베타
+기간의 "공유 잔고" 정책을 서버에서 강제하기 위함이다.
+
+### 3종 엔드포인트
+
+| 엔드포인트 | 용도 | 응답 매핑 |
+|-----------|------|-----------|
+| `GET /v1/credits` | 현재 잔고 조회 | `apiCredits.balance` |
+| `GET /v1/usage?start_time&end_time` | 집계 분 단위 사용량 | `apiCredits.used` (분→초 환산) |
+| `GET /v1/voice-usage?start_date&end_date` | voice_id별 일자별 분 사용량 | `apiVoiceUsage.usages[]` |
+
+### 권한별 응답 필터링
+
+`supertone-usage/index.ts`가 요청의 `scope` + `profile.is_admin`을 조합해 응답을 분기:
+
+```ts
+const isAdmin = profile?.is_admin === true;
+const isAllScope = scope === 'all';
+const includeApiCredits = isAllScope;
+const includeVoiceUsage = isAdmin && isAllScope;
+const aggregateAllUsers = isAdmin && scope === 'all';
+```
+
+- `includeApiCredits`: 베타 기간 공유 잔고 표시용. 모든 로그인 사용자가 조회 가능
+- `includeVoiceUsage`: voice_id별 상세 일자 사용량. **관리자 전용**
+- `aggregateAllUsers`: `tts_usage` 집계를 전 사용자로 확장. **관리자 전용**
+
+### `apiStatus` 스테이지 코드
+
+세 API 각각이 독립적으로 상태 코드를 반환해 일부 실패 시에도 나머지 결과를 보존한다.
+
+| 코드 | 의미 |
+|------|------|
+| `ok` | 정상 |
+| `unauthorized` | 401/403 (API 키 유효성 실패) |
+| `rate_limit` | 429 |
+| `server_error` | 5xx |
+| `network` | fetch 예외 (DNS/타임아웃) |
+| `no_key` | `SUPERTONE_API_KEY` 미설정 |
+| `skipped` | 권한/스코프로 인해 호출하지 않음 |
+
+### Edge Function 스테이지 에러 응답
+
+관찰성을 위해 각 단계(스테이지)를 라벨로 감싸 `errorResponse(stage, err)`로 500을 반환한다.
+이렇게 하면 클라이언트 로그(`[PremiumStore] Failed to fetch usage summary: ... detail=...`)
+에서 어느 구간에서 실패했는지 즉시 식별 가능:
+
+| 스테이지 | 설명 |
+|----------|------|
+| `auth.getUser` | Supabase 사용자 조회 실패 |
+| `body.parse` | 요청 body JSON 파싱 실패 |
+| `profile.query` | `profiles` 테이블 조회 실패 |
+| `plan.query` | `subscription_plans` 조회 실패 |
+| `tts_usage.daily` / `tts_usage.summary` | 사용량 집계 쿼리 실패 |
+| `daily.handler` / `summary.query` | 핸들러 내부 예외 |
+
+### 권한별 UI 분기
+
+`PremiumVoiceSettings.tsx`의 `UsageCard`:
+
+| 역할 | 표시 내용 |
+|------|-----------|
+| 관리자 | 잔고(balance) + 사용량(used) + 7일 일별 그래프 + voice-usage TOP 8 (`VoiceUsageTable`) |
+| 비관리자 | 남은 크레딧 진행 바 + `N% 남음` 텍스트만 |
+
+### 베타 기간 `isQuotaExceeded` 결정 로직
+
+공유 잔고(`apiCredits`)가 제공되는 한, 역할 무관 잔고 고갈 시 일괄 차단:
+
+```ts
+isQuotaExceeded: data.apiCredits
+  ? data.apiCredits.balance <= 0
+  : isAdmin
+    ? false
+    : data.quota.remaining <= 0,
+```
+
+### 배포 주의 — `--no-verify-jwt`
+
+Supabase 게이트웨이가 ES256 JWT를 거부(`UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM`)해 함수
+본체에 도달하지 못하는 이슈가 있어, `supertone-usage`를 포함한 모든 인증형 Edge Function은
+`--no-verify-jwt` 플래그로 배포하고 함수 내부에서 `supabaseUser.auth.getUser()`로 토큰을
+직접 검증한다. 대상: `supertone-usage`, `supertone-voices`, `supertone-tts`,
+`delete-account`, `admin-stats`, `admin-subscriptions`, `admin-users`.
+
 ### Edge Function Client (`edgeFunctionClient.ts`)
 
 - `supabase.functions.invoke()` 기반

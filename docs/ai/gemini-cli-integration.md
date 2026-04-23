@@ -1,9 +1,11 @@
 # Gemini CLI(ACP) 연동
 
-> **현재 상태: ACP 본체 + fs + 승인 자동응답 + Vision + Screen Watch 연결까지 구현 완료**
+> **현재 상태: ACP 본체 + fs + 승인 자동응답 + Vision + Screen Watch + `terminal/*` 클라이언트 메서드까지 구현 완료**
 >
-> 브랜치 `feature/gemini-cli-integration`에서 진행 중. 남은 후속 과제는 `terminal/*`
-> 클라이언트 메서드와 UI 승인 플로우(옵션 선택 모달) 수준이다.
+> `feature/gemini-cli-integration` → develop PR 반영 중. Codex와 동일한 UX 철학(사전 정책·
+> 자동 응답, 실시간 승인 모달 없음)으로 통합되어 provider 드롭다운에서 `Gemini CLI`를
+> 선택하면 바로 사용할 수 있다. 남은 과제는 도구/파일/이미지/터미널 시나리오별 회귀
+> 테스트 체크리스트 작성.
 
 ## 개요
 
@@ -120,28 +122,34 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 
 `settingsStore` persist version은 v21 → v22로 증분 (마이그레이션에서 기본값 주입).
 
-### 모듈 구조 (계획)
+### 모듈 구조
 
 ```
 src/features/gemini-cli/
-├── constants.ts              ← GEMINI_CLI_PROVIDER/DEFAULT_MODEL/TIMEOUT/ACP_PROTOCOL_VERSION ✅
-├── geminiCliClient.ts        ← LLMClient 구현 ⬜ (현재 placeholder)
-├── useGeminiCliConnection.ts ← 연결/상태 훅 ⬜
-├── GeminiCliSettings.tsx     ← 설정 섹션 UI ⬜
-└── index.ts                  ← 퍼블릭 API barrel ✅(일부)
+├── constants.ts              ← GEMINI_CLI_PROVIDER / DEFAULT_MODEL / TIMEOUT / ACP_PROTOCOL_VERSION
+├── geminiCliClient.ts        ← LLMClient 구현 (chat / chatStream / chatWithLocalImage / setModel / setMode)
+├── useGeminiCliConnection.ts ← 연결/상태 훅 — 상태 라인 + retry + model/mode 변경 Select 바인딩
+├── GeminiCliSettings.tsx     ← 설정 섹션 UI (Codex 스타일로 통일)
+└── index.ts                  ← 퍼블릭 API barrel
 
 src-tauri/src/commands/
-└── gemini_cli.rs             ← 프로세스 관리 + JSON-RPC 루프 ⬜
+└── gemini_cli.rs             ← 프로세스 관리 + JSON-RPC 루프 + fs / permission / terminal / vision
 ```
 
-### 이벤트 이름 (계획)
+### 이벤트 이름
 
-Codex(`codex-token`/`codex-complete`/`codex-status`/`codex-stderr`)와 동일 패턴:
+Codex(`codex-token`/`codex-complete`/`codex-status`/`codex-stderr`)와 동일 패턴으로 발행:
 
-- `gemini-cli-token`
-- `gemini-cli-complete`
-- `gemini-cli-status`
-- `gemini-cli-stderr`
+- `gemini-cli-token` — agent_message_chunk 수신 시
+- `gemini-cli-complete` — `session/prompt` 응답의 `stopReason` 판정 후
+- `gemini-cli-status` — 프로세스 상태 변경 (spawn/ready/error/exit)
+- `gemini-cli-stderr` — CLI stderr 누적
+
+### LLMSettings 내 표시 정책
+
+`provider === 'gemini_cli'`일 때 `LLMSettings` 상단의 공용 **모델 드롭다운은 숨김**.
+Codex와 동일하게 provider 고유 섹션(`GeminiCliSettings`)에서 설치/인증/모델/승인 모드를
+단독으로 다루며, 외부 CLI의 책임 영역을 전역 LLM 설정과 분리한다.
 
 ## 진행 단계
 

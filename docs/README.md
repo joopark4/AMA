@@ -28,7 +28,7 @@
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [voice-services.md](./voice/voice-services.md) | Whisper/Supertonic 구현 상세 + TTS-말풍선 동기화 + 오디오 디바이스 | 2026.04.09 |
+| [voice-services.md](./voice/voice-services.md) | Whisper/Supertonic 구현 상세 + TTS-말풍선 동기화 + Supertone 3-API 통합 | 2026.04.23 |
 
 ### avatar/ — 아바타
 
@@ -42,8 +42,9 @@
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 (Codex/Claude Code 포함) | 2026.04.09 |
+| [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 (Codex/Claude Code/Gemini CLI 포함) | 2026.04.23 |
 | [codex-integration.md](./ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) | 2026.04.07 |
+| [gemini-cli-integration.md](./ai/gemini-cli-integration.md) | Gemini CLI(ACP) 연동 (fs/permission/terminal/Vision 실구현) | 2026.04.23 |
 | [natural-interaction-plan.md](./ai/natural-interaction-plan.md) | Neuro-sama 스타일 자연 상호작용 구현 플랜 (Phase 0~5) | 2026.04.07 |
 | [natural-interaction-v2-plan.md](./ai/natural-interaction-v2-plan.md) | 자연 상호작용 v2 (VAD 감정·Presence 트리거·Gaze·Backchannel) | 2026.04.18 |
 
@@ -92,6 +93,46 @@
 | [#018](./issues/018-audio-output-device-routing.md) | WKWebView setSinkId 제스처 제약 해결 | 2026.03.31 |
 | [#019](./issues/019-tts-output-device-gesture.md) | TTS 출력 디바이스 제스처 제약 해결 | 2026.03.31 |
 | [#020](./issues/020-wkwebview-toggle-rendering.md) | WKWebView 커스텀 Toggle 렌더링 이슈 — SVG 기반으로 해결 | 2026.04.20 |
+
+---
+
+## 2026.04.23 — Gemini CLI(ACP) 연동 + Supertone 3-API 통합 + 캐릭터/UI 개선
+
+PR `feature/gemini-cli-integration` → `develop` 병합분. 26개 커밋 / 29개 파일 변경.
+
+### Gemini CLI(ACP) Provider 신규 연동
+- `gemini --experimental-acp` 자식 프로세스 + JSON-RPC 2.0 over stdio (Codex와 동일 패턴)
+- provider 키 `gemini_cli`, `settings.geminiCli` persist v22로 증분
+- ACP 메서드: `initialize` / `session/new` / `session/prompt` / `session/cancel`(notification) / `session/set_mode`
+- 스트리밍: `agent_message_chunk` → `gemini-cli-token` 이벤트, 턴 완료는 `stopReason` 판정
+- 클라이언트 메서드 실구현:
+  - `fs/read_text_file` / `fs/write_text_file`: `workingDir` canonical prefix 내부만 허용
+  - `session/request_permission`: `approvalMode` 사전 정책식 자동 응답 (UI 승인 모달 없음)
+  - `terminal/create|output|wait_for_exit|kill|release`: `yolo`에서만 허용, cwd는 workingDir 내부로 제한
+- Vision: base64 + ACP `image` ContentBlock, Screen Watch provider에 포함
+- 설정 UI: 설치/인증 상태, workingDir, 승인 모드(default/auto_edit/yolo/plan), 모델 Select (Codex 스타일로 통일)
+- 문서: [gemini-cli-integration.md](./ai/gemini-cli-integration.md)
+
+### Supertone 3-API 통합 (premium-voice)
+- Edge Function `supertone-usage`가 `/v1/credits` + `/v1/usage` + `/v1/voice-usage` 세 API를 통합 호출
+- 권한별 응답 필터링: `includeApiCredits`(전 사용자) / `includeVoiceUsage`(관리자) / `aggregateAllUsers`(관리자)
+- 스테이지 라벨 에러 응답(`auth.getUser` / `profile.query` / `tts_usage.summary` / ...)으로 관찰성 확보
+- `ApiStatus` 코드(`ok/unauthorized/rate_limit/server_error/network/no_key/skipped`)로 프론트 분기
+- `edgeFunctionClient`: `error.context` Response body 파싱해 서버 에러 메시지 보존
+- `premiumStore`: `apiCredits/apiVoiceUsage/apiStatus` 추가, `isQuotaExceeded` 로직 일원화
+- UI: 관리자는 잔고 + 7일 그래프 + voice-usage TOP 8, 비관리자는 진행 바 + `% 남음`만
+- ES256 JWT 이슈 대응: 7개 Edge Functions(`supertone-usage/voices/tts` + `delete-account` + `admin-stats/subscriptions/users`) 모두 `--no-verify-jwt`로 재배포
+
+### 캐릭터/Character 프로필 회귀 수정
+- 사용자 관계 라벨이 답변 본문에 노출되는 회귀 수정
+- 아바타 이름 동기화 + 프리셋이 이름을 덮어쓰는 회귀 수정
+- 감정 표현 성향/프리셋 Pill 비활성 테두리 복원
+
+### 기타 UX 개선
+- Settings Panel 최대 폭 800px → 1200px (3컬럼 복원)
+- Monitor: 단일 모니터여도 현재 모니터 정보 표시
+- Channels: Step 2·3 순서 교체 (AMA 활성화 먼저, 터미널 실행 나중)
+- `dependency-issues-builder`: `claude_code`/`codex` 분기에서 stale dependency issue clear
 
 ---
 
