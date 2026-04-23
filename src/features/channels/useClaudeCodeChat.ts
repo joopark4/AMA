@@ -55,7 +55,7 @@ export function useClaudeCodeChat() {
 
     try {
       const currentMessages = useConversationStore.getState().messages;
-      // 응답 언어는 TTS 출력 언어 기준 (엔진별 폴백 포함)
+      // 대화·음성 언어는 settings.tts.language 기준 (auto면 UI 언어 따라감)
       const systemPrompt = buildSystemPrompt(
         settings.avatarName || '',
         settings.avatarPersonalityPrompt || '',

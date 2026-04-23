@@ -6,7 +6,12 @@
 
 - 파일: `src/stores/settingsStore.ts`
 - persist key: `mypartnerai-settings`
-- persist version: `15` (v1.5.0에서 `screenWatch` 추가로 증분)
+- persist version: `21`
+  - v15: `screenWatch` 추가 (v1.5.0)
+  - v16~v18: 캐릭터/아바타 숨김/QuickActions 마이그레이션
+  - v19: `proactivePreviousEnabled` 추가
+  - v20: `tts.language` 추가 (기본 `auto`)
+  - v21: `settingsPanelExpanded` 추가 (기본 `{}` — 전 섹션 접힘)
 
 ## 설정 스키마 (요약)
 
@@ -25,6 +30,12 @@ interface Settings {
   tts: {
     engine: 'supertonic' | 'supertone_api';
     voice?: 'F1'|'F2'|'F3'|'F4'|'F5'|'M1'|'M2'|'M3'|'M4'|'M5';
+    /**
+     * 대화·음성 언어 (v20 신규) — LLM 응답과 TTS 합성이 공유하는 언어.
+     * `auto`면 앱 UI 언어(`settings.language`)를 그대로 따라간다.
+     * `ja`는 Supertonic(로컬) 미지원 → 런타임에 `en`으로 폴백되고 UI에 경고.
+     */
+    language?: 'auto' | 'ko' | 'en' | 'ja' | 'es' | 'pt' | 'fr';
     supertoneApi?: {
       voiceId: string;
       voiceName: string;
@@ -39,7 +50,7 @@ interface Settings {
       };
     };
   };
-  language: 'ko' | 'en' | 'ja';
+  language: 'ko' | 'en' | 'ja';  // 앱 UI 전용 — 대화 응답 언어에는 영향 없음
   avatarName: string;
   avatarPersonalityPrompt: string;  // 아바타 성격 프롬프트 (최대 800자)
   vrmModelPath: string;
@@ -110,6 +121,12 @@ interface Settings {
     idleMinutes: number;
     cooldownMinutes: number;
   };
+  /**
+   * 설정 패널 섹션별 펼침 상태 (v21 신규).
+   * 키는 각 섹션 식별자(account/lang/premium/llm/...)이며 값은 true일 때 펼침.
+   * 명시되지 않은 섹션은 접힘으로 간주 → 첫 실행 시 모든 섹션 접힘.
+   */
+  settingsPanelExpanded: Record<string, boolean>;
 }
 ```
 
@@ -133,6 +150,12 @@ interface Settings {
 - 엔진은 `supertonic`(로컬) 또는 `supertone_api`(클라우드) 중 선택
 - 로컬 보이스는 `F1~F5/M1~M5`로 정규화
 - `supertoneApi` 설정은 프리미엄 사용자만 유효
+- `tts.language` 정규화: `auto / ko / en / ja / es / pt / fr` 외의 값은 `auto`로 강제
+
+### 설정 패널 펼침 상태 (`settingsPanelExpanded`)
+- `Record<string, boolean>`로 저장되며 키는 섹션 식별자(`account`, `lang`, `premium`, `llm`, `mcp`, `audio`, `avatar`, `character`, `voice`, `screen`, `monitor`, `quick`, `update`, `cleanup`, `licenses`)
+- `SettingsSection`은 controlled 모드(`isOpen` + `onToggle`)로 주입받고, 토글 시 `toggleSettingsPanelSection(key)` 액션 호출 → 즉시 persist
+- 빈 객체 상태면 모든 섹션이 접혀 보이며, 사용자가 열어 둔 섹션만 `true`로 누적
 
 ### VRM 경로
 - 구형 번들 경로(`/vrm/eunyeon_ps.vrm`)는 빈 값으로 정규화

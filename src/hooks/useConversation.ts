@@ -42,14 +42,16 @@ const SUPERTONIC_NATIVE_LANGS: ReadonlySet<PromptLanguage> = new Set<PromptLangu
 ]);
 
 /**
- * LLM 응답 언어 결정 — **TTS 출력 언어 기준**.
+ * 대화·음성 언어(LLM 응답 + TTS 합성) 결정.
  *
- * - `settings.tts.language`가 'auto'가 아니면 그 값을 사용 (ko/en/ja/es/pt/fr)
- * - 'auto'(기본)면 UI 언어(`settings.language`, ko/en/ja)로 폴백
- * - **엔진이 Supertonic(로컬)인데 언어가 ja 등 미지원이면 `en`으로 강제** —
- *   LLM이 일본어로 응답했는데 로컬 TTS가 영어로만 읽어 깨지는 현상을 방지.
- *
- * 참고: `settings.language`는 앱 UI에만 사용되며, 대화/응답 언어에는 영향을 주지 않는다.
+ * 요구사항 정리:
+ * - `settings.language`는 **앱 UI 전용**(메뉴/라벨)이며 대화 언어에 영향 없음.
+ * - `settings.tts.language`가 **대화·음성 언어**의 단일 진실. LLM 응답과 TTS 합성이
+ *   동일한 언어를 쓰도록 같은 값을 공유한다.
+ * - `auto`는 "앱 UI 언어를 그대로 따라감"을 의미. 입력 텍스트 기반 감지는 하지 않는다
+ *   (초기 구현에 있던 텍스트 감지는 사용자 요구사항 외 기능이라 제거).
+ * - 엔진 제약: Supertonic은 `ja`를 지원하지 않으므로, 로컬 엔진 + `ja` 조합은
+ *   런타임에 `en`으로 폴백해 LLM 응답과 실제 발음을 일치시킨다.
  */
 export function resolveResponseLanguage(): PromptLanguage {
   const { settings } = useSettingsStore.getState();
@@ -757,7 +759,7 @@ export function useConversation(): UseConversationReturn {
       const currentMessages = storeState.messages;
       const currentMemory = storeState.memory;
 
-      // 응답 언어는 TTS 출력 언어 기준 — UI 언어(settings.language)와는 독립.
+      // 대화·음성 언어는 `settings.tts.language` 기준(auto면 UI 언어 그대로).
       const responseLanguage = resolveResponseLanguage();
       const systemPrompt = currentCharacter?.name || currentCharacter?.personality?.traits?.length
         ? buildCharacterPrompt(currentCharacter, responseLanguage)

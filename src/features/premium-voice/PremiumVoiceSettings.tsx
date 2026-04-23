@@ -377,7 +377,12 @@ export default function PremiumVoiceSettings() {
             />
           </Field>
 
-          <Field label={t('settings.premium.ttsLanguage')} hint={t('settings.premium.ttsLanguageDesc')}>
+          {/* 프리미엄 전용 언어 드롭다운 — 모델별 지원 언어가 동적이라 Select 유지.
+              라벨/설명은 VoiceSettings Pill과 동일한 공용 i18n 키로 통일. */}
+          <Field
+            label={t('settings.voice.tts.language')}
+            hint={t('settings.voice.tts.languageDesc')}
+          >
             <Select
               value={supportedLanguages.includes(effectiveTtsLanguage) ? effectiveTtsLanguage : 'en'}
               onChange={handleLanguageChange}

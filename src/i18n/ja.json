@@ -93,9 +93,9 @@
         "speaker": "出力デバイス",
         "speakerDefault": "システムデフォルト",
         "speakerNotFound": "出力デバイスが見つかりません",
-        "language": "音声出力言語",
-        "languageDesc": "TTSが話す言語です。アプリのUI言語とは別に設定できます。",
-        "languageAuto": "自動（テキストから検出）",
+        "language": "会話・音声の言語",
+        "languageDesc": "AIの返答とTTSの発声に共通で使われる言語です。アプリのUI言語（メニュー・ラベル）とは分離されています。",
+        "languageAuto": "アプリの言語を使用",
         "languageUnsupportedLocal": "ローカルTTS（Supertonic）はこの言語に対応していないため、英語に切り替わります。プレミアム音声に切り替えるとより多くの言語が使えます。",
         "engines": {
           "qwen3": "Qwen3-TTS",

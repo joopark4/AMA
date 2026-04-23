@@ -139,8 +139,20 @@ const { t } = useTranslation();
 - 클라우드 TTS 실패/할당량 소진 시 로컬 자동 폴백
 - 프런트 녹음(`16kHz mono WAV`) → Tauri `transcribe_audio` → `whisper-cli`
 - 원격 세션 감지 시 음성 인식 차단 (텍스트 입력은 사용 가능)
-- TTS 테스트 버튼: 음성 설정 섹션에 위치 (아바타 섹션에서 이동)
+- TTS 테스트 버튼: 음성 설정 섹션에 위치 (엔진 + TTS 언어 조합별 네이티브 샘플 문장 재생)
 - 오디오 디바이스: 마이크 입력/스피커 출력 독립 선택 + 마이크 피크 미터 + setSinkId 기반 출력 라우팅
+- **대화·음성 언어 선택** (`settings.tts.language`, 기본 `auto`): `auto / ko / en / ja / es / pt / fr`
+  - `auto`는 앱 UI 언어(`settings.language`)를 그대로 따라감 (텍스트 감지 아님)
+  - Supertonic은 ja 미지원 → 런타임에 `en`으로 폴백 + 설정 UI에 경고 표시
+  - 프리미엄 TTS UI 드롭다운과 공용 필드 동기화
+  - 프리미엄 엔진 전환 시 `voiceId`가 비어있으면 **Bella**를 기본으로 자동 주입
+
+### 대화·음성 언어 계약
+- **요구사항**: `settings.language`는 앱 UI 전용, 대화 내용은 `settings.tts.language` 기준. LLM 응답과 TTS 합성이 **같은 언어**를 공유해 발음이 엇갈리지 않도록.
+- **결정자**: `resolveResponseLanguage()` (`src/hooks/useConversation.ts`) — 인자 없음. `tts.language`가 auto이면 UI 언어로, 아니면 명시 값으로. Supertonic + 미지원 언어면 `en` 폴백.
+- **같은 기준 공유**: `supertonicClient.detectLanguage`와 `supertoneApiClient.synthesize` 모두 동일한 계약으로 합성 언어 결정 → LLM 응답과 엇갈림 방지
+- **Layer 0 언어 강제 지시**: `characterProfile.buildCharacterPrompt`가 해당 언어로 "always respond in …" 지시문을 시스템 프롬프트 최상단에 삽입 (ko/en/ja/es/pt/fr)
+- 호출부 통일: `useConversation.sendMessage`, `useClaudeCodeChat`, `proactiveEngine`, `screenWatchService`
 
 ### 아바타/UI
 - 기본 VRM 아바타 바이너리 임베딩: AES-128-GCM 암호화하여 앱 번들에 포함, 첫 실행 시 VRM 선택 불필요
@@ -247,18 +259,22 @@ const { t } = useTranslation();
 
 ### 설정 패널 구성
 1. **UserProfile** — 계정 정보 (OAuth)
-2. **Language** — 한국어/영어/일본어 선택
+2. **Language** — 한국어/영어/일본어 선택 (앱 UI 전용)
 3. **LLMSettings** — AI 모델 Provider/Model/API Key/Endpoint (Channels ON 시 잠금)
 4. **AudioDeviceSettings** — 마이크 입력/스피커 출력 디바이스 선택 + 마이크 피크 미터
-5. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + TTS 테스트 + 글로벌 단축키
-6. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량 + 관리자 API 크레딧 대시보드
+5. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + **TTS 출력 언어 Pill 리스트** + TTS 테스트 + 글로벌 단축키
+6. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량 + 관리자 API 크레딧 대시보드 (엔진 전환 시 Bella 기본 자동 주입)
 7. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
 8. **CodexSettings** — Codex CLI 상태/연결/모델/추론 성능 (LLMSettings 내 Codex 선택 시 표시)
 9. **ScreenWatchSettings** — 화면 관찰 토글 / 캡처 대상(5종) / 관찰 간격 / 응답 스타일 / 조용한 시간 / 권한 요청 (v1.5.0)
 10. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
 11. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
 12. **LicensesSettings** — 오픈소스/모델 라이선스
+
+**공통 동작**
 - 각 섹션은 `SettingsSection.tsx` 공통 접을 수 있는 카드 UI 사용
+- **섹션 펼침 상태는 `settings.settingsPanelExpanded`(Record<string, boolean>)로 persist** — 첫 실행 시 모든 섹션 접힘, 사용자가 연 섹션만 다음 실행에 재현
+- 패널 최대 너비 800px (최대 2컬럼 CSS columns 레이아웃) — 좁은 화면에선 1컬럼
 
 ### 로컬 배포 파이프라인
 - `release-local.mjs`: 8단계 자동화 (pre-check → build → stage → sign → notarize → package → github release → pages)
@@ -379,7 +395,7 @@ AMA/
 
 | 스토어 | 용도 |
 |--------|------|
-| `settingsStore` | 전역 설정 (LLM/STT/TTS/아바타/UI), persist (version 13) |
+| `settingsStore` | 전역 설정 (LLM/STT/TTS/아바타/UI/패널 펼침), persist (version 21) |
 | `authStore` | OAuth 사용자/토큰/약관 동의, persist |
 | `conversationStore` | 대화 기록/상태, persist |
 | `avatarStore` | VRM 제어 상태 (위치/애니메이션) |

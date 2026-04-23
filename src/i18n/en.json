@@ -93,9 +93,9 @@
         "speaker": "Output Device",
         "speakerDefault": "System Default",
         "speakerNotFound": "No output device found",
-        "language": "Voice Output Language",
-        "languageDesc": "The language the TTS will speak in. Set independently from the app UI language.",
-        "languageAuto": "Auto (detect from text)",
+        "language": "Conversation & Voice Language",
+        "languageDesc": "Language used by both the AI response and TTS playback. Separate from the app UI language (menus/labels).",
+        "languageAuto": "Follow app language",
         "languageUnsupportedLocal": "Local TTS (Supertonic) doesn't support this language — English is used instead. Switch to Premium voices for more languages.",
         "engines": {
           "qwen3": "Qwen3-TTS",
