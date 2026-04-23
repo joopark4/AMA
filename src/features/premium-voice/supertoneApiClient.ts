@@ -245,11 +245,10 @@ export class SupertoneApiClient implements TTSClient {
   }
 
   async isAvailable(): Promise<boolean> {
+    // 임시: 구독 게이트 해제 — 로그인 상태이면 프리미엄 TTS를 사용 가능으로 간주.
+    // 정식 구독 복원 시 `isPremium` 조건을 되살리면 된다.
     const { isAuthenticated } = useAuthStore.getState();
-    if (!isAuthenticated) return false;
-
-    const { isPremium } = usePremiumStore.getState();
-    return isPremium;
+    return isAuthenticated;
   }
 }
 
