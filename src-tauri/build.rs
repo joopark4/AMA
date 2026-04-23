@@ -85,32 +85,47 @@ fn main() {
     }
 }
 
-/// vrm_key.bin 파일 내용 (Rust 배열 리터럴)을 파싱하여 [u8; 16]으로 변환
+/// vrm_key.bin 파일 내용 (Rust 배열 리터럴)을 파싱하여 [u8; 16]으로 변환.
 /// 파일 형식 예: [0x4D, 0x50, 0x41, 0x49, // comment ...]
+///
+/// 파싱 실패 시 어떤 토큰에서 터졌는지 패닉 메시지에 포함시켜 원인 추적을 돕는다.
 fn eval_key_array(content: &str) -> [u8; 16] {
-    // 1) 줄 단위로 코멘트 제거 후 합침
-    let stripped: String = content
+    // 1) 줄 단위로 `//` 주석 제거 후 공백 구분 단일 문자열로 합침.
+    let cleaned: String = content
         .lines()
-        .map(|line| {
-            if let Some(idx) = line.find("//") { &line[..idx] } else { line }
+        .map(|line| match line.find("//") {
+            Some(idx) => &line[..idx],
+            None => line,
         })
         .collect::<Vec<_>>()
         .join(" ");
-    // 2) 괄호 제거 후 쉼표 분리
-    let inner = stripped.trim().trim_start_matches('[').trim_end_matches(']');
-    let bytes: Vec<u8> = inner
-        .split(',')
-        .filter_map(|s| {
-            let s = s.trim();
-            if s.is_empty() { return None; }
-            if s.starts_with("0x") || s.starts_with("0X") {
-                Some(u8::from_str_radix(&s[2..], 16).expect("Invalid hex byte in vrm_key.bin"))
-            } else {
-                Some(s.parse::<u8>().expect("Invalid byte in vrm_key.bin"))
-            }
-        })
-        .collect();
-    assert_eq!(bytes.len(), 16, "vrm_key.bin must contain exactly 16 bytes");
+
+    // 2) 대괄호/쉼표/공백 등 경계 문자를 구분자로 삼아 토큰을 추출한다.
+    let mut bytes: Vec<u8> = Vec::with_capacity(16);
+    for token in cleaned.split(|c: char| c == ',' || c == '[' || c == ']' || c.is_whitespace()) {
+        let t = token.trim();
+        if t.is_empty() {
+            continue;
+        }
+        let value = if let Some(rest) = t.strip_prefix("0x").or_else(|| t.strip_prefix("0X")) {
+            u8::from_str_radix(rest, 16).unwrap_or_else(|e| {
+                panic!("vrm_key.bin hex parse failed: token='{}' err={:?}", t, e);
+            })
+        } else {
+            t.parse::<u8>().unwrap_or_else(|e| {
+                panic!("vrm_key.bin decimal parse failed: token='{}' err={:?}", t, e);
+            })
+        };
+        bytes.push(value);
+    }
+
+    assert_eq!(
+        bytes.len(),
+        16,
+        "vrm_key.bin must contain exactly 16 bytes (got {}): {:?}",
+        bytes.len(),
+        bytes
+    );
     let mut arr = [0u8; 16];
     arr.copy_from_slice(&bytes);
     arr
