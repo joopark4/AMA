@@ -266,20 +266,27 @@ export default function CharacterSettings() {
           {t('settings.character.emotionalTendency')}
         </label>
         <div className="flex flex-wrap gap-2">
-          {(['expressive', 'reserved', 'tsundere', 'balanced'] as EmotionalTendency[]).map((tendency) => (
-            <button
-              key={tendency}
-              onClick={() => setCharacter({ personality: { ...character.personality, emotionalTendency: tendency } })}
-              className="px-3 py-1 text-xs font-medium rounded-full transition-colors"
-              style={
-                character.personality.emotionalTendency === tendency
-                  ? { background: 'var(--accent)', color: 'white' }
-                  : { background: 'var(--surface-1)', color: 'var(--ink-2)' }
-              }
-            >
-              {t(`settings.character.tendency${tendency.charAt(0).toUpperCase() + tendency.slice(1)}`)}
-            </button>
-          ))}
+          {(['expressive', 'reserved', 'tsundere', 'balanced'] as EmotionalTendency[]).map((tendency) => {
+            const active = character.personality.emotionalTendency === tendency;
+            return (
+              <button
+                key={tendency}
+                onClick={() => setCharacter({ personality: { ...character.personality, emotionalTendency: tendency } })}
+                className="px-3 py-1 text-xs font-medium rounded-full transition-colors"
+                style={
+                  active
+                    ? { background: 'var(--accent)', color: 'white' }
+                    : {
+                        background: 'oklch(1 0 0 / 0.7)',
+                        color: 'var(--ink-2)',
+                        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                      }
+                }
+              >
+                {t(`settings.character.tendency${tendency.charAt(0).toUpperCase() + tendency.slice(1)}`)}
+              </button>
+            );
+          })}
         </div>
       </div>
 
