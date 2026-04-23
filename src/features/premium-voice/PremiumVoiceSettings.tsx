@@ -35,7 +35,8 @@ export default function PremiumVoiceSettings() {
   const { isAuthenticated } = useAuthStore();
   const { settings, setTTSSettings } = useSettingsStore();
   const {
-    isPremium, isAdmin, isChecking,
+    // 임시로 구독 게이트 해제 — isPremium은 현재 UI 분기에 사용하지 않음.
+    isAdmin, isChecking,
     voices, isLoadingVoices,
     quota, isQuotaExceeded, apiCredits,
     usageSummary, usageDaily, isLoadingUsage,
@@ -67,14 +68,15 @@ export default function PremiumVoiceSettings() {
     }
   }, [isAuthenticated, checkPremiumStatus]);
 
-  // 프리미엄 활성 시 음성 목록 + 사용량 로드
+  // 임시: 구독 여부와 무관하게 로그인된 사용자 전원에게 프리미엄 기능을 개방한다.
+  // 정식 구독 게이트 복원 시 조건을 `isPremium`으로 되돌리면 됨.
   useEffect(() => {
-    if (isPremium) {
+    if (isAuthenticated) {
       fetchVoices();
       fetchUsageSummary();
       fetchUsageDaily();
     }
-  }, [isPremium, fetchVoices, fetchUsageSummary, fetchUsageDaily]);
+  }, [isAuthenticated, fetchVoices, fetchUsageSummary, fetchUsageDaily]);
 
   /**
    * 프리미엄 엔진에서 voiceId가 비어있으면 기본 음성으로 **Bella**를 자동 지정한다.
@@ -297,34 +299,14 @@ export default function PremiumVoiceSettings() {
     );
   }
 
-  // 비프리미엄
-  if (!isPremium) {
-    return (
-      <div className="text-center py-6">
-        <div
-          className="inline-block"
-          style={{
-            padding: '4px 10px',
-            background: 'oklch(1 0 0 / 0.7)',
-            boxShadow: 'inset 0 0 0 1px var(--hairline)',
-            color: 'var(--ink-2)',
-            borderRadius: 99,
-            fontSize: 11,
-            fontWeight: 600,
-            marginBottom: 10,
-          }}
-        >
-          {t('settings.premium.badge')}
-        </div>
-        <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
-          {t('settings.premium.locked')}
-        </div>
-        <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
-          {t('settings.premium.lockedDesc')}
-        </div>
-      </div>
-    );
-  }
+  // 임시: 구독 게이트 해제 — 비프리미엄(무료) 로그인 사용자도 프리미엄 UI를 이용하도록
+  // `if (!isPremium)` 잠금 뷰를 잠시 비활성화. 정식 구독 복원 시 아래 블록을 되살리면 됨.
+  //
+  // if (!isPremium) {
+  //   return (
+  //     <div className="text-center py-6">…잠금 안내…</div>
+  //   );
+  // }
 
   return (
     <div>
