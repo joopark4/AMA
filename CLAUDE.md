@@ -203,7 +203,13 @@ const { t } = useTranslation();
 - 프리미엄 구독 사용자 전용 클라우드 TTS
 - 앱 → `edgeFunctionClient` → Supabase Edge Function → Supertone API
 - Edge Functions: `supertone-tts` (TTS 프록시), `supertone-voices` (음성 목록), `supertone-usage` (사용량)
-- `premiumStore` (Zustand): 프리미엄 상태/음성 목록/할당량/사용량 관리
+- **Supertone 3-API 통합**: `supertone-usage`가 `/v1/credits` + `/v1/usage` + `/v1/voice-usage` 세 API를 통합 호출
+  - 권한별 응답 필터: `apiCredits`(전 사용자) / `apiVoiceUsage`(관리자) / `tts_usage aggregateAllUsers`(관리자)
+  - `ApiStatus` 코드(`ok/unauthorized/rate_limit/server_error/network/no_key/skipped`)로 부분 실패 보존
+  - 스테이지 라벨 에러 응답(`auth.getUser` / `profile.query` / `tts_usage.summary` / ...)으로 관찰성 확보
+  - UI 분기: 관리자는 잔고 + 7일 그래프 + voice-usage TOP 8, 비관리자는 진행 바 + `% 남음`만
+- **ES256 JWT 대응**: 7개 Edge Function(`supertone-usage/voices/tts` + `delete-account` + `admin-stats/subscriptions/users`)을 `--no-verify-jwt`로 배포, 함수 내부에서 `auth.getUser()`로 검증
+- `premiumStore` (Zustand): 프리미엄 상태/음성 목록/할당량/3-API 사용량 관리 (`apiCredits`/`apiVoiceUsage`/`apiStatus`)
 - `supertoneApiClient`: 텍스트 300자 청크 분할 + WAV 결합 + 할당량 업데이트
 - 구독 플랜: free(0) / basic(300크레딧, 5분) / pro(1200크레딧, 20분)
 - 할당량 소진 시 로컬 Supertonic 자동 폴백 + 토스트 알림
@@ -235,9 +241,27 @@ const { t } = useTranslation();
 - CLI 설치/인증 상태 표시 + 설치/로그인 가이드
 - **모듈화**: `src/features/codex/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수)
 
+### Gemini CLI(ACP) 연동 (develop PR 대기 · `feature/gemini-cli-integration`)
+- `gemini --experimental-acp` 자식 프로세스 + JSON-RPC 2.0 over stdio로 Codex와 동일 패턴
+- provider 키: `gemini_cli` (기존 클라우드 `gemini`와 별개)
+- 설정: `settings.geminiCli` (`model`/`approvalMode`/`workingDir`/`authMethod`), persist v22
+- ACP 메서드: `initialize(protocolVersion:1)` / `session/new` / `session/prompt` / `session/cancel`(notification)
+- 스트리밍: `session/update.sessionUpdate === "agent_message_chunk"` → `gemini-cli-token` 이벤트
+- 턴 완료: `session/prompt` 응답 `stopReason`으로 판정 → `gemini-cli-complete` 이벤트
+- 승인 모드 동기화: `session/new` 직후 + UI 변경 시 `session/set_mode` 호출 (`default/autoEdit/yolo/plan`)
+- **클라이언트 메서드 실구현**:
+  - `fs/read_text_file`/`fs/write_text_file`: `settings.geminiCli.workingDir` canonical prefix 내부만 허용 (라인/한도 파라미터 지원)
+  - `session/request_permission`: `approvalMode` 사전 정책식 자동 응답 (Codex `approvalPolicy`와 동일 철학, UI 승인 모달 없음). `yolo`/`auto_edit`는 첫 옵션 선택, `default`/`plan`은 거부(cancelled)
+  - `terminal/create`/`output`/`wait_for_exit`/`kill`/`release`: `yolo`에서만 허용. stdout+stderr 누적 버퍼 + try_wait 폴링 + start_kill + workingDir 내부 cwd 검증
+- Vision: `gemini_cli_send_message(image_path)` + base64 + ACP `image` ContentBlock, `geminiCliClient.chatWithLocalImage()`
+- Screen Watch provider에 포함 (파일 경로 전달 경로로 Codex와 통합)
+- 설치/인증 상태 표시 + workingDir/승인 모드(default/auto_edit/yolo/plan) 설정 UI
+- **모듈화**: `src/features/gemini-cli/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수) + Rust `src-tauri/src/commands/gemini_cli.rs`
+- 상세: [docs/ai/gemini-cli-integration.md](docs/ai/gemini-cli-integration.md)
+
 ### 화면 관찰 (Screen Watch, v1.5.0)
 - 주기적 화면 캡처 + Vision LLM 분석으로 아바타가 능동 발화
-- Provider: Claude / OpenAI / Gemini / Codex (Ollama·LocalAI·Claude Code·비macOS 제외)
+- Provider: Claude / OpenAI / Gemini / Codex / Gemini CLI (Ollama·LocalAI·Claude Code·비macOS 제외)
 - 캡처 대상: fullscreen / main-monitor / specific-monitor / active-window / specific-window
 - 2단 필터: Rust 픽셀 diff(비용 0) + LLM `[SKIP]` 규칙
 - OS 권한 preflight: `CGPreflightScreenCaptureAccess` FFI
@@ -351,6 +375,7 @@ AMA/
 │   ├── features/
 │   │   ├── channels/      # Claude Code Channels 독립 모듈 (클라이언트/훅/UI/상수)
 │   │   ├── codex/         # OpenAI Codex 연동 모듈 (codexClient/useCodexConnection/CodexSettings)
+│   │   ├── gemini-cli/    # Gemini CLI(ACP) 연동 모듈 (geminiCliClient/useGeminiCliConnection/GeminiCliSettings)
 │   │   └── premium-voice/ # 프리미엄 음성 모듈 (premiumStore/supertoneApiClient/UI)
 │   ├── hooks/             # useAutoUpdate, useConversation, useVRM 등
 │   ├── services/

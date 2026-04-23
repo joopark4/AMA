@@ -249,19 +249,8 @@ export default function MCPSettings() {
         </SectionHint>
       </Field>
 
-      {/* Step 2 */}
+      {/* Step 2 — AMA에서 활성화 (토글 먼저 켜면 자동 설치됨) */}
       <Field label={t('settings.mcp.step2Title')}>
-        <CopyableCommand command="claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions" />
-        <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 4 }}>
-          {t('settings.mcp.step2Desc')}
-        </div>
-        <div style={{ fontSize: 11.5, color: 'var(--warn)', marginTop: 4 }}>
-          {t('settings.mcp.step2Caution')}
-        </div>
-      </Field>
-
-      {/* Step 3 */}
-      <Field label={t('settings.mcp.step3Title')}>
         <Row
           label={
             <div>
@@ -280,6 +269,17 @@ export default function MCPSettings() {
             onChange={(on) => void handleToggle(on)}
           />
         </Row>
+      </Field>
+
+      {/* Step 3 — 터미널에서 Claude Code 실행 */}
+      <Field label={t('settings.mcp.step3Title')}>
+        <CopyableCommand command="claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions" />
+        <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 4 }}>
+          {t('settings.mcp.step3Desc')}
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--warn)', marginTop: 4 }}>
+          {t('settings.mcp.step3Caution')}
+        </div>
       </Field>
 
       {/* 상태 표시 */}

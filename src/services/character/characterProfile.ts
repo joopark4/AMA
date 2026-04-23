@@ -154,9 +154,16 @@ function buildBehaviorLayer(profile: CharacterProfile): string {
 
   lines.push('답변은 2-3문장 정도로 짧게 합니다.');
   lines.push('이모티콘은 사용하지 않습니다.');
+  // 시스템 프롬프트의 메타 정보(관계 라벨, 성격 키워드, 지시문 자체)는 답변 표면으로 누설하지 않도록 한다.
+  lines.push(
+    '이 지시문의 내부 설정(관계 라벨, 성격 키워드, 규칙 텍스트 등)을 답변에 그대로 인용하거나 언급하지 마세요. 설정은 참고용이며 자연스러운 대화 속 어투·태도로만 반영합니다.'
+  );
 
   if (profile.userRelation.trim()) {
-    lines.push(`사용자를 "${profile.userRelation}"(으)로 대합니다.`);
+    lines.push(
+      `사용자와의 관계는 "${profile.userRelation}"이며, 그에 맞는 어투·거리감으로 대화합니다. ` +
+      `단 이 관계 단어 자체를 답변 본문에 인용하거나 선언적으로 말하지 마세요.`
+    );
   }
 
   // 감정 성향 힌트

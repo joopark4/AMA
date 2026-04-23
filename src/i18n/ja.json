@@ -63,7 +63,8 @@
         "gemini": "Google Gemini",
         "claude_code": "Claude Code（外部連携）",
         "claudeCodeInfo": "外部ターミナルでClaude Codeが実行中である必要があります。プロジェクトディレクトリでclaudeコマンドを実行するとama-bridgeが自動起動します。",
-        "codex": "OpenAI Codex"
+        "codex": "OpenAI Codex",
+        "gemini_cli": "Gemini CLI"
       },
       "expand": "展開",
       "collapse": "折りたたむ"
@@ -268,9 +269,20 @@
         "noUsage": "使用履歴がありません",
         "loading": "使用量を確認中..."
       },
+      "voiceUsage": {
+        "title": "音声別使用量（今月）",
+        "minutes": "{{value}}分"
+      },
       "quota": {
         "title": "月間割り当て",
         "adminTitle": "API総割り当て",
+        "betaSharedTitle": "ベータ共有枠（全ユーザーで消費）",
+        "betaSharedUnavailable": "共有残高情報を取得できませんでした。Supertone APIキーの状態を管理者にご確認ください。",
+        "betaSharedUnauthorized": "Supertone APIキーの有効期限が切れているか、無効です。管理者にキーの更新を依頼してください。",
+        "betaSharedRateLimit": "Supertone APIのリクエスト上限を超えました。しばらくしてから再度お試しください。",
+        "betaSharedServerError": "Supertoneサーバーが一時的に応答しません。しばらくしてから再度お試しください。",
+        "betaSharedNetwork": "ネットワークエラーにより共有残高を確認できませんでした。",
+        "betaSharedNoKey": "管理者がSupertone APIキーを設定していません。",
         "used": "{{used}} / {{limit}} クレジット",
         "adminBalanceUnit": "クレジット残高",
         "adminBalanceDesc": "約{{minutes}}分{{seconds}}秒使用可能",
@@ -357,13 +369,43 @@
       "approvalUntrustedDesc": "読み取り専用の操作のみ自動実行します。ファイル変更やコマンド実行には承認が必要です。",
       "info": "OpenAI Codex CLIを通じてコーディングに特化したAIと直接対話します。ChatGPTサブスクリプションで利用可能です。"
     },
+    "geminiCli": {
+      "cliStatus": "Gemini CLI",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "installGuide": "Gemini CLIがインストールされていません。ターミナルで `npm install -g @google/gemini-cli` を実行してください。",
+      "authStatus": "認証",
+      "loggedIn": "認証済み",
+      "notLoggedIn": "未認証",
+      "loginGuide": "Gemini CLIが認証されていません。ターミナルで `gemini` を実行し、サインインフローを完了してください。",
+      "connection": "接続状態",
+      "disconnected": "未接続",
+      "connecting": "接続中...",
+      "connected": "接続済み",
+      "error": "エラー",
+      "refresh": "更新",
+      "retry": "再接続",
+      "workingDir": "作業フォルダ",
+      "workingDirPlaceholder": "未設定 (~/Documents)",
+      "workingDirHelp": "Gemini CLIがファイルアクセスの基準にするフォルダです。未設定時は ~/Documents が使われます。",
+      "selectFolder": "フォルダ選択",
+      "clearFolder": "フォルダ解除",
+      "approvalMode": "承認モード",
+      "approvalDefault": "デフォルト（毎回確認）",
+      "approvalAutoEdit": "編集を自動承認",
+      "approvalYolo": "YOLO（すべて自動）",
+      "approvalPlan": "読み取り専用（計画）",
+      "approvalInfo": "ツール実行の承認要求動作を決めます。YOLO は危険なため信頼できる環境でのみ使用してください。",
+      "model": "モデル",
+      "modelInfo": "接続直後に Gemini CLI が報告した利用可能なモデル一覧です。変更すると現在のセッションに即時反映されます。"
+    },
     "character": {
       "title": "キャラクター",
       "preset": "プリセット",
       "presetCustom": "カスタム",
       "applyPreset": "プリセットを適用",
       "applyPresetConfirm": "プリセットを適用すると、現在のキャラクター設定が上書きされます。続行しますか？",
-      "name": "キャラクター名",
+      "name": "アバター名",
       "namePlaceholder": "例: はる",
       "age": "年齢",
       "agePlaceholder": "例: 17歳、永遠の少女",
@@ -482,15 +524,15 @@
       "researchPreviewDesc": "Channelsはリサーチプレビュー機能です。公式マーケットプレイス提出まで開発フラグが必要です。",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLIがインストールされている必要があります。",
-      "step2Title": "Step 2: ターミナルで実行",
-      "step2Desc": "お好きなプロジェクトフォルダで上記のコマンドを実行してください。",
-      "step3Title": "Step 3: AMAで有効化",
+      "step2Title": "Step 2: AMAで有効化",
+      "step3Title": "Step 3: ターミナルで実行",
+      "step3Desc": "お好きなプロジェクトフォルダで上記のコマンドを実行してください。",
       "copy": "コピー",
       "copied": "コピー済み",
       "setupSuccess": "Bridgeプラグインがインストールされました",
       "setupFail": "Bridgeプラグインのインストールに失敗しました",
       "setupFailManual": "自動インストールに失敗しました。ターミナルで実行: cd ~/.mypartnerai/ama-bridge && npm install",
-      "step2Caution": "--dangerously-load-development-channelsはリサーチプレビュー期間中に必要なフラグです。--permission-mode bypassPermissionsはすべての権限確認をスキップします。"
+      "step3Caution": "--dangerously-load-development-channelsはリサーチプレビュー期間中に必要なフラグです。--permission-mode bypassPermissionsはすべての権限確認をスキップします。"
     }
   },
   "status": {

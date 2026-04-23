@@ -78,17 +78,19 @@ Deno.serve(async (req) => {
 
     const isAdmin = profile?.is_admin === true;
 
-    // 관리자는 프리미엄/할당량 체크 건너뛰기
-    if (!isAdmin && !profile?.is_premium) {
-      return new Response(JSON.stringify({ error: 'premium_required', message: 'Premium subscription required' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // [BETA] 구독 체크·개인 할당량 체크 임시 해제 — 로그인한 사용자 전원이 공용 Supertone
+    // 크레딧 잔고(admin-stats에서 관리)에서 차감하며 사용한다. 정식 구독 복원 시 아래
+    // 두 블록을 되살리면 된다.
+    //
+    // // 관리자는 프리미엄/할당량 체크 건너뛰기
+    // if (!isAdmin && !profile?.is_premium) {
+    //   return new Response(JSON.stringify({ error: 'premium_required', ... }), { status: 403 });
+    // }
 
     let usedCredits = 0;
     let creditLimit = 0;
 
+    // usedCredits/creditLimit는 X-Quota-* 응답 헤더 채우기 용도로만 계산 (차단은 하지 않음).
     if (!isAdmin) {
       const { data: plan } = await supabaseUser
         .from('subscription_plans')
@@ -98,7 +100,6 @@ Deno.serve(async (req) => {
 
       creditLimit = profile.monthly_credit_limit_override ?? plan?.monthly_credit_limit ?? 0;
 
-      // Check monthly usage
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const { data: usageData } = await supabaseUser
@@ -109,18 +110,8 @@ Deno.serve(async (req) => {
 
       usedCredits = usageData?.reduce((sum: number, r: { credits_used: number | null }) => sum + (r.credits_used || 0), 0) ?? 0;
 
-      if (usedCredits >= creditLimit) {
-        return new Response(JSON.stringify({
-          error: 'quota_exceeded',
-          message: 'Monthly credit limit exceeded',
-          used: usedCredits,
-          limit: creditLimit,
-          plan: profile.plan_id,
-        }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      // [BETA] 개인 할당량 초과 차단 해제.
+      // if (usedCredits >= creditLimit) { return 429 quota_exceeded; }
     }
 
     // Call Supertone API

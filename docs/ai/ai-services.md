@@ -13,6 +13,7 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 | Gemini | 클라우드 | `apiKey` + `model` |
 | Claude Code | 외부 연동 | Channels 토글 ON (자동 전환) |
 | Codex | 외부 연동 | Codex CLI 설치 + 인증 |
+| Gemini CLI | 외부 연동 | Gemini CLI 설치 + 인증 (ACP) |
 
 기본값: `ollama / deepseek-v3 / http://localhost:11434`
 
@@ -31,6 +32,7 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 - `src/services/ai/geminiClient.ts`
 - `src/services/ai/screenAnalyzer.ts`
 - `src/features/codex/codexClient.ts` — OpenAI Codex LLMClient 구현
+- `src/features/gemini-cli/geminiCliClient.ts` — Gemini CLI(ACP) LLMClient 구현
 - `src/features/channels/` — Claude Code Channels 연동
 - `src/components/settings/LLMSettings.tsx`
 
@@ -55,8 +57,9 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 - 공급 경로:
   - Claude/OpenAI/Gemini: `chatWithVision` + Base64 inline (JPEG mimeType)
   - Codex: `codex_send_message(imagePath)` → `LocalImageUserInput` input item
+  - Gemini CLI: `gemini_cli_send_message(imagePath)` → ACP `image` ContentBlock (base64 + mimeType)
 - Vision client 3종에 `ChatOptions.mimeType` 파라미터 추가 (image/png · image/jpeg · image/webp)
-- Codex 경로는 `~/.mypartnerai/screenshots/screen_watch.jpg` 절대경로 저장 후 finally에서 즉시 삭제
+- Codex / Gemini CLI 경로는 `~/.mypartnerai/screenshots/screen_watch.jpg` 절대경로 저장 후 finally에서 즉시 삭제
 - 자세한 파이프라인: [화면 관찰 문서](../features/screen-watch.md)
 
 ## 설정 UI 동작

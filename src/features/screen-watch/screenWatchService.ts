@@ -18,6 +18,7 @@ import { ClaudeClient } from '../../services/ai/claudeClient';
 import { OpenAIClient } from '../../services/ai/openaiClient';
 import { GeminiClient } from '../../services/ai/geminiClient';
 import { codexClient } from '../codex';
+import { geminiCliClient } from '../gemini-cli';
 import { buildSystemPrompt, resolveResponseLanguage } from '../../hooks/useConversation';
 
 type RustCaptureResult =
@@ -37,7 +38,16 @@ const RECENT_OBSERVATIONS_LIMIT = 3;
 // - claude / openai / gemini: chatWithVision (Base64 inline)
 // - codex: codex_send_message(imagePath) — Codex app-server 프로토콜의 LocalImageUserInput 사용
 // Claude Code는 bridge/plugin의 이미지 입력 계약이 확정될 때까지 제외.
-const VISION_SUPPORTED_PROVIDERS = new Set(['claude', 'openai', 'gemini', 'codex']);
+const VISION_SUPPORTED_PROVIDERS = new Set([
+  'claude',
+  'openai',
+  'gemini',
+  'codex',
+  'gemini_cli',
+]);
+
+/** 파일 경로로 이미지 전달 경로 (capture_screen_for_watch의 saveDir 사용). */
+const FILE_PATH_VISION_PROVIDERS = new Set(['codex', 'gemini_cli']);
 
 /**
  * 현재 런타임이 macOS인지 감지.
@@ -146,23 +156,23 @@ export class ScreenWatchService {
       return { kind: 'error', reason: 'llm', detail: 'vision not supported' };
     }
 
-    // Codex는 파일 경로로 이미지 전달 — 앱 전용 저장 디렉토리 미리 확보.
-    let codexSaveDir: string | null = null;
-    if (provider === 'codex') {
+    // 파일 경로로 이미지 전달이 필요한 provider(Codex/Gemini CLI)는 저장 디렉토리 미리 확보.
+    let fileSaveDir: string | null = null;
+    if (FILE_PATH_VISION_PROVIDERS.has(provider)) {
       try {
-        codexSaveDir = await invoke<string>('get_screen_watch_save_dir');
+        fileSaveDir = await invoke<string>('get_screen_watch_save_dir');
       } catch (err) {
         return { kind: 'error', reason: 'capture', detail: `save dir: ${String(err)}` };
       }
     }
 
-    // 캡처 (API는 Base64 inline, Codex는 저장된 파일 경로 회수)
+    // 캡처 (일반 API는 Base64 inline, Codex/Gemini CLI는 저장된 파일 경로 회수)
     let capture: RustCaptureResult;
     try {
       capture = await invoke<RustCaptureResult>('capture_screen_for_watch', {
         target: options.captureTarget,
-        saveDir: codexSaveDir,
-        saveFilename: codexSaveDir ? 'screen_watch.jpg' : null,
+        saveDir: fileSaveDir,
+        saveFilename: fileSaveDir ? 'screen_watch.jpg' : null,
       });
     } catch (err) {
       return { kind: 'error', reason: 'capture', detail: String(err) };
@@ -191,6 +201,16 @@ export class ScreenWatchService {
           return { kind: 'error', reason: 'capture', detail: 'codex save path missing' };
         }
         const res = await codexClient.chatWithLocalImage(
+          [{ role: 'user', content: userPrompt }],
+          savedPath,
+          { systemPrompt, temperature: 0.7, maxTokens: 200 }
+        );
+        responseText = res.content;
+      } else if (provider === 'gemini_cli') {
+        if (!savedPath) {
+          return { kind: 'error', reason: 'capture', detail: 'gemini_cli save path missing' };
+        }
+        const res = await geminiCliClient.chatWithLocalImage(
           [{ role: 'user', content: userPrompt }],
           savedPath,
           { systemPrompt, temperature: 0.7, maxTokens: 200 }

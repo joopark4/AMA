@@ -16,11 +16,11 @@ export interface DependencyIssue {
 /**
  * `model` 필드가 사용자 선택 의미를 가지는 provider 집합.
  *
- * `claude_code`는 외부 Claude Code 세션이, `codex`는 Codex CLI(app-server)가
+ * `claude_code`는 외부 Claude Code 세션이, `codex`/`gemini_cli`는 각 CLI가
  * 자체적으로 모델을 결정하므로 `settings.llm.model`이 비어 있어도 이슈가 아니다.
- * 이 두 provider는 모델 미설정 가이드 흐름에서 제외한다.
+ * 이 provider들은 모델 미설정 가이드 흐름에서 제외한다.
  */
-export type ModelSelectableProvider = Exclude<LLMProvider, 'claude_code' | 'codex'>;
+export type ModelSelectableProvider = Exclude<LLMProvider, 'claude_code' | 'codex' | 'gemini_cli'>;
 
 export const PROVIDER_LABELS: Record<LLMProvider, string> = {
   ollama: 'Ollama',
@@ -30,6 +30,7 @@ export const PROVIDER_LABELS: Record<LLMProvider, string> = {
   gemini: 'Gemini',
   claude_code: 'Claude Code',
   codex: 'Codex',
+  gemini_cli: 'Gemini CLI',
 };
 
 export const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string> = {
@@ -45,7 +46,7 @@ export const CLOUD_DEFAULT_MODELS: Record<'claude' | 'openai' | 'gemini', string
 export function isModelSelectableProvider(
   provider: LLMProvider
 ): provider is ModelSelectableProvider {
-  return provider !== 'claude_code' && provider !== 'codex';
+  return provider !== 'claude_code' && provider !== 'codex' && provider !== 'gemini_cli';
 }
 
 /** i18n returnObjects helper (string[] 안전 캐스트) */

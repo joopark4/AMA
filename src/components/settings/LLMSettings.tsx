@@ -8,6 +8,11 @@ import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from '../../features/channels';
 import { CODEX_PROVIDER, CODEX_DEFAULT_MODEL, CodexSettings } from '../../features/codex';
+import {
+  GEMINI_CLI_PROVIDER,
+  GEMINI_CLI_DEFAULT_MODEL,
+  GeminiCliSettings,
+} from '../../features/gemini-cli';
 import { isVisionAvailable } from '../../features/screen-watch';
 import { Field, Pill, Select, TextInput } from './forms';
 
@@ -484,6 +489,7 @@ export default function LLMSettings() {
   const isLocalProvider = currentProvider === 'ollama' || currentProvider === 'localai';
   const isClaudeCode = currentProvider === CLAUDE_CODE_PROVIDER;
   const isCodex = currentProvider === CODEX_PROVIDER;
+  const isGeminiCli = currentProvider === GEMINI_CLI_PROVIDER;
 
   // Load local provider models (Ollama / LocalAI)
   useEffect(() => {
@@ -582,6 +588,7 @@ export default function LLMSettings() {
   const getModelsForProvider = (provider: LLMProvider): string[] => {
     if (provider === CLAUDE_CODE_PROVIDER) return [BRIDGE_DEFAULT_MODEL];
     if (provider === CODEX_PROVIDER) return [CODEX_DEFAULT_MODEL];
+    if (provider === GEMINI_CLI_PROVIDER) return [GEMINI_CLI_DEFAULT_MODEL];
     if (provider === 'ollama' || provider === 'localai') {
       return localModels;
     }
@@ -612,6 +619,7 @@ export default function LLMSettings() {
     { value: 'gemini', label: t('settings.llm.providers.gemini') },
     { value: CLAUDE_CODE_PROVIDER, label: t('settings.llm.providers.claude_code') },
     { value: CODEX_PROVIDER, label: t('settings.llm.providers.codex') },
+    { value: GEMINI_CLI_PROVIDER, label: t('settings.llm.providers.gemini_cli') },
   ];
 
   const handleProviderChange = (provider: LLMProvider) => {
@@ -620,9 +628,11 @@ export default function LLMSettings() {
       ? [BRIDGE_DEFAULT_MODEL]
       : provider === CODEX_PROVIDER
         ? [CODEX_DEFAULT_MODEL]
-        : provider === 'ollama' || provider === 'localai'
-          ? localModels
-          : buildCloudCandidateModels(provider, '', cloudModels[provider]);
+        : provider === GEMINI_CLI_PROVIDER
+          ? [GEMINI_CLI_DEFAULT_MODEL]
+          : provider === 'ollama' || provider === 'localai'
+            ? localModels
+            : buildCloudCandidateModels(provider, '', cloudModels[provider]);
     const endpoint = getDefaultEndpoint(provider);
     setLLMSettings({
       provider,
@@ -666,36 +676,41 @@ export default function LLMSettings() {
         </div>
       </Field>
 
-      {/* Model — Select */}
-      <Field
-        label={t('settings.llm.model')}
-        hint={isLoadingModels ? 'Loading…' : undefined}
-      >
-        {visibleModels.length > 0 ? (
-          <Select
-            value={settings.llm.model}
-            disabled={mcpLocked}
-            onChange={(value) => setLLMSettings({ model: value })}
-            options={visibleModels.map((model) => {
-              const status = modelStatuses[model] || 'unknown';
-              const shouldAnnotate = isCloudProvider;
-              return {
-                value: model,
-                label: shouldAnnotate
-                  ? `${model} (${getModelStatusLabel(status)})`
-                  : model,
-                disabled: isCloudProvider && status === 'unavailable',
-              };
-            })}
-          />
-        ) : (
-          <InfoCard tone="warn">
-            {isLocalProvider
-              ? 'No models found. Run: ollama pull <model-name>'
-              : 'No models available'}
-          </InfoCard>
-        )}
-      </Field>
+      {/* Model — Select.
+          Codex/Gemini CLI는 각 하위 섹션(CodexSettings/GeminiCliSettings)에서 자체
+          모델 목록·선택 UI를 제공하므로 상위 공용 모델 Select는 숨긴다. provider를
+          선택한 것 자체가 이미 AI 모델 경로를 결정한다는 사용자 멘탈 모델을 따른다. */}
+      {!isCodex && !isGeminiCli && (
+        <Field
+          label={t('settings.llm.model')}
+          hint={isLoadingModels ? 'Loading…' : undefined}
+        >
+          {visibleModels.length > 0 ? (
+            <Select
+              value={settings.llm.model}
+              disabled={mcpLocked}
+              onChange={(value) => setLLMSettings({ model: value })}
+              options={visibleModels.map((model) => {
+                const status = modelStatuses[model] || 'unknown';
+                const shouldAnnotate = isCloudProvider;
+                return {
+                  value: model,
+                  label: shouldAnnotate
+                    ? `${model} (${getModelStatusLabel(status)})`
+                    : model,
+                  disabled: isCloudProvider && status === 'unavailable',
+                };
+              })}
+            />
+          ) : (
+            <InfoCard tone="warn">
+              {isLocalProvider
+                ? 'No models found. Run: ollama pull <model-name>'
+                : 'No models available'}
+            </InfoCard>
+          )}
+        </Field>
+      )}
 
       {/* Cloud 모델 점검 안내 */}
       {isCloudProvider && (
@@ -766,6 +781,13 @@ export default function LLMSettings() {
       {isCodex && (
         <div style={{ paddingTop: 8 }}>
           <CodexSettings />
+        </div>
+      )}
+
+      {/* Gemini CLI(ACP) 하위 설정 */}
+      {isGeminiCli && (
+        <div style={{ paddingTop: 8 }}>
+          <GeminiCliSettings />
         </div>
       )}
     </div>
