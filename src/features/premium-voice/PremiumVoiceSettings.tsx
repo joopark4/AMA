@@ -808,8 +808,9 @@ function UsageCard({
             </div>
           )}
 
-          {/* 이번 달 요약 */}
-          {usageSummary && (
+          {/* 이번 달 요약 + 최근 7일 차트 — 관리자에게만 노출.
+              일반 프리미엄 사용자는 프로그래스 바/남은 % 정보만 보이도록 제한. */}
+          {isAdmin && usageSummary && (
             <div style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
               <div style={{ fontWeight: 600, marginBottom: 2 }}>
                 {isAdmin
@@ -826,8 +827,8 @@ function UsageCard({
             </div>
           )}
 
-          {/* 최근 7일 차트 */}
-          {usageDaily && usageDaily.length > 0 && (
+          {/* 최근 7일 차트 — 관리자에게만 노출 */}
+          {isAdmin && usageDaily && usageDaily.length > 0 && (
             <div>
               <div
                 style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 6 }}
@@ -889,7 +890,8 @@ function UsageCard({
             </div>
           )}
 
-          {!usageSummary && !usageDaily?.length && (
+          {/* 사용 내역 없음 안내 — 관리자에게만(일반 사용자에겐 차트 자체를 숨기므로 의미 없음) */}
+          {isAdmin && !usageSummary && !usageDaily?.length && (
             <div
               className="text-center"
               style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
