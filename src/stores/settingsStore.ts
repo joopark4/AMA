@@ -17,7 +17,7 @@ import {
 import { DEFAULT_PROACTIVE_SETTINGS, type ProactiveSettings } from '../services/ai/proactiveEngine';
 import { ALL_QUICK_ACTION_IDS, type QuickActionId } from '../features/quick-actions/types';
 
-export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
+export type LLMProvider = 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex' | 'gemini_cli';
 
 // STT 엔진: whisper (로컬 whisper-cli)
 export type STTEngine = 'whisper';
@@ -149,6 +149,27 @@ export interface CodexSettings {
   approvalPolicy: CodexApprovalPolicy;
 }
 
+/**
+ * Gemini CLI ACP(Agent Client Protocol) 연동 설정.
+ *
+ * 인증 방식 3종: `oauth-personal`(Google 계정) / `gemini-api-key` / `vertex-ai`.
+ * CLI가 마지막 사용한 인증을 캐시(`~/.gemini/`)에 두고 재사용하므로, 앱에서는
+ * 기본값 `undefined`(CLI 기본 선택)로 두고 필요 시 사용자가 선택한다.
+ */
+export type GeminiCliApprovalMode = 'default' | 'auto_edit' | 'yolo' | 'plan';
+export type GeminiCliAuthMethod = 'oauth-personal' | 'gemini-api-key' | 'vertex-ai';
+
+export interface GeminiCliSettings {
+  /** Gemini 모델명. 빈 문자열이면 CLI 기본 모델 사용. */
+  model: string;
+  /** 승인 모드 (기본: `default`). `yolo`는 모든 도구 자동 승인. */
+  approvalMode: GeminiCliApprovalMode;
+  /** 작업 디렉터리(필수). 비어 있으면 런타임에 `~/Documents` 기본 적용. */
+  workingDir: string;
+  /** 인증 방식 override. `undefined`면 CLI 캐시된 기본 인증 재사용. */
+  authMethod?: GeminiCliAuthMethod;
+}
+
 export type CaptureTarget =
   | { type: 'fullscreen' }
   | { type: 'active-window' }
@@ -190,6 +211,7 @@ export interface Settings {
   /** Channels ON 전의 LLM 설정 (OFF 시 복원용) */
   mcpPreviousLlm: LLMSettings | null;
   codex: CodexSettings;
+  geminiCli: GeminiCliSettings;
   /** 캐릭터 프로필 (Phase 0) */
   character: CharacterProfile;
   /** 자발적 대화 설정 (Phase 3) */
@@ -232,6 +254,7 @@ export interface SettingsState {
   setAvatarSettings: (avatar: Partial<AvatarSettings>) => void;
   setLanguage: (language: Language) => void;
   setCodexSettings: (codex: Partial<CodexSettings>) => void;
+  setGeminiCliSettings: (geminiCli: Partial<GeminiCliSettings>) => void;
   setScreenWatchSettings: (screenWatch: Partial<ScreenWatchSettings>) => void;
   setAvatarName: (name: string) => void;
   setAvatarPersonalityPrompt: (prompt: string) => void;
@@ -449,6 +472,11 @@ const defaultSettings: Settings = {
     workingDir: '',
     approvalPolicy: 'on-request',
   },
+  geminiCli: {
+    model: 'auto-gemini-3',  // 실측 기본값(currentModelId). 연결 후 사용자 선택으로 덮어씀.
+    approvalMode: 'default',
+    workingDir: '',
+  },
   character: DEFAULT_CHARACTER_PROFILE,
   proactive: DEFAULT_PROACTIVE_SETTINGS,
   screenWatch: {
@@ -586,6 +614,29 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       ...defaultSettings.codex,
       ...(source.codex || {}),
     },
+    geminiCli: (() => {
+      const raw = (source.geminiCli || {}) as Partial<GeminiCliSettings>;
+      const approvalMode: GeminiCliApprovalMode =
+        raw.approvalMode === 'default' ||
+        raw.approvalMode === 'auto_edit' ||
+        raw.approvalMode === 'yolo' ||
+        raw.approvalMode === 'plan'
+          ? raw.approvalMode
+          : defaultSettings.geminiCli.approvalMode;
+      const authMethod: GeminiCliAuthMethod | undefined =
+        raw.authMethod === 'oauth-personal' ||
+        raw.authMethod === 'gemini-api-key' ||
+        raw.authMethod === 'vertex-ai'
+          ? raw.authMethod
+          : undefined;
+      return {
+        model: typeof raw.model === 'string' ? raw.model : defaultSettings.geminiCli.model,
+        approvalMode,
+        workingDir:
+          typeof raw.workingDir === 'string' ? raw.workingDir : defaultSettings.geminiCli.workingDir,
+        authMethod,
+      };
+    })(),
     character: normalizeCharacterProfile(source.character),
     proactive: normalizeProactiveSettings(source.proactive),
     screenWatch: normalizeScreenWatchSettings(source.screenWatch),
@@ -880,6 +931,14 @@ export const useSettingsStore = create<SettingsState>()(
           },
         })),
 
+      setGeminiCliSettings: (geminiCli) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            geminiCli: { ...state.settings.geminiCli, ...geminiCli },
+          },
+        })),
+
       setScreenWatchSettings: (screenWatch) =>
         set((state) => ({
           settings: {
@@ -897,9 +956,21 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       setAvatarName: (name) =>
-        set((state) => ({
-          settings: { ...state.settings, avatarName: normalizeAvatarName(name) },
-        })),
+        set((state) => {
+          const normalized = normalizeAvatarName(name);
+          // 온보딩/프로필 화면에서 아바타 이름을 바꾸면 character.name도 함께 동기화.
+          // 기존에는 avatarName만 갱신돼 설정 패널의 "캐릭터 이름" 필드가 비어 보였다.
+          return {
+            settings: {
+              ...state.settings,
+              avatarName: normalized,
+              character: {
+                ...state.settings.character,
+                name: normalized,
+              },
+            },
+          };
+        }),
 
       setAvatarPersonalityPrompt: (prompt) =>
         set((state) => ({
@@ -926,22 +997,31 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       applyCharacterPreset: (profile) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            // DEFAULT_CHARACTER_PROFILE을 baseline으로 하고 profile로 덮어씀 —
-            // 이전 상태의 optional 필드(background, likes, dislikes, 예시 등)는 모두 리셋된다.
-            character: normalizeCharacterProfile({
-              ...DEFAULT_CHARACTER_PROFILE,
-              ...profile,
-              personality: {
-                ...DEFAULT_CHARACTER_PROFILE.personality,
-                ...(profile.personality ?? {}),
-              },
-            }),
-            ...(profile.name !== undefined ? { avatarName: normalizeAvatarName(profile.name) } : {}),
-          },
-        })),
+        set((state) => {
+          // 사용자가 이미 설정한 아바타 이름은 프리셋이 덮어쓰지 않는다.
+          // 이름이 아직 비어있는 경우에만 프리셋 이름을 수용한다.
+          const existingName = (state.settings.character?.name || state.settings.avatarName || '').trim();
+          const nextName = existingName || (profile.name ?? '');
+          return {
+            settings: {
+              ...state.settings,
+              // DEFAULT_CHARACTER_PROFILE을 baseline으로 하고 profile로 덮어씀 —
+              // 이전 상태의 optional 필드(background, likes, dislikes, 예시 등)는 리셋되지만
+              // 이름만은 보존한다.
+              character: normalizeCharacterProfile({
+                ...DEFAULT_CHARACTER_PROFILE,
+                ...profile,
+                name: nextName,
+                personality: {
+                  ...DEFAULT_CHARACTER_PROFILE.personality,
+                  ...(profile.personality ?? {}),
+                },
+              }),
+              // avatarName은 nextName이 실제 값을 가질 때만 반영 (아직 빈 상태면 유지).
+              ...(nextName ? { avatarName: normalizeAvatarName(nextName) } : {}),
+            },
+          };
+        }),
 
       setProactive: (proactive) =>
         set((state) => {
@@ -1033,7 +1113,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'mypartnerai-settings',
-      version: 21,
+      version: 22,
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<SettingsState>;
         const persistedSettings = persisted.settings as Partial<Settings> | undefined;
@@ -1127,6 +1207,22 @@ export const useSettingsStore = create<SettingsState>()(
           const s = state.settings as Partial<Settings>;
           if (!s.settingsPanelExpanded || typeof s.settingsPanelExpanded !== 'object') {
             s.settingsPanelExpanded = {};
+          }
+        }
+
+        // v21→v22: Gemini CLI(ACP) provider 도입. 설정 기본값 주입.
+        if ((version ?? 0) < 22) {
+          const s = state.settings as Partial<Settings>;
+          if (!s.geminiCli || typeof s.geminiCli !== 'object') {
+            s.geminiCli = {
+              model: 'auto-gemini-3',
+              approvalMode: 'default',
+              workingDir: '',
+            };
+          }
+          // 빈 문자열로 저장된 기존 사용자는 실제 기본 모델 ID로 승격.
+          if (s.geminiCli && (s.geminiCli as GeminiCliSettings).model === '') {
+            (s.geminiCli as GeminiCliSettings).model = 'auto-gemini-3';
           }
         }
 

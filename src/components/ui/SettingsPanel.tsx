@@ -248,9 +248,9 @@ export default function SettingsPanel() {
           top: 'max(env(safe-area-inset-top), 64px)',
           right: 12,
           bottom: 12,
-          // 화면 너비에 비례해 확장 (단일 컬럼 ~420 → 최대 2컬럼 ~800)
-          // columnWidth 360 * 2 + gap 14 + 좌우 padding 44 ≈ 778 → 여유 있게 800px.
-          width: 'min(800px, calc(100vw - 24px))',
+          // 화면 너비에 비례해 확장 (단일 컬럼 ~420 → 최대 3컬럼 ~1200)
+          // columnWidth 360 * 3 + gap 14*2 + 좌우 padding 44 ≈ 1152 → 여유 있게 1200px.
+          width: 'min(1200px, calc(100vw - 24px))',
           minWidth: 'min(420px, calc(100vw - 24px))',
           padding: 0,
           animation: 'panelIn 320ms var(--ease)',

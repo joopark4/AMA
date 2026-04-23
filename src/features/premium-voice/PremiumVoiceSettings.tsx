@@ -12,7 +12,7 @@ import {
   type TTSOutputLanguage,
 } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
-import { usePremiumStore, type SupertoneVoice } from './premiumStore';
+import { usePremiumStore, type SupertoneVoice, type ApiStatus, type ApiVoiceUsageInfo } from './premiumStore';
 import { getModelLanguages } from './supertoneApiClient';
 import { Field, Pill, Select, Slider, Toggle, SectionHint } from '../../components/settings/forms';
 
@@ -35,9 +35,10 @@ export default function PremiumVoiceSettings() {
   const { isAuthenticated } = useAuthStore();
   const { settings, setTTSSettings } = useSettingsStore();
   const {
-    isPremium, isAdmin, isChecking,
+    // 임시로 구독 게이트 해제 — isPremium은 현재 UI 분기에 사용하지 않음.
+    isAdmin, isChecking,
     voices, isLoadingVoices,
-    quota, isQuotaExceeded, apiCredits,
+    apiCredits, apiVoiceUsage, apiStatus,
     usageSummary, usageDaily, isLoadingUsage,
     checkPremiumStatus, fetchVoices, refreshVoices, fetchUsageSummary, fetchUsageDaily,
   } = usePremiumStore();
@@ -67,14 +68,15 @@ export default function PremiumVoiceSettings() {
     }
   }, [isAuthenticated, checkPremiumStatus]);
 
-  // 프리미엄 활성 시 음성 목록 + 사용량 로드
+  // 임시: 구독 여부와 무관하게 로그인된 사용자 전원에게 프리미엄 기능을 개방한다.
+  // 정식 구독 게이트 복원 시 조건을 `isPremium`으로 되돌리면 됨.
   useEffect(() => {
-    if (isPremium) {
+    if (isAuthenticated) {
       fetchVoices();
       fetchUsageSummary();
       fetchUsageDaily();
     }
-  }, [isPremium, fetchVoices, fetchUsageSummary, fetchUsageDaily]);
+  }, [isAuthenticated, fetchVoices, fetchUsageSummary, fetchUsageDaily]);
 
   /**
    * 프리미엄 엔진에서 voiceId가 비어있으면 기본 음성으로 **Bella**를 자동 지정한다.
@@ -297,34 +299,14 @@ export default function PremiumVoiceSettings() {
     );
   }
 
-  // 비프리미엄
-  if (!isPremium) {
-    return (
-      <div className="text-center py-6">
-        <div
-          className="inline-block"
-          style={{
-            padding: '4px 10px',
-            background: 'oklch(1 0 0 / 0.7)',
-            boxShadow: 'inset 0 0 0 1px var(--hairline)',
-            color: 'var(--ink-2)',
-            borderRadius: 99,
-            fontSize: 11,
-            fontWeight: 600,
-            marginBottom: 10,
-          }}
-        >
-          {t('settings.premium.badge')}
-        </div>
-        <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
-          {t('settings.premium.locked')}
-        </div>
-        <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
-          {t('settings.premium.lockedDesc')}
-        </div>
-      </div>
-    );
-  }
+  // 임시: 구독 게이트 해제 — 비프리미엄(무료) 로그인 사용자도 프리미엄 UI를 이용하도록
+  // `if (!isPremium)` 잠금 뷰를 잠시 비활성화. 정식 구독 복원 시 아래 블록을 되살리면 됨.
+  //
+  // if (!isPremium) {
+  //   return (
+  //     <div className="text-center py-6">…잠금 안내…</div>
+  //   );
+  // }
 
   return (
     <div>
@@ -564,9 +546,9 @@ export default function PremiumVoiceSettings() {
 
       {/* 사용량 카드 (프리미엄이면 항상 표시) */}
       <UsageCard
-        quota={quota}
-        isQuotaExceeded={isQuotaExceeded}
         apiCredits={apiCredits}
+        apiVoiceUsage={apiVoiceUsage}
+        apiStatus={apiStatus}
         usageSummary={usageSummary}
         usageDaily={usageDaily}
         isLoading={isLoadingUsage}
@@ -577,13 +559,35 @@ export default function PremiumVoiceSettings() {
   );
 }
 
-/** 사용량 카드 서브 컴포넌트 */
+/** apiStatus.credits 코드별 표시용 i18n 키 매핑. null은 호출 자체가 실패했음을 의미. */
+function creditsStatusKey(code: ApiStatus['credits'] | null): string {
+  switch (code) {
+    case 'unauthorized':
+      return 'settings.premium.quota.betaSharedUnauthorized';
+    case 'rate_limit':
+      return 'settings.premium.quota.betaSharedRateLimit';
+    case 'server_error':
+      return 'settings.premium.quota.betaSharedServerError';
+    case 'network':
+      return 'settings.premium.quota.betaSharedNetwork';
+    case 'no_key':
+      return 'settings.premium.quota.betaSharedNoKey';
+    default:
+      return 'settings.premium.quota.betaSharedUnavailable';
+  }
+}
+
+/** 사용량 카드 서브 컴포넌트.
+ *  - 일반 사용자: 공유 잔고(apiCredits.balance) 남은 % 프로그레스 + 오류 상태 메시지
+ *  - 관리자: 위 + 월간 요약 + 최근 7일 차트 + 음성별 사용 TOP N (apiVoiceUsage)
+ */
 function UsageCard({
-  quota, isQuotaExceeded, apiCredits, usageSummary, usageDaily, isLoading, isAdmin, onRefresh,
+  apiCredits, apiVoiceUsage, apiStatus,
+  usageSummary, usageDaily, isLoading, isAdmin, onRefresh,
 }: {
-  quota: { limit: number; used: number; remaining: number } | null;
-  isQuotaExceeded: boolean;
   apiCredits: { balance: number; used: number; total: number } | null;
+  apiVoiceUsage: ApiVoiceUsageInfo | null;
+  apiStatus: ApiStatus | null;
   usageSummary: { totalSeconds: number; totalCharacters: number; totalRequests: number } | null;
   usageDaily: { date: string; seconds: number; characters: number; requests: number }[] | null;
   isLoading: boolean;
@@ -591,8 +595,15 @@ function UsageCard({
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
-
   const accentColor = isAdmin ? 'var(--warn)' : 'var(--accent)';
+  const creditsStatus = apiStatus?.credits ?? null;
+  // apiCredits가 없고 로딩도 끝났으면 사용자가 원인을 알 수 있게 항상 메시지 표시.
+  // status가 있으면 코드별 구체 메시지, 없으면(Edge Function 호출 실패 등) 기본 fallback.
+  const showCreditsError = !apiCredits && !isLoading;
+  const creditsErrorKey = creditsStatus
+    ? creditsStatusKey(creditsStatus)
+    : 'settings.premium.quota.betaSharedUnavailable';
+
   return (
     <div
       style={{
@@ -606,7 +617,6 @@ function UsageCard({
         gap: 12,
       }}
     >
-      {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center" style={{ gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
@@ -645,7 +655,7 @@ function UsageCard({
         </button>
       </div>
 
-      {isLoading && !quota && !apiCredits ? (
+      {isLoading && !apiCredits ? (
         <div
           className="text-center"
           style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
@@ -654,167 +664,116 @@ function UsageCard({
         </div>
       ) : (
         <>
-          {/* 관리자: Supertone API 크레딧 잔액 + 총 할당량 */}
-          {isAdmin && apiCredits && (
-            <div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
-                {t('settings.premium.quota.adminTitle')}
-              </div>
-              {(() => {
-                const { balance, used, total } = apiCredits;
-                const usedPercent = total > 0 ? Math.round((used / total) * 100) : 0;
-                const remainPercent = 100 - usedPercent;
-                return (
+          {apiCredits && (() => {
+            const { balance, used, total } = apiCredits;
+            const usedPercent = total > 0 ? Math.round((used / total) * 100) : 0;
+            const remainPercent = 100 - usedPercent;
+            // 일반 사용자: 프로그레스 바 + "{remain}% 남음" 텍스트만. 관리자: 전체 UI.
+            if (!isAdmin) {
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div
                     style={{
-                      padding: 10,
-                      borderRadius: 12,
-                      background: 'oklch(1 0 0 / 0.6)',
-                      boxShadow: 'inset 0 0 0 1px var(--hairline)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 8,
+                      width: '100%',
+                      height: 6,
+                      background: 'oklch(0.85 0.005 60)',
+                      borderRadius: 99,
+                      overflow: 'hidden',
                     }}
                   >
-                    <div className="flex items-baseline justify-between">
-                      <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--warn)' }}>
-                        {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-                      </span>
-                      <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
-                        {t('settings.premium.quota.adminBalanceUnit')}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
-                      {t('settings.premium.quota.adminBalanceDesc', {
-                        minutes: Math.floor(balance / 60),
-                        seconds: Math.round(balance % 60),
-                      })}
-                    </div>
-                    {/* 프로그레스 바 */}
                     <div
                       style={{
-                        width: '100%',
-                        height: 6,
-                        background: 'oklch(0.85 0.005 60)',
-                        borderRadius: 99,
-                        overflow: 'hidden',
+                        width: `${usedPercent}%`,
+                        height: '100%',
+                        background: accentColor,
+                        transition: 'width 220ms var(--ease)',
                       }}
-                    >
-                      <div
-                        style={{
-                          width: `${usedPercent}%`,
-                          height: '100%',
-                          background: accentColor,
-                          transition: 'width 220ms var(--ease)',
-                        }}
-                      />
-                    </div>
-                    <div className="flex justify-between" style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
-                      <span>
-                        {t('settings.premium.quota.adminTotal', {
-                          used: Math.round(used),
-                          total: Math.round(total),
-                        })}
-                      </span>
-                      <span>{t('settings.premium.quota.adminRemainPercent', { value: remainPercent })}</span>
-                    </div>
+                    />
                   </div>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* 일반 사용자: 할당량 바 */}
-          {!isAdmin && quota && (
-            <div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
-                {t('settings.premium.quota.title')}
-              </div>
-              <div
-                style={{
-                  width: '100%',
-                  height: 6,
-                  background: 'oklch(0.85 0.005 60)',
-                  borderRadius: 99,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    background: isQuotaExceeded
-                      ? 'var(--danger)'
-                      : quota.used / quota.limit > 0.8
-                        ? 'var(--warn)'
-                        : 'var(--accent)',
-                    width: `${Math.min(100, (quota.used / Math.max(1, quota.limit)) * 100)}%`,
-                    transition: 'width 220ms var(--ease)',
-                  }}
-                />
-              </div>
-              <div className="flex justify-between" style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ink-3)' }}>
-                <span>
-                  {t('settings.premium.quota.used', {
-                    used: Math.round(quota.used),
-                    limit: Math.round(quota.limit),
-                  })}
-                </span>
-                <span>
-                  {t('settings.premium.quota.percent', {
-                    value: Math.round((quota.used / Math.max(1, quota.limit)) * 100),
-                  })}
-                </span>
-              </div>
-
-              {isQuotaExceeded && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    padding: 8,
-                    borderRadius: 8,
-                    background: 'oklch(0.95 0.04 25 / 0.6)',
-                    boxShadow: 'inset 0 0 0 1px oklch(0.7 0.15 25 / 0.4)',
-                    fontSize: 11.5,
-                    color: 'var(--danger)',
-                  }}
-                >
-                  <div style={{ fontWeight: 600 }}>{t('settings.premium.quota.exceeded')}</div>
-                  <div>{t('settings.premium.quota.exceededDesc')}</div>
-                  <div style={{ marginTop: 4 }}>{t('settings.premium.quota.resetInfo')}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', textAlign: 'right' }}>
+                    {t('settings.premium.quota.adminRemainPercent', { value: remainPercent })}
+                  </div>
                 </div>
-              )}
-              {!isQuotaExceeded && quota.used / quota.limit > 0.8 && (
+              );
+            }
+            return (
+              <div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  {t('settings.premium.quota.adminTitle')}
+                </div>
                 <div
                   style={{
-                    marginTop: 8,
-                    padding: 8,
-                    borderRadius: 8,
-                    background: 'oklch(0.95 0.04 75 / 0.6)',
-                    boxShadow: 'inset 0 0 0 1px oklch(0.7 0.15 75 / 0.4)',
-                    fontSize: 11.5,
-                    color: 'var(--warn)',
+                    padding: 10,
+                    borderRadius: 12,
+                    background: 'oklch(1 0 0 / 0.6)',
+                    boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
                   }}
                 >
-                  <div style={{ fontWeight: 600 }}>{t('settings.premium.quota.warning')}</div>
-                  <div>
-                    {t('settings.premium.quota.remaining', {
-                      value: Math.round(quota.remaining),
-                      minutes: Math.floor(quota.remaining / 60),
-                      seconds: Math.round(quota.remaining % 60),
+                  <div className="flex items-baseline justify-between">
+                    <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--warn)' }}>
+                      {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                    </span>
+                    <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
+                      {t('settings.premium.quota.adminBalanceUnit')}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
+                    {t('settings.premium.quota.adminBalanceDesc', {
+                      minutes: Math.floor(balance / 60),
+                      seconds: Math.round(balance % 60),
                     })}
                   </div>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: 6,
+                      background: 'oklch(0.85 0.005 60)',
+                      borderRadius: 99,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${usedPercent}%`,
+                        height: '100%',
+                        background: accentColor,
+                        transition: 'width 220ms var(--ease)',
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between" style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
+                    <span>
+                      {t('settings.premium.quota.adminTotal', {
+                        used: Math.round(used),
+                        total: Math.round(total),
+                      })}
+                    </span>
+                    <span>{t('settings.premium.quota.adminRemainPercent', { value: remainPercent })}</span>
+                  </div>
                 </div>
-              )}
+              </div>
+            );
+          })()}
+
+          {/* 베타 기간에는 공유 apiCredits가 유일한 잔고 표시. 로딩 종료 후에도 잔고가
+              없으면 apiStatus.credits 코드에 따라 401/server/network/키미설정을 구분해 표시. */}
+          {showCreditsError && (
+            <div
+              className="text-center"
+              style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--warn)' }}
+            >
+              {t(creditsErrorKey)}
             </div>
           )}
 
-          {/* 이번 달 요약 */}
-          {usageSummary && (
+          {/* 월간 요약 + 최근 7일 차트 + 음성별 TOP N — 관리자에게만 노출. */}
+          {isAdmin && usageSummary && (
             <div style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
               <div style={{ fontWeight: 600, marginBottom: 2 }}>
-                {isAdmin
-                  ? t('settings.premium.usage.adminThisMonth')
-                  : t('settings.premium.usage.thisMonth')}
+                {t('settings.premium.usage.adminThisMonth')}
               </div>
               <div>
                 {t('settings.premium.usage.summary', {
@@ -826,8 +785,7 @@ function UsageCard({
             </div>
           )}
 
-          {/* 최근 7일 차트 */}
-          {usageDaily && usageDaily.length > 0 && (
+          {isAdmin && usageDaily && usageDaily.length > 0 && (
             <div>
               <div
                 style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 6 }}
@@ -889,7 +847,12 @@ function UsageCard({
             </div>
           )}
 
-          {!usageSummary && !usageDaily?.length && (
+          {/* 음성별 사용 TOP N — 관리자 전용 (apiVoiceUsage). */}
+          {isAdmin && apiVoiceUsage && apiVoiceUsage.usages.length > 0 && (
+            <VoiceUsageTable data={apiVoiceUsage} accentColor={accentColor} />
+          )}
+
+          {isAdmin && !usageSummary && !usageDaily?.length && !apiVoiceUsage?.usages.length && (
             <div
               className="text-center"
               style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
@@ -899,6 +862,90 @@ function UsageCard({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** 관리자 전용: 음성별 총 사용 시간 TOP N 테이블. */
+function VoiceUsageTable({
+  data,
+  accentColor,
+}: {
+  data: ApiVoiceUsageInfo;
+  accentColor: string;
+}) {
+  const { t } = useTranslation();
+  // voice_id별로 합산 (Supertone 응답은 날짜별 row이므로 집계 필요).
+  const aggregated = new Map<string, { name: string; minutes: number }>();
+  for (const entry of data.usages) {
+    const prev = aggregated.get(entry.voice_id);
+    const minutes = entry.total_minutes_used || 0;
+    if (prev) {
+      prev.minutes += minutes;
+    } else {
+      aggregated.set(entry.voice_id, { name: entry.name || entry.voice_id, minutes });
+    }
+  }
+  const rows = Array.from(aggregated.values()).sort((a, b) => b.minutes - a.minutes).slice(0, 8);
+  const maxMinutes = Math.max(...rows.map((r) => r.minutes), 1);
+
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 6 }}>
+        {t('settings.premium.voiceUsage.title')}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {rows.map((row) => {
+          const barWidth = Math.max(2, (row.minutes / maxMinutes) * 100);
+          return (
+            <div key={row.name} className="flex items-center" style={{ gap: 8, fontSize: 11 }}>
+              <span
+                style={{
+                  color: 'var(--ink-2)',
+                  width: 80,
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {row.name}
+              </span>
+              <div
+                style={{
+                  flex: 1,
+                  background: 'oklch(0.85 0.005 60)',
+                  borderRadius: 4,
+                  height: 6,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${barWidth}%`,
+                    height: '100%',
+                    background: accentColor,
+                    transition: 'width 220ms var(--ease)',
+                  }}
+                />
+              </div>
+              <span
+                style={{
+                  color: 'var(--ink-3)',
+                  width: 64,
+                  textAlign: 'right',
+                  flexShrink: 0,
+                  fontFamily: '"JetBrains Mono", monospace',
+                }}
+              >
+                {t('settings.premium.voiceUsage.minutes', {
+                  value: row.minutes.toFixed(1),
+                })}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -63,7 +63,8 @@
         "gemini": "Google Gemini",
         "claude_code": "Claude Code (External)",
         "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the ama-bridge.",
-        "codex": "OpenAI Codex"
+        "codex": "OpenAI Codex",
+        "gemini_cli": "Gemini CLI"
       },
       "expand": "Expand",
       "collapse": "Collapse"
@@ -268,9 +269,20 @@
         "noUsage": "No usage history",
         "loading": "Loading usage..."
       },
+      "voiceUsage": {
+        "title": "Voice Usage (This Month)",
+        "minutes": "{{value}} min"
+      },
       "quota": {
         "title": "Monthly Quota",
         "adminTitle": "API Total Quota",
+        "betaSharedTitle": "Beta shared quota (consumed by all users)",
+        "betaSharedUnavailable": "Couldn't load the shared balance. Please ask an administrator to verify the Supertone API key.",
+        "betaSharedUnauthorized": "The Supertone API key is expired or invalid. Please ask an administrator to refresh it.",
+        "betaSharedRateLimit": "Supertone API rate limit exceeded. Please try again in a moment.",
+        "betaSharedServerError": "The Supertone service is temporarily unavailable. Please try again shortly.",
+        "betaSharedNetwork": "Network error while checking the shared balance.",
+        "betaSharedNoKey": "The Supertone API key has not been configured by an administrator.",
         "used": "{{used}} / {{limit}} credits",
         "adminBalanceUnit": "Credits Balance",
         "adminBalanceDesc": "~{{minutes}}m {{seconds}}s available",
@@ -357,13 +369,43 @@
       "approvalUntrustedDesc": "Only performs read-only operations automatically. Requires approval for file modifications and command execution.",
       "info": "Chat directly with an AI specialized in coding tasks via the OpenAI Codex CLI. Available with a ChatGPT subscription."
     },
+    "geminiCli": {
+      "cliStatus": "Gemini CLI",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "installGuide": "Gemini CLI isn't installed. Run `npm install -g @google/gemini-cli` in your terminal.",
+      "authStatus": "Authentication",
+      "loggedIn": "Authenticated",
+      "notLoggedIn": "Not authenticated",
+      "loginGuide": "Gemini CLI isn't authenticated. Run `gemini` in a terminal and complete the sign-in flow.",
+      "connection": "Connection",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting…",
+      "connected": "Connected",
+      "error": "Error",
+      "refresh": "Refresh",
+      "retry": "Reconnect",
+      "workingDir": "Working folder",
+      "workingDirPlaceholder": "Not set (~/Documents)",
+      "workingDirHelp": "The folder Gemini CLI will use as the file access scope. Defaults to ~/Documents if left blank.",
+      "selectFolder": "Select folder",
+      "clearFolder": "Clear",
+      "approvalMode": "Approval mode",
+      "approvalDefault": "Default (confirm each)",
+      "approvalAutoEdit": "Auto-approve edits",
+      "approvalYolo": "YOLO (auto-approve all)",
+      "approvalPlan": "Plan (read-only)",
+      "approvalInfo": "Controls whether tool calls prompt for approval. YOLO is dangerous — use only in trusted environments.",
+      "model": "Model",
+      "modelInfo": "Models reported by Gemini CLI right after connecting. Changes apply to the current session immediately."
+    },
     "character": {
       "title": "Character",
       "preset": "Preset",
       "presetCustom": "Custom",
       "applyPreset": "Apply Preset",
       "applyPresetConfirm": "Applying a preset will overwrite your current character settings. Continue?",
-      "name": "Character Name",
+      "name": "Avatar Name",
       "namePlaceholder": "e.g. Haru",
       "age": "Age",
       "agePlaceholder": "e.g. 17, Eternal Girl",
@@ -482,15 +524,15 @@
       "researchPreviewDesc": "Channels is a research preview feature. A development flag is required until official marketplace submission.",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLI must be installed.",
-      "step2Title": "Step 2: Run in Terminal",
-      "step2Desc": "Run the command above in any project folder of your choice.",
-      "step3Title": "Step 3: Enable in AMA",
+      "step2Title": "Step 2: Enable in AMA",
+      "step3Title": "Step 3: Run in Terminal",
+      "step3Desc": "Run the command above in any project folder of your choice.",
       "copy": "Copy",
       "copied": "Copied",
       "setupSuccess": "Bridge plugin has been installed",
       "setupFail": "Bridge plugin installation failed",
       "setupFailManual": "Auto-install failed. Run in terminal: cd ~/.mypartnerai/ama-bridge && npm install",
-      "step2Caution": "--dangerously-load-development-channels is required during the research preview period. --permission-mode bypassPermissions skips all permission prompts."
+      "step3Caution": "--dangerously-load-development-channels is required during the research preview period. --permission-mode bypassPermissions skips all permission prompts."
     }
   },
   "status": {
