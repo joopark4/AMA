@@ -240,9 +240,15 @@ const { t } = useTranslation();
 - provider 키: `gemini_cli` (기존 클라우드 `gemini`와 별개)
 - 설정: `settings.geminiCli` (`model`/`approvalMode`/`workingDir`/`authMethod`), persist v22
 - ACP 메서드: `initialize(protocolVersion:1)` / `session/new` / `session/prompt` / `session/cancel`(notification)
-- 스트리밍: `session/update` notification 내 `agent_message_chunk` → `gemini-cli-token` 이벤트
+- 스트리밍: `session/update.sessionUpdate === "agent_message_chunk"` → `gemini-cli-token` 이벤트
 - 턴 완료: `session/prompt` 응답 `stopReason`으로 판정 → `gemini-cli-complete` 이벤트
-- 클라이언트 메서드(`fs/*`, `session/request_permission`, `terminal/*`)는 현재 모두 거부(앱 파일·터미널 접근 차단)
+- 승인 모드 동기화: `session/new` 직후 + UI 변경 시 `session/set_mode` 호출 (`default/autoEdit/yolo/plan`)
+- **클라이언트 메서드 실구현**:
+  - `fs/read_text_file`/`fs/write_text_file`: `settings.geminiCli.workingDir` canonical prefix 내부만 허용 (라인/한도 파라미터 지원)
+  - `session/request_permission`: `approvalMode`에 따라 자동 응답 (`plan`=cancel, 그 외=첫 옵션 선택)
+  - `terminal/*`: 아직 미지원 (-32601)
+- Vision: `gemini_cli_send_message(image_path)` + base64 + ACP `image` ContentBlock, `geminiCliClient.chatWithLocalImage()`
+- Screen Watch provider에 포함 (파일 경로 전달 경로로 Codex와 통합)
 - 설치/인증 상태 표시 + workingDir/승인 모드(default/auto_edit/yolo/plan) 설정 UI
 - **모듈화**: `src/features/gemini-cli/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수) + Rust `src-tauri/src/commands/gemini_cli.rs`
 - 상세: [docs/ai/gemini-cli-integration.md](docs/ai/gemini-cli-integration.md)
