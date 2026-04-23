@@ -38,7 +38,7 @@ export default function PremiumVoiceSettings() {
     // 임시로 구독 게이트 해제 — isPremium은 현재 UI 분기에 사용하지 않음.
     isAdmin, isChecking,
     voices, isLoadingVoices,
-    quota, isQuotaExceeded, apiCredits,
+    quota, apiCredits,
     usageSummary, usageDaily, isLoadingUsage,
     checkPremiumStatus, fetchVoices, refreshVoices, fetchUsageSummary, fetchUsageDaily,
   } = usePremiumStore();
@@ -547,7 +547,6 @@ export default function PremiumVoiceSettings() {
       {/* 사용량 카드 (프리미엄이면 항상 표시) */}
       <UsageCard
         quota={quota}
-        isQuotaExceeded={isQuotaExceeded}
         apiCredits={apiCredits}
         usageSummary={usageSummary}
         usageDaily={usageDaily}
@@ -561,10 +560,9 @@ export default function PremiumVoiceSettings() {
 
 /** 사용량 카드 서브 컴포넌트 */
 function UsageCard({
-  quota, isQuotaExceeded, apiCredits, usageSummary, usageDaily, isLoading, isAdmin, onRefresh,
+  quota, apiCredits, usageSummary, usageDaily, isLoading, isAdmin, onRefresh,
 }: {
   quota: { limit: number; used: number; remaining: number } | null;
-  isQuotaExceeded: boolean;
   apiCredits: { balance: number; used: number; total: number } | null;
   usageSummary: { totalSeconds: number; totalCharacters: number; totalRequests: number } | null;
   usageDaily: { date: string; seconds: number; characters: number; requests: number }[] | null;
@@ -709,99 +707,16 @@ function UsageCard({
             </div>
           )}
 
-          {/* 일반 사용자 개별 quota — 베타 기간에 공유 apiCredits가 있으면 숨기고,
-              그 외의 경우(서버가 apiCredits 제공 거부 시)에만 개인 quota 바로 폴백한다. */}
-          {!isAdmin && !apiCredits && !quota && (
+          {/* 베타 기간에는 공유 apiCredits가 유일한 잔고 표시이며 개인 월간 quota 바는
+              노출하지 않는다. apiCredits가 아직 내려오지 않은 상태라면 로딩 안내만 표시. */}
+          {!isAdmin && !apiCredits && (
             <div
               className="text-center"
               style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
             >
-              {t('settings.premium.usage.noUsage')}
+              {t('settings.premium.usage.loading')}
             </div>
           )}
-          {!isAdmin && !apiCredits && quota && (
-            <div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
-                {t('settings.premium.quota.title')}
-              </div>
-              <div
-                style={{
-                  width: '100%',
-                  height: 6,
-                  background: 'oklch(0.85 0.005 60)',
-                  borderRadius: 99,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    background: isQuotaExceeded
-                      ? 'var(--danger)'
-                      : quota.used / quota.limit > 0.8
-                        ? 'var(--warn)'
-                        : 'var(--accent)',
-                    width: `${Math.min(100, (quota.used / Math.max(1, quota.limit)) * 100)}%`,
-                    transition: 'width 220ms var(--ease)',
-                  }}
-                />
-              </div>
-              <div className="flex justify-between" style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ink-3)' }}>
-                <span>
-                  {t('settings.premium.quota.used', {
-                    used: Math.round(quota.used),
-                    limit: Math.round(quota.limit),
-                  })}
-                </span>
-                <span>
-                  {t('settings.premium.quota.percent', {
-                    value: Math.round((quota.used / Math.max(1, quota.limit)) * 100),
-                  })}
-                </span>
-              </div>
-
-              {isQuotaExceeded && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    padding: 8,
-                    borderRadius: 8,
-                    background: 'oklch(0.95 0.04 25 / 0.6)',
-                    boxShadow: 'inset 0 0 0 1px oklch(0.7 0.15 25 / 0.4)',
-                    fontSize: 11.5,
-                    color: 'var(--danger)',
-                  }}
-                >
-                  <div style={{ fontWeight: 600 }}>{t('settings.premium.quota.exceeded')}</div>
-                  <div>{t('settings.premium.quota.exceededDesc')}</div>
-                  <div style={{ marginTop: 4 }}>{t('settings.premium.quota.resetInfo')}</div>
-                </div>
-              )}
-              {!isQuotaExceeded && quota.used / quota.limit > 0.8 && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    padding: 8,
-                    borderRadius: 8,
-                    background: 'oklch(0.95 0.04 75 / 0.6)',
-                    boxShadow: 'inset 0 0 0 1px oklch(0.7 0.15 75 / 0.4)',
-                    fontSize: 11.5,
-                    color: 'var(--warn)',
-                  }}
-                >
-                  <div style={{ fontWeight: 600 }}>{t('settings.premium.quota.warning')}</div>
-                  <div>
-                    {t('settings.premium.quota.remaining', {
-                      value: Math.round(quota.remaining),
-                      minutes: Math.floor(quota.remaining / 60),
-                      seconds: Math.round(quota.remaining % 60),
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* 이번 달 요약 + 최근 7일 차트 — 관리자에게만 노출.
               일반 프리미엄 사용자는 프로그래스 바/남은 % 정보만 보이도록 제한. */}
           {isAdmin && usageSummary && (
