@@ -135,55 +135,52 @@ export default function GeminiCliSettings() {
         )}
       </div>
 
-      {/* 연결 상태 */}
-      <div className="flex items-center" style={{ gap: 8 }}>
-        <span
-          style={{
-            display: 'inline-block',
-            width: 8,
-            height: 8,
-            borderRadius: 999,
-            background: statusDotColor[connectionState],
-          }}
-        />
-        <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>
-          {t('settings.geminiCli.connection')}: {connectionLabel}
-        </span>
-        <button
-          type="button"
-          onClick={refreshStatus}
-          className="focus-ring"
-          style={{
-            marginLeft: 'auto',
-            padding: '4px 8px',
-            fontSize: 11.5,
-            color: 'var(--accent-ink)',
-            background: 'transparent',
-            borderRadius: 6,
-          }}
-          data-interactive="true"
-        >
-          {t('settings.geminiCli.refresh')}
-        </button>
-        <button
-          type="button"
-          onClick={reconnect}
-          className="focus-ring"
-          style={{
-            padding: '4px 8px',
-            fontSize: 11.5,
-            color: 'var(--accent-ink)',
-            background: 'transparent',
-            borderRadius: 6,
-          }}
-          data-interactive="true"
-        >
-          {t('settings.geminiCli.retry')}
-        </button>
+      {/* 연결 상태 — Codex 스타일(폰트·색)에 맞춤.
+          재연결(retry)은 상시 노출하지 않고 error 상태에서만 에러 박스 내부에 표시. */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div
+            className={connectionState === 'connecting' ? 'animate-pulse' : ''}
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background: statusDotColor[connectionState],
+            }}
+          />
+          <span className="text-sm" style={{ color: 'var(--ink-2)' }}>
+            {t('settings.geminiCli.connection')}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
+            {connectionLabel}
+          </span>
+          <button
+            type="button"
+            onClick={refreshStatus}
+            className="text-xs hover:underline"
+            style={{ color: 'var(--accent)' }}
+            data-interactive="true"
+          >
+            {t('settings.geminiCli.refresh')}
+          </button>
+        </div>
       </div>
-      {errorMessage && (
-        <div style={{ fontSize: 11.5, color: 'var(--danger)' }}>
-          {t('settings.geminiCli.error')}: {errorMessage}
+
+      {connectionState === 'error' && errorMessage && (
+        <div className="p-3 rounded-lg" style={{ background: 'oklch(0.95 0.04 25 / 0.5)' }}>
+          <p className="text-xs" style={{ color: 'oklch(0.45 0.18 25)' }}>
+            {errorMessage}
+          </p>
+          <button
+            type="button"
+            onClick={reconnect}
+            className="mt-2 text-xs text-danger hover:underline"
+            data-interactive="true"
+          >
+            {t('settings.geminiCli.retry')}
+          </button>
         </div>
       )}
 
