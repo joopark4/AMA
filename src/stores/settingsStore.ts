@@ -473,7 +473,7 @@ const defaultSettings: Settings = {
     approvalPolicy: 'on-request',
   },
   geminiCli: {
-    model: '',              // 빈 문자열 = Gemini CLI 기본 모델 사용
+    model: 'auto-gemini-3',  // 실측 기본값(currentModelId). 연결 후 사용자 선택으로 덮어씀.
     approvalMode: 'default',
     workingDir: '',
   },
@@ -1194,10 +1194,14 @@ export const useSettingsStore = create<SettingsState>()(
           const s = state.settings as Partial<Settings>;
           if (!s.geminiCli || typeof s.geminiCli !== 'object') {
             s.geminiCli = {
-              model: '',
+              model: 'auto-gemini-3',
               approvalMode: 'default',
               workingDir: '',
             };
+          }
+          // 빈 문자열로 저장된 기존 사용자는 실제 기본 모델 ID로 승격.
+          if (s.geminiCli && (s.geminiCli as GeminiCliSettings).model === '') {
+            (s.geminiCli as GeminiCliSettings).model = 'auto-gemini-3';
           }
         }
 
