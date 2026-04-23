@@ -724,7 +724,15 @@ function UsageCard({
             </div>
           )}
 
-          {/* 일반 사용자: 할당량 바 */}
+          {/* 일반 사용자: 할당량 바. quota가 아직 없으면 "사용 기록 없음" 안내 표시. */}
+          {!isAdmin && !quota && (
+            <div
+              className="text-center"
+              style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
+            >
+              {t('settings.premium.usage.noUsage')}
+            </div>
+          )}
           {!isAdmin && quota && (
             <div>
               <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
