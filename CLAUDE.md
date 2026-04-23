@@ -239,8 +239,13 @@ const { t } = useTranslation();
 - `gemini --experimental-acp` 자식 프로세스 + JSON-RPC 2.0 over stdio로 Codex와 동일 패턴
 - provider 키: `gemini_cli` (기존 클라우드 `gemini`와 별개)
 - 설정: `settings.geminiCli` (`model`/`approvalMode`/`workingDir`/`authMethod`), persist v22
-- 현재 상태: **스캐폴딩만 완료** — 타입·기본값·상수·placeholder 클라이언트·UI 드롭다운·i18n·문서
-- Rust 백엔드(`gemini_cli.rs`)·실제 `LLMClient` 구현은 후속 커밋. 상세: [docs/ai/gemini-cli-integration.md](docs/ai/gemini-cli-integration.md)
+- ACP 메서드: `initialize(protocolVersion:1)` / `session/new` / `session/prompt` / `session/cancel`(notification)
+- 스트리밍: `session/update` notification 내 `agent_message_chunk` → `gemini-cli-token` 이벤트
+- 턴 완료: `session/prompt` 응답 `stopReason`으로 판정 → `gemini-cli-complete` 이벤트
+- 클라이언트 메서드(`fs/*`, `session/request_permission`, `terminal/*`)는 현재 모두 거부(앱 파일·터미널 접근 차단)
+- 설치/인증 상태 표시 + workingDir/승인 모드(default/auto_edit/yolo/plan) 설정 UI
+- **모듈화**: `src/features/gemini-cli/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수) + Rust `src-tauri/src/commands/gemini_cli.rs`
+- 상세: [docs/ai/gemini-cli-integration.md](docs/ai/gemini-cli-integration.md)
 
 ### 화면 관찰 (Screen Watch, v1.5.0)
 - 주기적 화면 캡처 + Vision LLM 분석으로 아바타가 능동 발화
@@ -358,6 +363,7 @@ AMA/
 │   ├── features/
 │   │   ├── channels/      # Claude Code Channels 독립 모듈 (클라이언트/훅/UI/상수)
 │   │   ├── codex/         # OpenAI Codex 연동 모듈 (codexClient/useCodexConnection/CodexSettings)
+│   │   ├── gemini-cli/    # Gemini CLI(ACP) 연동 모듈 (geminiCliClient/useGeminiCliConnection/GeminiCliSettings)
 │   │   └── premium-voice/ # 프리미엄 음성 모듈 (premiumStore/supertoneApiClient/UI)
 │   ├── hooks/             # useAutoUpdate, useConversation, useVRM 등
 │   ├── services/
