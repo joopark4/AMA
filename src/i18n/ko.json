@@ -273,6 +273,7 @@
         "title": "월간 할당량",
         "adminTitle": "API 총 할당량",
         "betaSharedTitle": "베타 공유 할당량 (모든 사용자 공동 소비)",
+        "betaSharedUnavailable": "공유 잔고 정보를 가져올 수 없어요. Supertone API 키 상태를 관리자에게 확인 요청해 주세요.",
         "used": "{{used}} / {{limit}} 크레딧",
         "adminBalanceUnit": "크레딧 잔액",
         "adminBalanceDesc": "약 {{minutes}}분 {{seconds}}초 사용 가능",
