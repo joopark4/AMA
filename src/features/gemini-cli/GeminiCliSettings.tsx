@@ -97,43 +97,61 @@ export default function GeminiCliSettings() {
 
   return (
     <div className="space-y-3" style={{ marginTop: 12 }}>
-      {/* CLI 설치 상태 */}
-      <div style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>
-        <div style={{ fontWeight: 500, marginBottom: 4 }}>
+      {/* CLI 설치 상태 — Codex 스타일(좌우 정렬 + text-sm) */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm" style={{ color: 'var(--ink-2)' }}>
           {t('settings.geminiCli.cliStatus')}
-        </div>
-        <div style={{ color: installed ? 'var(--ok)' : 'var(--warn)' }}>
+        </span>
+        <span
+          className={`text-sm font-medium ${installed ? 'text-ok' : 'text-danger'}`}
+        >
           {installed === null
-            ? '…'
+            ? '...'
             : installed
               ? t('settings.geminiCli.installed')
               : t('settings.geminiCli.notInstalled')}
-        </div>
-        {installed === false && (
-          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-            {t('settings.geminiCli.installGuide')}
-          </div>
-        )}
+        </span>
       </div>
 
-      {/* 인증 상태 */}
-      <div style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>
-        <div style={{ fontWeight: 500, marginBottom: 4 }}>
-          {t('settings.geminiCli.authStatus')}
+      {installed === false && (
+        <div className="p-3 bg-[oklch(0.95_0.04_75_/_0.5)] rounded-lg">
+          <p className="text-xs text-warn">{t('settings.geminiCli.installGuide')}</p>
+          <code
+            className="block mt-1 text-xs px-2 py-1 rounded font-mono"
+            style={{ background: 'oklch(0.94 0.06 75 / 0.7)' }}
+          >
+            npm install -g @google/gemini-cli
+          </code>
         </div>
-        <div style={{ color: authenticated ? 'var(--ok)' : 'var(--warn)' }}>
+      )}
+
+      {/* 인증 상태 */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm" style={{ color: 'var(--ink-2)' }}>
+          {t('settings.geminiCli.authStatus')}
+        </span>
+        <span
+          className={`text-sm font-medium ${authenticated ? 'text-ok' : 'text-danger'}`}
+        >
           {authenticated === null
-            ? '…'
+            ? '...'
             : authenticated
               ? t('settings.geminiCli.loggedIn')
               : t('settings.geminiCli.notLoggedIn')}
-        </div>
-        {authenticated === false && (
-          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-            {t('settings.geminiCli.loginGuide')}
-          </div>
-        )}
+        </span>
       </div>
+
+      {authenticated === false && (
+        <div className="p-3 bg-[oklch(0.95_0.04_75_/_0.5)] rounded-lg">
+          <p className="text-xs text-warn">{t('settings.geminiCli.loginGuide')}</p>
+          <code
+            className="block mt-1 text-xs px-2 py-1 rounded font-mono"
+            style={{ background: 'oklch(0.94 0.06 75 / 0.7)' }}
+          >
+            gemini
+          </code>
+        </div>
+      )}
 
       {/* 연결 상태 — Codex 스타일(폰트·색)에 맞춤.
           재연결(retry)은 상시 노출하지 않고 error 상태에서만 에러 박스 내부에 표시. */}
