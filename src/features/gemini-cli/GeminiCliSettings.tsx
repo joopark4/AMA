@@ -5,6 +5,7 @@
  * 첫 버전(최소 UI): 상태 표시 + workingDir 입력 + approvalMode Pill + 재연결 버튼.
  * 모델 선택은 Gemini CLI가 자체 기본값을 쓰도록 비워 둔다.
  */
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import {
@@ -20,6 +21,17 @@ const APPROVAL_MODES: { value: GeminiCliApprovalMode; labelKey: string }[] = [
   { value: 'plan', labelKey: 'settings.geminiCli.approvalPlan' },
 ];
 
+interface GeminiCliModel {
+  modelId: string;
+  name: string;
+  description?: string;
+}
+
+interface GeminiCliModelList {
+  availableModels: GeminiCliModel[];
+  currentModelId?: string;
+}
+
 export default function GeminiCliSettings() {
   const { t } = useTranslation();
   const { settings, setGeminiCliSettings } = useSettingsStore();
@@ -32,6 +44,31 @@ export default function GeminiCliSettings() {
     reconnect,
     syncApprovalMode,
   } = useGeminiCliConnection();
+
+  const [models, setModels] = useState<GeminiCliModel[]>([]);
+
+  // 연결된 상태에서 Gemini CLI가 session/new로 내려준 모델 목록 조회.
+  useEffect(() => {
+    if (connectionState !== 'connected') {
+      setModels([]);
+      return;
+    }
+    invoke<GeminiCliModelList | null>('gemini_cli_list_models')
+      .then((result) => {
+        setModels(result?.availableModels ?? []);
+      })
+      .catch(() => setModels([]));
+  }, [connectionState]);
+
+  const handleModelChange = async (modelId: string) => {
+    setGeminiCliSettings({ model: modelId });
+    // 활성 세션에 즉시 반영 — unstable RPC이므로 실패해도 설정값은 유지됨.
+    try {
+      await invoke('gemini_cli_set_model', { modelId });
+    } catch {
+      // best-effort
+    }
+  };
 
   const handleSelectFolder = async () => {
     try {
@@ -213,6 +250,48 @@ export default function GeminiCliSettings() {
           {t('settings.geminiCli.workingDirHelp')}
         </div>
       </div>
+
+      {/* 모델 선택 — 연결 후 session/new 응답의 availableModels로 표시 */}
+      {models.length > 0 && (
+        <div>
+          <div
+            style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 4 }}
+          >
+            {t('settings.geminiCli.model')}
+          </div>
+          <div className="flex flex-wrap" style={{ gap: 6 }}>
+            {models.map((m) => {
+              const active = settings.geminiCli.model === m.modelId;
+              return (
+                <button
+                  key={m.modelId}
+                  type="button"
+                  onClick={() => {
+                    void handleModelChange(m.modelId);
+                  }}
+                  title={m.description || m.name}
+                  className="focus-ring"
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 12.5,
+                    borderRadius: 99,
+                    background: active ? 'var(--accent)' : 'oklch(1 0 0 / 0.7)',
+                    color: active ? 'white' : 'var(--ink-2)',
+                    boxShadow: active ? 'none' : 'inset 0 0 0 1px var(--hairline)',
+                    fontWeight: active ? 500 : 400,
+                  }}
+                  data-interactive="true"
+                >
+                  {m.name}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 4 }}>
+            {t('settings.geminiCli.modelInfo')}
+          </div>
+        </div>
+      )}
 
       {/* 승인 모드 */}
       <div>

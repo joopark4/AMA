@@ -9,10 +9,12 @@
 export const GEMINI_CLI_PROVIDER = 'gemini_cli' as const;
 
 /**
- * 기본 모델. 빈 문자열이면 Gemini CLI의 현재 기본 모델을 사용한다.
- * (ACP `newSession` 시 model을 지정하지 않고 서버 기본에 위임)
+ * 기본 모델 ID — 실측한 Gemini CLI 기본값(`auto-gemini-3`).
+ *
+ * `session/new` 응답에서 확인한 `models.currentModelId`와 일치한다. 실제 선택 가능한
+ * 모델 목록은 연결 후 `gemini_cli_list_models` Tauri 커맨드로 런타임 조회한다.
  */
-export const GEMINI_CLI_DEFAULT_MODEL = '';
+export const GEMINI_CLI_DEFAULT_MODEL = 'auto-gemini-3';
 
 /** Gemini CLI ACP 응답 타임아웃 (12시간). Codex와 동일한 기준. */
 export const GEMINI_CLI_RESPONSE_TIMEOUT_MS = 12 * 60 * 60 * 1000;

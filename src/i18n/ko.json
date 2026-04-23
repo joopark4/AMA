@@ -384,7 +384,9 @@
       "approvalAutoEdit": "편집 자동 승인",
       "approvalYolo": "YOLO (모두 자동)",
       "approvalPlan": "읽기 전용 (계획)",
-      "approvalInfo": "도구 실행을 승인 요청할지 여부를 결정합니다. YOLO는 위험할 수 있으니 신뢰 환경에서만 사용하세요."
+      "approvalInfo": "도구 실행을 승인 요청할지 여부를 결정합니다. YOLO는 위험할 수 있으니 신뢰 환경에서만 사용하세요.",
+      "model": "모델",
+      "modelInfo": "연결 직후 Gemini CLI가 보고한 사용 가능 모델 목록입니다. 변경 시 현재 세션에 즉시 반영됩니다."
     },
     "character": {
       "title": "캐릭터",

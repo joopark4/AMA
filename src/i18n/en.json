@@ -384,7 +384,9 @@
       "approvalAutoEdit": "Auto-approve edits",
       "approvalYolo": "YOLO (auto-approve all)",
       "approvalPlan": "Plan (read-only)",
-      "approvalInfo": "Controls whether tool calls prompt for approval. YOLO is dangerous — use only in trusted environments."
+      "approvalInfo": "Controls whether tool calls prompt for approval. YOLO is dangerous — use only in trusted environments.",
+      "model": "Model",
+      "modelInfo": "Models reported by Gemini CLI right after connecting. Changes apply to the current session immediately."
     },
     "character": {
       "title": "Character",

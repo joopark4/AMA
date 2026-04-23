@@ -64,6 +64,8 @@ struct GeminiCliProcess {
     terminals: Mutex<HashMap<String, Arc<TerminalInstance>>>,
     /// terminalId 발급 카운터.
     next_terminal_id: AtomicU64,
+    /// `session/new` 응답의 `models` 스냅샷 — 설정 UI가 모델 목록·현재값을 표시할 때 사용.
+    available_models: Mutex<Option<Value>>,
     turn_ready: Arc<tokio::sync::Notify>,
     turn_active: Arc<std::sync::atomic::AtomicBool>,
 }
@@ -1113,6 +1115,7 @@ pub async fn gemini_cli_start(
         approval_mode: std::sync::Mutex::new(mode_str),
         terminals: Mutex::new(HashMap::new()),
         next_terminal_id: AtomicU64::new(0),
+        available_models: Mutex::new(None),
         turn_ready,
         turn_active,
     });
@@ -1136,6 +1139,42 @@ pub async fn gemini_cli_start(
     let init_result = send_request(&process, "initialize", Some(init_params)).await;
     let result = match init_result {
         Ok(_) => {
+            // 연결 직후 session/new를 미리 호출 — 응답의 `models`·`modes`를 캐시해 설정 UI가
+            // 모델/모드 목록을 즉시 노출하도록 한다. 세션 자체도 재사용해 첫 대화를 빠르게 연다.
+            let cwd_for_session = spawn_dir
+                .clone()
+                .unwrap_or_else(|| "/tmp".to_string());
+            if let Ok(new_res) = send_request(
+                &process,
+                "session/new",
+                Some(json!({ "cwd": cwd_for_session, "mcpServers": [] })),
+            )
+            .await
+            {
+                if let Some(sid) = new_res.get("sessionId").and_then(|v| v.as_str()) {
+                    *process.session_id.lock().await = Some(sid.to_string());
+                    // 빈 프롬프트 적용 상태로 표시 — 첫 사용자 메시지가 non-empty이면
+                    // send_message가 새 세션을 다시 만들고, 빈 프롬프트면 이 세션을 재사용.
+                    *process.applied_prompt.lock().await = Some(String::new());
+                }
+                if let Some(models) = new_res.get("models") {
+                    *process.available_models.lock().await = Some(models.clone());
+                }
+                // 초기 승인 모드 동기화 (default가 아닐 때만).
+                let current_mode = process.approval_mode.lock().unwrap().clone();
+                let target = approval_mode_to_acp_mode_id(&current_mode);
+                if target != "default" {
+                    let sid = process.session_id.lock().await.clone().unwrap_or_default();
+                    if !sid.is_empty() {
+                        let _ = send_request(
+                            &process,
+                            "session/set_mode",
+                            Some(json!({ "sessionId": sid, "modeId": target })),
+                        )
+                        .await;
+                    }
+                }
+            }
             {
                 let mut guard = state.process.lock().await;
                 *guard = Some(process);
@@ -1398,6 +1437,55 @@ pub async fn gemini_cli_cancel(state: tauri::State<'_, GeminiCliState>) -> Resul
         )
         .await;
     }
+    Ok(())
+}
+
+/// `session/new` 응답에서 캐시한 모델 목록(+currentModelId)을 반환.
+/// 연결되지 않았거나 아직 session/new 응답이 없으면 null.
+#[tauri::command]
+pub async fn gemini_cli_list_models(
+    state: tauri::State<'_, GeminiCliState>,
+) -> Result<Value, String> {
+    let process = {
+        let guard = state.process.lock().await;
+        guard.as_ref().map(Arc::clone)
+    };
+    if let Some(process) = process {
+        let models = process.available_models.lock().await.clone();
+        Ok(models.unwrap_or(Value::Null))
+    } else {
+        Ok(Value::Null)
+    }
+}
+
+/// 활성 세션의 모델을 변경 (`unstable_setSessionModel`).
+///
+/// ACP 스펙의 unstable 메서드이므로 Gemini CLI 버전이 올라가며 바뀔 수 있다.
+/// 실패 시에도 UI의 설정값(`settings.geminiCli.model`)은 사용자 의도를 반영한 채
+/// 유지되며, 재연결 시점에 새 세션이 해당 모델로 시작되도록 한다.
+#[tauri::command]
+pub async fn gemini_cli_set_model(
+    state: tauri::State<'_, GeminiCliState>,
+    model_id: String,
+) -> Result<(), String> {
+    let process = {
+        let guard = state.process.lock().await;
+        guard.as_ref().map(Arc::clone)
+    };
+    let Some(process) = process else {
+        return Ok(());
+    };
+    let sid = process.session_id.lock().await.clone();
+    let Some(sid) = sid else {
+        return Ok(());
+    };
+    // unstable prefix에 주의 — best-effort.
+    let _ = send_request(
+        &process,
+        "unstable_setSessionModel",
+        Some(json!({ "sessionId": sid, "modelId": model_id })),
+    )
+    .await;
     Ok(())
 }
 
