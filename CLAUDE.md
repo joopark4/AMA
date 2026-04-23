@@ -235,6 +235,13 @@ const { t } = useTranslation();
 - CLI 설치/인증 상태 표시 + 설치/로그인 가이드
 - **모듈화**: `src/features/codex/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수)
 
+### Gemini CLI(ACP) 연동 (진행 중, `feature/gemini-cli-integration`)
+- `gemini --experimental-acp` 자식 프로세스 + JSON-RPC 2.0 over stdio로 Codex와 동일 패턴
+- provider 키: `gemini_cli` (기존 클라우드 `gemini`와 별개)
+- 설정: `settings.geminiCli` (`model`/`approvalMode`/`workingDir`/`authMethod`), persist v22
+- 현재 상태: **스캐폴딩만 완료** — 타입·기본값·상수·placeholder 클라이언트·UI 드롭다운·i18n·문서
+- Rust 백엔드(`gemini_cli.rs`)·실제 `LLMClient` 구현은 후속 커밋. 상세: [docs/ai/gemini-cli-integration.md](docs/ai/gemini-cli-integration.md)
+
 ### 화면 관찰 (Screen Watch, v1.5.0)
 - 주기적 화면 캡처 + Vision LLM 분석으로 아바타가 능동 발화
 - Provider: Claude / OpenAI / Gemini / Codex (Ollama·LocalAI·Claude Code·비macOS 제외)

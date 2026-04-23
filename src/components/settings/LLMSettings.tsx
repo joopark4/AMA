@@ -8,6 +8,7 @@ import { ollamaClient } from '../../services/ai/ollamaClient';
 import { localAiClient } from '../../services/ai/localAiClient';
 import { CLAUDE_CODE_PROVIDER, BRIDGE_DEFAULT_ENDPOINT, BRIDGE_DEFAULT_MODEL } from '../../features/channels';
 import { CODEX_PROVIDER, CODEX_DEFAULT_MODEL, CodexSettings } from '../../features/codex';
+import { GEMINI_CLI_PROVIDER, GEMINI_CLI_DEFAULT_MODEL } from '../../features/gemini-cli';
 import { isVisionAvailable } from '../../features/screen-watch';
 import { Field, Pill, Select, TextInput } from './forms';
 
@@ -582,6 +583,7 @@ export default function LLMSettings() {
   const getModelsForProvider = (provider: LLMProvider): string[] => {
     if (provider === CLAUDE_CODE_PROVIDER) return [BRIDGE_DEFAULT_MODEL];
     if (provider === CODEX_PROVIDER) return [CODEX_DEFAULT_MODEL];
+    if (provider === GEMINI_CLI_PROVIDER) return [GEMINI_CLI_DEFAULT_MODEL];
     if (provider === 'ollama' || provider === 'localai') {
       return localModels;
     }
@@ -612,6 +614,7 @@ export default function LLMSettings() {
     { value: 'gemini', label: t('settings.llm.providers.gemini') },
     { value: CLAUDE_CODE_PROVIDER, label: t('settings.llm.providers.claude_code') },
     { value: CODEX_PROVIDER, label: t('settings.llm.providers.codex') },
+    { value: GEMINI_CLI_PROVIDER, label: t('settings.llm.providers.gemini_cli') },
   ];
 
   const handleProviderChange = (provider: LLMProvider) => {
@@ -620,9 +623,11 @@ export default function LLMSettings() {
       ? [BRIDGE_DEFAULT_MODEL]
       : provider === CODEX_PROVIDER
         ? [CODEX_DEFAULT_MODEL]
-        : provider === 'ollama' || provider === 'localai'
-          ? localModels
-          : buildCloudCandidateModels(provider, '', cloudModels[provider]);
+        : provider === GEMINI_CLI_PROVIDER
+          ? [GEMINI_CLI_DEFAULT_MODEL]
+          : provider === 'ollama' || provider === 'localai'
+            ? localModels
+            : buildCloudCandidateModels(provider, '', cloudModels[provider]);
     const endpoint = getDefaultEndpoint(provider);
     setLLMSettings({
       provider,

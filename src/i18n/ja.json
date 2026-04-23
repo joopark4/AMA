@@ -63,7 +63,8 @@
         "gemini": "Google Gemini",
         "claude_code": "Claude Code（外部連携）",
         "claudeCodeInfo": "外部ターミナルでClaude Codeが実行中である必要があります。プロジェクトディレクトリでclaudeコマンドを実行するとama-bridgeが自動起動します。",
-        "codex": "OpenAI Codex"
+        "codex": "OpenAI Codex",
+        "gemini_cli": "Gemini CLI（連携準備中）"
       },
       "expand": "展開",
       "collapse": "折りたたむ"
