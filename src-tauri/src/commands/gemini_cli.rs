@@ -1,21 +1,24 @@
-//! Gemini CLI(ACP) 프로세스 관리 + JSON-RPC 2.0 통신
+//! Gemini CLI(ACP) 프로세스 관리 + JSON-RPC 2.0 통신 (파일·승인·Vision 포함).
 //!
 //! `gemini --experimental-acp`를 spawn하여 stdio로 JSON-RPC 2.0 메시지를 주고받는다.
-//! Codex와 거의 동일한 패턴이지만 아래 주요 차이가 있다:
+//! Codex와 동일한 패턴이지만 아래 차이가 있다:
 //!
-//! - 메서드 이름: `session/new`, `session/prompt`, `session/cancel` (slash 표기)
-//! - 스트리밍: `session/update` notification 안의 `agent_message_chunk`
-//! - 턴 완료: `session/prompt` **응답**(`stopReason`)으로 알림 (Codex처럼 별도 notification 아님)
-//! - Client 메서드 역콜백: `fs/*`, `session/request_permission`, `terminal/*` — 현재는 모두
-//!   `-32601 Method not found`로 응답(에이전트가 호스트 파일·터미널에 접근하지 않도록 차단)
+//! - 메서드 이름: `session/new`, `session/prompt`, `session/cancel`, `session/set_mode`
+//! - 스트리밍: `session/update` notification의 `sessionUpdate="agent_message_chunk"` + `content`
+//! - 턴 완료: `session/prompt` **응답**(`stopReason`)으로 판정
+//! - 클라이언트 메서드 역콜백:
+//!   - `fs/read_text_file`, `fs/write_text_file`: workingDir 샌드박스 내에서만 허용
+//!   - `session/request_permission`: `approvalMode`에 따라 자동 수락/거부
+//!   - `terminal/*`: 아직 미지원(-32601 Method not supported)
 //!
 //! 인증: `~/.gemini/` 디렉터리의 캐시된 크리덴셜 + 필요 시 `authenticate` RPC.
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
@@ -23,17 +26,16 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::{oneshot, Mutex};
 
-/// JSON-RPC 요청 타임아웃 (12시간) — Codex와 동일한 기준
+/// JSON-RPC 요청 타임아웃 (12시간) — Codex와 동일 기준
 const REQUEST_TIMEOUT_SECS: u64 = 43200;
 
-/// ACP 프로토콜 버전 — `initialize` 시 number로 전달해야 한다. 생략 시 -32603.
+/// ACP 프로토콜 버전 — `initialize` 시 number로 전달해야 한다.
 const ACP_PROTOCOL_VERSION: u64 = 1;
 
 // ─── State ───────────────────────────────────────────────
 
 pub struct GeminiCliState {
     process: Arc<Mutex<Option<Arc<GeminiCliProcess>>>>,
-    /// gemini_cli_start 중복 실행 방지
     starting: std::sync::atomic::AtomicBool,
 }
 
@@ -47,16 +49,17 @@ impl GeminiCliState {
 }
 
 struct GeminiCliProcess {
-    /// stdout reader가 클라이언트 메서드에 응답할 때에도 공유해야 하므로 `Arc<Mutex>`.
     stdin: Arc<Mutex<tokio::process::ChildStdin>>,
     _child: std::sync::Mutex<Option<Child>>,
     next_id: AtomicU64,
     pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
-    /// 현재 활성 `session/new`로 받은 세션 ID.
     session_id: Mutex<Option<String>>,
-    /// 현재 세션에 주입된 시스템 프롬프트(변경 감지 → 새 세션 생성).
     applied_prompt: Mutex<Option<String>>,
-    /// 턴 직렬화 — `session/prompt` 응답 시 notify.
+    /// fs 샌드박스 기준(절대 경로). `gemini_cli_start` 시점에 주입된 값을 유지.
+    working_dir: std::sync::Mutex<Option<PathBuf>>,
+    /// 사용자 선택 승인 모드 (`"default" | "auto_edit" | "yolo" | "plan"`).
+    /// `session/request_permission` 자동 응답 기준이며 `gemini_cli_set_approval_mode` 로 갱신.
+    approval_mode: std::sync::Mutex<String>,
     turn_ready: Arc<tokio::sync::Notify>,
     turn_active: Arc<std::sync::atomic::AtomicBool>,
 }
@@ -98,7 +101,6 @@ pub struct GeminiCliTokenEvent {
 pub struct GeminiCliCompleteEvent {
     pub text: String,
     pub session_id: Option<String>,
-    /// `"completed" | "cancelled" | "exceeded_max_iterations" | "error"`
     pub stop_reason: String,
 }
 
@@ -146,7 +148,6 @@ fn find_gemini_binary() -> Option<PathBuf> {
             }
         }
     }
-
     let known_paths = ["/opt/homebrew/bin/gemini", "/usr/local/bin/gemini"];
     for path in &known_paths {
         let p = PathBuf::from(path);
@@ -154,7 +155,6 @@ fn find_gemini_binary() -> Option<PathBuf> {
             return Some(p);
         }
     }
-
     if let Ok(home) = env::var("HOME") {
         let direct_paths = [
             format!("{home}/.volta/bin/gemini"),
@@ -166,18 +166,15 @@ fn find_gemini_binary() -> Option<PathBuf> {
                 return Some(candidate);
             }
         }
-
         let nvm_base = PathBuf::from(&home).join(".nvm/versions/node");
         if let Some(found) = scan_node_versions_for_gemini(&nvm_base) {
             return Some(found);
         }
-
         let fnm_base = PathBuf::from(&home).join(".local/share/fnm/node-versions");
         if let Some(found) = scan_node_versions_for_gemini(&fnm_base) {
             return Some(found);
         }
     }
-
     None
 }
 
@@ -185,10 +182,7 @@ fn scan_node_versions_for_gemini(base: &PathBuf) -> Option<PathBuf> {
     if !base.exists() {
         return None;
     }
-    let mut versions: Vec<_> = std::fs::read_dir(base)
-        .ok()?
-        .filter_map(|e| e.ok())
-        .collect();
+    let mut versions: Vec<_> = std::fs::read_dir(base).ok()?.filter_map(|e| e.ok()).collect();
     versions.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     for entry in versions {
         let candidate = entry.path().join("bin/gemini");
@@ -206,18 +200,109 @@ fn get_gemini_home() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".gemini"))
 }
 
-// ─── 메시지 발송 helper ──────────────────────────────────
+/// ACP `agent_message_chunk.content`에서 사용자 가시 텍스트를 추출.
+/// 가능한 형태:
+///   1) `{ "type": "text", "text": "..." }` — ContentBlock 직접
+///   2) `{ "role": "assistant", "content": [{ "type": "text", ... }, ...] }` — 래핑
+fn extract_content_block_text(block: &Value) -> String {
+    if let Some(text) = block.get("text").and_then(|v| v.as_str()) {
+        return text.to_string();
+    }
+    if let Some(arr) = block.get("content").and_then(|v| v.as_array()) {
+        let mut out = String::new();
+        for item in arr {
+            if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                out.push_str(text);
+            }
+        }
+        return out;
+    }
+    String::new()
+}
+
+/// 사용자가 선택한 approvalMode(스네이크/문자열)를 Gemini CLI가 노출하는 ACP mode ID로 변환.
+///
+/// 실측(gemini --experimental-acp): `default`, `autoEdit`, `yolo`, `plan` (camelCase)
+fn approval_mode_to_acp_mode_id(mode: &str) -> &'static str {
+    match mode {
+        "auto_edit" => "autoEdit",
+        "yolo" => "yolo",
+        "plan" => "plan",
+        _ => "default",
+    }
+}
+
+/// workingDir 내부 경로인지 확인하고 canonical 경로로 반환.
+/// 새 파일 쓰기 대비 — 파일 자체가 아직 없으면 부모 디렉터리 기준으로 canonicalize.
+fn validate_path_in_workdir(
+    working_dir: &Option<PathBuf>,
+    path_str: &str,
+) -> Result<PathBuf, String> {
+    let target = Path::new(path_str);
+    if !target.is_absolute() {
+        return Err(format!("Path must be absolute: {path_str}"));
+    }
+    let wd = working_dir
+        .as_ref()
+        .ok_or_else(|| "workingDir not configured".to_string())?;
+    let wd_canon = wd
+        .canonicalize()
+        .map_err(|e| format!("workingDir canonicalize failed: {e}"))?;
+
+    let canonical = match target.canonicalize() {
+        Ok(p) => p,
+        Err(_) => {
+            // 새 파일일 가능성 — 부모 canonicalize + 파일명 결합.
+            let parent = target
+                .parent()
+                .ok_or_else(|| format!("No parent dir for {path_str}"))?;
+            let parent_canon = parent
+                .canonicalize()
+                .map_err(|e| format!("parent canonicalize failed: {e}"))?;
+            let name = target
+                .file_name()
+                .ok_or_else(|| format!("No file name in {path_str}"))?;
+            parent_canon.join(name)
+        }
+    };
+
+    if !canonical.starts_with(&wd_canon) {
+        return Err(format!(
+            "Access denied: {} is outside workingDir {}",
+            canonical.display(),
+            wd_canon.display()
+        ));
+    }
+    Ok(canonical)
+}
+
+fn guess_image_mime(path: &Path) -> String {
+    match path
+        .extension()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("png") => "image/png".to_string(),
+        Some("jpg") | Some("jpeg") => "image/jpeg".to_string(),
+        Some("webp") => "image/webp".to_string(),
+        Some("gif") => "image/gif".to_string(),
+        _ => "application/octet-stream".to_string(),
+    }
+}
+
+// ─── stdin write helpers ─────────────────────────────────
 
 fn jsonrpc_error_response(id: &Value, code: i64, message: &str) -> Value {
-    json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "error": { "code": code, "message": message }
-    })
+    json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
+}
+
+fn jsonrpc_result_response(id: &Value, result: Value) -> Value {
+    json!({ "jsonrpc": "2.0", "id": id, "result": result })
 }
 
 async fn write_raw_to_stdin(
-    stdin: &Mutex<tokio::process::ChildStdin>,
+    stdin: &Arc<Mutex<tokio::process::ChildStdin>>,
     msg: &Value,
 ) -> Result<(), String> {
     let mut line = serde_json::to_string(msg).map_err(|e| format!("JSON serialize error: {e}"))?;
@@ -234,15 +319,95 @@ async fn write_raw_to_stdin(
     Ok(())
 }
 
+// ─── Client method handlers (agent → client) ────────────
+
+/// `fs/read_text_file` 처리 — workingDir 내부면 읽어서 content 반환.
+async fn handle_fs_read(working_dir: &Option<PathBuf>, params: &Value) -> Result<Value, String> {
+    let path_str = params
+        .get("path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "path required".to_string())?;
+    let canonical = validate_path_in_workdir(working_dir, path_str)?;
+    let content = tokio::fs::read_to_string(&canonical)
+        .await
+        .map_err(|e| format!("read failed: {e}"))?;
+    let sliced = apply_read_range(&content, params);
+    Ok(json!({ "content": sliced }))
+}
+
+/// ACP 스펙의 선택 인자 `line`(1-based start) + `limit`(max lines) 적용.
+fn apply_read_range(content: &str, params: &Value) -> String {
+    let line = params.get("line").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+    let limit = params.get("limit").and_then(|v| v.as_u64());
+    if line == 1 && limit.is_none() {
+        return content.to_string();
+    }
+    let start = line.saturating_sub(1);
+    let lines: Vec<&str> = content.lines().collect();
+    let end = match limit {
+        Some(l) => (start + l as usize).min(lines.len()),
+        None => lines.len(),
+    };
+    if start >= lines.len() {
+        return String::new();
+    }
+    lines[start..end].join("\n")
+}
+
+async fn handle_fs_write(working_dir: &Option<PathBuf>, params: &Value) -> Result<Value, String> {
+    let path_str = params
+        .get("path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "path required".to_string())?;
+    let content = params
+        .get("content")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "content required".to_string())?;
+    let canonical = validate_path_in_workdir(working_dir, path_str)?;
+    // 상위 디렉터리가 없으면 생성(편의).
+    if let Some(parent) = canonical.parent() {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| format!("create parent failed: {e}"))?;
+    }
+    tokio::fs::write(&canonical, content)
+        .await
+        .map_err(|e| format!("write failed: {e}"))?;
+    Ok(json!({}))
+}
+
+/// approvalMode 기반 `session/request_permission` 자동 응답.
+/// - `plan`: 항상 거부(cancelled)
+/// - `yolo`: 첫 옵션 자동 승인
+/// - `auto_edit` / `default`: 첫 옵션 자동 승인 (MVP — UI 승인 플로우는 후속 과제)
+fn auto_permission_outcome(mode: &str, params: &Value) -> Value {
+    if mode == "plan" {
+        return json!({ "outcome": { "outcome": "cancelled" } });
+    }
+    let opts = params
+        .get("options")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    if let Some(first) = opts.first() {
+        if let Some(opt_id) = first.get("optionId").and_then(|v| v.as_str()) {
+            return json!({
+                "outcome": { "outcome": "selected", "optionId": opt_id }
+            });
+        }
+    }
+    json!({ "outcome": { "outcome": "cancelled" } })
+}
+
 // ─── Core: 프로세스 spawn + stdout reader ────────────────
 
 async fn spawn_gemini_process(
     app_handle: AppHandle,
     pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
     process_state: Arc<Mutex<Option<Arc<GeminiCliProcess>>>>,
+    process_for_reader: Arc<Mutex<Option<Arc<GeminiCliProcess>>>>,
     turn_ready: Arc<tokio::sync::Notify>,
     turn_active: Arc<std::sync::atomic::AtomicBool>,
-    stdin_for_client_calls: Arc<Mutex<Option<Arc<Mutex<tokio::process::ChildStdin>>>>>,
     working_dir: Option<String>,
 ) -> Result<(tokio::process::ChildStdin, Child), String> {
     let bin = find_gemini_binary().ok_or_else(|| {
@@ -283,19 +448,15 @@ async fn spawn_gemini_process(
         .take()
         .ok_or_else(|| "Failed to capture gemini stdin".to_string())?;
 
-    // stdout reader 태스크
+    // stdout reader 태스크 — process_for_reader 는 나중에 set 됨.
     let app_clone = app_handle.clone();
     let pending_clone = pending.clone();
     let process_state = process_state.clone();
     let turn_ready = turn_ready.clone();
     let turn_active = turn_active.clone();
-    let stdin_for_client_calls = stdin_for_client_calls.clone();
     tokio::spawn(async move {
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
-
-        // per-turn 누적 — session/prompt 응답 시점에 최종 텍스트로 emit
-        let mut accumulated_text = String::new();
         let mut current_session_id: Option<String> = None;
 
         while let Ok(Some(line)) = lines.next_line().await {
@@ -308,7 +469,7 @@ async fn spawn_gemini_process(
                 Err(_) => continue,
             };
 
-            // 1) 응답 (id 있음 + method 없음) — pending 요청 매칭
+            // 응답 (id 있음 + method 없음)
             if let (Some(id_val), None) = (&msg.id, &msg.method) {
                 let id = match id_val {
                     Value::Number(n) => n.as_u64(),
@@ -331,22 +492,44 @@ async fn spawn_gemini_process(
                 continue;
             }
 
-            // 2) 클라이언트 메서드 호출 (id 있음 + method 있음)
-            //    AMA는 파일/터미널 접근을 허용하지 않으므로 모두 -32601로 거부.
+            // 에이전트가 클라이언트 메서드를 호출 (id 있음 + method 있음)
             if let (Some(id_val), Some(method)) = (&msg.id, &msg.method) {
-                let err =
-                    jsonrpc_error_response(id_val, -32601, &format!("Method not supported: {method}"));
-                let stdin_ref = {
-                    let guard = stdin_for_client_calls.lock().await;
+                let params = msg.params.clone().unwrap_or(Value::Null);
+                let process_opt = {
+                    let guard = process_for_reader.lock().await;
                     guard.clone()
                 };
-                if let Some(stdin_arc) = stdin_ref {
-                    let _ = write_raw_to_stdin(&stdin_arc, &err).await;
+
+                if let Some(process) = process_opt {
+                    let stdin_ref = process.stdin.clone();
+                    let working_dir = process.working_dir.lock().unwrap().clone();
+                    let approval_mode = process.approval_mode.lock().unwrap().clone();
+
+                    let response = match method.as_str() {
+                        "fs/read_text_file" => match handle_fs_read(&working_dir, &params).await {
+                            Ok(result) => jsonrpc_result_response(id_val, result),
+                            Err(e) => jsonrpc_error_response(id_val, -32602, &e),
+                        },
+                        "fs/write_text_file" => match handle_fs_write(&working_dir, &params).await {
+                            Ok(result) => jsonrpc_result_response(id_val, result),
+                            Err(e) => jsonrpc_error_response(id_val, -32602, &e),
+                        },
+                        "session/request_permission" => jsonrpc_result_response(
+                            id_val,
+                            auto_permission_outcome(&approval_mode, &params),
+                        ),
+                        _ => jsonrpc_error_response(
+                            id_val,
+                            -32601,
+                            &format!("Method not supported: {method}"),
+                        ),
+                    };
+                    let _ = write_raw_to_stdin(&stdin_ref, &response).await;
                 }
                 continue;
             }
 
-            // 3) 알림 (id 없음 + method 있음)
+            // 알림 (id 없음 + method 있음)
             if let Some(method) = &msg.method {
                 let params = msg.params.as_ref();
 
@@ -357,32 +540,36 @@ async fn spawn_gemini_process(
                                 current_session_id = Some(sid.to_string());
                             }
                             if let Some(update) = p.get("update") {
-                                // agent_message_chunk — 핵심 스트리밍
-                                if let Some(chunk) = update.get("agent_message_chunk") {
-                                    let text = extract_content_block_text(chunk);
-                                    if !text.is_empty() {
-                                        accumulated_text.push_str(&text);
-                                        let _ = app_clone.emit(
-                                            "gemini-cli-token",
-                                            GeminiCliTokenEvent {
-                                                text,
-                                                session_id: current_session_id.clone(),
-                                            },
-                                        );
+                                // discriminator: sessionUpdate 문자열
+                                let kind = update
+                                    .get("sessionUpdate")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
+                                if kind == "agent_message_chunk" {
+                                    if let Some(content) = update.get("content") {
+                                        let text = extract_content_block_text(content);
+                                        if !text.is_empty() {
+                                            let _ = app_clone.emit(
+                                                "gemini-cli-token",
+                                                GeminiCliTokenEvent {
+                                                    text,
+                                                    session_id: current_session_id.clone(),
+                                                },
+                                            );
+                                        }
                                     }
                                 }
-                                // 기타 update 종류(tool_call_update, plan_update, ...)는
-                                // 향후 확장 지점. 일단 무시.
+                                // 기타 update 종류(tool_call_update, plan_update, 등)는
+                                // 후속 확장 지점. 일단 무시.
                             }
                         }
                     }
-
                     _ => {}
                 }
             }
         }
 
-        // stdout 종료 시 pending 요청 에러 전달 + state 정리
+        // stdout 종료 시 pending 요청 정리.
         {
             let mut map = pending_clone.lock().await;
             for (_, sender) in map.drain() {
@@ -403,18 +590,6 @@ async fn spawn_gemini_process(
                 message: Some("Gemini CLI(ACP) process exited".to_string()),
             },
         );
-
-        // 혹시 응답 이벤트 이후에도 남은 text를 표시
-        if !accumulated_text.is_empty() {
-            let _ = app_clone.emit(
-                "gemini-cli-complete",
-                GeminiCliCompleteEvent {
-                    text: accumulated_text.clone(),
-                    session_id: current_session_id,
-                    stop_reason: "error".to_string(),
-                },
-            );
-        }
     });
 
     // stderr reader (디버그용)
@@ -429,25 +604,6 @@ async fn spawn_gemini_process(
     });
 
     Ok((stdin, child))
-}
-
-/// ACP `ContentBlock`에서 사용자에게 보여줄 텍스트를 추출.
-/// 현재는 `{ "type": "text", "text": "..." }` 패턴만 지원.
-fn extract_content_block_text(block: &Value) -> String {
-    if let Some(text) = block.get("text").and_then(|v| v.as_str()) {
-        return text.to_string();
-    }
-    // `content: [{ type: "text", text: "..." }]` 래핑 케이스도 방어적으로 처리
-    if let Some(arr) = block.get("content").and_then(|v| v.as_array()) {
-        let mut out = String::new();
-        for item in arr {
-            if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
-                out.push_str(text);
-            }
-        }
-        return out;
-    }
-    String::new()
 }
 
 // ─── Core: JSON-RPC 요청 송신 ───────────────────────────
@@ -525,7 +681,6 @@ async fn send_notification(
         .flush()
         .await
         .map_err(|e| format!("Failed to flush gemini stdin: {e}"))?;
-
     Ok(())
 }
 
@@ -547,7 +702,6 @@ pub async fn gemini_cli_check_installed() -> Result<GeminiCliInstallStatus, Stri
                         None
                     }
                 });
-
             Ok(GeminiCliInstallStatus {
                 installed: true,
                 path: Some(path.to_string_lossy().to_string()),
@@ -564,8 +718,6 @@ pub async fn gemini_cli_check_installed() -> Result<GeminiCliInstallStatus, Stri
 
 #[tauri::command]
 pub async fn gemini_cli_check_auth() -> Result<GeminiCliAuthStatus, String> {
-    // Gemini CLI는 `~/.gemini/` 디렉터리 내 여러 크리덴셜 파일을 쓴다.
-    // (oauth_creds.json, settings.json, ...). 존재만 검사.
     let home = match get_gemini_home() {
         Some(h) => h,
         None => {
@@ -591,6 +743,7 @@ pub async fn gemini_cli_start(
     app_handle: AppHandle,
     state: tauri::State<'_, GeminiCliState>,
     working_dir: Option<String>,
+    approval_mode: Option<String>,
 ) -> Result<(), String> {
     {
         let guard = state.process.lock().await;
@@ -614,18 +767,25 @@ pub async fn gemini_cli_start(
         Arc::new(Mutex::new(HashMap::new()));
     let turn_ready = Arc::new(tokio::sync::Notify::new());
     let turn_active = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    // stdout reader가 client method 요청에 응답하기 위한 stdin 공유 핸들.
-    let stdin_for_client_calls: Arc<Mutex<Option<Arc<Mutex<tokio::process::ChildStdin>>>>> =
-        Arc::new(Mutex::new(None));
+
+    // reader가 process를 참조할 수 있도록 양방향 handle 사용.
+    let process_for_reader: Arc<Mutex<Option<Arc<GeminiCliProcess>>>> = Arc::new(Mutex::new(None));
+
+    let spawn_dir = working_dir
+        .clone()
+        .filter(|w| !w.is_empty())
+        .or_else(|| {
+            dirs::home_dir().and_then(|h| h.join("Documents").to_str().map(|s| s.to_string()))
+        });
 
     let (stdin, child) = spawn_gemini_process(
         app_handle.clone(),
         pending.clone(),
         state.process.clone(),
+        process_for_reader.clone(),
         turn_ready.clone(),
         turn_active.clone(),
-        stdin_for_client_calls.clone(),
-        working_dir,
+        spawn_dir.clone(),
     )
     .await
     .map_err(|e| {
@@ -634,10 +794,9 @@ pub async fn gemini_cli_start(
     })?;
 
     let stdin_arc = Arc::new(Mutex::new(stdin));
-    {
-        let mut guard = stdin_for_client_calls.lock().await;
-        *guard = Some(stdin_arc.clone());
-    }
+
+    let effective_wd = spawn_dir.clone().map(PathBuf::from);
+    let mode_str = approval_mode.unwrap_or_else(|| "default".to_string());
 
     let process = Arc::new(GeminiCliProcess {
         stdin: stdin_arc,
@@ -646,17 +805,24 @@ pub async fn gemini_cli_start(
         pending,
         session_id: Mutex::new(None),
         applied_prompt: Mutex::new(None),
+        working_dir: std::sync::Mutex::new(effective_wd),
+        approval_mode: std::sync::Mutex::new(mode_str),
         turn_ready,
         turn_active,
     });
 
-    // initialize
+    // reader가 참조할 수 있도록 등록.
+    {
+        let mut guard = process_for_reader.lock().await;
+        *guard = Some(process.clone());
+    }
+
+    // initialize — fs 활성화, terminal은 아직 미지원.
     let init_params = json!({
         "protocolVersion": ACP_PROTOCOL_VERSION,
         "clientInfo": { "name": "AMA", "version": env!("CARGO_PKG_VERSION") },
         "clientCapabilities": {
-            // 파일시스템·터미널은 현재 미구현 → false로 선언해 agent가 시도하지 않도록 유도.
-            "fs": { "readTextFile": false, "writeTextFile": false },
+            "fs": { "readTextFile": true, "writeTextFile": true },
             "terminal": false
         }
     });
@@ -691,7 +857,7 @@ pub async fn gemini_cli_stop(
 ) -> Result<(), String> {
     let mut guard = state.process.lock().await;
     if guard.is_some() {
-        *guard = None; // drop → kill_on_drop
+        *guard = None;
         let _ = app_handle.emit(
             "gemini-cli-status",
             GeminiCliStatusEvent {
@@ -703,6 +869,36 @@ pub async fn gemini_cli_stop(
     Ok(())
 }
 
+/// 현재 연결된 세션의 승인 모드를 `session/set_mode`로 동기화하고 내부 상태도 갱신.
+#[tauri::command]
+pub async fn gemini_cli_set_approval_mode(
+    state: tauri::State<'_, GeminiCliState>,
+    approval_mode: String,
+) -> Result<(), String> {
+    let process = {
+        let guard = state.process.lock().await;
+        guard.as_ref().map(Arc::clone)
+    };
+    // 내부 상태는 항상 갱신(다음 request_permission 처리에 반영).
+    if let Some(ref p) = process {
+        *p.approval_mode.lock().unwrap() = approval_mode.clone();
+    }
+    // 연결되어 있고 세션이 있을 때에만 ACP 전달.
+    if let Some(process) = process {
+        let sid = process.session_id.lock().await.clone();
+        if let Some(sid) = sid {
+            let mode_id = approval_mode_to_acp_mode_id(&approval_mode);
+            let _ = send_request(
+                &process,
+                "session/set_mode",
+                Some(json!({ "sessionId": sid, "modeId": mode_id })),
+            )
+            .await;
+        }
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn gemini_cli_send_message(
     app_handle: AppHandle,
@@ -710,6 +906,8 @@ pub async fn gemini_cli_send_message(
     text: String,
     system_prompt: Option<String>,
     working_dir: Option<String>,
+    approval_mode: Option<String>,
+    image_path: Option<String>,
 ) -> Result<String, String> {
     let process = {
         let guard = state.process.lock().await;
@@ -719,7 +917,11 @@ pub async fn gemini_cli_send_message(
             .ok_or_else(|| "Gemini CLI not connected. Call gemini_cli_start first.".to_string())?
     };
 
-    // 이전 턴 완료 대기
+    // 승인 모드가 새 값으로 주어졌으면 내부 상태 갱신.
+    if let Some(ref mode) = approval_mode {
+        *process.approval_mode.lock().unwrap() = mode.clone();
+    }
+
     while process.turn_active.load(Ordering::SeqCst) {
         process.turn_ready.notified().await;
     }
@@ -744,12 +946,16 @@ pub async fn gemini_cli_send_message(
 
     if is_first_turn {
         let cwd = working_dir
+            .clone()
             .filter(|w| !w.is_empty())
             .or_else(|| {
                 dirs::home_dir()
                     .and_then(|h| h.join("Documents").to_str().map(|s| s.to_string()))
             })
             .unwrap_or_else(|| "/tmp".to_string());
+
+        // workingDir 상태를 동기화(샌드박스 기준).
+        *process.working_dir.lock().unwrap() = Some(PathBuf::from(&cwd));
 
         let result = send_request(
             &process,
@@ -776,10 +982,25 @@ pub async fn gemini_cli_send_message(
         session_id = Some(sid.clone());
         {
             let mut stored = process.session_id.lock().await;
-            *stored = Some(sid);
+            *stored = Some(sid.clone());
         }
-        let mut applied = process.applied_prompt.lock().await;
-        *applied = Some(current_prompt.clone());
+        {
+            let mut applied = process.applied_prompt.lock().await;
+            *applied = Some(current_prompt.clone());
+        }
+
+        // 사용자가 선택한 approval mode와 session 기본(default) 이 다르면 set_mode 시도.
+        let current_mode = process.approval_mode.lock().unwrap().clone();
+        let target_id = approval_mode_to_acp_mode_id(&current_mode);
+        if target_id != "default" {
+            // best-effort — 실패해도 진행.
+            let _ = send_request(
+                &process,
+                "session/set_mode",
+                Some(json!({ "sessionId": sid, "modeId": target_id })),
+            )
+            .await;
+        }
     }
 
     let final_text = if is_first_turn && !current_prompt.is_empty() {
@@ -788,50 +1009,58 @@ pub async fn gemini_cli_send_message(
         text
     };
 
-    let prompt_content = vec![json!({ "type": "text", "text": final_text })];
-    let sid_ref = session_id.clone().unwrap_or_default();
+    // Prompt content 블록 구성 — text + (선택) image
+    let mut prompt_content: Vec<Value> = Vec::with_capacity(2);
+    prompt_content.push(json!({ "type": "text", "text": final_text }));
+    if let Some(ref path) = image_path {
+        let trimmed = path.trim();
+        if !trimmed.is_empty() {
+            let abs = PathBuf::from(trimmed);
+            if !abs.is_absolute() {
+                process.turn_active.store(false, Ordering::SeqCst);
+                process.turn_ready.notify_waiters();
+                return Err(format!("image_path must be absolute: {trimmed}"));
+            }
+            let bytes = tokio::fs::read(&abs).await.map_err(|e| {
+                process.turn_active.store(false, Ordering::SeqCst);
+                process.turn_ready.notify_waiters();
+                format!("Failed to read image: {e}")
+            })?;
+            let mime = guess_image_mime(&abs);
+            let data = STANDARD.encode(&bytes);
+            prompt_content.push(json!({ "type": "image", "mimeType": mime, "data": data }));
+        }
+    }
 
+    let sid_ref = session_id.clone().unwrap_or_default();
     let prompt_res = send_request(
         &process,
         "session/prompt",
-        Some(json!({
-            "sessionId": sid_ref,
-            "prompt": prompt_content
-        })),
+        Some(json!({ "sessionId": sid_ref, "prompt": prompt_content })),
     )
     .await;
 
-    // 응답 = stopReason. 처리 완료 → accumulated_text는 reader에서 이미 token 이벤트로 보냄.
-    let (stop_reason, emit_text) = match prompt_res {
-        Ok(v) => {
-            let sr = v
-                .get("stopReason")
-                .and_then(|s| s.as_str())
-                .unwrap_or("completed")
-                .to_string();
-            (sr, true)
-        }
-        Err(e) => (format!("error:{e}"), true),
+    let stop_reason = match prompt_res {
+        Ok(v) => v
+            .get("stopReason")
+            .and_then(|s| s.as_str())
+            .unwrap_or("completed")
+            .to_string(),
+        Err(e) => format!("error:{e}"),
     };
 
-    if emit_text {
-        // 최종 complete 이벤트 — 실제 누적 텍스트는 reader에서 알고 있으나
-        // 프론트엔드가 자체 누적하므로 여기선 session_id + stopReason만 알려도 충분.
-        let _ = app_handle.emit(
-            "gemini-cli-complete",
-            GeminiCliCompleteEvent {
-                text: String::new(),
-                session_id: session_id.clone(),
-                stop_reason: stop_reason.clone(),
-            },
-        );
-    }
+    let _ = app_handle.emit(
+        "gemini-cli-complete",
+        GeminiCliCompleteEvent {
+            text: String::new(),
+            session_id: session_id.clone(),
+            stop_reason: stop_reason.clone(),
+        },
+    );
 
     let status_label = match stop_reason.as_str() {
-        "completed" => "idle",
-        "cancelled" => "idle",
-        "exceeded_max_iterations" => "error",
-        s if s.starts_with("error") => "error",
+        "completed" | "cancelled" => "idle",
+        s if s.starts_with("error") || s == "exceeded_max_iterations" => "error",
         _ => "idle",
     };
     let _ = app_handle.emit(
@@ -849,16 +1078,13 @@ pub async fn gemini_cli_send_message(
 }
 
 #[tauri::command]
-pub async fn gemini_cli_cancel(
-    state: tauri::State<'_, GeminiCliState>,
-) -> Result<(), String> {
+pub async fn gemini_cli_cancel(state: tauri::State<'_, GeminiCliState>) -> Result<(), String> {
     let process = {
         let guard = state.process.lock().await;
         guard.as_ref().map(Arc::clone)
     };
     if let Some(process) = process {
         let sid = process.session_id.lock().await.clone().unwrap_or_default();
-        // session/cancel은 notification
         let _ = send_notification(
             &process,
             "session/cancel",
@@ -877,14 +1103,12 @@ pub async fn gemini_cli_get_status(
         let guard = state.process.lock().await;
         guard.as_ref().map(Arc::clone)
     };
-
     let connected = process.is_some();
     let session_id = if let Some(ref p) = process {
         p.session_id.lock().await.clone()
     } else {
         None
     };
-
     Ok(GeminiCliConnectionStatus {
         connected,
         installed: connected,
@@ -893,7 +1117,7 @@ pub async fn gemini_cli_get_status(
     })
 }
 
-/// 앱 종료 시 Gemini CLI 프로세스 정리 (Codex와 동일 패턴)
+/// 앱 종료 시 Gemini CLI 프로세스 정리.
 pub fn cleanup_gemini_cli_on_exit(app_handle: &AppHandle) {
     if let Some(state) = app_handle.try_state::<GeminiCliState>() {
         if let Ok(guard) = state.process.try_lock() {

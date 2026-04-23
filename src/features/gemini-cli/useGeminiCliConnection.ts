@@ -25,6 +25,7 @@ interface StatusEvent {
 export function useGeminiCliConnection() {
   const provider = useSettingsStore((s) => s.settings.llm.provider);
   const workingDir = useSettingsStore((s) => s.settings.geminiCli.workingDir);
+  const approvalMode = useSettingsStore((s) => s.settings.geminiCli.approvalMode);
 
   const [connectionState, setConnectionState] =
     useState<GeminiCliConnectionState>('disconnected');
@@ -118,12 +119,25 @@ export function useGeminiCliConnection() {
       await invoke('gemini_cli_stop');
       await invoke('gemini_cli_start', {
         workingDir: workingDir || null,
+        approvalMode,
       });
     } catch (err) {
       setConnectionState('error');
       setErrorMessage(String(err));
     }
-  }, [workingDir]);
+  }, [workingDir, approvalMode]);
+
+  /**
+   * 연결된 상태에서 approvalMode를 런타임 동기화 — `session/set_mode` 호출.
+   * UI 토글 즉시 반영되도록 GeminiCliSettings에서 호출한다.
+   */
+  const syncApprovalMode = useCallback(async (mode: string) => {
+    try {
+      await invoke('gemini_cli_set_approval_mode', { approvalMode: mode });
+    } catch {
+      // 연결 전이거나 CLI가 거부해도 내부 상태는 settingsStore에 이미 반영됨 — 무시.
+    }
+  }, []);
 
   return {
     connectionState,
@@ -132,5 +146,6 @@ export function useGeminiCliConnection() {
     authenticated,
     refreshStatus,
     reconnect,
+    syncApprovalMode,
   };
 }

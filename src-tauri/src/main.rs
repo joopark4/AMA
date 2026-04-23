@@ -85,6 +85,7 @@ fn main() {
             commands::gemini_cli::gemini_cli_send_message,
             commands::gemini_cli::gemini_cli_cancel,
             commands::gemini_cli::gemini_cli_get_status,
+            commands::gemini_cli::gemini_cli_set_approval_mode,
         ])
         .on_menu_event(|app, event| {
             if let Some(window) = app.get_webview_window("main") {

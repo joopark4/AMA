@@ -204,14 +204,93 @@ export class GeminiCliClient implements LLMClient {
     }
   }
 
+  /**
+   * 이미지 파일을 ACP `image` ContentBlock으로 함께 전송.
+   * - `imagePath`는 절대 경로여야 하며 Gemini CLI의 `promptCapabilities.image=true`를 활용한다.
+   * - Rust 쪽에서 base64 인코딩 + mimeType 추론 후 prompt에 추가.
+   */
+  async chatWithLocalImage(
+    messages: Message[],
+    imagePath: string,
+    options?: ChatOptions,
+  ): Promise<LLMResponse> {
+    const userMessage = this.extractLastUserMessage(messages);
+    const systemPrompt = this.extractSystemPrompt(messages, options);
+    await this.ensureStarted();
+
+    const unlistens: UnlistenFn[] = [];
+    const cleanup = () => unlistens.forEach((fn) => fn());
+    let accumulated = '';
+
+    try {
+      return await new Promise<LLMResponse>(async (resolve, reject) => {
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error('Gemini CLI response timeout'));
+        }, GEMINI_CLI_RESPONSE_TIMEOUT_MS);
+
+        try {
+          unlistens.push(
+            await listen<GeminiCliTokenEvent>('gemini-cli-token', (event) => {
+              accumulated += event.payload.text;
+            }),
+          );
+
+          unlistens.push(
+            await listen<GeminiCliCompleteEvent>('gemini-cli-complete', (event) => {
+              clearTimeout(timeout);
+              cleanup();
+              if (isErrorStopReason(event.payload.stopReason)) {
+                reject(new Error(event.payload.stopReason));
+                return;
+              }
+              resolve({
+                content: accumulated,
+                finishReason: event.payload.stopReason === 'cancelled' ? 'cancelled' : 'stop',
+              });
+            }),
+          );
+
+          unlistens.push(
+            await listen<GeminiCliStatusEvent>('gemini-cli-status', (event) => {
+              if (
+                event.payload.status === 'error' ||
+                event.payload.status === 'disconnected'
+              ) {
+                clearTimeout(timeout);
+                cleanup();
+                reject(new Error(event.payload.message || 'Gemini CLI disconnected'));
+              }
+            }),
+          );
+
+          await this.invokeMessage(userMessage, systemPrompt, imagePath);
+        } catch (err) {
+          clearTimeout(timeout);
+          cleanup();
+          reject(err instanceof Error ? err : new Error(String(err)));
+        }
+      });
+    } catch (err) {
+      cleanup();
+      throw err;
+    }
+  }
+
   // ─── 내부 헬퍼 ────────────────────────────────
 
-  private async invokeMessage(text: string, systemPrompt: string): Promise<string> {
+  private async invokeMessage(
+    text: string,
+    systemPrompt: string,
+    imagePath?: string,
+  ): Promise<string> {
     const { geminiCli } = useSettingsStore.getState().settings;
     return invoke<string>('gemini_cli_send_message', {
       text,
       systemPrompt,
       workingDir: geminiCli.workingDir || null,
+      approvalMode: geminiCli.approvalMode,
+      imagePath: imagePath ?? null,
     });
   }
 

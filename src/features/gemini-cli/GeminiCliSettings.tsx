@@ -30,6 +30,7 @@ export default function GeminiCliSettings() {
     authenticated,
     refreshStatus,
     reconnect,
+    syncApprovalMode,
   } = useGeminiCliConnection();
 
   const handleSelectFolder = async () => {
@@ -227,7 +228,11 @@ export default function GeminiCliSettings() {
               <button
                 key={value}
                 type="button"
-                onClick={() => setGeminiCliSettings({ approvalMode: value })}
+                onClick={() => {
+                  setGeminiCliSettings({ approvalMode: value });
+                  // 연결 중이면 session/set_mode로 즉시 동기화.
+                  void syncApprovalMode(value);
+                }}
                 className="focus-ring"
                 style={{
                   padding: '6px 12px',
