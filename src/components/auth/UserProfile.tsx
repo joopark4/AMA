@@ -175,21 +175,50 @@ export default function UserProfile() {
   if (isAuthenticated && user) {
     return (
       <>
+        {/* 외곽 pill — 과거 `HeaderUserPill` 디자인(아바타 38px 원형 + 그라데이션,
+            닉네임 13.5px/600, 이메일 11.5px ink-3)을 그대로 재사용.
+            확장 시 같은 카드 하단에 상세/로그아웃/삭제 영역이 이어진다. */}
         <div
-          className="rounded-xl border overflow-hidden"
-          style={{ borderColor: 'var(--hairline)' }}
+          className="overflow-hidden"
+          style={{
+            borderRadius: 16,
+            background: 'oklch(1 0 0 / 0.55)',
+            boxShadow: 'inset 0 0 0 1px var(--hairline)',
+          }}
         >
           {/* 계정 요약 (항상 표시) */}
           <button
             onClick={() => { setExpanded((v) => !v); setDeleteConfirm(false); setDeleteError(null); }}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[oklch(0.92_0.02_60_/_0.7)] transition-colors"
+            className="w-full flex items-center transition-colors focus-ring hover:bg-[oklch(1_0_0_/_0.25)]"
+            style={{ padding: '12px 14px', gap: 12 }}
           >
-            <div className="w-8 h-8 bg-accent-soft flex items-center justify-center text-accent-ink font-semibold text-sm flex-shrink-0">
+            <div
+              className="grid place-items-center shrink-0"
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--accent), var(--glow))',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
               {user.nickname.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium truncate" style={{ color: 'var(--ink)' }}>{user.nickname}</p>
-              <p className="text-xs truncate" style={{ color: 'var(--ink-3)' }}>{user.email}</p>
+            <div className="flex-1 min-w-0 text-left">
+              <div
+                className="truncate"
+                style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}
+              >
+                {user.nickname}
+              </div>
+              <div
+                className="truncate"
+                style={{ fontSize: 11.5, color: 'var(--ink-3)' }}
+              >
+                {user.email}
+              </div>
             </div>
             <svg
               className={`w-4 h-4 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
