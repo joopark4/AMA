@@ -15,8 +15,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Coffee,
+  ExternalLink,
   Eye,
   EyeOff,
+  Heart,
   History,
   Keyboard,
   Mic,
@@ -88,6 +91,21 @@ export default function ControlCluster() {
   const [llmDependencyIssue, setLlmDependencyIssue] = useState<DependencyIssue | null>(null);
   const [globalShortcutToast, setGlobalShortcutToast] = useState<string | null>(null);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [sponsorOpen, setSponsorOpen] = useState(false);
+  const sponsorWrapRef = useRef<HTMLDivElement>(null);
+
+  // 후원 팝오버 외부 클릭 시 닫기. 팝오버 자체나 트리거 버튼 클릭은 wrap ref 내부로 분류되어 무시된다.
+  useEffect(() => {
+    if (!sponsorOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (target && sponsorWrapRef.current && !sponsorWrapRef.current.contains(target)) {
+        setSponsorOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [sponsorOpen]);
 
   // 메뉴바 실제 폭을 추적해 VoiceWaveform pill 폭을 동기화 (ResizeObserver).
   // 비교는 functional updater로 prev를 직접 받아 stale closure 회피.
@@ -561,6 +579,48 @@ export default function ControlCluster() {
           </div>
 
           <Divider />
+          {/* 후원 버튼 — 클릭 시 Buy Me a Coffee / Toonation 링크 팝오버. */}
+          <div
+            className="relative"
+            ref={sponsorWrapRef}
+            data-interactive="true"
+          >
+            <ClusterBtn
+              onClick={() => setSponsorOpen((v) => !v)}
+              title={t('overlay.sponsor')}
+              active={sponsorOpen}
+            >
+              <Heart size={17} />
+            </ClusterBtn>
+            {sponsorOpen && (
+              <div
+                className="glass-strong absolute flex flex-col"
+                style={{
+                  bottom: 'calc(100% + 8px)',
+                  right: 0,
+                  padding: 6,
+                  gap: 2,
+                  borderRadius: 14,
+                  minWidth: 220,
+                  zIndex: 30,
+                }}
+                data-interactive="true"
+              >
+                <SponsorLinkRow
+                  href="https://buymeacoffee.com/eunyeon"
+                  label="Buy Me a Coffee"
+                  icon={<Coffee size={14} />}
+                  onOpen={() => setSponsorOpen(false)}
+                />
+                <SponsorLinkRow
+                  href="https://toon.at/donate/heavyarm"
+                  label="Toonation"
+                  icon={<Heart size={14} />}
+                  onOpen={() => setSponsorOpen(false)}
+                />
+              </div>
+            )}
+          </div>
           <ClusterBtn onClick={openSettings} title={t('settings.title')}>
             <SettingsIcon size={17} />
           </ClusterBtn>
@@ -582,5 +642,53 @@ export default function ControlCluster() {
         />
       )}
     </div>
+  );
+}
+
+/* ────────────────────── 후원 링크 행(팝오버 내부) ────────────────────── */
+
+/**
+ * SponsorLinkRow — 후원 팝오버의 링크 한 줄. 외부 URL은 `target="_blank"` +
+ * `rel="noopener noreferrer"` 조합의 순수 앵커로 연다. 기존 LicensesSettings
+ * /MCPSettings의 외부 링크와 동일 패턴(OS 기본 브라우저 오픈).
+ */
+function SponsorLinkRow({
+  href,
+  label,
+  icon,
+  onOpen,
+}: {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  onOpen: () => void;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onOpen}
+      className="flex items-center transition-colors focus-ring hover:bg-[oklch(1_0_0_/_0.25)]"
+      style={{
+        padding: '8px 10px',
+        borderRadius: 10,
+        gap: 10,
+        color: 'var(--ink-2)',
+        textDecoration: 'none',
+      }}
+      data-interactive="true"
+    >
+      <span
+        className="grid place-items-center shrink-0"
+        style={{ color: 'var(--ink-3)' }}
+      >
+        {icon}
+      </span>
+      <span className="flex-1 truncate" style={{ fontSize: 13, fontWeight: 500 }}>
+        {label}
+      </span>
+      <ExternalLink size={12} style={{ color: 'var(--ink-3)' }} />
+    </a>
   );
 }
