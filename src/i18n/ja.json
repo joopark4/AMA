@@ -560,7 +560,8 @@
     "hideAvatar": "アバターを隠す",
     "showAvatar": "アバターを表示",
     "quickActions": "よく使う機能",
-    "avatarResting": "{{name}}はちょっと休憩中です"
+    "avatarResting": "{{name}}はちょっと休憩中です",
+    "sponsor": "支援する"
   },
   "quick": {
     "category": {

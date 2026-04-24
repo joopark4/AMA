@@ -560,7 +560,8 @@
     "hideAvatar": "아바타 숨기기",
     "showAvatar": "아바타 보이기",
     "quickActions": "자주 쓰는 기능",
-    "avatarResting": "{{name}}는(은) 잠깐 쉬는 중이에요"
+    "avatarResting": "{{name}}는(은) 잠깐 쉬는 중이에요",
+    "sponsor": "후원하기"
   },
   "quick": {
     "category": {

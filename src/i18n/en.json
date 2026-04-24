@@ -560,7 +560,8 @@
     "hideAvatar": "Hide avatar",
     "showAvatar": "Show avatar",
     "quickActions": "Quick actions",
-    "avatarResting": "{{name}} is taking a quick break"
+    "avatarResting": "{{name}} is taking a quick break",
+    "sponsor": "Support"
   },
   "quick": {
     "category": {
