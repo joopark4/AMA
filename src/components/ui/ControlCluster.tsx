@@ -590,7 +590,9 @@ export default function ControlCluster() {
               title={t('overlay.sponsor')}
               active={sponsorOpen}
             >
-              <Heart size={17} />
+              {/* 후원 버튼은 카테고리 인식을 위해 진한 핑크 stroke 고정(outline 톤).
+                  active/비활성 모두 동일 색으로 유지해 "후원"이라는 의미를 강조. */}
+              <Heart size={17} style={{ color: '#DB2777' }} />
             </ClusterBtn>
             {sponsorOpen && (
               <div
