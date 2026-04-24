@@ -16,6 +16,7 @@ import AboutModal from './components/ui/AboutModal';
 import { useSettingsStore } from './stores/settingsStore';
 import { useConversationStore } from './stores/conversationStore';
 import { useAuthStore } from './stores/authStore';
+import { useAvatarStore } from './stores/avatarStore';
 import { useModelDownloadStore } from './stores/modelDownloadStore';
 import { useClickThrough } from './hooks/useClickThrough';
 import { useMenuListeners } from './hooks/useMenuListeners';
@@ -200,26 +201,39 @@ function App() {
 
   const avatarHidden = settings.avatarHidden;
 
+  // 숨김 진입 순간: 현재 이동 타겟을 즉시 해제한다. autoRoam은 settingsStore
+  // 전환 로직(`applyAvatarHiddenTransition`)에서 OFF로 돌려지지만, 이미 설정된
+  // `targetPosition`이 남아 있으면 AvatarController가 숨겨진 상태에서도 계속
+  // 그 좌표로 이동한다. 다시 보일 때 이전 위치와 다르게 나타나는 회귀를 막기 위해
+  // 토글 순간 null로 클리어.
+  useEffect(() => {
+    if (avatarHidden) {
+      useAvatarStore.getState().setTargetPosition(null);
+    }
+  }, [avatarHidden]);
+
   return (
     <div className="w-full h-full relative">
-      {/* Main 3D Avatar Canvas + Lighting + SpeechBubble — avatarHidden 시 모두 unmount */}
-      {!avatarHidden && (
-        <>
-          <ErrorBoundary name="AvatarCanvas">
-            <AvatarCanvas />
-          </ErrorBoundary>
+      {/* Main 3D Avatar Canvas + Lighting + SpeechBubble.
+          숨김 시 과거에는 조건부 언마운트했지만, 그러면 VRMAvatar의 내부 ref·
+          avatarStore에 담긴 position/manualRotation이 날아가 다시 보일 때 아바타가
+          초기 위치·정면 시선으로 리셋됐다. 이제는 시각적으로만 가리고 React 트리는
+          유지해 숨기기 직전 상태를 그대로 복원하도록 한다. */}
+      <div style={{ display: avatarHidden ? 'none' : undefined }}>
+        <ErrorBoundary name="AvatarCanvas">
+          <AvatarCanvas />
+        </ErrorBoundary>
 
-          <ErrorBoundary name="LightingControl">
-            <LightingControl />
-          </ErrorBoundary>
+        <ErrorBoundary name="LightingControl">
+          <LightingControl />
+        </ErrorBoundary>
 
-          {currentResponse && settings.avatar?.showSpeechBubble !== false && (
-            <ErrorBoundary name="SpeechBubble">
-              <SpeechBubble message={currentResponse} />
-            </ErrorBoundary>
-          )}
-        </>
-      )}
+        {currentResponse && settings.avatar?.showSpeechBubble !== false && (
+          <ErrorBoundary name="SpeechBubble">
+            <SpeechBubble message={currentResponse} />
+          </ErrorBoundary>
+        )}
+      </div>
 
       {/* (이전: 화면 중앙 AvatarRestingBadge)
           → ControlCluster 안 메뉴바 위 슬롯으로 이동. */}

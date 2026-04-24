@@ -231,6 +231,13 @@ export interface Settings {
    */
   proactivePreviousEnabled: boolean | null;
   /**
+   * 아바타 숨김 진입 직전의 avatar.autoRoam 값 (복구용).
+   * proactivePreviousEnabled와 동일 철학 — 숨기면 배회가 계속되며 위치가 바뀌어
+   * 다시 보일 때 다른 곳에 나타나는 혼란을 막기 위해 숨김 진입 시 autoRoam을
+   * 강제 OFF하고 이전 값을 저장한다. 숨김 해제 시 복구. 평상시에는 null.
+   */
+  avatarAutoRoamPreviousEnabled: boolean | null;
+  /**
    * 자주 쓰는 기능 (Phase 4) — ✨ 팔레트에 등록된 기능 ID 목록.
    * 사용자가 설정에서 체크박스로 등록/해제하며, 순서는 등록 순서.
    */
@@ -488,6 +495,7 @@ const defaultSettings: Settings = {
   },
   avatarHidden: false,
   proactivePreviousEnabled: null,
+  avatarAutoRoamPreviousEnabled: null,
   enabledQuickActions: [
     'avatar.freeMovement',
     'avatar.showSpeechBubble',
@@ -645,6 +653,10 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
       typeof source.proactivePreviousEnabled === 'boolean'
         ? source.proactivePreviousEnabled
         : null,
+    avatarAutoRoamPreviousEnabled:
+      typeof source.avatarAutoRoamPreviousEnabled === 'boolean'
+        ? source.avatarAutoRoamPreviousEnabled
+        : null,
     // enabledQuickActions: source가 없거나, source 항목이 있는데 모두 invalid한 경우만
     // default로 복구. 사용자가 의도적으로 모두 해제한 빈 배열은 존중.
     enabledQuickActions: (() => {
@@ -670,48 +682,62 @@ function normalizeSettings(settings: Partial<Settings> | undefined): Settings {
 }
 
 /**
- * 아바타 숨김 토글 시 자발적 대화(proactive)를 자동 OFF/복구.
+ * 아바타 숨김 토글 시 자발적 대화(proactive)·자동 배회(autoRoam)를 자동 OFF/복구.
  *
- * - hidden=true 진입: proactive.enabled가 true면 → previousEnabled에 저장 후 OFF.
- *   이미 OFF였다면 previousEnabled는 null로 두어 복구 시점에 변화 없음.
- * - hidden=false 해제: previousEnabled가 boolean(true 또는 false)이면
- *   그 값으로 proactive.enabled 복구. null이면 그대로 둔다.
+ * - hidden=true 진입: proactive.enabled / avatar.autoRoam이 true면 각각
+ *   previous*Enabled 필드에 저장 후 OFF. 이미 OFF였다면 previous는 null.
+ * - hidden=false 해제: 저장된 previous 값이 boolean이면 그 값으로 복구.
+ *
+ * autoRoam을 OFF 시키는 이유: 숨김 중에도 `AvatarController`가 백그라운드에서
+ * 계속 이동 타겟을 추적하면 다시 보일 때 위치가 바뀌어 있어 사용자 혼란. 숨김
+ * 전 위치·시선을 그대로 유지해 보이기 위해 배회를 정지시킨다.
  */
 function applyAvatarHiddenTransition(
   current: Settings,
   nextHidden: boolean
 ): { settings: Settings } {
-  // 동일 상태로의 토글은 no-op (proactivePreviousEnabled 부수효과 방지)
+  // 동일 상태로의 토글은 no-op (previous* 부수효과 방지)
   if (nextHidden === current.avatarHidden) {
     return { settings: { ...current, avatarHidden: nextHidden } };
   }
 
   if (nextHidden) {
     // 숨김 진입
-    const wasEnabled = current.proactive?.enabled === true;
+    const wasProactiveEnabled = current.proactive?.enabled === true;
+    const wasAutoRoamEnabled = current.avatar?.autoRoam === true;
     return {
       settings: {
         ...current,
         avatarHidden: true,
-        proactive: wasEnabled
+        proactive: wasProactiveEnabled
           ? { ...current.proactive, enabled: false }
           : current.proactive,
-        proactivePreviousEnabled: wasEnabled ? true : null,
+        proactivePreviousEnabled: wasProactiveEnabled ? true : null,
+        avatar: wasAutoRoamEnabled
+          ? { ...current.avatar, autoRoam: false }
+          : current.avatar,
+        avatarAutoRoamPreviousEnabled: wasAutoRoamEnabled ? true : null,
       },
     };
   }
 
-  // 숨김 해제 — previousEnabled가 명시적으로 저장돼 있으면 복구
-  const prev = current.proactivePreviousEnabled;
+  // 숨김 해제 — previous*Enabled가 명시적으로 저장돼 있으면 복구
+  const prevProactive = current.proactivePreviousEnabled;
+  const prevAutoRoam = current.avatarAutoRoamPreviousEnabled;
   return {
     settings: {
       ...current,
       avatarHidden: false,
       proactive:
-        typeof prev === 'boolean'
-          ? { ...current.proactive, enabled: prev }
+        typeof prevProactive === 'boolean'
+          ? { ...current.proactive, enabled: prevProactive }
           : current.proactive,
       proactivePreviousEnabled: null,
+      avatar:
+        typeof prevAutoRoam === 'boolean'
+          ? { ...current.avatar, autoRoam: prevAutoRoam }
+          : current.avatar,
+      avatarAutoRoamPreviousEnabled: null,
     },
   };
 }
@@ -916,12 +942,19 @@ export const useSettingsStore = create<SettingsState>()(
         })),
 
       setAvatarSettings: (avatar) =>
-        set((state) => ({
-          settings: {
+        set((state) => {
+          const next: Settings = {
             ...state.settings,
             avatar: { ...state.settings.avatar, ...avatar },
-          },
-        })),
+          };
+          // 사용자가 avatar.autoRoam을 직접 변경했고 현재 avatar 숨김 진입 중이면
+          // 자동 복구(avatarAutoRoamPreviousEnabled)를 비활성화한다.
+          // 그렇지 않으면 hidden 해제 시 사용자 의도가 무시되고 이전 값으로 되돌아감.
+          if (avatar.autoRoam !== undefined && state.settings.avatarHidden) {
+            next.avatarAutoRoamPreviousEnabled = null;
+          }
+          return { settings: next };
+        }),
 
       setCodexSettings: (codex) =>
         set((state) => ({
