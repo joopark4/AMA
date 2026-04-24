@@ -5,7 +5,10 @@
  * - top:64+, right:12, bottom:12, width:420
  * - .glass-strong + panelIn 320ms
  * - 헤더: 설정 / 부제 / X 버튼
- * - 사용자 pill (헤더 아래) — 아바타 이니셜 + 이름 + 이메일 · "관리"
+ * - 헤더 아래 사용자 영역: `UserProfile` (축소 시 아바타+이름+이메일, 확장 시
+ *   로그인 방식·가입일·약관·로그아웃·계정 삭제). 과거에는 헤더 pill(정보만)과
+ *   섹션 리스트의 "계정" 카드가 따로 있어 아바타/이메일이 중복 표시됐으나,
+ *   `UserProfile` 하나로 통합.
  * - 섹션 리스트(스크롤): 새 SettingsSection(아이콘 칩) + forms 프리미티브
  *
  * 주의: 기존 handleSave는 manualRotation을 initialViewRotation에 저장한다.
@@ -31,11 +34,9 @@ import {
   Sparkles,
   Trash2,
   User,
-  UserRound,
   Volume2,
   X,
 } from 'lucide-react';
-import { useAuthStore } from '../../stores/authStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import SettingsSection from '../settings/SettingsSection';
@@ -53,65 +54,6 @@ import { MCPSettings } from '../../features/channels';
 import { ScreenWatchSettings } from '../../features/screen-watch';
 import { QuickActionsSettings } from '../../features/quick-actions';
 import MonitorSettings from '../settings/MonitorSettings';
-
-/* ─────────────────────── User pill (헤더용 컴팩트) ─────────────────────── */
-
-function HeaderUserPill() {
-  const { t } = useTranslation();
-  const { user, isAuthenticated } = useAuthStore();
-
-  const displayName = isAuthenticated && user
-    ? user.nickname
-    : t('settings.guestUser');
-  const subtitle = isAuthenticated && user
-    ? user.email
-    : t('settings.loggedOut');
-  const initial = isAuthenticated && user && user.nickname
-    ? user.nickname.charAt(0).toUpperCase()
-    : '?';
-
-  return (
-    <div
-      className="flex items-center"
-      style={{
-        padding: '12px 14px',
-        borderRadius: 16,
-        background: 'oklch(1 0 0 / 0.55)',
-        boxShadow: 'inset 0 0 0 1px var(--hairline)',
-        gap: 12,
-      }}
-    >
-      <div
-        className="grid place-items-center shrink-0"
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--accent), var(--glow))',
-          color: 'white',
-          fontWeight: 600,
-          fontSize: 14,
-        }}
-      >
-        {initial}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div
-          className="truncate"
-          style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}
-        >
-          {displayName}
-        </div>
-        <div
-          className="truncate"
-          style={{ fontSize: 11.5, color: 'var(--ink-3)' }}
-        >
-          {subtitle}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ─────────────────────── 메인 SettingsPanel ─────────────────────── */
 
@@ -168,10 +110,13 @@ export default function SettingsPanel() {
   /* ─── Settings 섹션 정의 — useMemo로 매 렌더 재할당 방지 ─── */
   // 섹션의 펼침 상태는 `settings.settingsPanelExpanded`로 persist되며,
   // 첫 실행 시 빈 객체라서 모든 섹션이 접힌 상태로 시작한다.
+  //
+  // NOTE: 이전에는 `account` 섹션(UserProfile 카드)이 여기 맨 앞에 있었지만,
+  // 헤더 바로 아래의 사용자 pill과 아바타/이름/이메일이 중복 표시돼 헤더 아래
+  // UserProfile로 일원화했다. 상세 정보·로그아웃·계정 삭제도 그 카드 안에서
+  // 처리된다.
   const sections = useMemo(
     () => [
-      // 계정은 사용자가 가장 먼저 확인하는 정보이므로 맨 앞에 배치.
-      { key: 'account', icon: <UserRound size={16} />, title: t('settings.account.title'), Comp: UserProfile },
       { key: 'lang', icon: <Globe size={16} />, title: t('settings.language'), Comp: LanguageSection },
       // 프리미엄은 계정·언어 직후에 노출 (구독 상태/혜택 빠른 확인).
       { key: 'premium', icon: <Cloud size={16} />, title: t('settings.premium.title'), Comp: PremiumVoiceSettings },
@@ -351,9 +296,11 @@ export default function SettingsPanel() {
           </div>
         </div>
 
-        {/* User pill */}
+        {/* 헤더 아래 사용자 영역 — 축소 시 아바타/이름/이메일, 확장 시 로그인
+            방식·가입일·약관·로그아웃·계정 삭제까지 포함. 중복을 없애기 위해
+            섹션 리스트의 `account` 카드를 이곳으로 통합했다. */}
         <div style={{ padding: '0 22px 14px' }}>
-          <HeaderUserPill />
+          <UserProfile />
         </div>
 
         {/* Sections — CSS columns 가로 흐름 + overflow-x로 페이지 스크롤.
