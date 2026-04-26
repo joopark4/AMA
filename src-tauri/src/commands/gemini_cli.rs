@@ -1153,6 +1153,37 @@ pub async fn gemini_cli_start(
     });
 
     let init_result = send_request(&process, "initialize", Some(init_params)).await;
+
+    // initialize 실패 시 spawn된 child가 그대로 살아있는 회귀 차단.
+    // process_for_reader가 process.clone()을 보유하므로 Arc refcount > 0이라
+    // child_handle이 자동으로 drop되지 않아 kill_on_drop이 발동하지 않는다.
+    // 명시적으로 reader 핸들 해제 + child 즉시 kill + pending 요청 drain한다.
+    if init_result.is_err() {
+        // reader가 process Arc를 더 이상 잡지 않도록 해제
+        {
+            let mut guard = process_for_reader.lock().await;
+            *guard = None;
+        }
+        // child를 꺼내 명시 kill (백그라운드 wait로 zombie 정리)
+        let child_opt = {
+            let mut g = process.child_handle.lock().unwrap();
+            g.take()
+        };
+        if let Some(mut child) = child_opt {
+            let _ = child.start_kill();
+            tokio::spawn(async move {
+                let _ = child.wait().await;
+            });
+        }
+        // pending 요청을 모두 실패로 돌려 호출자 대기 해제
+        {
+            let mut pending = process.pending.lock().await;
+            for (_, sender) in pending.drain() {
+                let _ = sender.send(Err("Gemini CLI init failed".to_string()));
+            }
+        }
+    }
+
     let result = match init_result {
         Ok(_) => {
             // 연결 직후 session/new를 미리 호출 — 응답의 `models`·`modes`를 캐시해 설정 UI가
