@@ -1,9 +1,15 @@
 name: Release
 
+# NOTE: 정식 배포는 로컬에서 `npm run release:local`로 진행한다.
+# 이 워크플로우는 수동 실행(workflow_dispatch) 전용으로 보존 — 향후 CI 빌드를
+# 활성화할 때 참고용. 자동 trigger를 두면 빌드 자산(VRM/FBX 등 비공개)이 없어
+# 실패하므로 의도적으로 disable.
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.9.9)'
+        required: true
 
 jobs:
   release:
