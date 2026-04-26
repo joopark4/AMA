@@ -28,6 +28,42 @@ export interface QuotaInfo {
   remaining: number;
 }
 
+export interface ApiCreditsInfo {
+  balance: number;
+  used: number;
+  total: number;
+}
+
+export type ApiStatusCode =
+  | 'ok'
+  | 'unauthorized'
+  | 'rate_limit'
+  | 'server_error'
+  | 'network'
+  | 'no_key'
+  | 'skipped';
+
+export interface ApiStatus {
+  credits: ApiStatusCode;
+  usage: ApiStatusCode;
+  voiceUsage: ApiStatusCode;
+}
+
+export interface VoiceUsageEntry {
+  date: string;
+  voice_id: string;
+  name: string;
+  style?: string;
+  language?: string;
+  model?: string;
+  total_minutes_used: number;
+}
+
+export interface ApiVoiceUsageInfo {
+  usages: VoiceUsageEntry[];
+  totalMinutes: number;
+}
+
 export interface UsageRecord {
   date: string;
   seconds: number;
@@ -53,6 +89,7 @@ const APP_VERSION = __APP_VERSION__;
 
 interface PremiumState {
   isPremium: boolean;
+  isAdmin: boolean;
   isChecking: boolean;
   voices: SupertoneVoice[];
   isLoadingVoices: boolean;
@@ -61,6 +98,9 @@ interface PremiumState {
 
   quota: QuotaInfo | null;
   isQuotaExceeded: boolean;
+  apiCredits: ApiCreditsInfo | null;
+  apiVoiceUsage: ApiVoiceUsageInfo | null;
+  apiStatus: ApiStatus | null;
 
   usageSummary: UsageSummary | null;
   usageDaily: UsageRecord[] | null;
@@ -80,6 +120,7 @@ let checkingPromise: Promise<void> | null = null;
 
 export const usePremiumStore = create<PremiumState>((set, get) => ({
   isPremium: false,
+  isAdmin: false,
   isChecking: false,
   voices: [],
   isLoadingVoices: false,
@@ -88,6 +129,9 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 
   quota: null,
   isQuotaExceeded: false,
+  apiCredits: null,
+  apiVoiceUsage: null,
+  apiStatus: null,
 
   usageSummary: null,
   usageDaily: null,
@@ -119,7 +163,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 
       const { data, error: queryError } = await supabase
         .from('profiles')
-        .select('is_premium, plan_id, monthly_credit_limit_override')
+        .select('is_premium, is_admin, plan_id, monthly_credit_limit_override')
         .eq('id', user.id)
         .single();
 
@@ -141,8 +185,11 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
         }
 
         set({
-          isPremium: data.is_premium,
-          quota: get().quota ? { ...get().quota!, limit: creditLimit } : null,
+          isPremium: data.is_premium || data.is_admin === true,
+          isAdmin: data.is_admin === true,
+          quota: get().quota
+            ? { ...get().quota!, limit: creditLimit }
+            : { limit: creditLimit, used: 0, remaining: creditLimit },
         });
       }
     } catch (err) {
@@ -219,14 +266,20 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       const now = new Date();
       const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const endDate = now.toISOString();
+      const { isAdmin } = get();
 
+      // 베타 기간: 모든 로그인 사용자가 API 전체 잔고를 공유. scope='all'을 항상 전송해
+      // Edge Function이 세 Supertone API (credits/usage/voice-usage) 상태를 반환하게 함.
       const data = await callEdgeFunction<{
         totalSeconds: number;
         totalCharacters: number;
         totalRequests: number;
         quota: QuotaInfo;
+        apiCredits?: ApiCreditsInfo | null;
+        apiVoiceUsage?: ApiVoiceUsageInfo | null;
+        apiStatus?: ApiStatus;
       }>('supertone-usage', {
-        body: { type: 'summary', startDate, endDate },
+        body: { type: 'summary', startDate, endDate, scope: 'all' },
       });
 
       set({
@@ -236,10 +289,21 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
           totalRequests: data.totalRequests,
         },
         quota: data.quota,
-        isQuotaExceeded: data.quota.remaining <= 0,
+        // 베타 기간에는 공유 apiCredits가 잔고 판정의 기준. 이 값이 제공되면
+        // 관리자/일반 구분 없이 잔고 고갈 시 일괄 exceeded. 없으면 개인 quota 기준.
+        isQuotaExceeded: data.apiCredits
+          ? data.apiCredits.balance <= 0
+          : isAdmin
+            ? false
+            : data.quota.remaining <= 0,
+        apiCredits: data.apiCredits ?? null,
+        apiVoiceUsage: data.apiVoiceUsage ?? null,
+        apiStatus: data.apiStatus ?? null,
       });
     } catch (err) {
-      console.error('[PremiumStore] Failed to fetch usage summary:', err);
+      const detail = (err as { detail?: string })?.detail;
+      const body = (err as { body?: Record<string, unknown> })?.body;
+      console.error('[PremiumStore] Failed to fetch usage summary:', err, 'detail=', detail, 'body=', body);
     } finally {
       set({ isLoadingUsage: false });
     }
@@ -250,14 +314,17 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       const now = new Date();
       const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const endDate = now.toISOString();
+      const { isAdmin } = get();
 
       const data = await callEdgeFunction<{ records: UsageRecord[] }>('supertone-usage', {
-        body: { type: 'daily', startDate, endDate },
+        body: { type: 'daily', startDate, endDate, ...(isAdmin ? { scope: 'all' } : {}) },
       });
 
       set({ usageDaily: data.records });
     } catch (err) {
-      console.error('[PremiumStore] Failed to fetch daily usage:', err);
+      const detail = (err as { detail?: string })?.detail;
+      const body = (err as { body?: Record<string, unknown> })?.body;
+      console.error('[PremiumStore] Failed to fetch daily usage:', err, 'detail=', detail, 'body=', body);
     }
   },
 
@@ -269,13 +336,14 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     if (!isNaN(used) && !isNaN(limit) && !isNaN(remaining)) {
       set({
         quota: { used, limit, remaining },
-        isQuotaExceeded: remaining <= 0,
+        isQuotaExceeded: get().isAdmin ? false : remaining <= 0,
       });
     }
   },
 
   reset: () => set({
     isPremium: false,
+    isAdmin: false,
     isChecking: false,
     voices: [],
     isLoadingVoices: false,
@@ -283,6 +351,9 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     voicesFetchedVersion: null,
     quota: null,
     isQuotaExceeded: false,
+    apiCredits: null,
+    apiVoiceUsage: null,
+    apiStatus: null,
     usageSummary: null,
     usageDaily: null,
     isLoadingUsage: false,

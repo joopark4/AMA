@@ -13,7 +13,8 @@
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [feature-spec.md](./features/feature-spec.md) | 전체 기능 명세서 + 정책 | 2026.02.27 |
+| [feature-spec.md](./features/feature-spec.md) | 전체 기능 명세서 + 정책 | 2026.04.09 |
+| [screen-watch.md](./features/screen-watch.md) | 화면 관찰 기능 (Vision LLM 기반 능동 발화, macOS 전용) | 2026.04.18 |
 
 ### auth/ — 인증/회원
 
@@ -27,7 +28,7 @@
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [voice-services.md](./voice/voice-services.md) | Whisper/Supertonic 구현 상세 | 2026.02.26 |
+| [voice-services.md](./voice/voice-services.md) | Whisper/Supertonic 구현 상세 + TTS-말풍선 동기화 + Supertone 3-API 통합 | 2026.04.23 |
 
 ### avatar/ — 아바타
 
@@ -35,18 +36,23 @@
 |------|------|----------|
 | [avatar-system.md](./avatar/avatar-system.md) | 아바타 시스템 (렌더링/이동/회전/클릭스루) | 2026.02.26 |
 | [motion-team-plan.md](./avatar/motion-team-plan.md) | 모션 팀 계획 | — |
+| [custom-motion-guide.md](./avatar/custom-motion-guide.md) | Mixamo 커스텀 모션 제작 가이드 (5가지 방법 + AMA 통합) | 2026.03.26 |
 
 ### ai/ — AI 서비스
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 | 2026.02.26 |
+| [ai-services.md](./ai/ai-services.md) | LLM 라우팅, Vision 분석 (Codex/Claude Code/Gemini CLI 포함) | 2026.04.23 |
+| [codex-integration.md](./ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) | 2026.04.07 |
+| [gemini-cli-integration.md](./ai/gemini-cli-integration.md) | Gemini CLI(ACP) 연동 (fs/permission/terminal/Vision 실구현) | 2026.04.23 |
+| [natural-interaction-plan.md](./ai/natural-interaction-plan.md) | Neuro-sama 스타일 자연 상호작용 구현 플랜 (Phase 0~5) | 2026.04.07 |
+| [natural-interaction-v2-plan.md](./ai/natural-interaction-v2-plan.md) | 자연 상호작용 v2 (VAD 감정·Presence 트리거·Gaze·Backchannel) | 2026.04.18 |
 
 ### settings/ — 설정
 
 | 문서 | 설명 | 최종 수정 |
 |------|------|----------|
-| [settings-system.md](./settings/settings-system.md) | 설정 시스템 (Zustand/마이그레이션) | 2026.02.26 |
+| [settings-system.md](./settings/settings-system.md) | 설정 시스템 (Zustand/마이그레이션) | 2026.04.09 |
 
 ### channels/ — Claude Code Channels
 
@@ -61,7 +67,7 @@
 |------|------|----------|
 | [tauri-backend.md](./infrastructure/tauri-backend.md) | Rust 명령/권한/단일 인스턴스 | 2026.02.26 |
 | [db-schema.md](./infrastructure/db-schema.md) | DB 테이블 구조, RLS 정책, 데이터 저장 정책 | 2026.02.23 |
-| [deployment.md](./infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈/릴리즈 파이프라인 | 2026.02.27 |
+| [deployment.md](./infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈/릴리즈 파이프라인 | 2026.04.09 |
 
 ### 해결된 이슈
 
@@ -83,6 +89,87 @@
 | [#014](./issues/014-dev-oauth-and-session-restore.md) | 개발 모드 OAuth 콜백 + 세션 복원 안정화 | — |
 | [#015](./issues/015-premium-tts-fallback-to-local.md) | 프리미엄 TTS 기본 음성 폴백 (3가지 복합 원인) | 2026.03.21 |
 | [#016](./issues/016-channels-port-conflict.md) | Channels 포트 충돌로 응답 멈춤 | 2026.03.21 |
+| [#017](./issues/017-deploy-app-channels-issues.md) | 배포 앱 Channels 6건 통합 해결 | 2026.03.25 |
+| [#018](./issues/018-audio-output-device-routing.md) | WKWebView setSinkId 제스처 제약 해결 | 2026.03.31 |
+| [#019](./issues/019-tts-output-device-gesture.md) | TTS 출력 디바이스 제스처 제약 해결 | 2026.03.31 |
+| [#020](./issues/020-wkwebview-toggle-rendering.md) | WKWebView 커스텀 Toggle 렌더링 이슈 — SVG 기반으로 해결 | 2026.04.20 |
+
+---
+
+## 2026.04.23 — Gemini CLI(ACP) 연동 + Supertone 3-API 통합 + 캐릭터/UI 개선
+
+PR `feature/gemini-cli-integration` → `develop` 병합분. 26개 커밋 / 29개 파일 변경.
+
+### Gemini CLI(ACP) Provider 신규 연동
+- `gemini --experimental-acp` 자식 프로세스 + JSON-RPC 2.0 over stdio (Codex와 동일 패턴)
+- provider 키 `gemini_cli`, `settings.geminiCli` persist v22로 증분
+- ACP 메서드: `initialize` / `session/new` / `session/prompt` / `session/cancel`(notification) / `session/set_mode`
+- 스트리밍: `agent_message_chunk` → `gemini-cli-token` 이벤트, 턴 완료는 `stopReason` 판정
+- 클라이언트 메서드 실구현:
+  - `fs/read_text_file` / `fs/write_text_file`: `workingDir` canonical prefix 내부만 허용
+  - `session/request_permission`: `approvalMode` 사전 정책식 자동 응답 (UI 승인 모달 없음)
+  - `terminal/create|output|wait_for_exit|kill|release`: `yolo`에서만 허용, cwd는 workingDir 내부로 제한
+- Vision: base64 + ACP `image` ContentBlock, Screen Watch provider에 포함
+- 설정 UI: 설치/인증 상태, workingDir, 승인 모드(default/auto_edit/yolo/plan), 모델 Select (Codex 스타일로 통일)
+- 문서: [gemini-cli-integration.md](./ai/gemini-cli-integration.md)
+
+### Supertone 3-API 통합 (premium-voice)
+- Edge Function `supertone-usage`가 `/v1/credits` + `/v1/usage` + `/v1/voice-usage` 세 API를 통합 호출
+- 권한별 응답 필터링: `includeApiCredits`(전 사용자) / `includeVoiceUsage`(관리자) / `aggregateAllUsers`(관리자)
+- 스테이지 라벨 에러 응답(`auth.getUser` / `profile.query` / `tts_usage.summary` / ...)으로 관찰성 확보
+- `ApiStatus` 코드(`ok/unauthorized/rate_limit/server_error/network/no_key/skipped`)로 프론트 분기
+- `edgeFunctionClient`: `error.context` Response body 파싱해 서버 에러 메시지 보존
+- `premiumStore`: `apiCredits/apiVoiceUsage/apiStatus` 추가, `isQuotaExceeded` 로직 일원화
+- UI: 관리자는 잔고 + 7일 그래프 + voice-usage TOP 8, 비관리자는 진행 바 + `% 남음`만
+- ES256 JWT 이슈 대응: 7개 Edge Functions(`supertone-usage/voices/tts` + `delete-account` + `admin-stats/subscriptions/users`) 모두 `--no-verify-jwt`로 재배포
+
+### 캐릭터/Character 프로필 회귀 수정
+- 사용자 관계 라벨이 답변 본문에 노출되는 회귀 수정
+- 아바타 이름 동기화 + 프리셋이 이름을 덮어쓰는 회귀 수정
+- 감정 표현 성향/프리셋 Pill 비활성 테두리 복원
+
+### 기타 UX 개선
+- Settings Panel 최대 폭 800px → 1200px (3컬럼 복원)
+- Monitor: 단일 모니터여도 현재 모니터 정보 표시
+- Channels: Step 2·3 순서 교체 (AMA 활성화 먼저, 터미널 실행 나중)
+- `dependency-issues-builder`: `claude_code`/`codex` 분기에서 stale dependency issue clear
+
+---
+
+## v1.5.0 작업 이력 (2026.04.18)
+
+- **화면 관찰 (Screen Watch)** 기능 신규 — Vision LLM이 주기적으로 화면을 분석해 능동 발화
+  - Provider: Claude/OpenAI/Gemini (Base64 inline) + Codex (`LocalImageUserInput` file path)
+  - 캡처 대상 5종: fullscreen / main-monitor / specific-monitor / active-window / specific-window
+  - 2단 필터(Rust 픽셀 diff + LLM `[SKIP]`) + OS 권한 preflight + 파일 저장 안전장치
+- **자연 상호작용 v2** 3개 개선 축
+  - VAD 연속 감정 모델 (8종 이산 → 3D 잠재 공간 + lerp 전이)
+  - PresenceTracker + Inner-Thought 트리거 (DOM 이벤트 + urgency 가중합 + 동적 쿨다운)
+  - Gaze follow(커서 추적 + saccade) + Backchannel nod(listening 주기적 끄덕임)
+- 아바타 크기 조절을 group scale → `camera.zoom`로 전환
+  - scale<1.0에서 SpringBone이 hair/cloth를 위로 띄우는 버그 근본 회피
+  - 월드에서 아바타는 항상 1.0 사이즈, 시각 크기는 카메라 projection으로 적용
+- 조명 아이콘 이동 범위 확대 (아바타 머리 위까지 도달 가능하도록 Y -500~500, X -300~300)
+
+---
+
+## v1.0.0 작업 이력 (2026.04)
+
+- OpenAI Codex CLI 직접 연동 (`codex app-server` JSON-RPC 2.0)
+- Codex 작업 폴더 설정 (기본값 ~/Documents, 네이티브 폴더 선택 다이얼로그)
+- Codex 접근 권한 설정 (approvalPolicy + sandboxPolicy 매핑)
+- TTS 중복 재생 방지 (새 응답 수신 시 이전 TTS 자동 중단)
+- 오디오 입/출력 디바이스 독립 선택 + 마이크 피크 미터
+- 대화기록창 투명도 조절 (20~100%)
+- 관리자 전용 API 크레딧 대시보드
+- Channels 레거시 경로 정리 + 항상 재등록
+- TTS 출력 디바이스 라우팅 안정화 (#018, #019)
+- idle 흔들림 완화 (hips damp + IdleFidget 조건 수정)
+- build.rs 안정화 (런타임 파싱 + 릴리스 VRM 검증)
+- TTS-말풍선 동기화 (onPlaybackStart 콜백으로 오디오와 말풍선 동시 시작)
+- 말풍선/표정 타이머 분리 (responseClearMs: 2초 / expressionHoldMs: 감정별 독립)
+- SpeechBubble 내부 타이머 제거 (부모 상태로 순수 제어)
+- 문서 전체 업데이트 (v1.0.0 기준, Codex/Audio/TTS-Bubble 반영)
 
 ---
 
@@ -131,6 +218,22 @@
 ---
 
 ## 작업 이력
+
+### 2026.03.27 — Mixamo FBX 모션 시스템 + 자동 배회 + 대기 동작 설정
+
+- 모션 시스템 Mixamo FBX 기반으로 전면 교체 (기존 JSON 클립 25개 삭제 → FBX 20종)
+  - `loadMixamoAnimation.ts`: FBX → VRM 본 리타겟팅
+  - `locomotionClipManager.ts`: Idle/Walk AnimationMixer 관리
+  - `boneUtils.ts`, `mixamoVRMRigMap.ts`, `proceduralGait.ts`: 유틸리티 모듈
+- 자동 배회 기능 추가 (`settings.avatar.autoRoam` 토글)
+  - 감정별 걷기 스타일 자동 선택 (stroll/brisk/sneak/bouncy)
+  - 순환 액션 큐 (walk/gesture/jump/idle)
+  - 자유 이동 모드와 상호 배타
+- 대기 동작 설정 연결 (`IdleFidgetController`)
+  - `enableBreathing`: 호흡 애니메이션 ON/OFF
+  - `enableEyeDrift`: 시선 미세 이동 ON/OFF
+- 모션 시퀀스 데모 제거 (MotionSequenceDemoController, MotionDemoSequence 삭제)
+- 설정 persist 버전 13 → 14
 
 ### 2026.03.21 — Claude Code Channels + 관리자 관리 + 프리미엄 TTS 수정
 

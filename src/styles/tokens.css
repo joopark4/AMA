@@ -1,0 +1,108 @@
+/**
+ * AMA 디자인 토큰 (v2 리디자인)
+ *
+ * OKLCH 기반 — chroma·lightness 고정 + hue만 변경하면 시각 대비 균일.
+ * `ClaudeDesign/AMA Prototype.html` 상단 :root 정의를 정본으로 함.
+ * 변경 시 `tailwind.config.js`의 theme.extend도 함께 업데이트할 것.
+ */
+:root {
+  /* ─── warm neutral base ─── */
+  --bg:        oklch(0.97 0.008 70);
+  --bg-2:      oklch(0.94 0.012 70);
+  --bg-3:      oklch(0.91 0.015 65);
+  --surface:   oklch(1 0 0 / 0.62);
+  --surface-2: oklch(1 0 0 / 0.78);
+  --surface-3: oklch(1 0 0 / 0.92);
+
+  /* ─── ink (text) ─── */
+  --ink:       oklch(0.22 0.012 50);
+  --ink-2:     oklch(0.42 0.012 50);
+  --ink-3:     oklch(0.62 0.012 55);
+  --ink-4:     oklch(0.78 0.010 60);
+
+  /* ─── hairlines ─── */
+  /* Tauri WKWebView에서 oklch 기반 hairline이 뚜렷한 회색 링으로 렌더되는
+     문제 때문에 rgba로 전환 + alpha 살짝 낮춤 */
+  --hairline:        rgba(0, 0, 0, 0.06);
+  --hairline-strong: rgba(0, 0, 0, 0.12);
+  --top-edge:        rgba(255, 255, 255, 0.6);
+
+  /* ─── accent (warm peach) ─── */
+  --accent:        oklch(0.74 0.14 45);
+  --accent-2:      oklch(0.82 0.11 50);
+  --accent-soft:   oklch(0.93 0.05 50);
+  --accent-ink:    oklch(0.32 0.10 40);
+  --accent-border: oklch(0.56 0.14 45);  /* ON 토글 트랙 테두리용 (accent 어두운 톤) */
+
+  /* ─── toggle (스위치 OFF 상태) ─── */
+  --toggle-off-track:  oklch(0.72 0.008 60);
+  --toggle-off-border: oklch(0.55 0.008 60);
+
+  /* ─── secondary glow / status ─── */
+  --glow:    oklch(0.85 0.12 320);
+  --glow-2:  oklch(0.88 0.10 25);
+  --ok:      oklch(0.72 0.14 160);
+  --warn:    oklch(0.78 0.14 75);
+  --danger:  oklch(0.65 0.20 25);
+
+  /* ─── radius ─── */
+  --r-sm: 10px;
+  --r:    16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+
+  /* ─── shadows ─── */
+  /* WKWebView에서 2-layer oklch shadow가 뚜렷한 링/경계선으로 렌더되는 문제 —
+     단일 soft rgba shadow로 단순화. */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow:    0 2px 10px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.08);
+
+  /* ─── easing ─── */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ─── 페이지 스크롤 epsilon (settings panel 페이지 네비) ─── */
+  --scroll-edge-epsilon: 4px;
+}
+
+/* ─── 다크 모드 토큰 (Phase 7 준비, 활성화는 추후) ───
+   사용 시: <html data-theme="dark"> 또는 prefers-color-scheme 미디어 쿼리.
+   현재는 기본 라이트 모드만 적용됨. */
+[data-theme='dark'] {
+  --bg:        oklch(0.20 0.012 60);
+  --bg-2:      oklch(0.18 0.012 60);
+  --bg-3:      oklch(0.15 0.015 60);
+  --surface:   oklch(0.25 0.012 60 / 0.62);
+  --surface-2: oklch(0.25 0.012 60 / 0.78);
+  --surface-3: oklch(0.25 0.012 60 / 0.92);
+
+  --ink:       oklch(0.92 0.012 50);
+  --ink-2:     oklch(0.78 0.012 50);
+  --ink-3:     oklch(0.62 0.012 55);
+  --ink-4:     oklch(0.42 0.010 60);
+
+  --hairline:        rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.15);
+  --top-edge:        rgba(255, 255, 255, 0.1);
+
+  /* accent: 라이트와 동일 hue 유지하되 다크 위 가독성 위해 살짝 밝게 */
+  --accent:        oklch(0.78 0.14 45);
+  --accent-2:      oklch(0.85 0.11 50);
+  --accent-soft:   oklch(0.30 0.08 50);
+  --accent-ink:    oklch(0.85 0.12 45);
+  --accent-border: oklch(0.85 0.14 45);
+
+  --toggle-off-track:  oklch(0.40 0.008 60);
+  --toggle-off-border: oklch(0.50 0.008 60);
+
+  /* status / glow: 다크 배경에서 채도 유지 + 명도 미세 조정 */
+  --glow:    oklch(0.78 0.14 320);
+  --glow-2:  oklch(0.82 0.12 25);
+  --ok:      oklch(0.74 0.14 160);
+  --warn:    oklch(0.80 0.14 75);
+  --danger:  oklch(0.68 0.20 25);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.30);
+  --shadow:    0 2px 10px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.50);
+}

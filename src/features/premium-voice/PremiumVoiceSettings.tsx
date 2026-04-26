@@ -5,10 +5,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { useSettingsStore, type SupertoneApiSettings } from '../../stores/settingsStore';
+import { Play } from 'lucide-react';
+import {
+  useSettingsStore,
+  type SupertoneApiSettings,
+} from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
-import { usePremiumStore, type SupertoneVoice } from './premiumStore';
+import { usePremiumStore, type SupertoneVoice, type ApiStatus, type ApiVoiceUsageInfo } from './premiumStore';
 import { getModelLanguages } from './supertoneApiClient';
+import { Field, Pill, Select, Slider, Toggle, SectionHint } from '../../components/settings/forms';
 
 const SUPERTONE_MODELS = [
   { id: 'sona_speech_1', labelKey: 'settings.premium.models.sona_speech_1' },
@@ -29,9 +34,10 @@ export default function PremiumVoiceSettings() {
   const { isAuthenticated } = useAuthStore();
   const { settings, setTTSSettings } = useSettingsStore();
   const {
-    isPremium, isChecking,
+    // 임시로 구독 게이트 해제 — isPremium은 현재 UI 분기에 사용하지 않음.
+    isAdmin, isChecking,
     voices, isLoadingVoices,
-    quota, isQuotaExceeded,
+    apiCredits, apiVoiceUsage, apiStatus,
     usageSummary, usageDaily, isLoadingUsage,
     checkPremiumStatus, fetchVoices, refreshVoices, fetchUsageSummary, fetchUsageDaily,
   } = usePremiumStore();
@@ -40,6 +46,8 @@ export default function PremiumVoiceSettings() {
   const [voiceFilter] = useState({ gender: '', language: '' });
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  // 현재 활성 preview의 blob URL을 추적해 unmount/재시작 시점에서 누수 방지.
+  const previewBlobUrlRef = useRef<string | null>(null);
   const apiSettings = settings.tts.supertoneApi;
   const defaultApiSettings = {
     voiceId: '',
@@ -59,18 +67,61 @@ export default function PremiumVoiceSettings() {
     }
   }, [isAuthenticated, checkPremiumStatus]);
 
-  // 프리미엄 활성 시 음성 목록 + 사용량 로드
+  // 임시: 구독 여부와 무관하게 로그인된 사용자 전원에게 프리미엄 기능을 개방한다.
+  // 정식 구독 게이트 복원 시 조건을 `isPremium`으로 되돌리면 됨.
   useEffect(() => {
-    if (isPremium) {
+    if (isAuthenticated) {
       fetchVoices();
       fetchUsageSummary();
       fetchUsageDaily();
     }
-  }, [isPremium, fetchVoices, fetchUsageSummary, fetchUsageDaily]);
+  }, [isAuthenticated, fetchVoices, fetchUsageSummary, fetchUsageDaily]);
+
+  /**
+   * 프리미엄 엔진에서 voiceId가 비어있으면 기본 음성으로 **Bella**를 자동 지정한다.
+   * voices가 아직 로드되지 않았으면 false를 반환하고, 이후 `voices` useEffect에서 보정.
+   *
+   * 로컬 → 프리미엄 전환 시 voiceId가 비어서 synthesize가 실패 → 로컬로 폴백되는 이슈를 방지.
+   */
+  const ensureDefaultPremiumVoice = useCallback((): boolean => {
+    if (voices.length === 0) return false;
+    const bella =
+      voices.find((v) => v.name.toLowerCase() === 'bella') || voices[0];
+    if (!bella) return false;
+    setTTSSettings({
+      engine: 'supertone_api',
+      supertoneApi: {
+        ...effectiveApiSettings,
+        voiceId: bella.voice_id,
+        voiceName: bella.name,
+        style: bella.styles?.[0] || 'neutral',
+      },
+    });
+    return true;
+  }, [voices, setTTSSettings, effectiveApiSettings]);
 
   const handleEngineChange = useCallback((engine: 'supertonic' | 'supertone_api') => {
+    if (engine === 'supertone_api' && !effectiveApiSettings.voiceId) {
+      if (ensureDefaultPremiumVoice()) return;
+    }
     setTTSSettings({ engine });
-  }, [setTTSSettings]);
+  }, [setTTSSettings, effectiveApiSettings.voiceId, ensureDefaultPremiumVoice]);
+
+  // voices가 뒤늦게 로드되는 경우도 보정 — 엔진이 프리미엄인데 voiceId 비어있으면 Bella 주입.
+  useEffect(() => {
+    if (
+      settings.tts.engine === 'supertone_api' &&
+      !effectiveApiSettings.voiceId &&
+      voices.length > 0
+    ) {
+      ensureDefaultPremiumVoice();
+    }
+  }, [
+    settings.tts.engine,
+    effectiveApiSettings.voiceId,
+    voices,
+    ensureDefaultPremiumVoice,
+  ]);
 
   const handleVoiceSelect = useCallback((voice: SupertoneVoice) => {
     const isAlreadySelected = effectiveApiSettings.voiceId === voice.voice_id;
@@ -86,18 +137,74 @@ export default function PremiumVoiceSettings() {
     });
   }, [setTTSSettings, effectiveApiSettings]);
 
+  // 프리미엄 엔진의 언어는 `supertoneApi.language`만을 단일 진실로 사용한다.
+  // 과거에는 공용 `tts.language`(supertonic용)도 함께 동기화해서 supertone-only
+  // 언어(zh 등)를 선택하면 그것이 supertonic 측 설정으로 새어나가는 회귀가 있었다.
+  // 두 엔진 언어 설정을 독립적으로 관리하도록 분리.
+  const effectiveTtsLanguage = effectiveApiSettings.language || 'ko';
+
+  /**
+   * 새 언어를 선택할 때 현재 `voiceId`가 그 언어를 지원하지 않으면 호환 음성으로
+   * 자동 전환한다. 정책: (1) 현재 음성이 새 언어 지원 → 그대로 유지, (2) 미지원이면
+   * Bella → 첫 호환 음성 → 첫 음성 순으로 폴백. `ensureDefaultPremiumVoice`의 Bella
+   * 우선 정책의 연장.
+   *
+   * 반환값:
+   *  - `null`: 현재 voice가 그대로 유효 (변경 불필요)
+   *  - 객체: 새로 적용할 voice 정보(`voiceId`/`voiceName`/`style`)
+   */
+  const resolveCompatibleVoice = useCallback(
+    (currentVoiceId: string | undefined, lang: string) => {
+      if (!voices.length) return null;
+      const current = voices.find((v) => v.voice_id === currentVoiceId);
+      if (current && current.languages?.includes(lang)) return null;
+      const replacement =
+        voices.find(
+          (v) =>
+            v.languages?.includes(lang) && v.name.toLowerCase() === 'bella'
+        ) ||
+        voices.find((v) => v.languages?.includes(lang)) ||
+        voices[0];
+      if (!replacement) return null;
+      return {
+        voiceId: replacement.voice_id,
+        voiceName: replacement.name,
+        style: replacement.styles?.[0] || 'neutral',
+      };
+    },
+    [voices]
+  );
+
   const handleModelChange = useCallback((model: string) => {
     const supportedLangs = getModelLanguages(model);
-    const newLang = supportedLangs.includes(effectiveApiSettings.language) ? effectiveApiSettings.language : 'en';
+    const newLang = supportedLangs.includes(effectiveTtsLanguage) ? effectiveTtsLanguage : 'en';
+    const compat = resolveCompatibleVoice(effectiveApiSettings.voiceId, newLang);
+    // NOTE: 공용 `tts.language`(supertonic 전용 진실)는 건드리지 않는다. 프리미엄
+    // 엔진은 `supertoneApi.language`로만 관리되어야 하고, supertone-only 언어
+    // (예: zh)가 supertonic 설정으로 새어나가지 않도록 분리된 채 유지.
     setTTSSettings({
       engine: 'supertone_api',
-      supertoneApi: { ...effectiveApiSettings, model: model as SupertoneApiSettings['model'], language: newLang },
+      supertoneApi: {
+        ...effectiveApiSettings,
+        model: model as SupertoneApiSettings['model'],
+        language: newLang,
+        ...(compat ?? {}),
+      },
     });
-  }, [setTTSSettings, effectiveApiSettings]);
+  }, [setTTSSettings, effectiveApiSettings, effectiveTtsLanguage, resolveCompatibleVoice]);
 
   const handleLanguageChange = useCallback((language: string) => {
-    setTTSSettings({ supertoneApi: { ...effectiveApiSettings, language } });
-  }, [setTTSSettings, effectiveApiSettings]);
+    // 프리미엄 전용 언어 변경 — 공용 `tts.language`는 건드리지 않는다(supertonic
+    // 사용자가 의도하지 않은 언어로 끌려가는 회귀 방지). voiceId 호환만 검증.
+    const compat = resolveCompatibleVoice(effectiveApiSettings.voiceId, language);
+    setTTSSettings({
+      supertoneApi: {
+        ...effectiveApiSettings,
+        language,
+        ...(compat ?? {}),
+      },
+    });
+  }, [setTTSSettings, effectiveApiSettings, resolveCompatibleVoice]);
 
   const handleStyleChange = useCallback((style: string) => {
     setTTSSettings({ supertoneApi: { ...effectiveApiSettings, style } });
@@ -128,9 +235,9 @@ export default function PremiumVoiceSettings() {
       return;
     }
 
-    // 현재 언어 + 스타일에 맞는 샘플 찾기
+    // 현재 언어 + 스타일에 맞는 샘플 찾기 (공용 tts.language 우선)
     const samples = voice.samples || [];
-    const lang = effectiveApiSettings.language || 'ko';
+    const lang = effectiveTtsLanguage;
     const style = styleOverride || effectiveApiSettings.style || 'neutral';
     const sample =
       samples.find(s => s.language === lang && s.style === style) ||
@@ -142,8 +249,12 @@ export default function PremiumVoiceSettings() {
 
     if (!sample?.url) return;
 
-    // 기존 재생 중지
+    // 기존 재생 중지 + 이전 blob URL 회수
     previewAudioRef.current?.pause();
+    if (previewBlobUrlRef.current) {
+      URL.revokeObjectURL(previewBlobUrlRef.current);
+      previewBlobUrlRef.current = null;
+    }
     setPreviewingVoiceId(voice.voice_id);
 
     try {
@@ -152,17 +263,29 @@ export default function PremiumVoiceSettings() {
       const uint8 = new Uint8Array(bytes);
       const blob = new Blob([uint8], { type: 'audio/wav' });
       const blobUrl = URL.createObjectURL(blob);
+      previewBlobUrlRef.current = blobUrl;
 
       const audio = new Audio(blobUrl);
+
+      // 선택된 출력 디바이스 적용
+      const outputDeviceId = useSettingsStore.getState().settings.tts.audioOutputDeviceId;
+      if (outputDeviceId && 'setSinkId' in audio) {
+        await (audio as any).setSinkId(outputDeviceId).catch((err: unknown) => {
+          console.warn('Failed to set sink ID for preview audio:', err);
+        });
+      }
+
       previewAudioRef.current = audio;
 
       audio.onended = () => {
         URL.revokeObjectURL(blobUrl);
+        if (previewBlobUrlRef.current === blobUrl) previewBlobUrlRef.current = null;
         setPreviewingVoiceId(null);
         previewAudioRef.current = null;
       };
       audio.onerror = () => {
         URL.revokeObjectURL(blobUrl);
+        if (previewBlobUrlRef.current === blobUrl) previewBlobUrlRef.current = null;
         setPreviewingVoiceId(null);
         previewAudioRef.current = null;
       };
@@ -172,20 +295,23 @@ export default function PremiumVoiceSettings() {
       setPreviewingVoiceId(null);
       previewAudioRef.current = null;
     }
-  }, [previewingVoiceId, effectiveApiSettings.language, effectiveApiSettings.style]);
+  }, [previewingVoiceId, effectiveTtsLanguage, effectiveApiSettings.style]);
 
-  // 컴포넌트 언마운트 시 재생 정지
+  // 컴포넌트 언마운트 시 재생 정지 + blob URL 회수 (누수 방지)
   useEffect(() => {
     return () => {
       previewAudioRef.current?.pause();
+      if (previewBlobUrlRef.current) {
+        URL.revokeObjectURL(previewBlobUrlRef.current);
+        previewBlobUrlRef.current = null;
+      }
     };
   }, []);
 
   const filteredVoices = voices.filter(v => {
     if (voiceFilter.gender && v.gender !== voiceFilter.gender) return false;
-    // 음성 출력 언어를 지원하는 음성만 표시
-    const ttsLang = effectiveApiSettings.language || 'ko';
-    if (!v.languages?.includes(ttsLang)) return false;
+    // 음성 출력 언어를 지원하는 음성만 표시 (공용 tts.language 우선)
+    if (!v.languages?.includes(effectiveTtsLanguage)) return false;
     if (voiceFilter.language && !v.languages?.includes(voiceFilter.language)) return false;
     return true;
   });
@@ -197,136 +323,144 @@ export default function PremiumVoiceSettings() {
   // 비로그인 상태
   if (!isAuthenticated) {
     return (
-      <div className="text-center py-6 text-gray-500">
-        <div className="text-lg font-medium mb-1">{t('settings.premium.locked')}</div>
-        <div className="text-sm">{t('settings.premium.loginRequired')}</div>
+      <div className="text-center py-6">
+        <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
+          {t('settings.premium.locked')}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
+          {t('settings.premium.loginRequired')}
+        </div>
       </div>
     );
   }
 
   // 로딩 중
   if (isChecking) {
-    return <div className="text-center py-6 text-gray-400 text-sm">{t('app.loading')}</div>;
-  }
-
-  // 비프리미엄
-  if (!isPremium) {
     return (
-      <div className="text-center py-6 text-gray-500">
-        <div className="inline-block px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-medium mb-3">
-          {t('settings.premium.badge')}
-        </div>
-        <div className="text-lg font-medium mb-1">{t('settings.premium.locked')}</div>
-        <div className="text-sm">{t('settings.premium.lockedDesc')}</div>
+      <div className="text-center py-6" style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
+        {t('app.loading')}
       </div>
     );
   }
 
+  // 임시: 구독 게이트 해제 — 비프리미엄(무료) 로그인 사용자도 프리미엄 UI를 이용하도록
+  // `if (!isPremium)` 잠금 뷰를 잠시 비활성화. 정식 구독 복원 시 아래 블록을 되살리면 됨.
+  //
+  // if (!isPremium) {
+  //   return (
+  //     <div className="text-center py-6">…잠금 안내…</div>
+  //   );
+  // }
+
   return (
-    <div className="space-y-4">
+    <div>
       {/* 프리미엄 배지 */}
-      <div className="flex items-center gap-2">
-        <span className="inline-block px-2.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+      <div style={{ marginBottom: 4 }}>
+        <span
+          className="inline-block"
+          style={{
+            padding: '3px 10px',
+            background: 'var(--accent-soft)',
+            color: 'var(--accent-ink)',
+            borderRadius: 99,
+            fontSize: 11,
+            fontWeight: 600,
+          }}
+        >
           {t('settings.premium.active')}
         </span>
       </div>
 
       {/* TTS 엔진 선택 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          {t('settings.premium.engineSelect')}
-        </label>
-        <div className="flex gap-2">
-          <button
+      <Field label={t('settings.premium.engineSelect')}>
+        <div className="flex" style={{ gap: 6 }}>
+          <Pill
+            active={settings.tts.engine === 'supertonic'}
             onClick={() => handleEngineChange('supertonic')}
-            className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
-              settings.tts.engine === 'supertonic'
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-            }`}
           >
             {t('settings.premium.engineLocal')}
-          </button>
-          <button
+          </Pill>
+          <Pill
+            active={settings.tts.engine === 'supertone_api'}
             onClick={() => handleEngineChange('supertone_api')}
-            className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
-              settings.tts.engine === 'supertone_api'
-                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-            }`}
           >
             {t('settings.premium.engineCloud')}
-          </button>
+          </Pill>
         </div>
-      </div>
+      </Field>
 
       {/* Supertone API 설정 (엔진이 supertone_api일 때만) */}
       {settings.tts.engine === 'supertone_api' && (
         <>
-          {/* 모델 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('settings.premium.modelSelect')}
-            </label>
-            <select
+          <Field label={t('settings.premium.modelSelect')}>
+            <Select
               value={currentModel}
-              onChange={(e) => handleModelChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {SUPERTONE_MODELS.map(m => (
-                <option key={m.id} value={m.id}>{t(m.labelKey)}</option>
-              ))}
-            </select>
-          </div>
+              onChange={handleModelChange}
+              options={SUPERTONE_MODELS.map((m) => ({
+                value: m.id,
+                label: t(m.labelKey),
+              }))}
+            />
+          </Field>
 
-          {/* 음성 출력 언어 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('settings.premium.ttsLanguage')}
-            </label>
-            <p className="text-xs text-gray-500 mb-1">{t('settings.premium.ttsLanguageDesc')}</p>
-            <select
-              value={effectiveApiSettings.language || 'ko'}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {supportedLanguages.map(lang => (
-                <option key={lang} value={lang}>
-                  {LANGUAGE_LABELS[lang] || lang}
-                </option>
-              ))}
-            </select>
-            {effectiveApiSettings.language && !supportedLanguages.includes(effectiveApiSettings.language) && (
-              <p className="text-xs text-amber-600 mt-1">{t('settings.premium.ttsLanguageUnsupported')}</p>
+          {/* 프리미엄 전용 언어 드롭다운 — 모델별 지원 언어가 동적이라 Select 유지.
+              라벨/설명은 VoiceSettings Pill과 동일한 공용 i18n 키로 통일. */}
+          <Field
+            label={t('settings.voice.tts.language')}
+            hint={t('settings.voice.tts.languageDesc')}
+          >
+            <Select
+              value={supportedLanguages.includes(effectiveTtsLanguage) ? effectiveTtsLanguage : 'en'}
+              onChange={handleLanguageChange}
+              options={supportedLanguages.map((lang) => ({
+                value: lang,
+                label: LANGUAGE_LABELS[lang] || lang,
+              }))}
+            />
+            {!supportedLanguages.includes(effectiveTtsLanguage) && (
+              <div style={{ fontSize: 11.5, color: 'var(--warn)', marginTop: 4 }}>
+                {t('settings.premium.ttsLanguageUnsupported')}
+              </div>
             )}
-          </div>
+          </Field>
 
           {/* 음성 선택 */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-sm font-medium text-gray-700">
+          <Field
+            label={
+              <>
                 {t('settings.premium.voiceSelect')}
                 {!isLoadingVoices && (
-                  <span className="ml-1.5 text-xs font-normal text-gray-400">({filteredVoices.length})</span>
+                  <span style={{ marginLeft: 6, color: 'var(--ink-3)', fontWeight: 400 }}>
+                    ({filteredVoices.length})
+                  </span>
                 )}
-              </label>
+              </>
+            }
+            hint={
               <button
                 onClick={() => refreshVoices()}
                 disabled={isLoadingVoices}
-                className="text-xs text-purple-600 hover:text-purple-800 disabled:text-gray-400"
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--accent-ink)',
+                  background: 'transparent',
+                  padding: '2px 6px',
+                  borderRadius: 6,
+                }}
                 title={t('settings.premium.voiceRefresh')}
+                data-interactive="true"
               >
                 {t('settings.premium.voiceRefresh')}
               </button>
-            </div>
-
+            }
+          >
             {isLoadingVoices ? (
-              <div className="text-sm text-gray-400 py-3 text-center">{t('settings.premium.loadingVoices')}</div>
+              <SectionHint>{t('settings.premium.loadingVoices')}</SectionHint>
             ) : filteredVoices.length === 0 ? (
-              <div className="text-sm text-gray-400 py-3 text-center">{t('settings.premium.noVoicesFound')}</div>
+              <SectionHint>{t('settings.premium.noVoicesFound')}</SectionHint>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {filteredVoices.map(voice => {
+              <div className="flex flex-wrap" style={{ gap: 6 }}>
+                {filteredVoices.map((voice) => {
                   const isSelected = effectiveApiSettings.voiceId === voice.voice_id;
                   const isPreviewing = previewingVoiceId === voice.voice_id;
                   const genderLabel = voice.gender === 'female'
@@ -337,233 +471,418 @@ export default function PremiumVoiceSettings() {
                       key={voice.voice_id}
                       onClick={() => {
                         const isAlreadySelected = effectiveApiSettings.voiceId === voice.voice_id;
-                        const previewStyle = isAlreadySelected ? effectiveApiSettings.style : voice.styles?.[0] || 'neutral';
+                        const previewStyle = isAlreadySelected
+                          ? effectiveApiSettings.style
+                          : voice.styles?.[0] || 'neutral';
                         handleVoiceSelect(voice);
-                        handlePreview(voice, { stopPropagation: () => {} } as React.MouseEvent, previewStyle);
+                        handlePreview(
+                          voice,
+                          { stopPropagation: () => {} } as React.MouseEvent,
+                          previewStyle
+                        );
                       }}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
-                        isSelected
-                          ? 'border-purple-500 bg-purple-50 text-purple-700 font-medium'
-                          : 'border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50/50'
-                      }`}
+                      className="focus-ring"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '6px 10px',
+                        fontSize: 12,
+                        whiteSpace: 'nowrap',
+                        borderRadius: 99,
+                        background: isSelected ? 'var(--accent)' : 'oklch(1 0 0 / 0.7)',
+                        color: isSelected ? 'white' : 'var(--ink-2)',
+                        boxShadow: isSelected ? 'none' : 'inset 0 0 0 1px var(--hairline)',
+                        fontWeight: isSelected ? 500 : 400,
+                        transition: 'all 160ms var(--ease)',
+                      }}
+                      data-interactive="true"
                     >
-                      {isPreviewing && (
-                        <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" className="shrink-0 text-purple-500">
-                          <path d="M3 1.5v9l7.5-4.5z"/>
-                        </svg>
-                      )}
-                      <span>{voice.name}</span>
-                      <span className="text-gray-400">({genderLabel})</span>
+                      {isPreviewing && <Play size={10} fill="currentColor" />}
+                      {/* 이름과 성별을 단일 text node로 flatten — WKWebView에서
+                          inline-flex 버튼 내 중첩/형제 span이 렌더 누락되는 이슈 회피. */}
+                      <span>{voice.name} ({genderLabel})</span>
                     </button>
                   );
                 })}
               </div>
             )}
-          </div>
+          </Field>
 
           {/* 스타일 선택 */}
           {selectedVoice && selectedVoice.styles?.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('settings.premium.styleSelect')}
-              </label>
-              <select
+            <Field label={t('settings.premium.styleSelect')}>
+              <Select
                 value={effectiveApiSettings.style || 'neutral'}
-                onChange={(e) => handleStyleChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                {selectedVoice.styles.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
+                onChange={handleStyleChange}
+                options={selectedVoice.styles.map((s) => ({ value: s, label: s }))}
+              />
+            </Field>
           )}
 
           {/* 감정 자동 매핑 토글 */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between" style={{ padding: '10px 0' }}>
             <div>
-              <div className="text-sm font-medium text-gray-700">{t('settings.premium.autoEmotion')}</div>
-              <div className="text-xs text-gray-500">{t('settings.premium.autoEmotionDesc')}</div>
+              <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>
+                {t('settings.premium.autoEmotion')}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
+                {t('settings.premium.autoEmotionDesc')}
+              </div>
             </div>
-            <button
-              onClick={handleAutoEmotionToggle}
-              className={`relative w-10 h-5 rounded-full transition-colors ${
-                effectiveApiSettings.autoEmotionStyle ? 'bg-purple-500' : 'bg-gray-300'
-              }`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                effectiveApiSettings.autoEmotionStyle ? 'translate-x-5' : 'translate-x-0.5'
-              }`} />
-            </button>
+            <Toggle
+              on={effectiveApiSettings.autoEmotionStyle}
+              onChange={handleAutoEmotionToggle}
+            />
           </div>
 
           {/* 음성 미세 조정 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('settings.premium.voiceSettings')}
-            </label>
-            <div className="space-y-3">
+          <Field label={t('settings.premium.voiceSettings')}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <div className="text-xs text-gray-600 mb-1">
-                  {t('settings.premium.pitchShift', { value: effectiveApiSettings.voiceSettings?.pitchShift ?? 0 })}
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  {t('settings.premium.pitchShift', {
+                    value: effectiveApiSettings.voiceSettings?.pitchShift ?? 0,
+                  })}
                 </div>
-                <input
-                  type="range" min={-24} max={24} step={1}
+                <Slider
                   value={effectiveApiSettings.voiceSettings?.pitchShift ?? 0}
-                  onChange={(e) => handleVoiceSettingChange('pitchShift', Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  min={-24}
+                  max={24}
+                  step={1}
+                  onChange={(v) => handleVoiceSettingChange('pitchShift', v)}
                 />
               </div>
               <div>
-                <div className="text-xs text-gray-600 mb-1">
-                  {t('settings.premium.pitchVariance', { value: effectiveApiSettings.voiceSettings?.pitchVariance ?? 1 })}
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  {t('settings.premium.pitchVariance', {
+                    value: effectiveApiSettings.voiceSettings?.pitchVariance ?? 1,
+                  })}
                 </div>
-                <input
-                  type="range" min={0} max={2} step={0.1}
+                <Slider
                   value={effectiveApiSettings.voiceSettings?.pitchVariance ?? 1}
-                  onChange={(e) => handleVoiceSettingChange('pitchVariance', Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  format={(v) => v.toFixed(1)}
+                  onChange={(v) => handleVoiceSettingChange('pitchVariance', v)}
                 />
               </div>
               <div>
-                <div className="text-xs text-gray-600 mb-1">
-                  {t('settings.premium.speed', { value: effectiveApiSettings.voiceSettings?.speed ?? 1 })}
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  {t('settings.premium.speed', {
+                    value: effectiveApiSettings.voiceSettings?.speed ?? 1,
+                  })}
                 </div>
-                <input
-                  type="range" min={0.5} max={2} step={0.1}
+                <Slider
                   value={effectiveApiSettings.voiceSettings?.speed ?? 1}
-                  onChange={(e) => handleVoiceSettingChange('speed', Number(e.target.value))}
-                  className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  min={0.5}
+                  max={2}
+                  step={0.1}
+                  format={(v) => `${v.toFixed(1)}x`}
+                  onChange={(v) => handleVoiceSettingChange('speed', v)}
                 />
               </div>
             </div>
-          </div>
+          </Field>
         </>
       )}
 
       {/* 사용량 카드 (프리미엄이면 항상 표시) */}
       <UsageCard
-        quota={quota}
-        isQuotaExceeded={isQuotaExceeded}
+        apiCredits={apiCredits}
+        apiVoiceUsage={apiVoiceUsage}
+        apiStatus={apiStatus}
         usageSummary={usageSummary}
         usageDaily={usageDaily}
         isLoading={isLoadingUsage}
+        isAdmin={isAdmin}
         onRefresh={() => { fetchUsageSummary(); fetchUsageDaily(); }}
       />
     </div>
   );
 }
 
-/** 사용량 카드 서브 컴포넌트 */
+/** apiStatus.credits 코드별 표시용 i18n 키 매핑. null은 호출 자체가 실패했음을 의미. */
+function creditsStatusKey(code: ApiStatus['credits'] | null): string {
+  switch (code) {
+    case 'unauthorized':
+      return 'settings.premium.quota.betaSharedUnauthorized';
+    case 'rate_limit':
+      return 'settings.premium.quota.betaSharedRateLimit';
+    case 'server_error':
+      return 'settings.premium.quota.betaSharedServerError';
+    case 'network':
+      return 'settings.premium.quota.betaSharedNetwork';
+    case 'no_key':
+      return 'settings.premium.quota.betaSharedNoKey';
+    default:
+      return 'settings.premium.quota.betaSharedUnavailable';
+  }
+}
+
+/** 사용량 카드 서브 컴포넌트.
+ *  - 일반 사용자: 공유 잔고(apiCredits.balance) 남은 % 프로그레스 + 오류 상태 메시지
+ *  - 관리자: 위 + 월간 요약 + 최근 7일 차트 + 음성별 사용 TOP N (apiVoiceUsage)
+ */
 function UsageCard({
-  quota, isQuotaExceeded, usageSummary, usageDaily, isLoading, onRefresh,
+  apiCredits, apiVoiceUsage, apiStatus,
+  usageSummary, usageDaily, isLoading, isAdmin, onRefresh,
 }: {
-  quota: { limit: number; used: number; remaining: number } | null;
-  isQuotaExceeded: boolean;
+  apiCredits: { balance: number; used: number; total: number } | null;
+  apiVoiceUsage: ApiVoiceUsageInfo | null;
+  apiStatus: ApiStatus | null;
   usageSummary: { totalSeconds: number; totalCharacters: number; totalRequests: number } | null;
   usageDaily: { date: string; seconds: number; characters: number; requests: number }[] | null;
   isLoading: boolean;
+  isAdmin: boolean;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
+  const accentColor = isAdmin ? 'var(--warn)' : 'var(--accent)';
+  const creditsStatus = apiStatus?.credits ?? null;
+  // apiCredits가 없고 로딩도 끝났으면 사용자가 원인을 알 수 있게 항상 메시지 표시.
+  // status가 있으면 코드별 구체 메시지, 없으면(Edge Function 호출 실패 등) 기본 fallback.
+  const showCreditsError = !apiCredits && !isLoading;
+  const creditsErrorKey = creditsStatus
+    ? creditsStatusKey(creditsStatus)
+    : 'settings.premium.quota.betaSharedUnavailable';
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-      {/* 헤더 */}
+    <div
+      style={{
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 14,
+        background: 'oklch(1 0 0 / 0.55)',
+        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">{t('settings.premium.usage.title')}</span>
+        <div className="flex items-center" style={{ gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+            {isAdmin ? t('settings.premium.usage.adminTitle') : t('settings.premium.usage.title')}
+          </span>
+          {isAdmin && (
+            <span
+              className="inline-block"
+              style={{
+                padding: '2px 6px',
+                background: 'var(--warn)',
+                color: 'white',
+                borderRadius: 4,
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            >
+              Admin
+            </span>
+          )}
+        </div>
         <button
           onClick={onRefresh}
           disabled={isLoading}
-          className="text-xs text-purple-600 hover:text-purple-800 disabled:text-gray-400"
+          style={{
+            fontSize: 11.5,
+            color: 'var(--accent-ink)',
+            background: 'transparent',
+            opacity: isLoading ? 0.5 : 1,
+            padding: '2px 6px',
+            borderRadius: 6,
+          }}
+          data-interactive="true"
         >
           {t('settings.premium.usage.refresh')}
         </button>
       </div>
 
-      {isLoading && !quota ? (
-        <div className="text-xs text-gray-400 text-center py-2">{t('settings.premium.usage.loading')}</div>
+      {isLoading && !apiCredits ? (
+        <div
+          className="text-center"
+          style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
+        >
+          {t('settings.premium.usage.loading')}
+        </div>
       ) : (
         <>
-          {/* 할당량 바 */}
-          {quota && (
-            <div>
-              <div className="text-xs text-gray-600 mb-1">{t('settings.premium.quota.title')}</div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
+          {apiCredits && (() => {
+            const { balance, used, total } = apiCredits;
+            const usedPercent = total > 0 ? Math.round((used / total) * 100) : 0;
+            const remainPercent = 100 - usedPercent;
+            // 일반 사용자: 프로그레스 바 + "{remain}% 남음" 텍스트만. 관리자: 전체 UI.
+            if (!isAdmin) {
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: 6,
+                      background: 'oklch(0.85 0.005 60)',
+                      borderRadius: 99,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${usedPercent}%`,
+                        height: '100%',
+                        background: accentColor,
+                        transition: 'width 220ms var(--ease)',
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', textAlign: 'right' }}>
+                    {t('settings.premium.quota.adminRemainPercent', { value: remainPercent })}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 4 }}>
+                  {t('settings.premium.quota.adminTitle')}
+                </div>
                 <div
-                  className={`h-2.5 rounded-full transition-all ${
-                    isQuotaExceeded ? 'bg-red-500' :
-                    quota.used / quota.limit > 0.8 ? 'bg-amber-500' : 'bg-purple-500'
-                  }`}
-                  style={{ width: `${Math.min(100, (quota.used / Math.max(1, quota.limit)) * 100)}%` }}
-                />
+                  style={{
+                    padding: 10,
+                    borderRadius: 12,
+                    background: 'oklch(1 0 0 / 0.6)',
+                    boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  <div className="flex items-baseline justify-between">
+                    <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--warn)' }}>
+                      {balance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                    </span>
+                    <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
+                      {t('settings.premium.quota.adminBalanceUnit')}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
+                    {t('settings.premium.quota.adminBalanceDesc', {
+                      minutes: Math.floor(balance / 60),
+                      seconds: Math.round(balance % 60),
+                    })}
+                  </div>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: 6,
+                      background: 'oklch(0.85 0.005 60)',
+                      borderRadius: 99,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${usedPercent}%`,
+                        height: '100%',
+                        background: accentColor,
+                        transition: 'width 220ms var(--ease)',
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between" style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
+                    <span>
+                      {t('settings.premium.quota.adminTotal', {
+                        used: Math.round(used),
+                        total: Math.round(total),
+                      })}
+                    </span>
+                    <span>{t('settings.premium.quota.adminRemainPercent', { value: remainPercent })}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-gray-500">
-                  {t('settings.premium.quota.used', {
-                    used: Math.round(quota.used),
-                    limit: Math.round(quota.limit),
-                  })}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {t('settings.premium.quota.percent', {
-                    value: Math.round((quota.used / Math.max(1, quota.limit)) * 100),
-                  })}
-                </span>
-              </div>
+            );
+          })()}
 
-              {/* 경고/소진 메시지 */}
-              {isQuotaExceeded && (
-                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                  <div className="font-medium">{t('settings.premium.quota.exceeded')}</div>
-                  <div>{t('settings.premium.quota.exceededDesc')}</div>
-                  <div className="mt-1 text-red-500">{t('settings.premium.quota.resetInfo')}</div>
-                </div>
-              )}
-              {!isQuotaExceeded && quota.used / quota.limit > 0.8 && (
-                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
-                  <div className="font-medium">{t('settings.premium.quota.warning')}</div>
-                  <div>{t('settings.premium.quota.remaining', {
-                    value: Math.round(quota.remaining),
-                    minutes: Math.floor(quota.remaining / 60),
-                    seconds: Math.round(quota.remaining % 60),
-                  })}</div>
-                </div>
-              )}
+          {/* 베타 기간에는 공유 apiCredits가 유일한 잔고 표시. 로딩 종료 후에도 잔고가
+              없으면 apiStatus.credits 코드에 따라 401/server/network/키미설정을 구분해 표시. */}
+          {showCreditsError && (
+            <div
+              className="text-center"
+              style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--warn)' }}
+            >
+              {t(creditsErrorKey)}
             </div>
           )}
 
-          {/* 이번 달 요약 */}
-          {usageSummary && (
-            <div className="text-xs text-gray-600">
-              <div className="font-medium mb-0.5">{t('settings.premium.usage.thisMonth')}</div>
-              <div>{t('settings.premium.usage.summary', {
-                seconds: Math.round(usageSummary.totalSeconds),
-                characters: usageSummary.totalCharacters.toLocaleString(),
-                requests: usageSummary.totalRequests,
-              })}</div>
+          {/* 월간 요약 + 최근 7일 차트 + 음성별 TOP N — 관리자에게만 노출. */}
+          {isAdmin && usageSummary && (
+            <div style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>
+                {t('settings.premium.usage.adminThisMonth')}
+              </div>
+              <div>
+                {t('settings.premium.usage.summary', {
+                  seconds: Math.round(usageSummary.totalSeconds),
+                  characters: usageSummary.totalCharacters.toLocaleString(),
+                  requests: usageSummary.totalRequests,
+                })}
+              </div>
             </div>
           )}
 
-          {/* 최근 7일 차트 */}
-          {usageDaily && usageDaily.length > 0 && (
+          {isAdmin && usageDaily && usageDaily.length > 0 && (
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1.5">{t('settings.premium.usage.recent7days')}</div>
-              <div className="space-y-1">
-                {usageDaily.slice(0, 7).map(day => {
-                  const maxSeconds = Math.max(...usageDaily.slice(0, 7).map(d => d.seconds), 1);
+              <div
+                style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 6 }}
+              >
+                {t('settings.premium.usage.recent7days')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {usageDaily.slice(0, 7).map((day) => {
+                  const maxSeconds = Math.max(...usageDaily.slice(0, 7).map((d) => d.seconds), 1);
                   const barWidth = Math.max(2, (day.seconds / maxSeconds) * 100);
                   return (
-                    <div key={day.date} className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-400 w-12 shrink-0">{day.date.slice(5)}</span>
-                      <div className="flex-1 bg-gray-200 rounded h-2">
+                    <div
+                      key={day.date}
+                      className="flex items-center"
+                      style={{ gap: 8, fontSize: 11 }}
+                    >
+                      <span style={{ color: 'var(--ink-3)', width: 48, flexShrink: 0 }}>
+                        {day.date.slice(5)}
+                      </span>
+                      <div
+                        style={{
+                          flex: 1,
+                          background: 'oklch(0.85 0.005 60)',
+                          borderRadius: 4,
+                          height: 6,
+                          overflow: 'hidden',
+                        }}
+                      >
                         <div
-                          className="bg-purple-400 rounded h-2 transition-all"
-                          style={{ width: `${barWidth}%` }}
+                          style={{
+                            width: `${barWidth}%`,
+                            height: '100%',
+                            background: accentColor,
+                            transition: 'width 220ms var(--ease)',
+                          }}
                         />
                       </div>
-                      <span className="text-gray-500 w-14 text-right shrink-0">
-                        {Math.round(day.seconds)}{t('settings.premium.usage.seconds', { value: '' }).replace('{{value}}', '').trim().charAt(0) === 's' ? 's' : '초'}
+                      <span
+                        style={{
+                          color: 'var(--ink-3)',
+                          width: 56,
+                          textAlign: 'right',
+                          flexShrink: 0,
+                          fontFamily: '"JetBrains Mono", monospace',
+                        }}
+                      >
+                        {Math.round(day.seconds)}
+                        {t('settings.premium.usage.seconds', { value: '' })
+                          .replace('{{value}}', '')
+                          .trim()
+                          .charAt(0) === 's'
+                          ? 's'
+                          : '초'}
                       </span>
                     </div>
                   );
@@ -572,11 +891,105 @@ function UsageCard({
             </div>
           )}
 
-          {!usageSummary && !usageDaily?.length && (
-            <div className="text-xs text-gray-400 text-center py-2">{t('settings.premium.usage.noUsage')}</div>
+          {/* 음성별 사용 TOP N — 관리자 전용 (apiVoiceUsage). */}
+          {isAdmin && apiVoiceUsage && apiVoiceUsage.usages.length > 0 && (
+            <VoiceUsageTable data={apiVoiceUsage} accentColor={accentColor} />
+          )}
+
+          {isAdmin && !usageSummary && !usageDaily?.length && !apiVoiceUsage?.usages.length && (
+            <div
+              className="text-center"
+              style={{ padding: '8px 0', fontSize: 11.5, color: 'var(--ink-3)' }}
+            >
+              {t('settings.premium.usage.noUsage')}
+            </div>
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** 관리자 전용: 음성별 총 사용 시간 TOP N 테이블. */
+function VoiceUsageTable({
+  data,
+  accentColor,
+}: {
+  data: ApiVoiceUsageInfo;
+  accentColor: string;
+}) {
+  const { t } = useTranslation();
+  // voice_id별로 합산 (Supertone 응답은 날짜별 row이므로 집계 필요).
+  const aggregated = new Map<string, { name: string; minutes: number }>();
+  for (const entry of data.usages) {
+    const prev = aggregated.get(entry.voice_id);
+    const minutes = entry.total_minutes_used || 0;
+    if (prev) {
+      prev.minutes += minutes;
+    } else {
+      aggregated.set(entry.voice_id, { name: entry.name || entry.voice_id, minutes });
+    }
+  }
+  const rows = Array.from(aggregated.values()).sort((a, b) => b.minutes - a.minutes).slice(0, 8);
+  const maxMinutes = Math.max(...rows.map((r) => r.minutes), 1);
+
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 6 }}>
+        {t('settings.premium.voiceUsage.title')}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {rows.map((row) => {
+          const barWidth = Math.max(2, (row.minutes / maxMinutes) * 100);
+          return (
+            <div key={row.name} className="flex items-center" style={{ gap: 8, fontSize: 11 }}>
+              <span
+                style={{
+                  color: 'var(--ink-2)',
+                  width: 80,
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {row.name}
+              </span>
+              <div
+                style={{
+                  flex: 1,
+                  background: 'oklch(0.85 0.005 60)',
+                  borderRadius: 4,
+                  height: 6,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${barWidth}%`,
+                    height: '100%',
+                    background: accentColor,
+                    transition: 'width 220ms var(--ease)',
+                  }}
+                />
+              </div>
+              <span
+                style={{
+                  color: 'var(--ink-3)',
+                  width: 64,
+                  textAlign: 'right',
+                  flexShrink: 0,
+                  fontFamily: '"JetBrains Mono", monospace',
+                }}
+              >
+                {t('settings.premium.voiceUsage.minutes', {
+                  value: row.minutes.toFixed(1),
+                })}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAvatarStore } from '../../stores/avatarStore';
 import { pickVrmFile } from '../../services/tauri/fileDialog';
-import { getMotionManifest } from '../../services/avatar/motionLibrary';
 import { isDefaultVrmAvailable } from '../../services/tauri/defaultVrm';
+import { Field, FormCard, Pill, Row, Slider, Toggle } from './forms';
 
 export default function AvatarSettings() {
   const { t } = useTranslation();
@@ -12,25 +12,14 @@ export default function AvatarSettings() {
     settings,
     setVrmModelPath,
     setAvatarSettings,
-    setAvatarName,
-    setAvatarPersonalityPrompt,
   } = useSettingsStore();
   const {
     setEmotion,
     emotion,
     manualRotation,
     setManualRotation,
-    isLoaded,
-    isMotionSequenceActive,
-    motionSequenceIndex,
-    motionSequenceTotal,
-    startMotionSequenceDemo,
-    stopMotionSequenceDemo,
   } = useAvatarStore();
   const savedInitialView = settings.avatar?.initialViewRotation || { x: 0, y: 0 };
-  const avatarPersonalityPrompt = settings.avatarPersonalityPrompt ?? '';
-  const isDevBuild = import.meta.env.DEV;
-  const totalMotionCount = getMotionManifest().length;
   const faceOnlyModeEnabled = settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
   const [hasDefaultVrm, setHasDefaultVrm] = useState(false);
   const isUsingDefaultVrm = !settings.vrmModelPath?.trim() && hasDefaultVrm;
@@ -40,17 +29,6 @@ export default function AvatarSettings() {
   }, []);
 
   const formatDegrees = (radian: number) => `${(radian * 180 / Math.PI).toFixed(1)}°`;
-
-  const handleMotionSequenceToggle = () => {
-    if (faceOnlyModeEnabled) return;
-
-    if (isMotionSequenceActive) {
-      stopMotionSequenceDemo();
-      return;
-    }
-
-    startMotionSequenceDemo(totalMotionCount);
-  };
 
   const handleSelectVRM = async () => {
     try {
@@ -66,172 +44,135 @@ export default function AvatarSettings() {
   const emotions = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'relaxed', 'thinking'] as const;
 
   return (
-    <div className="space-y-4">
-      {/* VRM Model Path */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.model')}
-        </label>
+    <div>
+      {/* VRM Model */}
+      <Field label={t('settings.avatar.model')}>
         {isUsingDefaultVrm && (
-          <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: 10,
+              background: 'oklch(0.95 0.05 160 / 0.5)',
+              boxShadow: 'inset 0 0 0 1px oklch(0.7 0.12 160 / 0.3)',
+              fontSize: 12,
+              color: 'var(--ok)',
+              marginBottom: 8,
+            }}
+          >
             {t('settings.avatar.defaultVrmLabel')}
           </div>
         )}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={settings.vrmModelPath}
-            placeholder={isUsingDefaultVrm ? t('settings.avatar.defaultVrmLabel') : t('settings.avatar.vrmPlaceholder')}
-            readOnly
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 text-sm"
-          />
-          <button
-            onClick={handleSelectVRM}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            {t('settings.avatar.select')}
-          </button>
-        </div>
+        <FormCard padding={12}>
+          <div className="flex items-center" style={{ gap: 12 }}>
+            <div className="flex-1 min-w-0">
+              <div
+                className="truncate"
+                style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}
+              >
+                {settings.vrmModelPath?.trim() ||
+                  (isUsingDefaultVrm
+                    ? t('settings.avatar.defaultVrmLabel')
+                    : t('settings.avatar.vrmPlaceholder'))}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSelectVRM}
+              className="focus-ring"
+              style={{
+                padding: '6px 12px',
+                borderRadius: 8,
+                fontSize: 12,
+                color: 'var(--accent-ink)',
+                background: 'var(--accent-soft)',
+                fontWeight: 500,
+              }}
+              data-interactive="true"
+            >
+              {t('settings.avatar.select')}
+            </button>
+          </div>
+        </FormCard>
         {settings.vrmModelPath?.trim() && hasDefaultVrm && (
           <button
+            type="button"
             onClick={() => setVrmModelPath('')}
-            className="w-full px-3 py-2 text-sm font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+            className="w-full focus-ring"
+            style={{
+              marginTop: 8,
+              padding: '8px 12px',
+              fontSize: 12.5,
+              fontWeight: 500,
+              borderRadius: 10,
+              background: 'oklch(1 0 0 / 0.7)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+              color: 'var(--ink-2)',
+            }}
+            data-interactive="true"
           >
             {t('settings.avatar.useDefaultVrm')}
           </button>
         )}
-      </div>
+      </Field>
 
-      {/* Avatar Name */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.name')}
-        </label>
-        <input
-          type="text"
-          value={settings.avatarName}
-          onChange={(e) => setAvatarName(e.target.value)}
-          placeholder={t('settings.avatar.namePlaceholder')}
-          maxLength={40}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </div>
-
-      {/* Avatar Personality Prompt */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.personalityPrompt')}
-        </label>
-        <textarea
-          value={avatarPersonalityPrompt}
-          onChange={(e) => setAvatarPersonalityPrompt(e.target.value)}
-          placeholder={t('settings.avatar.personalityPromptPlaceholder')}
-          maxLength={800}
-          rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y"
-        />
-        <p className="text-xs text-gray-500 text-right">
-          {avatarPersonalityPrompt.length}/800
-        </p>
-      </div>
-
-      {/* Avatar Scale */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.scale')}: {settings.avatar?.scale?.toFixed(1) || '1.0'}x
-        </label>
-        <input
-          type="range"
-          min="0.3"
-          max="2.0"
-          step="0.1"
+      {/* Scale */}
+      <Field
+        label={t('settings.avatar.scale')}
+        hint={`${(settings.avatar?.scale || 1.0).toFixed(1)}x`}
+      >
+        <Slider
           value={settings.avatar?.scale || 1.0}
-          onChange={(e) => setAvatarSettings({ scale: parseFloat(e.target.value) })}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          min={0.3}
+          max={2.0}
+          step={0.1}
+          format={(v) => `${v.toFixed(1)}x`}
+          onChange={(v) => setAvatarSettings({ scale: v })}
         />
-        <div className="flex justify-between text-xs text-gray-500">
-          <span>0.3x</span>
-          <span>1.0x</span>
-          <span>2.0x</span>
-        </div>
-      </div>
+      </Field>
 
-      {/* Free Movement Mode */}
-      <div className="flex items-center justify-between py-2">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-gray-700">
-            {t('settings.avatar.freeMovement.title')}
-          </span>
-          <span className="text-xs text-gray-500">
-            {t('settings.avatar.freeMovement.description')}
-          </span>
-        </div>
-        <button
-          onClick={() => setAvatarSettings({ freeMovement: !(settings.avatar?.freeMovement ?? false) })}
-          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-            settings.avatar?.freeMovement ? 'bg-blue-600' : 'bg-gray-300'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-              settings.avatar?.freeMovement ? 'translate-x-5' : ''
-            }`}
-          />
-        </button>
-      </div>
+      {/* Free Movement */}
+      <Row
+        label={t('settings.avatar.freeMovement.title')}
+        description={t('settings.avatar.freeMovement.description')}
+      >
+        <Toggle
+          on={settings.avatar?.freeMovement ?? false}
+          onChange={(on) => setAvatarSettings({ freeMovement: on })}
+        />
+      </Row>
 
-      {/* Speech Bubble Toggle */}
-      <div className="flex items-center justify-between py-2">
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-gray-700">
-            {t('settings.avatar.speechBubble.title')}
-          </span>
-          <span className="text-xs text-gray-500">
-            {t('settings.avatar.speechBubble.description')}
-          </span>
-        </div>
-        <button
-          onClick={() => setAvatarSettings({ showSpeechBubble: !(settings.avatar?.showSpeechBubble ?? true) })}
-          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-            settings.avatar?.showSpeechBubble !== false ? 'bg-blue-600' : 'bg-gray-300'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-              settings.avatar?.showSpeechBubble !== false ? 'translate-x-5' : ''
-            }`}
-          />
-        </button>
-      </div>
+      {/* Speech Bubble */}
+      <Row
+        label={t('settings.avatar.speechBubble.title')}
+        description={t('settings.avatar.speechBubble.description')}
+      >
+        <Toggle
+          on={settings.avatar?.showSpeechBubble !== false}
+          onChange={(on) => setAvatarSettings({ showSpeechBubble: on })}
+        />
+      </Row>
 
       {/* Expression Control */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('settings.avatar.expression')}
-        </label>
-        <div className="flex flex-wrap gap-2">
+      <Field label={t('settings.avatar.expression')}>
+        <div className="flex flex-wrap" style={{ gap: 6 }}>
           {emotions.map((em) => (
-            <button
+            <Pill
               key={em}
+              active={emotion === em}
               onClick={() => setEmotion(em)}
-              className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                emotion === em
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
             >
               {t(`settings.avatar.emotions.${em}`)}
-            </button>
+            </Pill>
           ))}
         </div>
-      </div>
+      </Field>
 
       {/* Initial View Rotation */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-2 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.avatar.initialView.title')}
         </h4>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs" style={{ color: 'var(--ink-3)' }}>
           {t('settings.avatar.initialView.description')}
         </p>
 
@@ -243,7 +184,8 @@ export default function AvatarSettings() {
                 y: manualRotation.y,
               },
             })}
-            className="px-3 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="px-3 py-2 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent-2 transition-colors focus-ring"
+            data-interactive="true"
           >
             {t('settings.avatar.initialView.saveCurrent')}
           </button>
@@ -252,7 +194,12 @@ export default function AvatarSettings() {
               x: savedInitialView.x,
               y: savedInitialView.y,
             })}
-            className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+            className="px-3 py-2 text-xs font-medium rounded-lg text-ink-2 transition-colors focus-ring"
+            style={{
+              background: 'oklch(1 0 0 / 0.7)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+            }}
+            data-interactive="true"
           >
             {t('settings.avatar.initialView.applySaved')}
           </button>
@@ -262,13 +209,18 @@ export default function AvatarSettings() {
               setAvatarSettings({ initialViewRotation: resetRotation });
               setManualRotation(resetRotation);
             }}
-            className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+            className="px-3 py-2 text-xs font-medium rounded-lg text-ink-2 transition-colors focus-ring"
+            style={{
+              background: 'oklch(1 0 0 / 0.7)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+            }}
+            data-interactive="true"
           >
             {t('settings.avatar.initialView.resetFront')}
           </button>
         </div>
 
-        <div className="text-xs text-gray-500 space-y-1">
+        <div className="text-xs space-y-1" style={{ color: 'var(--ink-3)' }}>
           <p>
             {t('settings.avatar.initialView.savedInfo', {
               vertical: formatDegrees(savedInitialView.x),
@@ -285,283 +237,176 @@ export default function AvatarSettings() {
       </div>
 
       {/* Animation Settings */}
-      <div className="space-y-3 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-3 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.avatar.animation.title')}
         </h4>
 
-        {isDevBuild && (
-          <div className="space-y-2 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-blue-900">
-                {t('settings.avatar.animation.motionSequenceDemo')}
-              </label>
-              <button
-                type="button"
-                onClick={handleMotionSequenceToggle}
-                disabled={
-                  !isLoaded ||
-                  totalMotionCount === 0 ||
-                  faceOnlyModeEnabled ||
-                  !(settings.avatar?.animation?.enableMotionClips ?? true)
-                }
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  isMotionSequenceActive
-                    ? 'bg-red-500 text-white hover:bg-red-600'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                } disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed`}
-              >
-                {isMotionSequenceActive
-                  ? t('settings.avatar.animation.sequenceStop')
-                  : t('settings.avatar.animation.sequenceStart')}
-              </button>
-            </div>
-            <p className="text-xs text-blue-900/90">
-              {t('settings.avatar.animation.sequenceDevOnly')}
-            </p>
-            <p className="text-xs text-blue-900/80">
-              {isMotionSequenceActive
-                ? t('settings.avatar.animation.sequenceProgress', {
-                    current: Math.max(1, motionSequenceIndex + 1),
-                    total: Math.max(1, motionSequenceTotal),
-                  })
-                : t('settings.avatar.animation.sequenceWaiting', { count: totalMotionCount })}
-            </p>
-            {!(settings.avatar?.animation?.enableMotionClips ?? true) && (
-              <p className="text-xs text-amber-700">
-                {t('settings.avatar.animation.motionClipsWarning')}
-              </p>
-            )}
+        {/* 표정 전용 모드 */}
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col flex-1 min-w-0 pr-3">
+            <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.faceOnlyMode')}</label>
             {faceOnlyModeEnabled && (
-              <p className="text-xs text-amber-700">
-                {t('settings.avatar.animation.faceOnlyWarning')}
-              </p>
+              <span className="text-xs text-ok">{t('settings.avatar.animation.faceOnlyDescription')}</span>
             )}
+          </div>
+          <Toggle
+            on={faceOnlyModeEnabled}
+            onChange={(v) => setAvatarSettings({
+              animation: { ...settings.avatar?.animation, faceExpressionOnlyMode: v },
+            })}
+          />
+        </div>
+
+        {/* ── 걷기 ── */}
+        {!faceOnlyModeEnabled && (
+          <div
+            className="space-y-2 rounded-lg p-3"
+            style={{
+              background: 'oklch(1 0 0 / 0.45)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+            }}
+          >
+            <h5 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-2)' }}>
+              {t('settings.avatar.animation.walkingTitle')}
+            </h5>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
+                <label
+                  className="text-sm"
+                  style={{ color: settings.avatar?.freeMovement ? 'var(--ink-3)' : 'var(--ink-2)' }}
+                >{t('settings.avatar.animation.autoRoam')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>
+                  {settings.avatar?.freeMovement
+                    ? t('settings.avatar.animation.autoRoamDisabledByFreeMove')
+                    : t('settings.avatar.animation.autoRoamDesc')}
+                </span>
+              </div>
+              <Toggle
+                on={(settings.avatar?.autoRoam ?? false) && !settings.avatar?.freeMovement}
+                disabled={settings.avatar?.freeMovement ?? false}
+                onChange={(v) => setAvatarSettings({ autoRoam: v })}
+              />
+            </div>
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-600">
-            {t('settings.avatar.animation.faceOnlyMode')}
-          </label>
-          <button
-            onClick={() => setAvatarSettings({
-              animation: {
-                ...settings.avatar?.animation,
-                faceExpressionOnlyMode: !faceOnlyModeEnabled,
-              },
-            })}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              faceOnlyModeEnabled ? 'bg-emerald-600' : 'bg-gray-300'
-            }`}
+        {/* ── 대기 동작 ── */}
+        {!faceOnlyModeEnabled && (
+          <div
+            className="space-y-2 rounded-lg p-3"
+            style={{
+              background: 'oklch(1 0 0 / 0.45)',
+              boxShadow: 'inset 0 0 0 1px var(--hairline)',
+            }}
           >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                faceOnlyModeEnabled ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
-        </div>
+            <h5 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-2)' }}>
+              {t('settings.avatar.animation.idleTitle')}
+            </h5>
 
-        {faceOnlyModeEnabled && (
-          <p className="text-xs text-emerald-700">
-            {t('settings.avatar.animation.faceOnlyDescription')}
-          </p>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
+                <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.enableBreathing')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.avatar.animation.enableBreathingDesc')}</span>
+              </div>
+              <Toggle
+                on={settings.avatar?.animation?.enableBreathing ?? true}
+                onChange={(v) => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, enableBreathing: v },
+                })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
+                <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.enableEyeDrift')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.avatar.animation.enableEyeDriftDesc')}</span>
+              </div>
+              <Toggle
+                on={settings.avatar?.animation?.enableEyeDrift ?? true}
+                onChange={(v) => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, enableEyeDrift: v },
+                })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
+                <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.gazeFollow')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.avatar.animation.gazeFollowDesc')}</span>
+              </div>
+              <Toggle
+                on={settings.avatar?.animation?.gazeFollow ?? true}
+                onChange={(v) => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, gazeFollow: v },
+                })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col flex-1 min-w-0 pr-3">
+                <label className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('settings.avatar.animation.backchannel')}</label>
+                <span className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('settings.avatar.animation.backchannelDesc')}</span>
+              </div>
+              <Toggle
+                on={settings.avatar?.animation?.backchannel ?? true}
+                onChange={(v) => setAvatarSettings({
+                  animation: { ...settings.avatar?.animation, backchannel: v },
+                })}
+              />
+            </div>
+          </div>
         )}
-
-        <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-600">
-            {t('settings.avatar.animation.enableMotionClips')}
-          </label>
-          <button
-            onClick={() => setAvatarSettings({
-              animation: {
-                ...settings.avatar?.animation,
-                enableMotionClips: !(settings.avatar?.animation?.enableMotionClips ?? true),
-              },
-            })}
-            disabled={faceOnlyModeEnabled}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.animation?.enableMotionClips ?? true ? 'bg-blue-600' : 'bg-gray-300'
-            } ${faceOnlyModeEnabled ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                settings.avatar?.animation?.enableMotionClips ?? true ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-600">
-            {t('settings.avatar.animation.dynamicMotionBoost')}
-          </label>
-          <button
-            onClick={() => setAvatarSettings({
-              animation: {
-                ...settings.avatar?.animation,
-                dynamicMotionEnabled: !(settings.avatar?.animation?.dynamicMotionEnabled ?? false),
-              },
-            })}
-            disabled={faceOnlyModeEnabled}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.animation?.dynamicMotionEnabled ?? false ? 'bg-emerald-600' : 'bg-gray-300'
-            } ${faceOnlyModeEnabled ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                settings.avatar?.animation?.dynamicMotionEnabled ?? false ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
-        </div>
-
-        <div className="space-y-1">
-          <label className="block text-xs text-gray-600">
-            {t('settings.avatar.animation.dynamicBoostStrength', {
-              value: ((settings.avatar?.animation?.dynamicMotionBoost ?? 1.0) * 100).toFixed(0),
-            })}
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="1.5"
-            step="0.05"
-            value={settings.avatar?.animation?.dynamicMotionBoost ?? 1.0}
-            onChange={(e) => setAvatarSettings({
-              animation: {
-                ...settings.avatar?.animation,
-                dynamicMotionBoost: parseFloat(e.target.value),
-              },
-            })}
-            disabled={faceOnlyModeEnabled || !(settings.avatar?.animation?.dynamicMotionEnabled ?? false)}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="block text-xs text-gray-600">
-            {t('settings.avatar.animation.motionDiversity', {
-              value: ((settings.avatar?.animation?.motionDiversity ?? 1.0) * 100).toFixed(0),
-            })}
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={settings.avatar?.animation?.motionDiversity ?? 1.0}
-            onChange={(e) => setAvatarSettings({
-              animation: {
-                ...settings.avatar?.animation,
-                motionDiversity: parseFloat(e.target.value),
-              },
-            })}
-            disabled={faceOnlyModeEnabled}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-600">
-            {t('settings.avatar.animation.enableGestureFallback')}
-          </label>
-          <button
-            onClick={() => setAvatarSettings({
-              animation: {
-                ...settings.avatar?.animation,
-                enableGestures: !settings.avatar?.animation?.enableGestures,
-              },
-            })}
-            disabled={faceOnlyModeEnabled}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.animation?.enableGestures ? 'bg-blue-600' : 'bg-gray-300'
-            } ${faceOnlyModeEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                settings.avatar?.animation?.enableGestures ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
-        </div>
       </div>
 
       {/* Physics Settings */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-2 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.avatar.physics.title')}
         </h4>
 
         <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-600">
+          <label className="text-sm" style={{ color: 'var(--ink-2)' }}>
             {t('settings.avatar.physics.enable')}
           </label>
-          <button
-            onClick={() => setAvatarSettings({
-              physics: {
-                ...settings.avatar?.physics,
-                enabled: !settings.avatar?.physics?.enabled,
-              },
+          <Toggle
+            on={settings.avatar?.physics?.enabled ?? true}
+            onChange={(v) => setAvatarSettings({
+              physics: { ...settings.avatar?.physics, enabled: v },
             })}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.physics?.enabled ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                settings.avatar?.physics?.enabled ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
+          />
         </div>
 
         {settings.avatar?.physics?.enabled && (
           <>
             <div className="space-y-1">
-              <label className="block text-xs text-gray-600">
+              <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
                 {t('settings.avatar.physics.gravity', {
                   value: (settings.avatar?.physics?.gravityMultiplier ?? 1.0).toFixed(1),
                 })}
               </label>
               <input
-                type="range"
-                min="0.2"
-                max="2.0"
-                step="0.1"
+                type="range" min="0.2" max="2.0" step="0.1"
                 value={settings.avatar?.physics?.gravityMultiplier ?? 1.0}
-                onChange={(e) => setAvatarSettings({
-                  physics: {
-                    ...settings.avatar?.physics,
-                    gravityMultiplier: parseFloat(e.target.value),
-                  },
-                })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                onChange={(e) => setAvatarSettings({ physics: { ...settings.avatar?.physics, gravityMultiplier: parseFloat(e.target.value) } })}
+                className="ama-slider"
+                data-interactive="true"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs text-gray-600">
+              <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
                 {t('settings.avatar.physics.stiffness', {
                   value: (settings.avatar?.physics?.stiffnessMultiplier ?? 1.0).toFixed(1),
                 })}
               </label>
               <input
-                type="range"
-                min="0.2"
-                max="2.0"
-                step="0.1"
+                type="range" min="0.2" max="2.0" step="0.1"
                 value={settings.avatar?.physics?.stiffnessMultiplier ?? 1.0}
-                onChange={(e) => setAvatarSettings({
-                  physics: {
-                    ...settings.avatar?.physics,
-                    stiffnessMultiplier: parseFloat(e.target.value),
-                  },
-                })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                onChange={(e) => setAvatarSettings({ physics: { ...settings.avatar?.physics, stiffnessMultiplier: parseFloat(e.target.value) } })}
+                className="ama-slider"
+                data-interactive="true"
               />
             </div>
           </>
@@ -569,79 +414,52 @@ export default function AvatarSettings() {
       </div>
 
       {/* Lighting Intensity */}
-      <div className="space-y-2 border-t pt-4 mt-4">
-        <h4 className="text-sm font-medium text-gray-700">
+      <div className="space-y-2 border-t pt-4 mt-4" style={{ borderColor: 'var(--hairline)' }}>
+        <h4 className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>
           {t('settings.avatar.lighting.title')}
         </h4>
 
         <div className="space-y-1">
-          <label className="block text-xs text-gray-600">
+          <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
             {t('settings.avatar.lighting.ambient', {
               value: (settings.avatar?.lighting?.ambientIntensity ?? 1.0).toFixed(1),
             })}
           </label>
           <input
-            type="range"
-            min="0"
-            max="3"
-            step="0.1"
+            type="range" min="0" max="3" step="0.1"
             value={settings.avatar?.lighting?.ambientIntensity ?? 1.0}
-            onChange={(e) => setAvatarSettings({
-              lighting: {
-                ...settings.avatar?.lighting,
-                ambientIntensity: parseFloat(e.target.value),
-              },
-            })}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            onChange={(e) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, ambientIntensity: parseFloat(e.target.value) } })}
+            className="ama-slider"
+            data-interactive="true"
           />
         </div>
 
         <div className="space-y-1">
-          <label className="block text-xs text-gray-600">
+          <label className="block text-xs" style={{ color: 'var(--ink-2)' }}>
             {t('settings.avatar.lighting.directional', {
               value: (settings.avatar?.lighting?.directionalIntensity ?? 1.0).toFixed(1),
             })}
           </label>
           <input
-            type="range"
-            min="0"
-            max="3"
-            step="0.1"
+            type="range" min="0" max="3" step="0.1"
             value={settings.avatar?.lighting?.directionalIntensity ?? 1.0}
-            onChange={(e) => setAvatarSettings({
-              lighting: {
-                ...settings.avatar?.lighting,
-                directionalIntensity: parseFloat(e.target.value),
-              },
-            })}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            onChange={(e) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, directionalIntensity: parseFloat(e.target.value) } })}
+            className="ama-slider"
+            data-interactive="true"
           />
         </div>
 
         <div className="flex items-center justify-between mt-3">
-          <label className="text-sm text-gray-600">
+          <label className="text-sm" style={{ color: 'var(--ink-2)' }}>
             {t('settings.avatar.lighting.showIcon')}
           </label>
-          <button
-            onClick={() => setAvatarSettings({
-              lighting: {
-                ...settings.avatar?.lighting,
-                showControl: !settings.avatar?.lighting?.showControl,
-              },
-            })}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings.avatar?.lighting?.showControl !== false ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                settings.avatar?.lighting?.showControl !== false ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
+          <Toggle
+            on={settings.avatar?.lighting?.showControl !== false}
+            onChange={(v) => setAvatarSettings({ lighting: { ...settings.avatar?.lighting, showControl: v } })}
+          />
         </div>
 
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs mt-2" style={{ color: 'var(--ink-3)' }}>
           {t('settings.avatar.lighting.dragHint')}
         </p>
       </div>

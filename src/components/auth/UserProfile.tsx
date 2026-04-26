@@ -6,6 +6,7 @@ import { isMockMode, ENABLED_PROVIDERS, PROVIDER_ICONS, PROVIDER_COLORS } from '
 import { useAuthStore } from '../../stores/authStore';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { usePremiumStore } from '../../features/premium-voice';
 import TermsModal from './TermsModal';
 import type { OAuthProvider } from '../../services/auth/types';
 
@@ -68,6 +69,12 @@ export default function UserProfile() {
     } catch {
       // 로그아웃 API 실패해도 로컬 상태는 초기화
     } finally {
+      // 프리미엄 음성 상태 초기화 + TTS 엔진 로컬로 복원
+      usePremiumStore.getState().reset();
+      const settingsState = useSettingsStore.getState();
+      if (settingsState.settings.tts.engine === 'supertone_api') {
+        settingsState.setTTSSettings({ engine: 'supertonic' });
+      }
       logout();
       setLoading(false);
     }
@@ -82,6 +89,12 @@ export default function UserProfile() {
     setLoading(true);
     try {
       await authService.deleteAccount(tokens?.accessToken ?? '');
+      // 프리미엄 음성 상태 초기화 + TTS 엔진 로컬로 복원
+      usePremiumStore.getState().reset();
+      const settingsState = useSettingsStore.getState();
+      if (settingsState.settings.tts.engine === 'supertone_api') {
+        settingsState.setTTSSettings({ engine: 'supertonic' });
+      }
       // 로컬 대화 기록도 삭제
       clearMessages();
       logout();
@@ -126,11 +139,9 @@ export default function UserProfile() {
               const result = await authService.handleCallback(data.code, '', '');
               setUser(result.user);
               setTokens(result.tokens);
-              // OAuth 닉네임을 아바타 이름 초기값으로 연동
-              const currentSettings = useSettingsStore.getState();
-              if (result.user.nickname && !(currentSettings.settings.avatarName || '').trim()) {
-                currentSettings.setAvatarName(result.user.nickname);
-              }
+              // 의도적으로 OAuth 닉네임을 avatarName으로 자동 연동하지 않음.
+              // App.tsx의 일반 OAuth 콜백 흐름과 동일한 정책.
+              // (AvatarRestingBadge 등 UI에서 OAuth 계정 이름이 노출되는 문제 방지)
               setLoading(false);
               setPendingProvider(null);
             }
@@ -164,21 +175,54 @@ export default function UserProfile() {
   if (isAuthenticated && user) {
     return (
       <>
-        <div className="rounded-xl border border-gray-200 overflow-hidden">
+        {/* 외곽 pill — 과거 `HeaderUserPill` 디자인(아바타 38px 원형 + 그라데이션,
+            닉네임 13.5px/600, 이메일 11.5px ink-3)을 그대로 재사용.
+            확장 시 같은 카드 하단에 상세/로그아웃/삭제 영역이 이어진다. */}
+        <div
+          className="overflow-hidden"
+          style={{
+            borderRadius: 16,
+            background: 'oklch(1 0 0 / 0.55)',
+            boxShadow: 'inset 0 0 0 1px var(--hairline)',
+          }}
+        >
           {/* 계정 요약 (항상 표시) */}
           <button
             onClick={() => { setExpanded((v) => !v); setDeleteConfirm(false); setDeleteError(null); }}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center transition-colors focus-ring hover:bg-[oklch(1_0_0_/_0.25)]"
+            style={{ padding: '12px 14px', gap: 12 }}
           >
-            <div className="w-8 h-8 bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm flex-shrink-0">
+            <div
+              className="grid place-items-center shrink-0"
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--accent), var(--glow))',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
               {user.nickname.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">{user.nickname}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+            <div className="flex-1 min-w-0 text-left">
+              <div
+                className="truncate"
+                style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}
+              >
+                {user.nickname}
+              </div>
+              <div
+                className="truncate"
+                style={{ fontSize: 11.5, color: 'var(--ink-3)' }}
+              >
+                {user.email}
+              </div>
             </div>
             <svg
-              className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+              className={`w-4 h-4 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+              style={{ color: 'var(--ink-3)' }}
               fill="none" stroke="currentColor" viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -187,24 +231,27 @@ export default function UserProfile() {
 
           {/* 상세 정보 (펼침) */}
           {expanded && (
-            <div className="px-4 pb-4 space-y-3 border-t border-gray-100 bg-gray-50">
+            <div
+              className="px-4 pb-4 space-y-3 border-t"
+              style={{ borderColor: 'var(--hairline)', background: 'oklch(1 0 0 / 0.45)' }}
+            >
               <div className="pt-3 space-y-1.5 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">{t('auth.profile.provider')}</span>
-                  <span className="text-gray-700">{t(`auth.providers.${user.provider}`)}</span>
+                  <span style={{ color: 'var(--ink-3)' }}>{t('auth.profile.provider')}</span>
+                  <span style={{ color: 'var(--ink-2)' }}>{t(`auth.providers.${user.provider}`)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">{t('auth.profile.joinedAt')}</span>
-                  <span className="text-gray-700">{new Date(user.createdAt).toLocaleDateString()}</span>
+                  <span style={{ color: 'var(--ink-3)' }}>{t('auth.profile.joinedAt')}</span>
+                  <span style={{ color: 'var(--ink-2)' }}>{new Date(user.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
 
               {/* 약관 링크 */}
-              <div className="flex gap-3 text-xs text-gray-400">
+              <div className="flex gap-3 text-xs" style={{ color: 'var(--ink-3)' }}>
                 <button
                   type="button"
                   onClick={() => setTermsModal('terms')}
-                  className="hover:text-blue-500 hover:underline"
+                  className="hover:text-accent-ink hover:underline"
                 >
                   {t('auth.termsLink')}
                 </button>
@@ -212,7 +259,7 @@ export default function UserProfile() {
                 <button
                   type="button"
                   onClick={() => setTermsModal('privacy')}
-                  className="hover:text-blue-500 hover:underline"
+                  className="hover:text-accent-ink hover:underline"
                 >
                   {t('auth.privacyLink')}
                 </button>
@@ -221,18 +268,19 @@ export default function UserProfile() {
               <button
                 onClick={handleLogout}
                 disabled={isLoading}
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-white hover:text-gray-800 transition-colors disabled:opacity-50"
+                className="w-full px-4 py-2 rounded-lg border text-sm hover:bg-[oklch(1_0_0_/_0.6)] transition-colors disabled:opacity-50"
+                style={{ borderColor: 'var(--hairline)', color: 'var(--ink-2)' }}
               >
                 {t('auth.logout')}
               </button>
 
               {/* 계정 삭제 영역 */}
-              <div className="pt-1 border-t border-gray-200 space-y-2">
+              <div className="pt-1 border-t space-y-2" style={{ borderColor: 'var(--hairline)' }}>
                 {deleteError && (
-                  <p className="text-xs text-red-600">{deleteError}</p>
+                  <p className="text-xs text-danger">{deleteError}</p>
                 )}
                 {deleteConfirm && (
-                  <p className="text-xs text-red-500 font-medium">
+                  <p className="text-xs text-danger font-medium">
                     {t('auth.deleteAccountConfirm')}
                   </p>
                 )}
@@ -242,8 +290,8 @@ export default function UserProfile() {
                   className={`
                     w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50
                     ${deleteConfirm
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'border border-red-200 text-red-500 hover:bg-red-50'}
+                      ? 'bg-danger text-white hover:bg-danger'
+                      : 'border border-[oklch(0.7_0.15_25_/_0.4)] text-danger hover:bg-[oklch(0.95_0.04_25_/_0.6)]'}
                   `}
                 >
                   {deleteConfirm ? t('auth.deleteAccountFinal') : t('auth.deleteAccount')}
@@ -252,7 +300,8 @@ export default function UserProfile() {
                   <button
                     onClick={() => { setDeleteConfirm(false); setDeleteError(null); }}
                     disabled={isLoading}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-white transition-colors disabled:opacity-50"
+                    className="w-full px-4 py-2 rounded-lg border text-sm hover:bg-[oklch(1_0_0_/_0.6)] transition-colors disabled:opacity-50"
+                    style={{ borderColor: 'var(--hairline)', color: 'var(--ink-2)' }}
                   >
                     {t('auth.deleteAccountCancel')}
                   </button>
@@ -272,24 +321,31 @@ export default function UserProfile() {
   // ── 비로그인 상태 ─────────────────────────────────────────────────────────
   return (
     <>
-      <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{ borderColor: 'var(--hairline)' }}
+      >
         {/* 헤더 (항상 표시) */}
         <button
           onClick={() => { setExpanded((v) => !v); setError(null); }}
-          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[oklch(0.92_0.02_60_/_0.7)] transition-colors"
         >
-          <div className="w-8 h-8 bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0">
+          <div
+            className="w-8 h-8 flex items-center justify-center flex-shrink-0"
+            style={{ background: 'oklch(1 0 0 / 0.45)', color: 'var(--ink-3)' }}
+          >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
           <div className="flex-1 text-left">
-            <p className="text-sm font-medium text-gray-700">{t('auth.profile.title')}</p>
-            <p className="text-xs text-gray-400">{t('auth.subtitle')}</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--ink-2)' }}>{t('auth.profile.title')}</p>
+            <p className="text-xs" style={{ color: 'var(--ink-3)' }}>{t('auth.subtitle')}</p>
           </div>
           <svg
-            className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            style={{ color: 'var(--ink-3)' }}
             fill="none" stroke="currentColor" viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -298,17 +354,20 @@ export default function UserProfile() {
 
         {/* OAuth 버튼 (펼침) */}
         {expanded && (
-          <div className="px-4 pb-4 space-y-2 border-t border-gray-100 bg-gray-50 pt-3">
+          <div
+            className="px-4 pb-4 space-y-2 border-t pt-3"
+            style={{ borderColor: 'var(--hairline)', background: 'oklch(1 0 0 / 0.45)' }}
+          >
             {/* 에러 메시지 */}
             {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+              <div className="rounded-lg bg-[oklch(0.95_0.04_25_/_0.6)] border border-[oklch(0.7_0.15_25_/_0.4)] px-3 py-2 text-xs text-danger">
                 {error}
               </div>
             )}
 
             {/* 개발/테스트 모드 안내 */}
             {mockMode && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+              <div className="rounded-lg bg-[oklch(0.95_0.04_75_/_0.6)] border border-[oklch(0.7_0.15_75_/_0.4)] px-3 py-2 text-xs text-warn">
                 {t('auth.mockModeNotice')}
               </div>
             )}
@@ -316,26 +375,28 @@ export default function UserProfile() {
             {/* 약관 동의 (이미 동의한 경우 건너뜀) */}
             {!hasAgreedToTerms && (
               <div className="space-y-1.5 pb-1">
-                <p className="text-xs font-medium text-gray-600">{t('auth.termsAgreement')}</p>
-                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <p className="text-xs font-medium" style={{ color: 'var(--ink-2)' }}>{t('auth.termsAgreement')}</p>
+                <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--ink-2)' }}>
                   <input
                     type="checkbox"
                     checked={agreedTerms}
                     onChange={(e) => handleAgreementChange('terms', e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="w-3.5 h-3.5 rounded text-accent-ink focus:ring-accent"
+                    style={{ borderColor: 'var(--hairline)' }}
                   />
                   <span className="flex-1">{t('auth.agreeToTerms')}</span>
-                  <button type="button" onClick={() => setTermsModal('terms')} className="text-blue-500 hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
+                  <button type="button" onClick={() => setTermsModal('terms')} className="text-accent-ink hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
                 </label>
-                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--ink-2)' }}>
                   <input
                     type="checkbox"
                     checked={agreedPrivacy}
                     onChange={(e) => handleAgreementChange('privacy', e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="w-3.5 h-3.5 rounded text-accent-ink focus:ring-accent"
+                    style={{ borderColor: 'var(--hairline)' }}
                   />
                   <span className="flex-1">{t('auth.agreeToPrivacy')}</span>
-                  <button type="button" onClick={() => setTermsModal('privacy')} className="text-blue-500 hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
+                  <button type="button" onClick={() => setTermsModal('privacy')} className="text-accent-ink hover:underline flex-shrink-0">{t('auth.viewTerms')}</button>
                 </label>
               </div>
             )}
@@ -358,7 +419,7 @@ export default function UserProfile() {
                   : t('auth.loginWith', { provider: t(`auth.providers.${provider}`) })}
               </button>
             ))}
-            <p className="text-center text-xs text-gray-400 pt-1">{t('auth.termsNotice')}</p>
+            <p className="text-center text-xs pt-1" style={{ color: 'var(--ink-3)' }}>{t('auth.termsNotice')}</p>
           </div>
         )}
       </div>

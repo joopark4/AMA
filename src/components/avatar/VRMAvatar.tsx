@@ -3,7 +3,7 @@ import { useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { VRM, VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
-import { convertFileSrc, invoke, isTauri } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import { readFile } from '@tauri-apps/plugin-fs';
 import {
   useAvatarStore,
@@ -13,6 +13,22 @@ import {
 import { useSettingsStore } from '../../stores/settingsStore';
 import { getEmotionTuning } from '../../config/emotionTuning';
 import { loadDefaultVrmBuffer, isDefaultVrmAvailable } from '../../services/tauri/defaultVrm';
+import { LocomotionClipManager } from '../../services/avatar/locomotionClipManager';
+import {
+  type BoneNode, type AxisWeights,
+  DEFAULT_ELBOW_WEIGHTS, DEFAULT_KNEE_WEIGHTS,
+  clamp, wrapPhase01,
+  dampBoneRotation, dampBonePosition, dampBoneRotationPair,
+  dampFingerChain, dampThumbChain,
+  computeHingeAxisWeights, hingeTarget,
+} from '../../services/avatar/boneUtils';
+import {
+  hipFlexFromPhase, kneeFlexFromPhase, elbowFlexFromPhase,
+  anklePitchFromPhase, toeExtensionFromPhase,
+} from '../../services/avatar/proceduralGait';
+import {
+  isLocalFileSource, toFsReadTarget, resolveModelUrl,
+} from '../../services/avatar/vrmUrlUtils';
 
 // Helper function to log to terminal
 const logToTerminal = (message: string) => {
@@ -23,12 +39,14 @@ const GROUND_MARGIN_PX = 8;
 const VISIBILITY_RECOVERY_COOLDOWN_MS = 1200;
 const MAX_GROUND_SOLVE_RETRIES = 120;
 const IDLE_YAW = Math.PI;
-const RIGHT_WALK_YAW = Math.PI * 1.12;
-const LEFT_WALK_YAW = Math.PI * 0.88;
+// 좌우 비대칭 회전 — 카메라 각도 보정
+const RIGHT_WALK_YAW = Math.PI + 1.40; // 오른쪽 (~80°)
+const LEFT_WALK_YAW = Math.PI - 0.70;  // 왼쪽 (~40°)
 const POSITION_JITTER_EPSILON = 0.45;
 const LOCOMOTION_START_SPEED = 24;
 const LOCOMOTION_STOP_SPEED = 10;
 const IDLE_SPEED_SNAP = 4;
+const STRIDE_LENGTH_PX = 80; // 한 걸음(반 사이클)에 이동하는 화면 픽셀 수
 const ENABLE_JOINT_DEBUG = false;
 const DIAGNOSTIC_BONES = [
   'hips',
@@ -69,295 +87,10 @@ const STYLE_GAIT = {
   bouncy: { cadence: 1.05, leg: 1.0, arm: 1.0, bounce: 1.35, sway: 1.1 },
 } as const;
 
-type AxisWeights = { x: number; y: number; z: number };
-const DEFAULT_ELBOW_WEIGHTS: AxisWeights = { x: 0.78, y: 0.42, z: 0.9 };
-const DEFAULT_KNEE_WEIGHTS: AxisWeights = { x: 0.92, y: 0.26, z: 0.72 };
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
-function smoothStep01(t: number): number {
-  const x = clamp(t, 0, 1);
-  return x * x * (3 - 2 * x);
-}
-
-function wrapPhase01(phase: number): number {
-  return ((phase % 1) + 1) % 1;
-}
-
-function isAbsoluteFilePath(path: string): boolean {
-  return (
-    path.startsWith('/') ||
-    /^[A-Za-z]:[\\/]/.test(path) ||
-    path.startsWith('\\\\')
-  );
-}
-
-function isFileUrl(path: string): boolean {
-  return /^file:\/\//i.test(path.trim());
-}
-
-function isLocalFileSource(path: string): boolean {
-  const trimmed = path.trim();
-  return isAbsoluteFilePath(trimmed) || isFileUrl(trimmed);
-}
-
-function toFsReadTarget(path: string): string | URL {
-  const trimmed = path.trim();
-  if (isFileUrl(trimmed)) {
-    return new URL(trimmed);
-  }
-  return trimmed;
-}
-
-function resolveModelUrl(path: string): string {
-  const trimmed = path.trim();
-  if (!trimmed) return '';
-
-  if (
-    /^https?:\/\//i.test(trimmed) ||
-    /^asset:\/\//i.test(trimmed) ||
-    /^tauri:\/\//i.test(trimmed) ||
-    /^blob:/i.test(trimmed)
-  ) {
-    return trimmed;
-  }
-
-  if (trimmed.startsWith('/vrm/')) {
-    return trimmed;
-  }
-
-  if (isAbsoluteFilePath(trimmed)) {
-    if (isTauri()) {
-      return convertFileSrc(trimmed);
-    }
-    if (trimmed.startsWith('/')) return `file://${trimmed}`;
-    return `file:///${trimmed.replace(/\\/g, '/')}`;
-  }
-
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-}
-
-/**
- * Based on normative sagittal gait trends:
- * hip swings from slight extension (~-10 deg) to flexion (~30 deg).
- */
-function hipFlexFromPhase(phase01: number): number {
-  const p = wrapPhase01(phase01);
-  return 0.16 + Math.sin(p * Math.PI * 2) * 0.34;
-}
-
-/**
- * Knee flexion profile: low flexion in stance, peak flexion during swing, then extension before contact.
- * Peak around ~60 deg in swing is consistent with reported gait kinematics.
- */
-function kneeFlexFromPhase(phase01: number): number {
-  const p = wrapPhase01(phase01);
-
-  if (p < 0.12) {
-    return lerp(0.10, 0.24, smoothStep01(p / 0.12));
-  }
-  if (p < 0.50) {
-    return lerp(0.24, 0.10, smoothStep01((p - 0.12) / 0.38));
-  }
-  if (p < 0.72) {
-    return lerp(0.10, 1.05, smoothStep01((p - 0.50) / 0.22));
-  }
-  return lerp(1.05, 0.12, smoothStep01((p - 0.72) / 0.28));
-}
-
-/**
- * Walking arm swing keeps the elbow moderately flexed and varies it through the cycle.
- * The baseline and ROM are tuned toward human walking observations.
- */
-function elbowFlexFromPhase(phase01: number): number {
-  const p = wrapPhase01(phase01);
-
-  if (p < 0.35) {
-    return lerp(0.34, 0.52, smoothStep01(p / 0.35));
-  }
-  if (p < 0.70) {
-    return lerp(0.52, 0.86, smoothStep01((p - 0.35) / 0.35));
-  }
-  return lerp(0.86, 0.36, smoothStep01((p - 0.70) / 0.30));
-}
-
-/**
- * Ankle pitch profile through gait:
- * small plantarflexion after contact, dorsiflexion in mid-stance,
- * plantarflexion at push-off, then recovery in swing.
- */
-function anklePitchFromPhase(phase01: number): number {
-  const p = wrapPhase01(phase01);
-
-  if (p < 0.10) {
-    return lerp(0.08, -0.04, smoothStep01(p / 0.10));
-  }
-  if (p < 0.48) {
-    return lerp(-0.04, 0.11, smoothStep01((p - 0.10) / 0.38));
-  }
-  if (p < 0.64) {
-    return lerp(0.11, -0.34, smoothStep01((p - 0.48) / 0.16));
-  }
-  return lerp(-0.34, 0.03, smoothStep01((p - 0.64) / 0.36));
-}
-
-/**
- * Toe extension during terminal stance / pre-swing for push-off.
- */
-function toeExtensionFromPhase(phase01: number): number {
-  const p = wrapPhase01(phase01);
-
-  if (p < 0.46) {
-    return 0;
-  }
-  if (p < 0.62) {
-    return lerp(0, 0.52, smoothStep01((p - 0.46) / 0.16));
-  }
-  if (p < 0.78) {
-    return lerp(0.52, 0.12, smoothStep01((p - 0.62) / 0.16));
-  }
-  return lerp(0.12, 0, smoothStep01((p - 0.78) / 0.22));
-}
-
-type BoneNode = THREE.Object3D | null | undefined;
-
-function firstChildDirection(bone: BoneNode): THREE.Vector3 | null {
-  if (!bone) return null;
-  for (const child of bone.children) {
-    if (child.position.lengthSq() <= 1e-8) continue;
-    return child.position.clone().normalize();
-  }
-  return null;
-}
-
-function computeHingeAxisWeights(
-  bone: BoneNode,
-  fallback: AxisWeights
-): AxisWeights {
-  const dir = firstChildDirection(bone);
-  if (!dir) return fallback;
-
-  const absDir = {
-    x: Math.abs(dir.x),
-    y: Math.abs(dir.y),
-    z: Math.abs(dir.z),
-  };
-  const raw = {
-    x: Math.max(0.16, 1 - absDir.x),
-    y: Math.max(0.16, 1 - absDir.y),
-    z: Math.max(0.16, 1 - absDir.z),
-  };
-  const maxWeight = Math.max(raw.x, raw.y, raw.z);
-  if (maxWeight <= 1e-6) return fallback;
-
-  // Blend with fallback to avoid pathological rigs producing unstable axis picks.
-  return {
-    x: lerp(fallback.x, raw.x / maxWeight, 0.65),
-    y: lerp(fallback.y, raw.y / maxWeight, 0.65),
-    z: lerp(fallback.z, raw.z / maxWeight, 0.65),
-  };
-}
-
-function hingeTarget(
-  flex: number,
-  side: number,
-  weights: AxisWeights,
-  base: { x?: number; y?: number; z?: number } = {},
-  lateral = 0
-): { x: number; y: number; z: number } {
-  const weightedSum = weights.x + weights.y * 0.85 + weights.z * 1.1;
-  const norm = weightedSum > 1e-6 ? 1 / weightedSum : 1;
-
-  return {
-    x: (base.x ?? 0) + flex * weights.x * norm * 1.8,
-    y: (base.y ?? 0) + side * flex * weights.y * norm * 1.25 + lateral * 0.44,
-    z: (base.z ?? 0) - side * flex * weights.z * norm * 1.6 + lateral * 0.24,
-  };
-}
-
-function dampBoneRotation(
-  bone: BoneNode,
-  target: { x: number; y?: number; z?: number },
-  delta: number,
-  stiffness = 13
-): void {
-  if (!bone) return;
-  const t = 1 - Math.exp(-stiffness * Math.max(delta, 0.001));
-  bone.rotation.x += ((target.x ?? bone.rotation.x) - bone.rotation.x) * t;
-  bone.rotation.y += ((target.y ?? bone.rotation.y) - bone.rotation.y) * t;
-  bone.rotation.z += ((target.z ?? bone.rotation.z) - bone.rotation.z) * t;
-}
-
-function dampBonePosition(
-  bone: BoneNode,
-  target: { x: number; y?: number; z?: number },
-  delta: number,
-  stiffness = 13
-): void {
-  if (!bone) return;
-  const t = 1 - Math.exp(-stiffness * Math.max(delta, 0.001));
-  bone.position.x += ((target.x ?? bone.position.x) - bone.position.x) * t;
-  bone.position.y += ((target.y ?? bone.position.y) - bone.position.y) * t;
-  bone.position.z += ((target.z ?? bone.position.z) - bone.position.z) * t;
-}
-
-function dampBoneRotationPair(
-  normalizedBone: BoneNode,
-  rawBone: BoneNode,
-  target: { x: number; y?: number; z?: number },
-  delta: number,
-  stiffness = 13
-): void {
-  dampBoneRotation(normalizedBone, target, delta, stiffness);
-  if (rawBone && rawBone !== normalizedBone) {
-    dampBoneRotation(rawBone, target, delta, stiffness);
-  }
-}
-
-function dampFingerChain(
-  proximal: BoneNode,
-  intermediate: BoneNode,
-  distal: BoneNode,
-  curl: number,
-  spread: number,
-  delta: number,
-  stiffness: number
-): void {
-  dampBoneRotation(proximal, { x: curl, y: spread, z: 0 }, delta, stiffness);
-  dampBoneRotation(intermediate, { x: curl * 0.82, y: spread * 0.35, z: 0 }, delta, stiffness);
-  dampBoneRotation(distal, { x: curl * 0.64, y: spread * 0.2, z: 0 }, delta, stiffness);
-}
-
-function dampThumbChain(
-  proximal: BoneNode,
-  intermediate: BoneNode,
-  distal: BoneNode,
-  curl: number,
-  delta: number,
-  stiffness: number,
-  isLeft: boolean
-): void {
-  const side = isLeft ? 1 : -1;
-  dampBoneRotation(
-    proximal,
-    { x: curl * 0.55, y: side * (0.2 - curl * 0.15), z: side * (0.24 + curl * 0.12) },
-    delta,
-    stiffness
-  );
-  dampBoneRotation(
-    intermediate,
-    { x: curl * 0.75, y: side * 0.08, z: side * 0.06 },
-    delta,
-    stiffness
-  );
-  dampBoneRotation(distal, { x: curl * 0.65, y: side * 0.04, z: 0 }, delta, stiffness);
-}
+// AxisWeights, DEFAULT_*_WEIGHTS → boneUtils.ts
+// URL 유틸리티 → vrmUrlUtils.ts
+// 보행 프로파일 → proceduralGait.ts
+// 뼈 유틸리티 → boneUtils.ts
 
 export default function VRMAvatar() {
   type HingeProfile = {
@@ -393,7 +126,13 @@ export default function VRMAvatar() {
   const hingeProfileRef = useRef<HingeProfile | null>(null);
   const hingeProfileLoggedRef = useRef(false);
   const hasAppliedInitialViewRef = useRef(false);
+  const locomotionClipRef = useRef<LocomotionClipManager | null>(null);
+  const useClipLocomotion = useRef(true);
   const restHipsPositionRef = useRef<{ x: number; y: number; z: number } | null>(null);
+
+  // ─── 뼈 노드 캐시 (매 프레임 getNormalizedBoneNode 호출 제거) ───
+  const boneCacheRef = useRef<Record<string, BoneNode>>({});
+  const rawBoneCacheRef = useRef<Record<string, BoneNode>>({});
 
   const { gl, camera } = useThree();
 
@@ -421,6 +160,67 @@ export default function VRMAvatar() {
     setManualRotation,
     bounds,
   } = useAvatarStore();
+
+  const prevEmotionRef = useRef(emotion);
+
+  // ─── 감정 변경 시 Mixamo 제스처 트리거 (감정이 실제로 바뀔 때만) ───
+  useEffect(() => {
+    if (prevEmotionRef.current === emotion) return;
+    prevEmotionRef.current = emotion;
+
+    const clipMgr = locomotionClipRef.current;
+    const isFaceOnly = useSettingsStore.getState().settings.avatar?.animation?.faceExpressionOnlyMode ?? false;
+    if (!clipMgr || isFaceOnly) return;
+
+    // 감정별 제스처 매핑 (idle 상태에서만 one-shot 재생)
+    const gestureMap: Partial<Record<string, string>> = {
+      happy: 'celebrate',
+      surprised: 'jump',
+      angry: 'shake',
+    };
+
+    const currentlyMoving = useAvatarStore.getState().isMoving;
+    const gesture = gestureMap[emotion];
+    if (gesture && !currentlyMoving) {
+      clipMgr.playGesture(gesture);
+    }
+  }, [emotion]); // isMoving 의존성 제거 — 감정 변경 시에만 트리거
+
+  // ─── avatarStore.currentGesture → Mixamo 제스처 재생 ───
+  const prevGestureRef = useRef(currentGesture);
+  const gestureClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!currentGesture || currentGesture === prevGestureRef.current) {
+      prevGestureRef.current = currentGesture;
+      return;
+    }
+    prevGestureRef.current = currentGesture;
+
+    const clipMgr = locomotionClipRef.current;
+    if (!clipMgr) return;
+
+    const gestureToClip: Record<string, string> = {
+      wave: 'wave', nod: 'nod', shake: 'shake', shrug: 'shrug',
+      celebrate: 'celebrate', thinking: 'nod', jump: 'jump',
+    };
+
+    const clipName = gestureToClip[currentGesture];
+    if (clipName) {
+      clipMgr.playGesture(clipName);
+      if (gestureClearTimerRef.current) clearTimeout(gestureClearTimerRef.current);
+      gestureClearTimerRef.current = setTimeout(() => {
+        useAvatarStore.getState().clearGesture();
+        gestureClearTimerRef.current = null;
+      }, 3000);
+    }
+
+    return () => {
+      if (gestureClearTimerRef.current) {
+        clearTimeout(gestureClearTimerRef.current);
+        gestureClearTimerRef.current = null;
+      }
+    };
+  }, [currentGesture]);
 
   // Drag state refs
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -614,8 +414,8 @@ export default function VRMAvatar() {
       if (now - lastVisibilityRecoveryAtRef.current >= VISIBILITY_RECOVERY_COOLDOWN_MS) {
         lastVisibilityRecoveryAtRef.current = now;
         const fallbackX = clamp(width * 0.82, bounds.minX, bounds.maxX);
-        const avatarScale = settings.avatar?.scale || 1.0;
-        const solvedGroundY = solveGroundPositionY(avatarScale);
+        // scale은 camera.zoom으로 반영하므로 world 기준 발 위치 계산 시엔 항상 1.0 사용.
+        const solvedGroundY = solveGroundPositionY(1.0);
         const fallbackY = solvedGroundY ?? bounds.maxY;
         if (solvedGroundY !== null) {
           setGroundY(solvedGroundY);
@@ -649,18 +449,35 @@ export default function VRMAvatar() {
     setGroundY,
   ]);
 
-  // Check if click is on head area (upper 30% of the avatar)
+  // Head 클릭 판정 — VRM humanoid의 실제 `head` 본 world 좌표를 기준으로 한다.
+  //
+  // 예전 구현은 `Box3.setFromObject`의 상위 30%를 "머리"로 봤지만, 팔을 위로
+  // 들거나 손 위치가 상단에 있는 포즈에서는 box.max.y가 손끝이 되어 "상위 30%"가
+  // 어깨·가슴까지 내려왔다. 결과적으로 사용자가 몸통을 잡고 드래그해도 rotation
+  // 분기를 타서 `setManualRotation`이 `dx * sensitivity`로 적용, 드래그 방향
+  // 그대로 아바타가 회전하는 회귀가 발생했다.
+  //
+  // head bone 월드 좌표 기준으로 (1) 위쪽 영역에서 (2) 좌우 반경 내에 있을 때만
+  // 머리로 판정한다. 어깨/팔이 head bone과 비슷한 Y에 있어도 X 거리로 걸러낸다.
+  // head bone을 못 구하면 안전하게 false(=body drag)로 폴백.
   const isHeadClick = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (!groupRef.current) return false;
+    const headBone = vrm?.humanoid?.getNormalizedBoneNode?.('head');
+    if (!headBone) return false;
 
-    // Get the bounding box of the avatar
-    const box = new THREE.Box3().setFromObject(groupRef.current);
-    const avatarHeight = box.max.y - box.min.y;
-    const headThreshold = box.max.y - avatarHeight * 0.3; // Top 30% is head
+    const headWorld = new THREE.Vector3();
+    headBone.getWorldPosition(headWorld);
 
-    // Check if click point Y is in head area
-    return e.point.y > headThreshold;
-  }, []);
+    // VRM 일반 머리 반경 ≈ 0.1~0.13m. 0.14m로 보수적 제한.
+    const HEAD_RADIUS = 0.14;
+    const dy = e.point.y - headWorld.y;
+    const dx = Math.abs(e.point.x - headWorld.x);
+
+    // dy > -0.02: head bone(목-턱 경계)에서 2cm 아래까지만 허용. 그보다 아래는
+    //             목·어깨·가슴 영역이므로 body drag.
+    // dx < HEAD_RADIUS: 좌우 반경 내에서만 머리로 인정. 팔/어깨는 제외.
+    return dy > -0.02 && dx < HEAD_RADIUS;
+  }, [vrm]);
 
   // Pointer event handlers for 3D model drag and rotation
   const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
@@ -813,6 +630,14 @@ export default function VRMAvatar() {
 
       // Create animation mixer
       mixerRef.current = new THREE.AnimationMixer(loadedVRM.scene);
+
+      // Mixamo 걷기 클립 매니저 초기화
+      const clipMgr = new LocomotionClipManager(mixerRef.current, loadedVRM);
+      locomotionClipRef.current = clipMgr;
+      clipMgr.preloadEssentials().catch((err) =>
+        logToTerminal(`[VRMAvatar] Walk clip preload warning: ${err}`)
+      );
+
 
       // Debug: Log available expressions to terminal
       if (loadedVRM.expressionManager) {
@@ -1043,6 +868,18 @@ export default function VRMAvatar() {
       isEffectActive = false;
       setGroundY(null);
       setInteractionBounds(null);
+      // LocomotionClipManager 정리 (AnimationAction/Clip 캐시 해제)
+      if (locomotionClipRef.current) {
+        locomotionClipRef.current.dispose();
+        locomotionClipRef.current = null;
+      }
+      // AnimationMixer 정리
+      if (mixerRef.current) {
+        mixerRef.current.stopAllAction();
+        mixerRef.current.uncacheRoot(mixerRef.current.getRoot());
+        mixerRef.current = null;
+      }
+      // VRM 리소스 해제
       const currentVrm = useAvatarStore.getState().vrm;
       if (currentVrm) {
         VRMUtils.deepDispose(currentVrm.scene);
@@ -1051,10 +888,57 @@ export default function VRMAvatar() {
     };
   }, [settings.vrmModelPath, setGroundY, setInteractionBounds]);
 
+  // VRM 변경 시 캐시 리셋 + 뼈 노드 캐시 초기화
   useEffect(() => {
     hingeProfileRef.current = null;
     hingeProfileLoggedRef.current = false;
     restHipsPositionRef.current = null;
+    boneCacheRef.current = {};
+    rawBoneCacheRef.current = {};
+
+    if (!vrm?.humanoid) return;
+    const h = vrm.humanoid;
+    const boneNames = [
+      'spine', 'chest', 'upperChest', 'hips', 'neck', 'head',
+      'leftShoulder', 'rightShoulder', 'leftUpperArm', 'rightUpperArm',
+      'leftLowerArm', 'rightLowerArm', 'leftHand', 'rightHand',
+      'leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg',
+      'leftFoot', 'rightFoot', 'leftToes', 'rightToes',
+      'leftThumbProximal', 'leftThumbIntermediate', 'leftThumbDistal',
+      'rightThumbProximal', 'rightThumbIntermediate', 'rightThumbDistal',
+      'leftIndexProximal', 'leftIndexIntermediate', 'leftIndexDistal',
+      'rightIndexProximal', 'rightIndexIntermediate', 'rightIndexDistal',
+      'leftMiddleProximal', 'leftMiddleIntermediate', 'leftMiddleDistal',
+      'rightMiddleProximal', 'rightMiddleIntermediate', 'rightMiddleDistal',
+      'leftRingProximal', 'leftRingIntermediate', 'leftRingDistal',
+      'rightRingProximal', 'rightRingIntermediate', 'rightRingDistal',
+      'leftLittleProximal', 'leftLittleIntermediate', 'leftLittleDistal',
+      'rightLittleProximal', 'rightLittleIntermediate', 'rightLittleDistal',
+    ];
+    const cache: Record<string, BoneNode> = {};
+    for (const name of boneNames) {
+      cache[name] = h.getNormalizedBoneNode(name as any);
+    }
+    boneCacheRef.current = cache;
+
+    // Raw 뼈 캐시
+    const humanoidAny = h as any;
+    if (typeof humanoidAny.getRawBoneNode === 'function') {
+      const rawCache: Record<string, BoneNode> = {};
+      for (const name of ['leftLowerArm', 'rightLowerArm', 'leftLowerLeg', 'rightLowerLeg']) {
+        rawCache[name] = humanoidAny.getRawBoneNode(name as any);
+      }
+      rawBoneCacheRef.current = rawCache;
+    }
+
+    // 힌지 프로파일 계산 (1회)
+    const rawL = rawBoneCacheRef.current;
+    hingeProfileRef.current = {
+      leftElbow: computeHingeAxisWeights(rawL.leftLowerArm || cache.leftLowerArm, DEFAULT_ELBOW_WEIGHTS),
+      rightElbow: computeHingeAxisWeights(rawL.rightLowerArm || cache.rightLowerArm, DEFAULT_ELBOW_WEIGHTS),
+      leftKnee: computeHingeAxisWeights(rawL.leftLowerLeg || cache.leftLowerLeg, DEFAULT_KNEE_WEIGHTS),
+      rightKnee: computeHingeAxisWeights(rawL.rightLowerLeg || cache.rightLowerLeg, DEFAULT_KNEE_WEIGHTS),
+    };
   }, [vrm]);
 
   useEffect(() => {
@@ -1073,12 +957,12 @@ export default function VRMAvatar() {
   useEffect(() => {
     if (!vrm) return;
 
-    const scale = settings.avatar?.scale || 1.0;
+    // scale은 camera.zoom으로 반영 — world-space 발 위치 계산 시엔 항상 1.0 사용.
     let retryFrame: number | null = null;
     let retries = 0;
 
     const recomputeGround = () => {
-      const groundY = solveGroundPositionY(scale);
+      const groundY = solveGroundPositionY(1.0);
       if (groundY !== null) {
         setGroundY(groundY);
         return true;
@@ -1087,6 +971,11 @@ export default function VRMAvatar() {
     };
 
     const trySolveGround = () => {
+      // 이전 프레임 취소 (resize 재호출 시 누적 방지)
+      if (retryFrame !== null) {
+        window.cancelAnimationFrame(retryFrame);
+        retryFrame = null;
+      }
       if (recomputeGround()) {
         return;
       }
@@ -1107,6 +996,25 @@ export default function VRMAvatar() {
     };
   }, [vrm, settings.avatar?.scale, setGroundY, solveGroundPositionY]);
 
+  // 아바타 크기는 `group scale` 대신 `camera.zoom`으로 적용.
+  // 이유: VRM SpringBone이 parent group scale을 center-space 좌표에 반영할 때
+  //       hair/cloth가 작은 스케일에서 위로 떠오르는 버그가 발생 — 렌더 시점 zoom으로 회피.
+  useEffect(() => {
+    const scale = settings.avatar?.scale ?? 1.0;
+    const perspectiveCam = camera as THREE.PerspectiveCamera;
+    if ('zoom' in perspectiveCam) {
+      perspectiveCam.zoom = scale;
+      perspectiveCam.updateProjectionMatrix();
+    }
+    return () => {
+      // unmount 시 zoom 복원
+      if ('zoom' in perspectiveCam) {
+        perspectiveCam.zoom = 1.0;
+        perspectiveCam.updateProjectionMatrix();
+      }
+    };
+  }, [camera, settings.avatar?.scale]);
+
   // Animation frame update - Base pose and locomotion only
   // Expressions, blinking, gestures, and dance are handled by AnimationManager
   useFrame(() => {
@@ -1116,8 +1024,8 @@ export default function VRMAvatar() {
     const time = clockRef.current.elapsedTime;
     const clampedDelta = Math.max(delta, 0.001);
     const emotionTuning = getEmotionTuning(emotion);
-    const locomotionDemand =
-      !!targetPosition && Math.abs(targetPosition.x - position.x) > 16;
+    // 속도 기반 걷기 판정: 실제로 움직이고 있을 때만 걷기 애니메이션 재생
+    const locomotionDemand = movementSpeedRef.current > 5;
 
     const currentPos = useAvatarStore.getState().position;
     const previousPos = prevScreenPosRef.current;
@@ -1135,7 +1043,7 @@ export default function VRMAvatar() {
       const verticalSpeed = Math.abs(dy) / clampedDelta;
       const rawSpeed = almostStill ? 0 : horizontalSpeed + verticalSpeed * 0.2;
       movementSpeedRef.current +=
-        (rawSpeed - movementSpeedRef.current) * Math.min(1, clampedDelta * 8);
+        (rawSpeed - movementSpeedRef.current) * Math.min(1, clampedDelta * 20);
       prevScreenPosRef.current = { x: currentPos.x, y: currentPos.y };
     }
     if (!targetPosition && !isMoving && movementSpeedRef.current > 0) {
@@ -1153,9 +1061,29 @@ export default function VRMAvatar() {
       mixerRef.current.update(delta);
     }
 
+    // Mixamo 클립 재생 후 hips 드리프트 방지 (제스처 재생 중에는 스킵)
+    const clipMgrRef = locomotionClipRef.current;
+    if (clipMgrRef && !clipMgrRef.isGesturePlaying && (clipMgrRef.isIdling || clipMgrRef.isWalking)) {
+      const hipsBone = boneCacheRef.current['hips'];
+      if (hipsBone) {
+        // XZ 위치를 부드럽게 0으로 수렴 (root motion 제거 보완)
+        hipsBone.position.x = THREE.MathUtils.damp(hipsBone.position.x, 0, 8, delta);
+        hipsBone.position.z = THREE.MathUtils.damp(hipsBone.position.z, 0, 8, delta);
+        if (clipMgrRef.isIdling) {
+          // idle 시 Y 위치를 rest pose 높이로 부드럽게 복원
+          const restY = restHipsPositionRef.current?.y ?? hipsBone.position.y;
+          hipsBone.position.y = THREE.MathUtils.damp(hipsBone.position.y, restY, 8, delta);
+        }
+      }
+    }
+
     if (faceOnlyModeEnabled) {
       locomotionLatchRef.current = false;
       locomotionBlendRef.current = 0;
+      // Mixamo 클립도 정지
+      if (locomotionClipRef.current) {
+        locomotionClipRef.current.stopAll();
+      }
 
       if (vrm.humanoid) {
         const humanoid = vrm.humanoid;
@@ -1303,9 +1231,9 @@ export default function VRMAvatar() {
 
     // Skip base pose animation when gesture or dance is active
     // Those controllers will handle the pose
-    // Gesture has top priority.
     // Dance should override base pose only when actually dancing in-place.
-    if (currentGesture || (isDancing && animationState !== 'walking')) {
+    // (currentGesture는 Mixamo clipMgr가 처리 — 여기서 early return 불필요)
+    if (isDancing && (animationState as string) !== 'walking') {
       const desiredYaw = animationState === 'walking'
         ? (facingRight ? RIGHT_WALK_YAW : LEFT_WALK_YAW)
         : IDLE_YAW;
@@ -1342,79 +1270,58 @@ export default function VRMAvatar() {
       Math.min(1, clampedDelta * (locomotionActive ? 11 : 7));
     const locomotionBlend = clamp(locomotionBlendRef.current, 0, 1);
 
-    // Apply bone animations based on state (base pose only)
-    if (vrm.humanoid) {
-      const humanoid = vrm.humanoid;
-
-      // Get bone nodes
-      const spine = humanoid.getNormalizedBoneNode('spine');
-      const chest = humanoid.getNormalizedBoneNode('chest');
-      const upperChest = humanoid.getNormalizedBoneNode('upperChest');
-      const hips = humanoid.getNormalizedBoneNode('hips');
-      const neck = humanoid.getNormalizedBoneNode('neck');
-      const leftShoulder = humanoid.getNormalizedBoneNode('leftShoulder');
-      const rightShoulder = humanoid.getNormalizedBoneNode('rightShoulder');
-      const leftUpperArm = humanoid.getNormalizedBoneNode('leftUpperArm');
-      const rightUpperArm = humanoid.getNormalizedBoneNode('rightUpperArm');
-      const leftLowerArm = humanoid.getNormalizedBoneNode('leftLowerArm');
-      const rightLowerArm = humanoid.getNormalizedBoneNode('rightLowerArm');
-      const leftHand = humanoid.getNormalizedBoneNode('leftHand');
-      const rightHand = humanoid.getNormalizedBoneNode('rightHand');
-      const leftUpperLeg = humanoid.getNormalizedBoneNode('leftUpperLeg');
-      const rightUpperLeg = humanoid.getNormalizedBoneNode('rightUpperLeg');
-      const leftLowerLeg = humanoid.getNormalizedBoneNode('leftLowerLeg');
-      const rightLowerLeg = humanoid.getNormalizedBoneNode('rightLowerLeg');
-      const leftFoot = humanoid.getNormalizedBoneNode('leftFoot');
-      const rightFoot = humanoid.getNormalizedBoneNode('rightFoot');
-      const leftToes = humanoid.getNormalizedBoneNode('leftToes');
-      const rightToes = humanoid.getNormalizedBoneNode('rightToes');
-      const leftThumbProximal = humanoid.getNormalizedBoneNode('leftThumbProximal');
-      const leftThumbIntermediate = humanoid.getNormalizedBoneNode('leftThumbIntermediate' as any);
-      const leftThumbDistal = humanoid.getNormalizedBoneNode('leftThumbDistal');
-      const rightThumbProximal = humanoid.getNormalizedBoneNode('rightThumbProximal');
-      const rightThumbIntermediate = humanoid.getNormalizedBoneNode('rightThumbIntermediate' as any);
-      const rightThumbDistal = humanoid.getNormalizedBoneNode('rightThumbDistal');
-      const leftIndexProximal = humanoid.getNormalizedBoneNode('leftIndexProximal');
-      const leftIndexIntermediate = humanoid.getNormalizedBoneNode('leftIndexIntermediate');
-      const leftIndexDistal = humanoid.getNormalizedBoneNode('leftIndexDistal');
-      const rightIndexProximal = humanoid.getNormalizedBoneNode('rightIndexProximal');
-      const rightIndexIntermediate = humanoid.getNormalizedBoneNode('rightIndexIntermediate');
-      const rightIndexDistal = humanoid.getNormalizedBoneNode('rightIndexDistal');
-      const leftMiddleProximal = humanoid.getNormalizedBoneNode('leftMiddleProximal');
-      const leftMiddleIntermediate = humanoid.getNormalizedBoneNode('leftMiddleIntermediate');
-      const leftMiddleDistal = humanoid.getNormalizedBoneNode('leftMiddleDistal');
-      const rightMiddleProximal = humanoid.getNormalizedBoneNode('rightMiddleProximal');
-      const rightMiddleIntermediate = humanoid.getNormalizedBoneNode('rightMiddleIntermediate');
-      const rightMiddleDistal = humanoid.getNormalizedBoneNode('rightMiddleDistal');
-      const leftRingProximal = humanoid.getNormalizedBoneNode('leftRingProximal');
-      const leftRingIntermediate = humanoid.getNormalizedBoneNode('leftRingIntermediate');
-      const leftRingDistal = humanoid.getNormalizedBoneNode('leftRingDistal');
-      const rightRingProximal = humanoid.getNormalizedBoneNode('rightRingProximal');
-      const rightRingIntermediate = humanoid.getNormalizedBoneNode('rightRingIntermediate');
-      const rightRingDistal = humanoid.getNormalizedBoneNode('rightRingDistal');
-      const leftLittleProximal = humanoid.getNormalizedBoneNode('leftLittleProximal');
-      const leftLittleIntermediate = humanoid.getNormalizedBoneNode('leftLittleIntermediate');
-      const leftLittleDistal = humanoid.getNormalizedBoneNode('leftLittleDistal');
-      const rightLittleProximal = humanoid.getNormalizedBoneNode('rightLittleProximal');
-      const rightLittleIntermediate = humanoid.getNormalizedBoneNode('rightLittleIntermediate');
-      const rightLittleDistal = humanoid.getNormalizedBoneNode('rightLittleDistal');
-      const head = humanoid.getNormalizedBoneNode('head');
-      const humanoidAny = humanoid as any;
-      const getRawBone = typeof humanoidAny.getRawBoneNode === 'function'
-        ? (boneName: string) => humanoidAny.getRawBoneNode(boneName as any) as BoneNode
-        : () => null;
-      const rawLeftLowerArm = getRawBone('leftLowerArm');
-      const rawRightLowerArm = getRawBone('rightLowerArm');
-      const rawLeftLowerLeg = getRawBone('leftLowerLeg');
-      const rawRightLowerLeg = getRawBone('rightLowerLeg');
-      if (!hingeProfileRef.current) {
-        hingeProfileRef.current = {
-          leftElbow: computeHingeAxisWeights(rawLeftLowerArm || leftLowerArm, DEFAULT_ELBOW_WEIGHTS),
-          rightElbow: computeHingeAxisWeights(rawRightLowerArm || rightLowerArm, DEFAULT_ELBOW_WEIGHTS),
-          leftKnee: computeHingeAxisWeights(rawLeftLowerLeg || leftLowerLeg, DEFAULT_KNEE_WEIGHTS),
-          rightKnee: computeHingeAxisWeights(rawRightLowerLeg || rightLowerLeg, DEFAULT_KNEE_WEIGHTS),
-        };
+    // --- Mixamo 클립 기반 걷기/Idle 제어 ---
+    const clipMgr = locomotionClipRef.current;
+    if (clipMgr && useClipLocomotion.current) {
+      if (locomotionActive) {
+        // 걷기 시작 또는 감정 전환
+        if (!clipMgr.isWalking) {
+          clipMgr.playWalk(emotion);
+        } else {
+          clipMgr.switchWalkEmotion(emotion);
+        }
+        const speedScale = clamp(movementSpeedRef.current / 80, 0.3, 2.0);
+        clipMgr.setWalkSpeed(speedScale);
+      } else {
+        // 정지: 걷기 → Idle 전환 (제스처 재생 중이면 대기)
+        if (clipMgr.isWalking) {
+          clipMgr.stopWalk();
+        }
+        if (clipMgr.isGesturePlaying) {
+          // 제스처 재생 중 → idle 시작하지 않음 (제스처 완료 후 자동 시작)
+        } else if (!clipMgr.isIdling) {
+          clipMgr.playIdle(emotion);
+        } else {
+          clipMgr.switchIdleEmotion(emotion);
+        }
       }
+    }
+
+    // Apply bone animations based on state (base pose only)
+    const b = boneCacheRef.current;
+    const rb = rawBoneCacheRef.current;
+    if (vrm.humanoid && Object.keys(b).length > 0) {
+      // 뼈 노드는 캐시에서 참조 (매 프레임 조회 불필요)
+      const { spine, chest, upperChest, hips, neck, head,
+        leftShoulder, rightShoulder, leftUpperArm, rightUpperArm,
+        leftLowerArm, rightLowerArm, leftHand, rightHand,
+        leftUpperLeg, rightUpperLeg, leftLowerLeg, rightLowerLeg,
+        leftFoot, rightFoot, leftToes, rightToes,
+        leftThumbProximal, leftThumbIntermediate, leftThumbDistal,
+        rightThumbProximal, rightThumbIntermediate, rightThumbDistal,
+        leftIndexProximal, leftIndexIntermediate, leftIndexDistal,
+        rightIndexProximal, rightIndexIntermediate, rightIndexDistal,
+        leftMiddleProximal, leftMiddleIntermediate, leftMiddleDistal,
+        rightMiddleProximal, rightMiddleIntermediate, rightMiddleDistal,
+        leftRingProximal, leftRingIntermediate, leftRingDistal,
+        rightRingProximal, rightRingIntermediate, rightRingDistal,
+        leftLittleProximal, leftLittleIntermediate, leftLittleDistal,
+        rightLittleProximal, rightLittleIntermediate, rightLittleDistal,
+      } = b;
+      const rawLeftLowerArm = rb.leftLowerArm;
+      const rawRightLowerArm = rb.rightLowerArm;
+      const rawLeftLowerLeg = rb.leftLowerLeg;
+      const rawRightLowerLeg = rb.rightLowerLeg;
       const hingeProfile = hingeProfileRef.current;
       if (hingeProfile && !hingeProfileLoggedRef.current) {
         hingeProfileLoggedRef.current = true;
@@ -1429,7 +1336,13 @@ export default function VRMAvatar() {
       const leftKneeWeights = hingeProfile?.leftKnee ?? DEFAULT_KNEE_WEIGHTS;
       const rightKneeWeights = hingeProfile?.rightKnee ?? DEFAULT_KNEE_WEIGHTS;
 
-      if (!locomotionActive || animationState !== 'walking') {
+      // Mixamo 클립이 재생 중이면 절차적 뼈 제어 전체 스킵
+      const clipMgrActive = clipMgr && useClipLocomotion.current && (clipMgr.isWalking || clipMgr.isIdling);
+
+      if (clipMgrActive) {
+        // Mixamo AnimationMixer가 뼈를 제어 — 절차적 코드 스킵
+        // (yaw 회전과 publishInteractionBounds만 아래에서 실행)
+      } else if (!locomotionActive || animationState !== 'walking') {
         // Idle animation - relaxed pose with subtle breathing
         const breathe = Math.sin(time * 1.5) * 0.02;
         const idleSway = Math.sin(time * 0.8) * 0.016 * emotionTuning.upperBodySwingScale;
@@ -1606,15 +1519,15 @@ export default function VRMAvatar() {
           emotionTuning.idleDampingStiffness
         );
 
-      } else if (locomotionActive) {
+      } else if (locomotionActive && !(locomotionClipRef.current && useClipLocomotion.current && locomotionClipRef.current.playing)) {
+        // 절차적 걷기 (Mixamo 클립 비활성 시에만 fallback)
         const gait = STYLE_GAIT[locomotionStyle];
-        const intentSpeed = locomotionDemand ? 20 * locomotionBlend : 0;
         const speedNorm = clamp(
-          (movementSpeedRef.current + intentSpeed) / 145,
+          movementSpeedRef.current / 145,
           0.05,
           1.55
         ) * locomotionBlend;
-        const cadence = (4.9 + speedNorm * 4.5) * gait.cadence * emotionTuning.walkCadenceScale;
+        const cadence = (movementSpeedRef.current / STRIDE_LENGTH_PX) * (Math.PI * 2) * gait.cadence * emotionTuning.walkCadenceScale;
         gaitPhaseRef.current += cadence * clampedDelta;
         const walkCycle = gaitPhaseRef.current;
 
@@ -1938,13 +1851,19 @@ export default function VRMAvatar() {
       }
     }
 
-    const desiredYaw = locomotionActive
-      ? (facingRight ? RIGHT_WALK_YAW : LEFT_WALK_YAW)
-      : IDLE_YAW;
+    // 응답 중(talking)이면 정면, 걷기 중이면 미세 방향 전환, 그 외 정면
+    const isTalking = animationState === 'talking';
+    const desiredYaw = isTalking
+      ? IDLE_YAW
+      : locomotionActive
+        ? (facingRight ? RIGHT_WALK_YAW : LEFT_WALK_YAW)
+        : IDLE_YAW;
+    // idle→정면 빠르게(10), 걷기 중 방향 전환 느리게(4)
+    const yawSpeed = locomotionActive ? 4 : 10;
     smoothedYawRef.current = THREE.MathUtils.lerp(
       smoothedYawRef.current,
       desiredYaw,
-      Math.min(1, clampedDelta * 9)
+      Math.min(1, clampedDelta * yawSpeed)
     );
     if (groupRef.current) {
       groupRef.current.rotation.x = manualRotation.x;
@@ -1957,14 +1876,13 @@ export default function VRMAvatar() {
 
   const worldPos = screenToWorldAtZ(position.x, position.y, 0);
   if (!worldPos) return null;
-  const avatarScale = settings.avatar?.scale || 1.0;
 
+  // scale은 group 대신 camera.zoom으로 반영 (SpringBone 영향 방지).
   return (
     <group
       ref={groupRef}
       position={[worldPos.x, worldPos.y, worldPos.z]}
       rotation={[manualRotation.x, smoothedYawRef.current + manualRotation.y, 0]}
-      scale={[avatarScale, avatarScale, avatarScale]}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

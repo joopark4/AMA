@@ -83,6 +83,8 @@ npm run build:mac-release
 | `settings` | 설정 패널 | `settings.llm.title`, `settings.language` |
 | `settings.llm` | AI 모델 설정 | `settings.llm.provider`, `settings.llm.apiKey` |
 | `settings.voice` | STT/TTS 설정 | `settings.voice.stt.title` |
+| `settings.audioDevice` | 오디오 디바이스 설정 | `settings.audioDevice.title`, `settings.audioDevice.microphone` |
+| `settings.codex` | Codex 연동 설정 | `settings.codex.cliStatus`, `settings.codex.model` |
 | `settings.avatar` | 아바타 설정 | `settings.avatar.name`, `settings.avatar.emotions.*` |
 | `settings.update` | 앱 업데이트 | `settings.update.checkButton`, `settings.update.checking` |
 | `settings.licenses` | 라이선스 정보 | `settings.licenses.title` |
@@ -126,7 +128,7 @@ const { t } = useTranslation();
 
 ---
 
-## 현재 구현 요약 (v0.8.0)
+## 현재 구현 요약 (v1.9.0)
 
 ### 음성 파이프라인
 - STT: `Whisper(whisper-cli)` 단일 경로
@@ -137,7 +139,28 @@ const { t } = useTranslation();
 - 클라우드 TTS 실패/할당량 소진 시 로컬 자동 폴백
 - 프런트 녹음(`16kHz mono WAV`) → Tauri `transcribe_audio` → `whisper-cli`
 - 원격 세션 감지 시 음성 인식 차단 (텍스트 입력은 사용 가능)
-- TTS 테스트 버튼: 음성 설정 섹션에 위치 (아바타 섹션에서 이동)
+- TTS 테스트 버튼: 음성 설정 섹션에 위치 (엔진 + TTS 언어 조합별 네이티브 샘플 문장 재생)
+- 오디오 디바이스: 마이크 입력/스피커 출력 독립 선택 + 마이크 피크 미터 + setSinkId 기반 출력 라우팅
+- **대화·음성 언어 — 엔진별 독립 관리**:
+  - 로컬 `supertonic` → `settings.tts.language`(기본 `auto`): `auto / ko / en / ja / es / pt / fr`
+    - `auto`는 앱 UI 언어(`settings.language`)를 그대로 따라감 (텍스트 감지 아님)
+    - Supertonic은 ja 미지원 → 런타임에 `en` 폴백 + 설정 UI 경고
+  - 프리미엄 `supertone_api` → `settings.tts.supertoneApi.language`: 모델 지원 언어 전체(예: zh, de)
+    - 프리미엄 측 언어 변경이 로컬 `tts.language`로 새지 않고 그 반대도 마찬가지
+    - 모델 변경 시 현재 언어가 새 모델 미지원이면 `en`으로 자동 정규화
+    - 언어 변경 시 현재 voiceId가 새 언어 미지원이면 Bella → 첫 호환 음성 → 첫 음성 폴백
+  - 프리미엄 엔진 전환 시 `voiceId`가 비어있으면 **Bella**를 기본으로 자동 주입
+
+### 대화·음성 언어 계약
+- **요구사항**: `settings.language`는 앱 UI 전용. 대화·합성 언어는 **엔진별 단일 진실** 필드(`tts.language` / `supertoneApi.language`)를 따른다.
+- **결정자**: `resolveResponseLanguage()` (`src/hooks/useConversation.ts`) — 엔진 분기.
+  - `supertonic` → `tts.language`(auto면 UI 언어), supertonic 미지원이면 `en` 폴백
+  - `supertone_api` → `supertoneApi.language`(없으면 UI 언어). LLM 프롬프트 템플릿 외 언어(zh 등)는 LLM은 `en`, TTS 합성은 해당 언어 그대로
+- **같은 기준 공유**:
+  - `supertonicClient.detectLanguage` → `tts.language` 기준
+  - `supertoneApiClient.synthesize` → `apiSettings.language` 기준 (모델 미지원 시 `en`)
+- **Layer 0 언어 강제 지시**: `characterProfile.buildLanguageLayer`가 핵심 6개(ko/en/ja/es/pt/fr)는 native 텍스트 directive를, 그 외(it/zh/de 등 supertone API 언어)는 영문 generic directive(`Always respond in <Language>`)를 시스템 프롬프트 최상단에 삽입. PromptLanguage 타입은 임의 ISO 639-1 코드를 받도록 `string`으로 일반화.
+- 호출부 통일: `useConversation.sendMessage`, `useClaudeCodeChat`, `proactiveEngine`, `screenWatchService`
 
 ### 아바타/UI
 - 기본 VRM 아바타 바이너리 임베딩: AES-128-GCM 암호화하여 앱 번들에 포함, 첫 실행 시 VRM 선택 불필요
@@ -145,9 +168,10 @@ const { t } = useTranslation();
 - 기능 버튼/옵션 버튼 우하단 고정 (상태/텍스트/음성/히스토리/설정)
 - 아바타 마우스 선택/드래그 이동/회전 지원
 - 자유 이동 모드: 화면 어디든 자유 배치, 화면 밖 이동 가능
+- 대화 기록 패널: 드래그 이동/리사이즈/글자 크기 조절/투명도 조절(20~100%) 지원
 - 말풍선 위치를 아바타 상단 기준으로 동적 계산 (표시/숨김 토글 가능)
 - 클릭스루 + 인터랙티브 영역 보호(버튼/아바타/설정 패널) + 멀티 모니터 대응
-- 모션 클립/제스처/댄스/표정 시스템
+- 모션 클립/제스처/댄스/표정 시스템 + 자동배회(autoRoam) + 대기동작(IdleFidget)
 - 커스텀 About 모달 (`AboutModal.tsx`) — `aboutStore` + `useMenuListeners` 훅으로 분리
 - 모델/데이터 폴더 Finder 열기: Rust `open_folder_in_finder` 커맨드
 
@@ -187,7 +211,13 @@ const { t } = useTranslation();
 - 프리미엄 구독 사용자 전용 클라우드 TTS
 - 앱 → `edgeFunctionClient` → Supabase Edge Function → Supertone API
 - Edge Functions: `supertone-tts` (TTS 프록시), `supertone-voices` (음성 목록), `supertone-usage` (사용량)
-- `premiumStore` (Zustand): 프리미엄 상태/음성 목록/할당량/사용량 관리
+- **Supertone 3-API 통합**: `supertone-usage`가 `/v1/credits` + `/v1/usage` + `/v1/voice-usage` 세 API를 통합 호출
+  - 권한별 응답 필터: `apiCredits`(전 사용자) / `apiVoiceUsage`(관리자) / `tts_usage aggregateAllUsers`(관리자)
+  - `ApiStatus` 코드(`ok/unauthorized/rate_limit/server_error/network/no_key/skipped`)로 부분 실패 보존
+  - 스테이지 라벨 에러 응답(`auth.getUser` / `profile.query` / `tts_usage.summary` / ...)으로 관찰성 확보
+  - UI 분기: 관리자는 잔고 + 7일 그래프 + voice-usage TOP 8, 비관리자는 진행 바 + `% 남음`만
+- **ES256 JWT 대응**: 7개 Edge Function(`supertone-usage/voices/tts` + `delete-account` + `admin-stats/subscriptions/users`)을 `--no-verify-jwt`로 배포, 함수 내부에서 `auth.getUser()`로 검증
+- `premiumStore` (Zustand): 프리미엄 상태/음성 목록/할당량/3-API 사용량 관리 (`apiCredits`/`apiVoiceUsage`/`apiStatus`)
 - `supertoneApiClient`: 텍스트 300자 청크 분할 + WAV 결합 + 할당량 업데이트
 - 구독 플랜: free(0) / basic(300크레딧, 5분) / pro(1200크레딧, 20분)
 - 할당량 소진 시 로컬 Supertonic 자동 폴백 + 토스트 알림
@@ -206,19 +236,77 @@ const { t } = useTranslation();
 - **모듈화**: `src/features/channels/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수/유틸)
 - **플러그인 구조**: `claude-plugin/ama-bridge/`에 공식 마켓플레이스 제출용 플러그인 준비
   - `.claude-plugin/plugin.json` 메타데이터 + `.mcp.json` 서버 설정
-  - `server.ts`: 채널 서버 canonical source (mcp-channels/dev-bridge.mts와 동일 로직)
+  - `server.ts`: 채널 서버 canonical source
+
+### OpenAI Codex 연동
+- `codex app-server` JSON-RPC 2.0 통신 (stdio)
+- Rust 백엔드(`codex.rs`): 프로세스 spawn + JSON-RPC 요청/응답 + Tauri 이벤트 발행
+- TypeScript 클라이언트(`codexClient.ts`): LLMClient 인터페이스 구현, 스트리밍 지원
+- 연결 관리: App 레벨 자동 시작/중지 + 턴 직렬화(한 번에 하나의 턴만)
+- 시스템 프롬프트 변경 감지 → 새 스레드 자동 생성
+- 모델/추론 성능(reasoningEffort) 선택 UI
+- Vision: `LocalImageUserInput`로 이미지 파일 경로 전달 (Screen Watch Codex 경로)
+- CLI 설치/인증 상태 표시 + 설치/로그인 가이드
+- **모듈화**: `src/features/codex/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수)
+
+### Gemini CLI(ACP) 연동 (develop PR 대기 · `feature/gemini-cli-integration`)
+- `gemini --experimental-acp` 자식 프로세스 + JSON-RPC 2.0 over stdio로 Codex와 동일 패턴
+- provider 키: `gemini_cli` (기존 클라우드 `gemini`와 별개)
+- 설정: `settings.geminiCli` (`model`/`approvalMode`/`workingDir`/`authMethod`), persist v22
+- ACP 메서드: `initialize(protocolVersion:1)` / `session/new` / `session/prompt` / `session/cancel`(notification)
+- 스트리밍: `session/update.sessionUpdate === "agent_message_chunk"` → `gemini-cli-token` 이벤트
+- 턴 완료: `session/prompt` 응답 `stopReason`으로 판정 → `gemini-cli-complete` 이벤트
+- 승인 모드 동기화: `session/new` 직후 + UI 변경 시 `session/set_mode` 호출 (`default/autoEdit/yolo/plan`)
+- **클라이언트 메서드 실구현**:
+  - `fs/read_text_file`/`fs/write_text_file`: `settings.geminiCli.workingDir` canonical prefix 내부만 허용 (라인/한도 파라미터 지원)
+  - `session/request_permission`: `approvalMode` 사전 정책식 자동 응답 (Codex `approvalPolicy`와 동일 철학, UI 승인 모달 없음). `yolo`/`auto_edit`는 첫 옵션 선택, `default`/`plan`은 거부(cancelled)
+  - `terminal/create`/`output`/`wait_for_exit`/`kill`/`release`: `yolo`에서만 허용. stdout+stderr 누적 버퍼 + try_wait 폴링 + start_kill + workingDir 내부 cwd 검증
+- Vision: `gemini_cli_send_message(image_path)` + base64 + ACP `image` ContentBlock, `geminiCliClient.chatWithLocalImage()`
+- Screen Watch provider에 포함 (파일 경로 전달 경로로 Codex와 통합)
+- 설치/인증 상태 표시 + workingDir/승인 모드(default/auto_edit/yolo/plan) 설정 UI
+- **모듈화**: `src/features/gemini-cli/`에 독립 모듈로 응집 (클라이언트/훅/UI/상수) + Rust `src-tauri/src/commands/gemini_cli.rs`
+- 상세: [docs/ai/gemini-cli-integration.md](docs/ai/gemini-cli-integration.md)
+
+### 화면 관찰 (Screen Watch, v1.5.0)
+- 주기적 화면 캡처 + Vision LLM 분석으로 아바타가 능동 발화
+- Provider: Claude / OpenAI / Gemini / Codex / Gemini CLI (Ollama·LocalAI·Claude Code·비macOS 제외)
+- 캡처 대상: fullscreen / main-monitor / specific-monitor / active-window / specific-window
+- 2단 필터: Rust 픽셀 diff(비용 0) + LLM `[SKIP]` 규칙
+- OS 권한 preflight: `CGPreflightScreenCaptureAccess` FFI
+- 창 목록: CoreGraphics `CGWindowListCopyWindowInfo` (Accessibility 불필요)
+- 파일 저장: `~/.mypartnerai/screenshots/screen_watch.jpg` (finally 즉시 삭제)
+- **모듈화**: `src/features/screen-watch/` (service / hook / UI / Rust commands)
+
+### 자연 상호작용 v2 (v1.5.0)
+- **VAD 연속 감정**: 8종 이산 Emotion → `{v,a,d}` 3D 잠재 공간 + 턴당 lerp 전이 (`conversationStore.moodVec`)
+- **Presence + Inner-Thought**: DOM 이벤트 기반 multi-signal presence tracker + urgency 가중합 + 2-stage LLM (`src/services/presence/`)
+- **Gaze follow**: Rust 커서 polling → VRM `lookAt.target` + head/neck additive 회전 (range map 제한 보완)
+- **Backchannel nod**: `status === 'listening'` 동안 head bone에 직접 sine 기반 double bob
+- 기반: Phase 0~5 (캐릭터 프로필 / 스트리밍 TTS / 메모리 / 자발 대화 / 컨텍스트 / 감정 연속성)
+
+### 아바타 크기 조절 (v1.5.0)
+- `settings.avatar.scale` → `camera.zoom` 으로 반영 (group scale 제거)
+- SpringBone이 parent group scale과 center-space 캐시 간 불일치로 hair/cloth를 위로 띄우던 버그 회피
+- 월드에서 아바타는 항상 1.0 사이즈, 시각 크기는 projection 경유
 
 ### 설정 패널 구성
 1. **UserProfile** — 계정 정보 (OAuth)
-2. **Language** — 한국어/영어/일본어 선택
+2. **Language** — 한국어/영어/일본어 선택 (앱 UI 전용)
 3. **LLMSettings** — AI 모델 Provider/Model/API Key/Endpoint (Channels ON 시 잠금)
-4. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + TTS 테스트 + 글로벌 단축키
-5. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량
-6. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
-7. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
-8. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
-9. **LicensesSettings** — 오픈소스/모델 라이선스
+4. **AudioDeviceSettings** — 마이크 입력/스피커 출력 디바이스 선택 + 마이크 피크 미터
+5. **VoiceSettings** — STT 엔진/모델 선택 + TTS 음성 선택 + **TTS 출력 언어 Pill 리스트** + TTS 테스트 + 글로벌 단축키
+6. **PremiumVoiceSettings** — TTS 엔진 선택 + Supertone API 음성/모델/스타일/사용량 + 관리자 API 크레딧 대시보드 (엔진 전환 시 Bella 기본 자동 주입)
+7. **AvatarSettings** — VRM/표정/초기 시선/자유 이동/말풍선/애니메이션/물리/조명
+8. **CodexSettings** — Codex CLI 상태/연결/모델/추론 성능 (LLMSettings 내 Codex 선택 시 표시)
+9. **ScreenWatchSettings** — 화면 관찰 토글 / 캡처 대상(5종) / 관찰 간격 / 응답 스타일 / 조용한 시간 / 권한 요청 (v1.5.0)
+10. **MCPSettings** — Claude Code Channels 연동 (토글/등록/연결확인 + 복사 가능한 실행 명령어 UI)
+11. **UpdateSettings** — 현재 버전 표시 + 업데이트 확인/다운로드/재시작
+12. **LicensesSettings** — 오픈소스/모델 라이선스
+
+**공통 동작**
 - 각 섹션은 `SettingsSection.tsx` 공통 접을 수 있는 카드 UI 사용
+- **섹션 펼침 상태는 `settings.settingsPanelExpanded`(Record<string, boolean>)로 persist** — 첫 실행 시 모든 섹션 접힘, 사용자가 연 섹션만 다음 실행에 재현
+- 패널 최대 너비 800px (최대 2컬럼 CSS columns 레이아웃) — 좁은 화면에선 1컬럼
 
 ### 로컬 배포 파이프라인
 - `release-local.mjs`: 8단계 자동화 (pre-check → build → stage → sign → notarize → package → github release → pages)
@@ -243,11 +331,15 @@ const { t } = useTranslation();
 | [기술 스택](docs/fundamentals/tech-stack.md) | 최신 의존성과 역할 |
 | [프로젝트 구조](docs/fundamentals/project-structure.md) | 디렉터리/핵심 파일 맵 |
 | [AI 서비스](docs/ai/ai-services.md) | LLM 라우팅, Vision 분석 |
+| [Codex 연동](docs/ai/codex-integration.md) | OpenAI Codex CLI 연동 (JSON-RPC, 작업폴더, 접근권한) |
+| [자연 상호작용 v2](docs/ai/natural-interaction-v2-plan.md) | VAD 감정 / Presence 트리거 / Gaze / Backchannel (v1.5.0) |
+| [화면 관찰](docs/features/screen-watch.md) | Vision LLM 주기 관찰 + 능동 발화 (v1.5.0) |
 | [음성 서비스](docs/voice/voice-services.md) | Whisper/Supertonic 구현 상세 |
 | [아바타 시스템](docs/avatar/avatar-system.md) | VRM 로딩, 이동/회전, 상호작용 |
 | [설정 시스템](docs/settings/settings-system.md) | Zustand 설정/마이그레이션 |
 | [Tauri 백엔드](docs/infrastructure/tauri-backend.md) | Rust 명령/권한/단일 인스턴스 |
 | [개발 가이드](docs/fundamentals/development-guide.md) | 기능 추가/디버깅 체크리스트 |
+| [에셋 라이선스](docs/fundamentals/asset-licensing-guide.md) | Mixamo/VRM/모델 라이선스 및 배포 체크리스트 |
 | [배포](docs/infrastructure/deployment.md) | macOS 빌드/서명/노타라이즈 |
 | [인증](docs/auth/auth-supabase.md) | Supabase OAuth 연동 |
 | [DB 스키마](docs/infrastructure/db-schema.md) | DB 테이블, RLS, 데이터 정책 |
@@ -274,6 +366,9 @@ const { t } = useTranslation();
 | [#014 OAuth 콜백 + 세션 복원](docs/issues/014-dev-oauth-and-session-restore.md) | 개발 모드 OAuth 콜백 + 세션 복원 안정화 |
 | [#015 프리미엄 TTS 폴백](docs/issues/015-premium-tts-fallback-to-local.md) | 프리미엄 TTS 기본 음성 폴백 |
 | [#016 Channels 포트 충돌](docs/issues/016-channels-port-conflict.md) | Channels 포트 충돌로 응답 멈춤 |
+| [#017 배포 앱 Channels 이슈](docs/issues/017-deploy-app-channels-issues.md) | 배포 앱 Channels 6건 통합 해결 |
+| [#018 오디오 출력 디바이스 라우팅](docs/issues/018-audio-output-device-routing.md) | WKWebView setSinkId 제스처 제약 해결 |
+| [#019 TTS 출력 디바이스 제스처](docs/issues/019-tts-output-device-gesture.md) | 테스트 버튼에서 TTS용 Audio 동시 생성으로 해결 |
 
 ## 프로젝트 구조 요약
 
@@ -287,10 +382,12 @@ AMA/
 │   │   └── ui/            # SettingsPanel, AboutModal, StatusIndicator, HistoryPanel 등
 │   ├── features/
 │   │   ├── channels/      # Claude Code Channels 독립 모듈 (클라이언트/훅/UI/상수)
+│   │   ├── codex/         # OpenAI Codex 연동 모듈 (codexClient/useCodexConnection/CodexSettings)
+│   │   ├── gemini-cli/    # Gemini CLI(ACP) 연동 모듈 (geminiCliClient/useGeminiCliConnection/GeminiCliSettings)
 │   │   └── premium-voice/ # 프리미엄 음성 모듈 (premiumStore/supertoneApiClient/UI)
 │   ├── hooks/             # useAutoUpdate, useConversation, useVRM 등
 │   ├── services/
-│   │   ├── ai/            # llmRouter, claude/openai/gemini/ollama 클라이언트
+│   │   ├── ai/            # llmRouter, claude/openai/gemini/ollama/codex 클라이언트
 │   │   ├── audio/         # rhythmAnalyzer (댄스용)
 │   │   ├── auth/          # authService, oauthClient, supabaseClient, edgeFunctionClient
 │   │   ├── avatar/        # motionLibrary, motionSelector, motionNarration
@@ -301,7 +398,7 @@ AMA/
 ├── src-tauri/
 │   ├── src/
 │   │   ├── main.rs        # 앱 엔트리 + macOS 네이티브 메뉴바
-│   │   └── commands/      # window, voice, settings, auth, models, screenshot, http, mcp, vrm
+│   │   └── commands/      # window, voice, settings, auth, models, screenshot, http, mcp, vrm, codex
 │   └── capabilities/      # Tauri 권한 설정
 ├── claude-plugin/
 │   └── ama-bridge/        # Claude Code 공식 플러그인 구조 (.claude-plugin/ + server.ts)
@@ -331,7 +428,7 @@ AMA/
 
 | 스토어 | 용도 |
 |--------|------|
-| `settingsStore` | 전역 설정 (LLM/STT/TTS/아바타/UI), persist (version 13) |
+| `settingsStore` | 전역 설정 (LLM/STT/TTS/아바타/UI/패널 펼침), persist (version 21) |
 | `authStore` | OAuth 사용자/토큰/약관 동의, persist |
 | `conversationStore` | 대화 기록/상태, persist |
 | `avatarStore` | VRM 제어 상태 (위치/애니메이션) |

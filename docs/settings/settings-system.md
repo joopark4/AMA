@@ -6,14 +6,19 @@
 
 - 파일: `src/stores/settingsStore.ts`
 - persist key: `mypartnerai-settings`
-- persist version: `13`
+- persist version: `21`
+  - v15: `screenWatch` 추가 (v1.5.0)
+  - v16~v18: 캐릭터/아바타 숨김/QuickActions 마이그레이션
+  - v19: `proactivePreviousEnabled` 추가
+  - v20: `tts.language` 추가 (기본 `auto`)
+  - v21: `settingsPanelExpanded` 추가 (기본 `{}` — 전 섹션 접힘)
 
 ## 설정 스키마 (요약)
 
 ```ts
 interface Settings {
   llm: {
-    provider: 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini';
+    provider: 'ollama' | 'localai' | 'claude' | 'openai' | 'gemini' | 'claude_code' | 'codex';
     model: string;
     apiKey?: string;
     endpoint?: string;
@@ -25,6 +30,12 @@ interface Settings {
   tts: {
     engine: 'supertonic' | 'supertone_api';
     voice?: 'F1'|'F2'|'F3'|'F4'|'F5'|'M1'|'M2'|'M3'|'M4'|'M5';
+    /**
+     * 대화·음성 언어 (v20 신규) — LLM 응답과 TTS 합성이 공유하는 언어.
+     * `auto`면 앱 UI 언어(`settings.language`)를 그대로 따라간다.
+     * `ja`는 Supertonic(로컬) 미지원 → 런타임에 `en`으로 폴백되고 UI에 경고.
+     */
+    language?: 'auto' | 'ko' | 'en' | 'ja' | 'es' | 'pt' | 'fr';
     supertoneApi?: {
       voiceId: string;
       voiceName: string;
@@ -39,8 +50,9 @@ interface Settings {
       };
     };
   };
-  language: 'ko' | 'en';
+  language: 'ko' | 'en' | 'ja';  // 앱 UI 전용 — 대화 응답 언어에는 영향 없음
   avatarName: string;
+  avatarPersonalityPrompt: string;  // 아바타 성격 프롬프트 (최대 800자)
   vrmModelPath: string;
   avatar: {
     scale: number;
@@ -55,8 +67,17 @@ interface Settings {
     animation: {
       expressionBlendSpeed: number;
       enableGestures: boolean;
+      enableMotionClips: boolean;
+      faceExpressionOnlyMode: boolean;
+      dynamicMotionEnabled: boolean;
+      dynamicMotionBoost: number;
       enableDancing: boolean;
       danceIntensity: number;
+      motionDiversity: number;
+      enableBreathing: boolean;
+      enableEyeDrift: boolean;
+      gazeFollow: boolean;        // v1.5.0 — 커서 시선 추적
+      backchannel: boolean;       // v1.5.0 — 경청 끄덕임
     };
     lighting: {
       ambientIntensity: number;
@@ -66,6 +87,46 @@ interface Settings {
     };
     initialViewRotation: { x: number; y: number };
   };
+  stt: {
+    // ...
+    audioInputDeviceId?: string;    // 마이크 입력 디바이스 ID
+  };
+  tts: {
+    // ...
+    audioOutputDeviceId?: string;   // 스피커 출력 디바이스 ID
+  };
+  codex: {
+    model: string;                  // 기본: 'gpt-5.4'
+    reasoningEffort: 'low' | 'medium' | 'high' | 'xhigh';
+    workingDir: string;             // 기본: '' (→ ~/Documents)
+    approvalPolicy: 'never' | 'on-request' | 'untrusted';
+  };
+  // v1.5.0 — 화면 관찰
+  screenWatch: {
+    enabled: boolean;               // 기본: false
+    intervalSeconds: number;        // 30~600, 기본: 120
+    captureTarget:
+      | { type: 'fullscreen' }
+      | { type: 'active-window' }
+      | { type: 'main-monitor' }
+      | { type: 'monitor'; monitorName: string }
+      | { type: 'window'; appName: string; windowTitle?: string };
+    responseStyle: 'balanced' | 'advisor' | 'comedian' | 'analyst';
+    silentHours: { enabled: boolean; start: number; end: number };  // 0~23, 자정 넘기기 지원
+  };
+  // v1.5.0 — 자연 상호작용 기반 (natural-interaction 브랜치 통합)
+  character: CharacterProfile;      // Phase 0 캐릭터 프로필
+  proactive: {
+    enabled: boolean;
+    idleMinutes: number;
+    cooldownMinutes: number;
+  };
+  /**
+   * 설정 패널 섹션별 펼침 상태 (v21 신규).
+   * 키는 각 섹션 식별자(account/lang/premium/llm/...)이며 값은 true일 때 펼침.
+   * 명시되지 않은 섹션은 접힘으로 간주 → 첫 실행 시 모든 섹션 접힘.
+   */
+  settingsPanelExpanded: Record<string, boolean>;
 }
 ```
 
@@ -89,6 +150,12 @@ interface Settings {
 - 엔진은 `supertonic`(로컬) 또는 `supertone_api`(클라우드) 중 선택
 - 로컬 보이스는 `F1~F5/M1~M5`로 정규화
 - `supertoneApi` 설정은 프리미엄 사용자만 유효
+- `tts.language` 정규화: `auto / ko / en / ja / es / pt / fr` 외의 값은 `auto`로 강제
+
+### 설정 패널 펼침 상태 (`settingsPanelExpanded`)
+- `Record<string, boolean>`로 저장되며 키는 섹션 식별자(`account`, `lang`, `premium`, `llm`, `mcp`, `audio`, `avatar`, `character`, `voice`, `screen`, `monitor`, `quick`, `update`, `cleanup`, `licenses`)
+- `SettingsSection`은 controlled 모드(`isOpen` + `onToggle`)로 주입받고, 토글 시 `toggleSettingsPanelSection(key)` 액션 호출 → 즉시 persist
+- 빈 객체 상태면 모든 섹션이 접혀 보이며, 사용자가 열어 둔 섹션만 `true`로 누적
 
 ### VRM 경로
 - 구형 번들 경로(`/vrm/eunyeon_ps.vrm`)는 빈 값으로 정규화
@@ -110,9 +177,13 @@ interface Settings {
 | UI 컴포넌트 | 연결 설정 |
 |-------------|-----------|
 | `LLMSettings` | `settings.llm.*` |
+| `AudioDeviceSettings` | `settings.stt.audioInputDeviceId`, `settings.tts.audioOutputDeviceId` |
 | `VoiceSettings` | `settings.stt`, `settings.tts`, `modelDownloadStore` |
 | `PremiumVoiceSettings` | `settings.tts.engine`, `settings.tts.supertoneApi`, `premiumStore` |
-| `AvatarSettings` | `vrmModelPath`, `avatarName`, `avatar.*` |
+| `AvatarSettings` | `vrmModelPath`, `avatarName`, `avatarPersonalityPrompt`, `avatar.*` |
+| `CodexSettings` | `settings.codex.*` (LLM provider가 `codex`일 때 표시) |
+| `ScreenWatchSettings` | `settings.screenWatch.*` (v1.5.0) |
+| `CharacterSettings` | `settings.character`, `settings.proactive` (v1.5.0) |
 | `UpdateSettings` | `useAutoUpdateStore` (앱 버전/업데이트 확인) |
 | `LicensesSettings` | 설정값 저장 없음 (라이선스 안내 전용) |
 | `SettingsPanel` | 설정 저장/리셋/언어 |

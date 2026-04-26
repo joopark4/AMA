@@ -134,7 +134,7 @@ export class GeminiClient implements LLMClient {
           parts: [
             {
               inlineData: {
-                mimeType: 'image/png',
+                mimeType: options?.mimeType ?? 'image/png',
                 data: imageBase64,
               },
             },

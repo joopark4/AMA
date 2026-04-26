@@ -6,5 +6,7 @@ pub mod auth;
 pub mod models;
 pub mod http;
 pub mod mcp;
+pub mod codex;
+pub mod gemini_cli;
 pub mod vrm;
 pub mod vrm_consts;

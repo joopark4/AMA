@@ -32,7 +32,7 @@ AMA → 대화 저장 + 말풍선 + 감정/모션 + TTS 재생
 ### 1. 채널 의존성 설치 (최초 1회)
 
 ```bash
-cd mcp-channels && npm install && cd ..
+cd claude-plugin/ama-bridge && npm install && cd ../..
 ```
 
 ### 2. AMA 앱에서 설정
@@ -100,8 +100,8 @@ npm run mcp:uninstall
 ```
 
 등록 시 수행하는 작업:
-1. `~/.mypartnerai/mcp-channels/`에 dev-bridge 파일 복사
-2. `~/.claude/settings.json`에 `ama-bridge` 서버 등록
+1. `~/.mypartnerai/ama-bridge/`에 bridge 파일 복사
+2. `~/.claude.json`에 `ama-bridge` 서버 등록
 
 등록 후 어느 디렉토리에서 `claude`를 실행해도 dev-bridge가 자동 시작됩니다.
 
@@ -210,24 +210,28 @@ curl -X POST http://127.0.0.1:8790 \
 
 ## 테스트
 
-```bash
-./mcp-channels/test-channels.sh
-```
-
 ## 파일 구조
 
 ```
-mcp-channels/
+claude-plugin/ama-bridge/       # canonical source
 ├── package.json
 ├── tsconfig.json
-├── install-global.mjs        # 글로벌 등록 스크립트 (npm run mcp:install)
+├── server.ts                   # 양방향 브리지 (AMA ↔ Claude Code)
 ├── shared/
-│   ├── config.mts             # 포트/설정 중앙 관리
-│   └── ama-client.mts         # AMA HTTP 클라이언트
-├── dev-bridge.mts             # 양방향 브리지 (AMA ↔ Claude Code)
-├── ci-webhook.mts             # CI/CD 웹훅 채널
-├── monitor-alert.mts          # 모니터링 알림 채널
-└── test-channels.sh           # 테스트 스크립트
+│   └── config.mts              # 포트/설정 중앙 관리
+├── .claude-plugin/
+│   └── plugin.json             # 플러그인 메타데이터
+└── .mcp.json                   # MCP 서버 설정
+
+mcp-channels/                   # 일방향 채널 + 글로벌 ama-bridge 설치 스크립트
+├── dev-bridge.mts              # ama-bridge 서버 (글로벌 install용 — `npm run mcp:install`)
+├── ci-webhook.mts              # CI/CD 웹훅 채널
+├── monitor-alert.mts           # 모니터링 알림 채널
+├── install-global.mjs          # ~/.claude.json + ~/.mypartnerai/mcp-channels/ 등록
+├── shared/                     # config.mts, ama-client.mts 공통 모듈
+└── test-channels.sh            # 테스트 스크립트
+# 프로젝트 로컬 .mcp.json은 ama-bridge로 `claude-plugin/ama-bridge/server.ts`를 직접
+# 참조하고, 글로벌 ~/.claude.json 등록 시에만 mcp-channels/dev-bridge.mts가 사용된다.
 
 src-tauri/src/commands/mcp.rs     # Rust HTTP 리스너 + 글로벌 등록 커맨드
 src/services/ai/claudeCodeClient.ts  # Claude Code LLM 클라이언트

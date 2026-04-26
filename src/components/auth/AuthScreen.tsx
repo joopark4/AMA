@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../../services/auth/authService';
-import { isMockMode, ENABLED_PROVIDERS, PROVIDER_ICONS, PROVIDER_COLORS } from '../../services/auth/oauthClient';
+import { isMockMode, ENABLED_PROVIDERS, PROVIDER_ICONS } from '../../services/auth/oauthClient';
 import { useAuthStore } from '../../stores/authStore';
 import TermsModal from './TermsModal';
 import type { OAuthProvider } from '../../services/auth/types';
@@ -63,78 +63,125 @@ export default function AuthScreen() {
 
   return (
     <div
-      className="fixed inset-0 z-[230] flex items-center justify-center"
+      className="fixed inset-0 z-[230] flex items-center justify-center px-4"
       data-interactive="true"
     >
-      {/* 반투명 배경 */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      {/* 반투명 backdrop (글래시 톤) */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'oklch(0.2 0 0 / 0.55)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+        }}
+      />
 
       {/* 로그인 카드 */}
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl space-y-6">
-        <div className="text-center space-y-1">
-          <h1 className="text-xl font-bold text-gray-900">{t('auth.title')}</h1>
-          <p className="text-sm text-gray-500">{t('auth.subtitle')}</p>
+      <div
+        className="glass-strong relative w-full max-w-sm"
+        style={{
+          padding: 28,
+          borderRadius: 'var(--r-lg)',
+          animation: 'scaleIn 280ms var(--ease)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 22,
+        }}
+        data-interactive="true"
+      >
+        <div className="text-center" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <h1
+            style={{
+              fontSize: 19,
+              fontWeight: 700,
+              color: 'var(--ink)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {t('auth.title')}
+          </h1>
+          <p
+            style={{
+              fontSize: 13,
+              color: 'var(--ink-3)',
+            }}
+          >
+            {t('auth.subtitle')}
+          </p>
         </div>
 
         {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: 'oklch(0.95 0.04 25 / 0.6)',
+              boxShadow: 'inset 0 0 0 1px oklch(0.7 0.15 25 / 0.4)',
+              fontSize: 12.5,
+              color: 'var(--danger)',
+              lineHeight: 1.55,
+            }}
+          >
             {error}
           </div>
         )}
 
         {/* 약관 동의 (이미 동의한 경우 건너뜀) */}
         {!hasAgreedToTerms && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-gray-600">{t('auth.termsAgreement')}</p>
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreedTerms}
-                onChange={(e) => handleAgreementChange('terms', e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="flex-1">{t('auth.agreeToTerms')}</span>
-              <button
-                type="button"
-                onClick={() => setTermsModal('terms')}
-                className="text-xs text-blue-500 hover:underline flex-shrink-0"
-              >
-                {t('auth.viewTerms')}
-              </button>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreedPrivacy}
-                onChange={(e) => handleAgreementChange('privacy', e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="flex-1">{t('auth.agreeToPrivacy')}</span>
-              <button
-                type="button"
-                onClick={() => setTermsModal('privacy')}
-                className="text-xs text-blue-500 hover:underline flex-shrink-0"
-              >
-                {t('auth.viewTerms')}
-              </button>
-            </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p
+              style={{
+                fontSize: 11.5,
+                fontWeight: 600,
+                color: 'var(--ink-2)',
+                textTransform: 'uppercase',
+                letterSpacing: 0.4,
+              }}
+            >
+              {t('auth.termsAgreement')}
+            </p>
+            <TermsCheckbox
+              checked={agreedTerms}
+              onChange={(c) => handleAgreementChange('terms', c)}
+              label={t('auth.agreeToTerms')}
+              viewLabel={t('auth.viewTerms')}
+              onView={() => setTermsModal('terms')}
+            />
+            <TermsCheckbox
+              checked={agreedPrivacy}
+              onChange={(c) => handleAgreementChange('privacy', c)}
+              label={t('auth.agreeToPrivacy')}
+              viewLabel={t('auth.viewTerms')}
+              onView={() => setTermsModal('privacy')}
+            />
           </div>
         )}
 
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {ENABLED_PROVIDERS.map((provider) => (
             <button
               key={provider}
+              type="button"
               onClick={() => handleOAuthLogin(provider)}
               disabled={isLoading || (!hasAgreedToTerms && !allAgreed)}
-              className={`
-                w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl
-                text-sm font-medium transition-colors
-                disabled:opacity-50 disabled:cursor-not-allowed
-                ${PROVIDER_COLORS[provider] ?? 'bg-gray-100 text-gray-600'}
-              `}
+              className="w-full flex items-center justify-center transition-all focus-ring"
+              style={{
+                gap: 10,
+                padding: '12px 16px',
+                borderRadius: 14,
+                fontSize: 13.5,
+                fontWeight: 500,
+                background: 'oklch(1 0 0 / 0.7)',
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                color: 'var(--ink)',
+                opacity: isLoading || (!hasAgreedToTerms && !allAgreed) ? 0.5 : 1,
+                cursor: isLoading || (!hasAgreedToTerms && !allAgreed) ? 'not-allowed' : 'pointer',
+                transitionDuration: '160ms',
+                transitionTimingFunction: 'var(--ease)',
+              }}
+              data-interactive="true"
             >
-              <span className="text-base font-bold w-5 text-center">
+              <span style={{ fontWeight: 700, width: 20, textAlign: 'center' }}>
                 {PROVIDER_ICONS[provider] ?? provider[0].toUpperCase()}
               </span>
               {isLoading
@@ -144,7 +191,14 @@ export default function AuthScreen() {
           ))}
         </div>
 
-        <p className="text-center text-xs text-gray-400 leading-relaxed">
+        <p
+          className="text-center"
+          style={{
+            fontSize: 11.5,
+            color: 'var(--ink-3)',
+            lineHeight: 1.55,
+          }}
+        >
           {t('auth.termsNotice')}
         </p>
       </div>
@@ -154,5 +208,58 @@ export default function AuthScreen() {
         <TermsModal type={termsModal} onClose={() => setTermsModal(null)} />
       )}
     </div>
+  );
+}
+
+/* ─── 약관 동의 체크박스 ─── */
+
+function TermsCheckbox({
+  checked,
+  onChange,
+  label,
+  viewLabel,
+  onView,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  viewLabel: string;
+  onView: () => void;
+}) {
+  return (
+    <label
+      className="flex items-center cursor-pointer"
+      style={{ gap: 8, fontSize: 13, color: 'var(--ink)' }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{
+          width: 16,
+          height: 16,
+          accentColor: 'var(--accent)',
+          cursor: 'pointer',
+        }}
+      />
+      <span className="flex-1">{label}</span>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          onView();
+        }}
+        style={{
+          fontSize: 11.5,
+          color: 'var(--accent-ink)',
+          background: 'transparent',
+          padding: '2px 6px',
+          borderRadius: 6,
+          flexShrink: 0,
+        }}
+      >
+        {viewLabel}
+      </button>
+    </label>
   );
 }

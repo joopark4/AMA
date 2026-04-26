@@ -10,7 +10,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, '..');
 
 const manifestPath = resolve(rootDir, 'src/config/motionManifest.json');
-const MIN_TOTAL_CLIPS = 24;
+const MIN_TOTAL_CLIPS = 0; // Mixamo FBX 기반으로 전환 — JSON 클립 불필요
 
 const REQUIRED_FIELDS = [
   'id',
@@ -153,9 +153,11 @@ async function main() {
     clipRecords.push({ clip, data: clipData });
   }
 
-  const diversityMetrics = computeDiversityMetrics(clipRecords);
-  const diversityIssues = evaluateDiversityMetrics(diversityMetrics);
-  errors.push(...diversityIssues.map((issue) => `diversity gate: ${issue}`));
+  if (clipRecords.length > 0) {
+    const diversityMetrics = computeDiversityMetrics(clipRecords);
+    const diversityIssues = evaluateDiversityMetrics(diversityMetrics);
+    errors.push(...diversityIssues.map((issue) => `diversity gate: ${issue}`));
+  }
 
   if (errors.length > 0) {
     fail(errors);

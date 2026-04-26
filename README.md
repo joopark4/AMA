@@ -1,7 +1,9 @@
-# MyPartnerAI
+# AMA (MyPartnerAI)
 
-화면 위를 자유롭게 이동하는 AI 아바타 데스크톱 앱입니다.  
+화면 위를 자유롭게 이동하는 AI 아바타 데스크톱 앱입니다.
 대화 입력(텍스트/음성), 음성 답변(TTS), VRM 아바타 상호작용을 제공합니다.
+
+> 표시 이름은 **AMA**, 내부 패키지/번들 ID는 `mypartnerai` 그대로 유지됩니다.
 
 English version: [README.en.md](README.en.md)
 
@@ -17,12 +19,22 @@ English version: [README.en.md](README.en.md)
   - 음성 인식
   - 설정(옵션)
 - 아바타:
+  - 기본 VRM 아바타가 내장되어 있어 첫 실행 시 별도 선택 없이 바로 등장
   - 마우스로 선택/이동/회전 가능
-  - 말풍선은 아바타 상단에 자동 배치
+  - 자유 이동 모드(어디든 배치) + 말풍선 자동 배치(표시/숨김 토글)
+- 대화·음성 언어(`설정 > 음성`):
+  - 앱 UI 언어와 **별도로 설정**하는 대화/음성 공용 언어
+  - `자동` 선택 시 앱 UI 언어를 그대로 따라감
+  - 지원: 한국어 / English / 日本語 / Español / Português / Français
+  - 로컬 TTS(Supertonic)는 일본어 미지원 → 선택 시 영어로 자동 대체 + 경고 표시
 - 음성:
   - STT: Whisper(로컬, `base/small/medium`)
-  - TTS: Supertonic(`F1~F5`, `M1~M5`)
+  - TTS 로컬: Supertonic(`F1~F5`, `M1~M5`)
+  - TTS 프리미엄: Supertone API (구독 사용자, 엔진 전환 시 기본 음성 자동 지정)
   - 글로벌 단축키: 기본 `Cmd+Shift+Space` (앱 포커스와 무관)
+- 설정 패널:
+  - 좌측 섹션 접기·펼치기 상태가 저장되어 다음 실행에도 유지
+  - 첫 실행 시 모든 섹션이 접힌 상태로 시작 — 필요한 섹션만 펼쳐서 사용
 - 원격 세션 감지 시:
   - 음성 인식(STT)은 차단
   - 텍스트 대화는 계속 사용 가능
@@ -122,14 +134,15 @@ npm run tauri build
 
 ## 최초 실행 가이드
 
-1. 앱 실행
-2. VRM 미선택 상태면 중앙 안내창에서 `.vrm` 파일 선택
-3. 우하단 설정 버튼에서:
-   - LLM Provider/Model 설정
-   - Whisper 모델(`base/small/medium`) 선택
-   - Supertonic 보이스 선택
-   - 글로벌 음성 단축키 ON/OFF 및 키 조합 설정
-4. 마이크 버튼 또는 텍스트 입력으로 대화 시작
+1. 앱 실행 (기본 VRM 아바타가 바로 등장)
+2. 우하단 설정 버튼 클릭 — 첫 실행 시 모든 섹션은 접혀 있으므로 필요한 섹션을 펼쳐서 설정:
+   - **AI 모델**: Provider/Model/API Key/Endpoint 지정
+   - **음성 (STT/TTS)**: Whisper 모델 선택, Supertonic 보이스, **대화·음성 언어**(한/영/일/스/포/프) 선택
+   - **프리미엄 음성** (선택): 로그인 + 구독 시 Supertone API 음성으로 전환 (엔진 변경 시 Bella 음성이 자동 지정됨)
+   - **글로벌 단축키**: ON/OFF, 원하는 키 조합 입력
+   - **아바타**: VRM 파일 교체를 원할 경우 직접 선택 가능
+3. 마이크 버튼 또는 텍스트 입력으로 대화 시작
+4. 이후 설정을 열면, 이전에 펼쳤던 섹션 상태가 그대로 복원됩니다
 
 ## 글로벌 음성 단축키
 
@@ -267,17 +280,25 @@ VITE_GOOGLE_API_KEY=발급받은_키
 외부 터미널에서 실행 중인 Claude Code와 AMA 아바타를 연결합니다.
 사용자의 텍스트/음성 입력이 Claude Code로 전달되고, 응답을 아바타가 TTS로 읽어줍니다.
 
+### 데모
+
+<video src="docs/movie/ccc-01.mp4" controls width="720">
+  Claude Code Channels 연동 데모 영상
+</video>
+
+> AMA 아바타와 Claude Code Channels 연동 데모 — 사용자가 음성으로 질문하면 Claude Code가 코드를 분석/실행하고, 응답을 아바타가 음성(TTS)과 표정으로 전달합니다.
+
 ### 사용 방법
 
-1. 채널 의존성 설치 (최초 1회): `cd mcp-channels && npm install && cd ..`
-2. AMA 앱 실행: `npm run tauri dev`
-3. `설정 > Claude Code Channels > 토글 ON` (자동으로 Claude Code 등록 + AI 모델 전환)
-4. 별도 터미널에서 Claude Code 실행:
+1. AMA 앱 실행: `npm run tauri dev`
+2. `설정 > Claude Code Channels > 토글 ON`
+   - 토글을 켜면 ama-bridge 플러그인이 자동으로 설치·전역 등록되고, AI 모델이 Claude Code로 전환됩니다.
+3. 원하는 프로젝트 폴더에서 Claude Code 실행:
    ```bash
    claude --dangerously-load-development-channels server:ama-bridge --permission-mode bypassPermissions
    ```
-5. 초기 확인 프롬프트에서 `Yes` 선택 (세션당 1회)
-6. AMA에서 대화 → Claude Code 응답 → 아바타 TTS
+4. 초기 확인 프롬프트에서 `Yes` 선택 (세션당 1회)
+5. AMA에서 대화 → Claude Code 응답 → 아바타 TTS
 
 토글 OFF 시 이전 AI 모델 설정으로 자동 복원됩니다.
 
@@ -287,7 +308,7 @@ VITE_GOOGLE_API_KEY=발급받은_키
 - `--permission-mode bypassPermissions`는 도구 실행 권한을 자동 수락합니다. **신뢰할 수 있는 로컬 환경에서만 사용**하세요.
 - AMA와 Claude Code는 **같은 머신**(localhost)에서 실행되어야 합니다.
 
-자세한 내용은 [Claude Code Channels 가이드](docs/channels-mcp.md)를 참조하세요.
+자세한 내용은 [Claude Code Channels 가이드](docs/channels/channels-mcp.md)를 참조하세요.
 
 ---
 

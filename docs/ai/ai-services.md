@@ -11,6 +11,9 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 | Claude | 클라우드 | `apiKey` + `model` |
 | OpenAI | 클라우드 | `apiKey` + `model` |
 | Gemini | 클라우드 | `apiKey` + `model` |
+| Claude Code | 외부 연동 | Channels 토글 ON (자동 전환) |
+| Codex | 외부 연동 | Codex CLI 설치 + 인증 |
+| Gemini CLI | 외부 연동 | Gemini CLI 설치 + 인증 (ACP) |
 
 기본값: `ollama / deepseek-v3 / http://localhost:11434`
 
@@ -28,6 +31,9 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 - `src/services/ai/openaiClient.ts`
 - `src/services/ai/geminiClient.ts`
 - `src/services/ai/screenAnalyzer.ts`
+- `src/features/codex/codexClient.ts` — OpenAI Codex LLMClient 구현
+- `src/features/gemini-cli/geminiCliClient.ts` — Gemini CLI(ACP) LLMClient 구현
+- `src/features/channels/` — Claude Code Channels 연동
 - `src/components/settings/LLMSettings.tsx`
 
 ## 대화 처리 흐름
@@ -36,13 +42,25 @@ MyPartnerAI는 `llmRouter` 하나로 로컬/클라우드 LLM을 전환합니다.
 2. `buildSystemPrompt(avatarName)`로 아바타 이름 반영 system prompt 생성
 3. 대화 히스토리를 `llmRouter.chat()`에 전달
 4. 현재 `settings.llm.provider`에 맞는 client 호출
-5. 응답 텍스트를 UI 말풍선 + TTS로 동시 반영
+5. TTS 합성 → `onPlaybackStart` 콜백으로 말풍선과 오디오 재생을 동시 시작
+6. TTS 완료 후 `responseClearMs`(2초) 경과 시 말풍선 제거
 
 ## Vision(화면 분석)
 
+### 수동 화면 분석
 - `screenAnalyzer`가 Tauri `capture_screen`으로 스크린샷(base64)을 취득
 - Vision 지원 provider: `claude`, `openai`, `gemini`
 - `ollama/localai`에서 Vision 요청 시 `Vision not supported` 에러 반환
+
+### Screen Watch 주기 관찰 (v1.5.0)
+- 별도 Tauri 커맨드 `capture_screen_for_watch` 사용 (기존 `capture_screen` 변경 없음)
+- 공급 경로:
+  - Claude/OpenAI/Gemini: `chatWithVision` + Base64 inline (JPEG mimeType)
+  - Codex: `codex_send_message(imagePath)` → `LocalImageUserInput` input item
+  - Gemini CLI: `gemini_cli_send_message(imagePath)` → ACP `image` ContentBlock (base64 + mimeType)
+- Vision client 3종에 `ChatOptions.mimeType` 파라미터 추가 (image/png · image/jpeg · image/webp)
+- Codex / Gemini CLI 경로는 `~/.mypartnerai/screenshots/screen_watch.jpg` 절대경로 저장 후 finally에서 즉시 삭제
+- 자세한 파이프라인: [화면 관찰 문서](../features/screen-watch.md)
 
 ## 설정 UI 동작
 

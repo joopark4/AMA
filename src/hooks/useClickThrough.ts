@@ -2,6 +2,10 @@ import { useEffect, useRef, useCallback } from 'react';
 import { windowManager } from '../services/tauri/windowManager';
 import { useAvatarStore } from '../stores/avatarStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import {
+  AVATAR_HEAD_OFFSET_Y,
+  lightPosToScreenOffset,
+} from '../components/avatar/lightingLayout';
 
 // Polling interval in milliseconds
 const POLL_INTERVAL = 30;
@@ -141,13 +145,13 @@ export function useClickThrough() {
         mouseY >= hitTop &&
         mouseY <= hitBottom;
 
-      // Check if mouse is over sun (lighting control)
+      // Check if mouse is over sun (lighting control).
+      // LightingControl.tsx와 동일한 레이아웃 상수 공유.
       const lightPos = settingsState.settings.avatar?.lighting?.directionalPosition || { x: 0, y: 1, z: 2 };
-      const sunOffsetX = (lightPos.x / 5) * 200;
-      const sunOffsetY = -(lightPos.y / 5) * 300;
-      const avatarCenterY = avatarPos.y - 150;
-      const sunX = avatarPos.x + sunOffsetX;
-      const sunY = avatarCenterY + sunOffsetY;
+      const sunOffset = lightPosToScreenOffset(lightPos);
+      const avatarCenterY = avatarPos.y - AVATAR_HEAD_OFFSET_Y;
+      const sunX = avatarPos.x + sunOffset.x;
+      const sunY = avatarCenterY + sunOffset.y;
       const sunRadius = 30;
 
       const isOverSun =

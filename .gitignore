@@ -33,7 +33,8 @@ src-tauri/target/
 .build/
 src-tauri/WixTools/
 src-tauri/WixTools64/
-src-tauri/resources/
+src-tauri/resources/*
+!src-tauri/resources/ama-bridge/
 
 # Test
 coverage/

@@ -1,5 +1,12 @@
+/**
+ * HistoryPanel — 드래그 가능한 플로팅 대화 기록 창 (v2 리디자인).
+ *
+ * 기존 기능 모두 유지: 드래그 이동, 리사이즈, 글자 크기 조절, 투명도 조절.
+ * 디자인: gray border/bg → glass-strong + accent 톤 + ink 색.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Minus, Plus, X } from 'lucide-react';
 import { useConversationStore } from '../../stores/conversationStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
@@ -22,6 +29,7 @@ export default function HistoryPanel() {
     position = null,
     size = { width: 320, height: 480 },
     fontSize = 14,
+    opacity = 95,
   } = settings.historyPanel ?? {};
 
   const [isDragging, setIsDragging] = useState(false);
@@ -32,7 +40,6 @@ export default function HistoryPanel() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // First-mount: set position to top-right if not yet stored; clamp if stored
   useEffect(() => {
     if (position === null) {
       setHistoryPanelSettings({
@@ -47,10 +54,9 @@ export default function HistoryPanel() {
         setHistoryPanelSettings({ position: clamped });
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Clamp position on resize (monitor change, resolution change)
   useEffect(() => {
     const handleResize = () => {
       if (position) {
@@ -64,7 +70,6 @@ export default function HistoryPanel() {
     return () => window.removeEventListener('resize', handleResize);
   }, [position, size, setHistoryPanelSettings]);
 
-  // 패널 마운트 시 기존 대화 기록 하단으로 즉시 스크롤
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       if (scrollRef.current) {
@@ -74,32 +79,38 @@ export default function HistoryPanel() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // 새 메시지 시 하단으로 부드럽게 스크롤
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
   }, [messages.length]);
 
   const panelX = position?.x ?? Math.max(0, window.innerWidth - size.width - 16);
   const panelY = position?.y ?? 16;
 
-  // --- Drag ---
+  /* ─── Drag ─── */
   const startDrag = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-nodrag]')) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragOffset.current = { x: e.clientX - panelX, y: e.clientY - panelY };
     setIsDragging(true);
   };
-
   const onDragMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
-    const newX = Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.current.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - 60, e.clientY - dragOffset.current.y));
+    const newX = Math.max(
+      0,
+      Math.min(window.innerWidth - size.width, e.clientX - dragOffset.current.x)
+    );
+    const newY = Math.max(
+      0,
+      Math.min(window.innerHeight - 60, e.clientY - dragOffset.current.y)
+    );
     setHistoryPanelSettings({ position: { x: newX, y: newY } });
   };
-
   const stopDrag = () => setIsDragging(false);
 
-  // --- Resize ---
+  /* ─── Resize ─── */
   const startResize = (e: React.PointerEvent) => {
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -111,17 +122,15 @@ export default function HistoryPanel() {
     };
     setIsResizing(true);
   };
-
   const onResizeMove = (e: React.PointerEvent) => {
     if (!isResizing) return;
     const newW = Math.max(200, resizeStart.current.w + e.clientX - resizeStart.current.clientX);
     const newH = Math.max(200, resizeStart.current.h + e.clientY - resizeStart.current.clientY);
     setHistoryPanelSettings({ size: { width: newW, height: newH } });
   };
-
   const stopResize = () => setIsResizing(false);
 
-  // --- Font size ---
+  /* ─── Font size ─── */
   const decreaseFontSize = () =>
     setHistoryPanelSettings({ fontSize: Math.max(11, fontSize - 1) });
   const increaseFontSize = () =>
@@ -131,7 +140,7 @@ export default function HistoryPanel() {
 
   return (
     <div
-      className="fixed flex flex-col rounded-xl border border-gray-200 bg-white/95 backdrop-blur-sm overflow-hidden"
+      className="glass-strong fixed flex flex-col overflow-hidden"
       style={{
         zIndex: 60,
         left: panelX,
@@ -139,39 +148,103 @@ export default function HistoryPanel() {
         width: size.width,
         height: size.height,
         cursor: isDragging ? 'grabbing' : 'default',
+        opacity: opacity / 100,
+        borderRadius: 'var(--r-lg)',
+        animation: 'panelIn 320ms var(--ease)',
       }}
       data-interactive="true"
     >
       {/* Header / drag handle */}
       <div
-        className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-grab active:cursor-grabbing select-none shrink-0"
+        className="flex items-center justify-between cursor-grab active:cursor-grabbing select-none shrink-0"
+        style={{
+          padding: '10px 14px',
+          borderBottom: '1px solid var(--hairline)',
+          gap: 8,
+        }}
         onPointerDown={startDrag}
         onPointerMove={onDragMove}
         onPointerUp={stopDrag}
         onPointerCancel={stopDrag}
       >
-        <span className="text-sm font-semibold text-gray-700">{t('history.title')}</span>
-        <div className="flex items-center gap-1" data-nodrag="true">
+        <span
+          style={{
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: 'var(--ink)',
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {t('history.title')}
+        </span>
+        <div className="flex items-center" style={{ gap: 4 }} data-nodrag="true">
+          <input
+            type="range"
+            min={20}
+            max={100}
+            value={opacity}
+            onChange={(e) =>
+              setHistoryPanelSettings({ opacity: Number(e.target.value) })
+            }
+            className="ama-slider"
+            style={{ width: 48 }}
+            title={t('history.opacity', { value: opacity })}
+            data-interactive="true"
+          />
           <button
+            type="button"
             onClick={decreaseFontSize}
-            className="px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-600 transition-colors"
+            className="grid place-items-center transition-colors"
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              color: 'var(--ink-3)',
+              background: 'transparent',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.5)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             title={t('history.decreaseFontSize')}
+            data-interactive="true"
           >
-            A-
+            <Minus size={12} />
           </button>
           <button
+            type="button"
             onClick={increaseFontSize}
-            className="px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-600 transition-colors"
+            className="grid place-items-center transition-colors"
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              color: 'var(--ink-3)',
+              background: 'transparent',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.5)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             title={t('history.increaseFontSize')}
+            data-interactive="true"
           >
-            A+
+            <Plus size={12} />
           </button>
           <button
+            type="button"
             onClick={closeHistory}
-            className="ml-1 px-2 py-0.5 text-xs rounded hover:bg-gray-200 text-gray-500 transition-colors"
+            className="grid place-items-center transition-colors"
+            style={{
+              marginLeft: 4,
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              color: 'var(--ink-3)',
+              background: 'transparent',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.5)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             title={t('history.close')}
+            data-interactive="true"
           >
-            ×
+            <X size={14} />
           </button>
         </div>
       </div>
@@ -179,11 +252,20 @@ export default function HistoryPanel() {
       {/* Message list */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-3 space-y-2"
-        style={{ fontSize: `${fontSize}px` }}
+        className="scroll flex-1 overflow-y-auto"
+        style={{
+          padding: '12px 14px',
+          fontSize: `${fontSize}px`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
       >
         {visibleMessages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400 text-sm select-none">
+          <div
+            className="flex items-center justify-center h-full select-none"
+            style={{ color: 'var(--ink-3)', fontSize: 13 }}
+          >
             {t('history.empty')}
           </div>
         ) : (
@@ -196,21 +278,39 @@ export default function HistoryPanel() {
               ? timeStr
               : `${ts.toLocaleDateString([], { month: '2-digit', day: '2-digit' })} ${timeStr}`;
 
+            const isUser = msg.role === 'user';
             return (
               <div
                 key={msg.id}
-                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+                style={{ gap: 2 }}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 leading-snug break-words ${
-                    msg.role === 'user'
-                      ? 'bg-blue-500 text-white rounded-br-sm'
-                      : 'bg-[#E5E5B6] text-[#333333] rounded-bl-sm'
-                  }`}
+                  style={{
+                    maxWidth: '85%',
+                    padding: '8px 12px',
+                    borderRadius: 14,
+                    borderBottomRightRadius: isUser ? 4 : 14,
+                    borderBottomLeftRadius: isUser ? 14 : 4,
+                    background: isUser ? 'var(--accent)' : 'oklch(1 0 0 / 0.7)',
+                    boxShadow: isUser
+                      ? 'none'
+                      : 'inset 0 0 0 1px var(--hairline)',
+                    color: isUser ? 'white' : 'var(--ink)',
+                    lineHeight: 1.45,
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                  }}
                 >
                   {msg.content}
                 </div>
-                <span className="text-gray-400 mt-0.5 select-none text-[10px]">
+                <span
+                  style={{
+                    color: 'var(--ink-3)',
+                    fontSize: 10,
+                    marginTop: 2,
+                  }}
+                >
                   {dateTimeStr}
                 </span>
               </div>
@@ -220,10 +320,28 @@ export default function HistoryPanel() {
       </div>
 
       {/* Footer: clear button */}
-      <div className="shrink-0 px-3 py-2 border-t border-gray-200 bg-gray-50">
+      <div
+        className="shrink-0"
+        style={{
+          padding: '8px 14px',
+          borderTop: '1px solid var(--hairline)',
+        }}
+      >
         <button
+          type="button"
           onClick={clearMessages}
-          className="w-full text-xs text-gray-500 hover:text-red-500 transition-colors text-center"
+          className="w-full transition-colors"
+          style={{
+            fontSize: 11.5,
+            color: 'var(--ink-3)',
+            background: 'transparent',
+            padding: '4px 8px',
+            borderRadius: 6,
+            textAlign: 'center',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--danger)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-3)')}
+          data-interactive="true"
         >
           {t('history.clearButton')}
         </button>
@@ -231,14 +349,18 @@ export default function HistoryPanel() {
 
       {/* Resize handle — bottom-right corner */}
       <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+        className="absolute bottom-0 right-0 cursor-se-resize"
         style={{
-          background: 'linear-gradient(135deg, transparent 50%, #d1d5db 50%)',
+          width: 14,
+          height: 14,
+          background:
+            'linear-gradient(135deg, transparent 50%, var(--hairline-strong) 50%)',
         }}
         onPointerDown={startResize}
         onPointerMove={onResizeMove}
         onPointerUp={stopResize}
         onPointerCancel={stopResize}
+        data-interactive="true"
       />
     </div>
   );

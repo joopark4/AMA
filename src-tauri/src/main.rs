@@ -10,6 +10,9 @@ use tauri::menu::{MenuBuilder, MenuItem, SubmenuBuilder};
 
 fn main() {
     let app = tauri::Builder::default()
+        .manage(commands::codex::CodexState::new())
+        .manage(commands::gemini_cli::GeminiCliState::new())
+        .manage(commands::screenshot::ScreenWatchState::new())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -31,6 +34,14 @@ fn main() {
             commands::window::get_cursor_position,
             commands::window::log_to_terminal,
             commands::screenshot::capture_screen,
+            commands::screenshot::capture_screen_for_watch,
+            commands::screenshot::list_windows,
+            commands::screenshot::clear_screen_watch_state,
+            commands::screenshot::delete_screen_watch_image,
+            commands::screenshot::cleanup_screen_watch_residuals,
+            commands::screenshot::check_screen_capture_permission,
+            commands::screenshot::request_screen_capture_permission,
+            commands::screenshot::get_screen_watch_save_dir,
             commands::voice::transcribe_audio,
             commands::voice::check_whisper_available,
             commands::voice::get_whisper_availability,
@@ -38,6 +49,7 @@ fn main() {
             commands::settings::open_microphone_settings,
             commands::settings::open_accessibility_settings,
             commands::settings::open_screen_recording_settings,
+            commands::settings::pick_folder,
             commands::settings::pick_vrm_file,
             commands::auth::open_oauth_url,
             commands::auth::parse_auth_callback,
@@ -50,6 +62,7 @@ fn main() {
             commands::window::move_to_monitor,
             commands::window::get_current_monitor,
             commands::http::fetch_url_bytes,
+            commands::mcp::setup_bridge_plugin,
             commands::mcp::register_channel_global,
             commands::mcp::unregister_channel_global,
             commands::mcp::check_channel_registered,
@@ -58,6 +71,23 @@ fn main() {
             commands::mcp::send_to_bridge,
             commands::vrm::load_default_vrm,
             commands::vrm::is_default_vrm_available,
+            commands::codex::codex_check_installed,
+            commands::codex::codex_check_auth,
+            commands::codex::codex_start,
+            commands::codex::codex_stop,
+            commands::codex::codex_send_message,
+            commands::codex::codex_get_status,
+            commands::codex::codex_list_models,
+            commands::gemini_cli::gemini_cli_check_installed,
+            commands::gemini_cli::gemini_cli_check_auth,
+            commands::gemini_cli::gemini_cli_start,
+            commands::gemini_cli::gemini_cli_stop,
+            commands::gemini_cli::gemini_cli_send_message,
+            commands::gemini_cli::gemini_cli_cancel,
+            commands::gemini_cli::gemini_cli_get_status,
+            commands::gemini_cli::gemini_cli_set_approval_mode,
+            commands::gemini_cli::gemini_cli_list_models,
+            commands::gemini_cli::gemini_cli_set_model,
         ])
         .on_menu_event(|app, event| {
             if let Some(window) = app.get_webview_window("main") {
@@ -198,5 +228,10 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(|_, _| {});
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            commands::codex::cleanup_codex_on_exit(app_handle);
+            commands::gemini_cli::cleanup_gemini_cli_on_exit(app_handle);
+        }
+    });
 }

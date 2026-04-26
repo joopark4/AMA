@@ -1,7 +1,7 @@
 # AMA 기능 명세서
 
-> 최종 수정: 2026-02-27
-> 버전: 0.4.2
+> 최종 수정: 2026-04-09
+> 버전: 1.0.0
 > 플랫폼: macOS Apple Silicon (Tauri 2.x + React 18 + Three.js)
 
 ---
@@ -37,6 +37,9 @@
 27. [About 모달](#27-about-모달)
 28. [로컬 배포 파이프라인](#28-로컬-배포-파이프라인)
 29. [프리미엄 음성 (Supertone API)](#29-프리미엄-음성-supertone-api)
+30. [OpenAI Codex 연동](#30-openai-codex-연동)
+31. [오디오 디바이스 선택](#31-오디오-디바이스-선택)
+32. [TTS-말풍선 동기화](#32-tts-말풍선-동기화)
 
 ---
 
@@ -54,6 +57,8 @@
 | Claude (Anthropic) | 클라우드 | API 키 |
 | OpenAI | 클라우드 | API 키 |
 | Google Gemini | 클라우드 | API 키 |
+| Claude Code | 외부 연동 | Channels 토글 ON (자동 전환) |
+| Codex | 외부 연동 | Codex CLI 설치 + 인증 |
 
 ### 관련 파일
 - `src/services/ai/llmRouter.ts`
@@ -596,7 +601,7 @@ Web Audio API로 TTS 오디오 분석
 | 계정 | OAuth 로그인/로그아웃, 계정 삭제 |
 | 언어 | 한국어 / 영어 |
 | AI 모델 | 프로바이더, 모델명, API 키, 엔드포인트 |
-| 음성 | STT 모델, TTS 음성, 글로벌 단축키 |
+| 음성 | STT 모델, TTS 음성, **대화·음성 언어**(로컬/프리미엄 공용), 글로벌 단축키 |
 | 프리미엄 | TTS 엔진 선택, Supertone API 음성/모델/스타일, 사용량/할당량 |
 | 아바타 | VRM 파일, 이름, 스케일, 자유 이동, 말풍선, 물리, 애니메이션, 조명 |
 | 앱 업데이트 | 현재 버전 표시, 업데이트 확인/다운로드/설치 |
@@ -1002,7 +1007,8 @@ TTS 합성
 ### 설정 UI (PremiumVoiceSettings)
 - TTS 엔진 선택 (로컬 / 클라우드)
 - 모델 선택 (`sona_speech_1`, `sona_speech_2`, `sona_speech_2_flash`)
-- 음성 출력 언어 (모델별 지원 언어 동적 표시)
+- **대화·음성 언어** (모델별 지원 언어 동적 표시, 공용 `settings.tts.language`와 동기화)
+  - Bella 등 voiceId가 비어있으면 프리미엄 엔진 전환 시 자동 주입
 - 음성 선택 (성별/언어 필터 + 미리듣기)
 - 스타일 선택 (선택된 음성의 지원 스타일)
 - 감정 자동 매핑 토글 (AI 응답 감정 → TTS 스타일)
@@ -1059,3 +1065,86 @@ TTS 합성
 | `open_oauth_url` | auth.rs | OAuth URL 브라우저 열기 |
 | `parse_auth_callback` | auth.rs | 딥링크 콜백 URL 파싱 |
 | `fetch_url_bytes` | http.rs | 외부 URL 바이너리 fetch (미리듣기용) |
+| `codex_start` | codex.rs | Codex 프로세스 시작 |
+| `codex_stop` | codex.rs | Codex 프로세스 종료 |
+| `codex_send_message` | codex.rs | Codex 메시지 전송 (턴 직렬화) |
+| `codex_get_status` | codex.rs | Codex 연결 상태 조회 |
+| `codex_check_installed` | codex.rs | Codex CLI 설치 확인 |
+| `codex_check_auth` | codex.rs | Codex 인증 상태 확인 |
+| `codex_list_models` | codex.rs | Codex 사용 가능 모델 목록 |
+| `pick_folder` | codex.rs | 네이티브 폴더 선택 다이얼로그 |
+| `open_folder_in_finder` | window.rs | Finder에서 폴더 열기 |
+
+---
+
+## 30. OpenAI Codex 연동
+
+### 기능 설명
+ChatGPT 구독 사용자가 Codex CLI를 통해 코딩 전문 AI 모델(GPT-5.4 등)과 대화한다. Codex를 LLM Provider로 선택하면 기존 대화 UI·TTS·아바타 파이프라인을 그대로 활용한다.
+
+### 동작 흐름
+```
+LLM Provider → Codex 선택
+  → App.tsx에서 codex_start(workingDir) 호출
+  → codex app-server 프로세스 생성 (stdio JSON-RPC 2.0)
+  → 사용자 입력 → codex_send_message → 턴 직렬화 대기
+  → 스트리밍 응답(codex-token) → TTS + 말풍선
+  → 턴 완료(codex-complete)
+```
+
+### 설정 항목
+- **모델**: 사용 가능 모델 동적 조회 (`codex_list_models`)
+- **추론 성능**: low / medium / high / xhigh
+- **작업 폴더**: 네이티브 폴더 선택 (기본: ~/Documents), 변경 시 자동 재시작
+- **접근 권한**: 요청 시 승인(기본) / 전체 허용 / 읽기 전용
+
+### 관련 파일
+- `src/features/codex/` — codexClient, useCodexConnection, CodexSettings
+- `src-tauri/src/commands/codex.rs` — Rust 백엔드 전체
+- 상세: [codex-integration.md](../ai/codex-integration.md)
+
+---
+
+## 31. 오디오 디바이스 선택
+
+### 기능 설명
+마이크 입력과 스피커 출력을 개별적으로 선택한다.
+
+### 마이크 입력
+- `navigator.mediaDevices.enumerateDevices()`로 입력 디바이스 목록 조회
+- 선택 시 `audioProcessor.reinitialize(deviceId)`로 즉시 전환
+- 실시간 마이크 피크 미터 표시
+
+### 스피커 출력
+- `setSinkId` 기반 출력 라우팅
+- WKWebView 제약: 사용자 제스처 컨텍스트에서만 `setSinkId` 허용
+- `ttsRouter.prepareOutputDevice(deviceId)`로 사전 준비
+
+### 관련 파일
+- `src/components/settings/AudioDeviceSettings.tsx`
+- `src/services/voice/ttsRouter.ts`
+- `src/services/voice/audioProcessor.ts`
+
+---
+
+## 32. TTS-말풍선 동기화
+
+### 기능 설명
+TTS 오디오 재생 시작과 말풍선 표시를 동기화하여 동시에 나타나게 한다. TTS 완료 후 말풍선을 일정 시간 유지 후 제거한다.
+
+### 동작 흐름
+```
+AI 응답 수신
+  → clearCurrentResponse() (이전 말풍선 즉시 제거)
+  → TTS 합성 (로컬 ONNX / 클라우드 API)
+  → audio.play() 성공 → onPlaybackStart() 콜백
+  → setCurrentResponse(text) → 말풍선 표시 (오디오와 동시)
+  → TTS 완료 → responseClearMs(2초) 후 말풍선 제거
+  → expressionHoldMs 후 표정 초기화 (별도 타이머)
+```
+
+### 정책
+- **타이머 분리**: 말풍선(`responseClearMs: 2초`)과 표정(`expressionHoldMs`)은 독립 타이머
+- **TTS 실패 폴백**: TTS 실패 시에도 말풍선은 강제 표시
+- **SpeechBubble 컴포넌트**: 내부 타이머 없음, `currentResponse` 상태로 순수 제어
+- **적용 범위**: 일반 채팅, 음성 명령, Claude Code Channels, 외부 알림 모두 동일 패턴

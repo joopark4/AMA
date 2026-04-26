@@ -148,9 +148,14 @@ export class SupertoneApiClient implements TTSClient {
       await new Promise(resolve => setTimeout(resolve, this.minRequestInterval - elapsed));
     }
 
-    // 언어 결정: 설정 언어가 모델에서 지원되지 않으면 'en' 폴백
+    // 언어 결정 — **대화·음성 언어 계약** 준수.
+    // 프리미엄 엔진은 `supertoneApi.language`를 단일 진실로 사용한다. 공용
+    // `tts.language`는 supertonic 전용 필드이므로 여기서는 참조하지 않는다.
+    // - apiSettings.language가 비어있으면 앱 UI 언어로 폴백 (초기 마운트 보호용).
+    // - 모델 지원 언어 목록에 없으면 'en'으로 폴백 — UI에서 미지원 옵션을 노출하지
+    //   않지만 외부 마이그레이션이나 store 손상 등 엣지 케이스 안전망.
     const supportedLanguages = getModelLanguages(apiSettings.model);
-    let language = apiSettings.language || 'ko';
+    let language: string = apiSettings.language || settings.language || 'en';
     if (!supportedLanguages.includes(language)) {
       log(`Language '${language}' not supported by ${apiSettings.model}, falling back to 'en'`);
       language = 'en';
@@ -238,11 +243,10 @@ export class SupertoneApiClient implements TTSClient {
   }
 
   async isAvailable(): Promise<boolean> {
+    // 임시: 구독 게이트 해제 — 로그인 상태이면 프리미엄 TTS를 사용 가능으로 간주.
+    // 정식 구독 복원 시 `isPremium` 조건을 되살리면 된다.
     const { isAuthenticated } = useAuthStore.getState();
-    if (!isAuthenticated) return false;
-
-    const { isPremium } = usePremiumStore.getState();
-    return isPremium;
+    return isAuthenticated;
   }
 }
 
