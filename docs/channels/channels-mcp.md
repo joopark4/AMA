@@ -223,10 +223,15 @@ claude-plugin/ama-bridge/       # canonical source
 │   └── plugin.json             # 플러그인 메타데이터
 └── .mcp.json                   # MCP 서버 설정
 
-mcp-channels/                   # 일방향 채널 (레거시 bridge 제거됨)
+mcp-channels/                   # 일방향 채널 + 글로벌 ama-bridge 설치 스크립트
+├── dev-bridge.mts              # ama-bridge 서버 (글로벌 install용 — `npm run mcp:install`)
 ├── ci-webhook.mts              # CI/CD 웹훅 채널
 ├── monitor-alert.mts           # 모니터링 알림 채널
-└── test-channels.sh           # 테스트 스크립트
+├── install-global.mjs          # ~/.claude.json + ~/.mypartnerai/mcp-channels/ 등록
+├── shared/                     # config.mts, ama-client.mts 공통 모듈
+└── test-channels.sh            # 테스트 스크립트
+# 프로젝트 로컬 .mcp.json은 ama-bridge로 `claude-plugin/ama-bridge/server.ts`를 직접
+# 참조하고, 글로벌 ~/.claude.json 등록 시에만 mcp-channels/dev-bridge.mts가 사용된다.
 
 src-tauri/src/commands/mcp.rs     # Rust HTTP 리스너 + 글로벌 등록 커맨드
 src/services/ai/claudeCodeClient.ts  # Claude Code LLM 클라이언트

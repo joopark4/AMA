@@ -577,68 +577,68 @@ pub async fn codex_start(
         }
     }
 
-    // 중복 시작 방지
+    // 중복 시작 방지. 한 번 swap(true)에 성공한 호출자가 어떤 경로(early return,
+    // `?`로 인한 spawn/init 실패, 정상 완료)로 종료되든 flag를 반드시 false로
+    // 되돌려야 한다. 이전 구현은 정상 끝에서만 store(false)를 두어 spawn 실패 시
+    // flag가 영구 true로 남아 이후 codex_start 호출이 즉시 Ok(())로 빠지는
+    // 데드락을 일으켰다. 내부 async 블록의 결과를 받아 후처리에서 일괄 해제한다.
     if state.starting.swap(true, Ordering::SeqCst) {
         return Ok(());
     }
-    let _ = app_handle.emit("codex-status", CodexStatusEvent {
-        status: "connecting".to_string(),
-        message: Some("Starting codex app-server...".to_string()),
-    });
 
-    let pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>> =
-        Arc::new(Mutex::new(HashMap::new()));
+    let result: Result<(), String> = async {
+        let _ = app_handle.emit("codex-status", CodexStatusEvent {
+            status: "connecting".to_string(),
+            message: Some("Starting codex app-server...".to_string()),
+        });
 
-    let turn_ready = Arc::new(tokio::sync::Notify::new());
-    let turn_active = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
 
-    let (stdin, child) = spawn_codex_process(
-        app_handle.clone(),
-        pending.clone(),
-        state.process.clone(),
-        turn_ready.clone(),
-        turn_active.clone(),
-        working_dir,
-    ).await?;
+        let turn_ready = Arc::new(tokio::sync::Notify::new());
+        let turn_active = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-    let process = Arc::new(CodexProcess {
-        stdin: Mutex::new(stdin),
-        _child: std::sync::Mutex::new(Some(child)),
-        next_id: AtomicU64::new(0),
-        pending,
-        thread_id: Mutex::new(None),
-        applied_prompt: Mutex::new(None),
-        turn_ready,
-        turn_active,
-    });
+        let (stdin, child) = spawn_codex_process(
+            app_handle.clone(),
+            pending.clone(),
+            state.process.clone(),
+            turn_ready.clone(),
+            turn_active.clone(),
+            working_dir,
+        ).await?;
 
-    let init_result = send_request(&process, "initialize", Some(json!({
-        "clientInfo": {
-            "name": "AMA",
-            "version": "0.8.0"
+        let process = Arc::new(CodexProcess {
+            stdin: Mutex::new(stdin),
+            _child: std::sync::Mutex::new(Some(child)),
+            next_id: AtomicU64::new(0),
+            pending,
+            thread_id: Mutex::new(None),
+            applied_prompt: Mutex::new(None),
+            turn_ready,
+            turn_active,
+        });
+
+        send_request(&process, "initialize", Some(json!({
+            "clientInfo": { "name": "AMA", "version": "0.8.0" }
+        })))
+        .await
+        .map_err(|e| format!("Codex initialization failed: {e}"))?;
+
+        send_notification(&process, "initialized", None).await?;
+
+        {
+            let mut guard = state.process.lock().await;
+            *guard = Some(process);
         }
-    }))).await;
 
-    let result = match init_result {
-        Ok(_) => {
-            send_notification(&process, "initialized", None).await?;
+        let _ = app_handle.emit("codex-status", CodexStatusEvent {
+            status: "connected".to_string(),
+            message: None,
+        });
 
-            {
-                let mut guard = state.process.lock().await;
-                *guard = Some(process);
-            }
-
-            let _ = app_handle.emit("codex-status", CodexStatusEvent {
-                status: "connected".to_string(),
-                message: None,
-            });
-
-            Ok(())
-        }
-        Err(e) => {
-            Err(format!("Codex initialization failed: {e}"))
-        }
-    };
+        Ok(())
+    }
+    .await;
 
     state.starting.store(false, Ordering::SeqCst);
     result
@@ -690,99 +690,118 @@ pub async fn codex_send_message(
         message: None,
     });
 
-    // 시스템 프롬프트 변경 감지 → 변경 시 새 스레드 생성
-    let current_prompt = system_prompt.clone().unwrap_or_default();
-    let prompt_changed = {
-        let applied = process.applied_prompt.lock().await;
-        applied.as_deref() != Some(&current_prompt)
-    };
+    // 턴 셋업 단계의 결과를 내부 async에서 모아 받는다. 정상 흐름에서는 reader
+    // task의 `turn/completed` 핸들러가 turn_active를 false로 풀어주지만, 셋업
+    // 단계의 어떤 await가 실패해 early return하면 reader가 호출되지 않으므로
+    // 다음 codex_send_message가 wait 루프에서 영구 블로킹됐다. 셋업 실패 시
+    // 여기서 명시적으로 turn_active를 해제하고 대기 중인 호출자를 깨운다.
+    let setup_result: Result<String, String> = async {
+        // 시스템 프롬프트 변경 감지 → 변경 시 새 스레드 생성
+        let current_prompt = system_prompt.clone().unwrap_or_default();
+        let prompt_changed = {
+            let applied = process.applied_prompt.lock().await;
+            applied.as_deref() != Some(&current_prompt)
+        };
 
-    let mut thread_id = process.thread_id.lock().await.clone();
+        let mut thread_id = process.thread_id.lock().await.clone();
 
-    // 프롬프트가 변경되었거나 스레드가 없으면 새 스레드 생성
-    let is_first_turn = thread_id.is_none() || prompt_changed;
-    if is_first_turn {
-        // 기존 스레드 폐기 + 새 스레드 생성
-        let result = send_request(&process, "thread/start", Some(json!({}))).await?;
-        if let Some(tid) = result.get("thread")
-            .and_then(|t| t.get("id"))
-            .and_then(|v| v.as_str())
-        {
-            thread_id = Some(tid.to_string());
-            let mut stored_tid = process.thread_id.lock().await;
-            *stored_tid = Some(tid.to_string());
-        } else {
-            return Err("Failed to get threadId from thread/start response".to_string());
-        }
-        // 적용된 프롬프트 기록
-        let mut applied = process.applied_prompt.lock().await;
-        *applied = Some(current_prompt.clone());
-    }
-
-    // 첫 턴에서만 시스템 프롬프트를 메시지에 포함
-    let final_text = if is_first_turn && !current_prompt.is_empty() {
-        format!("<instructions>\n{current_prompt}\n</instructions>\n\n{text}")
-    } else {
-        text
-    };
-
-    let policy = approval_policy
-        .as_deref()
-        .filter(|p| !p.is_empty())
-        .unwrap_or("on-request");
-
-    // approvalPolicy에 따라 sandboxPolicy 자동 매핑
-    let sandbox_policy = match policy {
-        "never" => json!({ "type": "dangerFullAccess" }),
-        "on-request" => json!({
-            "type": "workspaceWrite",
-            "writableRoots": [],
-            "networkAccess": true
-        }),
-        _ => json!({ "type": "readOnly", "access": { "type": "fullAccess" }, "networkAccess": false }),
-    };
-
-    // UserInput 배열: text + (선택) localImage.
-    // Codex app-server 프로토콜 v2 LocalImageUserInput: { type: "localImage", path: "/abs/path" }
-    let mut input_items: Vec<serde_json::Value> = Vec::with_capacity(2);
-    input_items.push(json!({ "type": "text", "text": final_text }));
-    if let Some(ref path) = image_path {
-        let trimmed = path.trim();
-        if !trimmed.is_empty() {
-            if !std::path::Path::new(trimmed).is_absolute() {
-                return Err(format!("image_path must be absolute: {}", trimmed));
+        // 프롬프트가 변경되었거나 스레드가 없으면 새 스레드 생성
+        let is_first_turn = thread_id.is_none() || prompt_changed;
+        if is_first_turn {
+            let result = send_request(&process, "thread/start", Some(json!({}))).await?;
+            if let Some(tid) = result.get("thread")
+                .and_then(|t| t.get("id"))
+                .and_then(|v| v.as_str())
+            {
+                thread_id = Some(tid.to_string());
+                let mut stored_tid = process.thread_id.lock().await;
+                *stored_tid = Some(tid.to_string());
+            } else {
+                return Err("Failed to get threadId from thread/start response".to_string());
             }
-            input_items.push(json!({ "type": "localImage", "path": trimmed }));
+            // 적용된 프롬프트 기록
+            let mut applied = process.applied_prompt.lock().await;
+            *applied = Some(current_prompt.clone());
         }
+
+        // 첫 턴에서만 시스템 프롬프트를 메시지에 포함
+        let final_text = if is_first_turn && !current_prompt.is_empty() {
+            format!("<instructions>\n{current_prompt}\n</instructions>\n\n{text}")
+        } else {
+            text
+        };
+
+        let policy = approval_policy
+            .as_deref()
+            .filter(|p| !p.is_empty())
+            .unwrap_or("on-request");
+
+        // approvalPolicy에 따라 sandboxPolicy 자동 매핑
+        let sandbox_policy = match policy {
+            "never" => json!({ "type": "dangerFullAccess" }),
+            "on-request" => json!({
+                "type": "workspaceWrite",
+                "writableRoots": [],
+                "networkAccess": true
+            }),
+            _ => json!({ "type": "readOnly", "access": { "type": "fullAccess" }, "networkAccess": false }),
+        };
+
+        // UserInput 배열: text + (선택) localImage.
+        // Codex app-server 프로토콜 v2 LocalImageUserInput: { type: "localImage", path: "/abs/path" }
+        let mut input_items: Vec<serde_json::Value> = Vec::with_capacity(2);
+        input_items.push(json!({ "type": "text", "text": final_text }));
+        if let Some(ref path) = image_path {
+            let trimmed = path.trim();
+            if !trimmed.is_empty() {
+                if !std::path::Path::new(trimmed).is_absolute() {
+                    return Err(format!("image_path must be absolute: {}", trimmed));
+                }
+                input_items.push(json!({ "type": "localImage", "path": trimmed }));
+            }
+        }
+
+        let mut params = json!({
+            "threadId": thread_id.unwrap(),
+            "input": input_items,
+            "approvalPolicy": policy,
+            "sandboxPolicy": sandbox_policy
+        });
+        if let Some(ref m) = model {
+            if !m.is_empty() {
+                params["model"] = json!(m);
+            }
+        }
+        if let Some(ref e) = reasoning_effort {
+            if !e.is_empty() {
+                params["reasoningEffort"] = json!(e);
+            }
+        }
+
+        let result = send_request(&process, "turn/start", Some(params)).await?;
+
+        // turn ID를 프론트엔드에 반환 (응답 매칭용)
+        let turn_id = result.get("turnId")
+            .and_then(|v| v.as_str())
+            .or_else(|| result.get("turn").and_then(|t| t.get("id")).and_then(|v| v.as_str()))
+            .unwrap_or("")
+            .to_string();
+
+        Ok(turn_id)
+    }
+    .await;
+
+    // 셋업이 실패하면 reader task가 turn_active를 풀 기회가 없다. 여기서 책임을 진다.
+    if setup_result.is_err() {
+        process.turn_active.store(false, Ordering::SeqCst);
+        process.turn_ready.notify_waiters();
+        let _ = app_handle.emit("codex-status", CodexStatusEvent {
+            status: "error".to_string(),
+            message: setup_result.as_ref().err().cloned(),
+        });
     }
 
-    let mut params = json!({
-        "threadId": thread_id.unwrap(),
-        "input": input_items,
-        "approvalPolicy": policy,
-        "sandboxPolicy": sandbox_policy
-    });
-    if let Some(ref m) = model {
-        if !m.is_empty() {
-            params["model"] = json!(m);
-        }
-    }
-    if let Some(ref e) = reasoning_effort {
-        if !e.is_empty() {
-            params["reasoningEffort"] = json!(e);
-        }
-    }
-
-    let result = send_request(&process, "turn/start", Some(params)).await?;
-
-    // turn ID를 프론트엔드에 반환 (응답 매칭용)
-    let turn_id = result.get("turnId")
-        .and_then(|v| v.as_str())
-        .or_else(|| result.get("turn").and_then(|t| t.get("id")).and_then(|v| v.as_str()))
-        .unwrap_or("")
-        .to_string();
-
-    Ok(turn_id)
+    setup_result
 }
 
 #[tauri::command]
