@@ -106,9 +106,10 @@ export function useGeminiCliConnection() {
       ]);
       setInstalled(installResult.installed);
       setAuthenticated(authResult.authenticated);
-      if (statusResult.connected) {
-        setConnectionState('connected');
-      }
+      // 외부 종료/충돌로 프로세스가 끊긴 상태에서 새로고침했을 때 이전 'connected'를
+      // 그대로 두면 UI가 잘못된 상태를 보여 진단을 막는다. 매번 connected/disconnected를
+      // 명시적으로 갱신.
+      setConnectionState(statusResult.connected ? 'connected' : 'disconnected');
     } catch {
       // 무시
     }

@@ -61,6 +61,7 @@ export default function SettingsSection({
         className="w-full flex items-center text-left focus-ring"
         style={{ padding: '14px 16px', gap: 12 }}
         data-interactive="true"
+        aria-expanded={isOpen}
       >
         {icon && (
           <div

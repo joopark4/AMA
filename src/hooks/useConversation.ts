@@ -65,9 +65,15 @@ export function resolveResponseLanguage(): PromptLanguage {
   return base;
 }
 
-/** 응답 언어별 폴백 기본 프롬프트 지시문 — 캐릭터 프로필이 비었을 때만 사용. */
+/**
+ * 응답 언어별 폴백 기본 프롬프트 지시문 — 캐릭터 프로필이 비었을 때만 사용.
+ *
+ * `PromptLanguage`(ko/en/ja/es/pt/fr) 전 언어를 커버해야 한다. 과거 ko/en/ja만 두고
+ * 그 외는 en으로 강제 폴백했더니, 사용자가 `tts.language`로 es/pt/fr를 선택하고
+ * 캐릭터 프로필이 비어있는 상태에선 LLM 응답이 영어로만 나오는 회귀가 있었다.
+ */
 const LEGACY_PROMPT_TEMPLATES: Record<
-  Language,
+  PromptLanguage,
   { header: (name: string) => string; languageDirective: string; personalityHeader: string; personalityFooter: string }
 > = {
   ko: {
@@ -106,6 +112,42 @@ Rules:
     personalityHeader: '追加の性格ガイド(ユーザー指定):',
     personalityFooter: '上記のユーザー指定ガイドを基本性格と共に優先的に反映してください。',
   },
+  es: {
+    header: (name: string) => `Eres una asistente de IA llamada "${name}", amigable y adorable.
+Personalidad: alegre, positiva y trata al usuario como a un amigo.
+Tono: casual, breve y natural en estilo conversacional.
+Reglas:
+- No uses emojis
+- Responde con 2 o 3 frases cortas
+- Muestra empatía y expresión emocional`,
+    languageDirective: '- Responde siempre en español a menos que el usuario pida explícitamente otro idioma',
+    personalityHeader: 'Guía de personalidad adicional (especificada por el usuario):',
+    personalityFooter: 'Aplica la guía indicada por el usuario junto con la personalidad base, dándole prioridad.',
+  },
+  pt: {
+    header: (name: string) => `Você é uma assistente de IA chamada "${name}", amigável e fofa.
+Personalidade: alegre, positiva e trata o usuário como amigo.
+Tom: casual, curto e em estilo de conversa natural.
+Regras:
+- Não use emojis
+- Responda com 2 ou 3 frases curtas
+- Demonstre empatia e expressão emocional`,
+    languageDirective: '- Responda sempre em português, a menos que o usuário peça explicitamente outro idioma',
+    personalityHeader: 'Guia de personalidade adicional (especificado pelo usuário):',
+    personalityFooter: 'Aplique a guia do usuário acima junto com a personalidade base, dando-lhe prioridade.',
+  },
+  fr: {
+    header: (name: string) => `Tu es une assistante IA nommée "${name}", amicale et mignonne.
+Personnalité : joyeuse, positive, traite l'utilisateur comme un ami.
+Ton : décontracté, court, style conversationnel naturel.
+Règles :
+- N'utilise pas d'emoji
+- Réponds en 2 ou 3 phrases courtes
+- Montre de l'empathie et des émotions`,
+    languageDirective: '- Réponds toujours en français sauf si l\'utilisateur demande explicitement une autre langue',
+    personalityHeader: 'Guide de personnalité supplémentaire (spécifié par l\'utilisateur) :',
+    personalityFooter: 'Applique le guide ci-dessus en complément de la personnalité de base, en lui donnant la priorité.',
+  },
 };
 
 /**
@@ -130,15 +172,19 @@ export function buildSystemPrompt(
     return buildCharacterPrompt(character, effectiveLanguage);
   }
 
-  // 폴백: 프로필이 없으면 기본 템플릿 (ko/en/ja만 네이티브 — 그 외는 en으로 폴백).
+  // 폴백: 프로필이 없으면 기본 템플릿. PromptLanguage 전 언어(ko/en/ja/es/pt/fr)에
+  // 대해 native 템플릿이 있으므로 강제 폴백 없이 그대로 사용한다.
   // Layer 0 언어 지시는 buildCharacterPrompt 경로에서만 박히므로, legacy 경로에서는
   // template 내부의 languageDirective가 LLM 응답 언어를 강제한다.
-  const templateLanguage: Language =
-    effectiveLanguage === 'ko' || effectiveLanguage === 'en' || effectiveLanguage === 'ja'
-      ? effectiveLanguage
-      : 'en';
+  const templateLanguage: PromptLanguage = effectiveLanguage;
   const template = LEGACY_PROMPT_TEMPLATES[templateLanguage];
-  const fallbackName = templateLanguage === 'ja' ? 'アバター' : templateLanguage === 'en' ? 'Avatar' : '아바타';
+  const fallbackName =
+    templateLanguage === 'ja' ? 'アバター'
+    : templateLanguage === 'en' ? 'Avatar'
+    : templateLanguage === 'es' ? 'Asistente'
+    : templateLanguage === 'pt' ? 'Assistente'
+    : templateLanguage === 'fr' ? 'Assistant'
+    : '아바타';
   const normalizedName = avatarName.trim() || fallbackName;
   const basePrompt = `${template.header(normalizedName)}
 ${template.languageDirective}`;
