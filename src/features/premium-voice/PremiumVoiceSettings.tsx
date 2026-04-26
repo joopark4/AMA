@@ -144,23 +144,67 @@ export default function PremiumVoiceSettings() {
       ? settings.tts.language
       : effectiveApiSettings.language || 'ko';
 
+  /**
+   * 새 언어를 선택할 때 현재 `voiceId`가 그 언어를 지원하지 않으면 호환 음성으로
+   * 자동 전환한다. 정책: (1) 현재 음성이 새 언어 지원 → 그대로 유지, (2) 미지원이면
+   * Bella → 첫 호환 음성 → 첫 음성 순으로 폴백. `ensureDefaultPremiumVoice`의 Bella
+   * 우선 정책의 연장.
+   *
+   * 반환값:
+   *  - `null`: 현재 voice가 그대로 유효 (변경 불필요)
+   *  - 객체: 새로 적용할 voice 정보(`voiceId`/`voiceName`/`style`)
+   */
+  const resolveCompatibleVoice = useCallback(
+    (currentVoiceId: string | undefined, lang: string) => {
+      if (!voices.length) return null;
+      const current = voices.find((v) => v.voice_id === currentVoiceId);
+      if (current && current.languages?.includes(lang)) return null;
+      const replacement =
+        voices.find(
+          (v) =>
+            v.languages?.includes(lang) && v.name.toLowerCase() === 'bella'
+        ) ||
+        voices.find((v) => v.languages?.includes(lang)) ||
+        voices[0];
+      if (!replacement) return null;
+      return {
+        voiceId: replacement.voice_id,
+        voiceName: replacement.name,
+        style: replacement.styles?.[0] || 'neutral',
+      };
+    },
+    [voices]
+  );
+
   const handleModelChange = useCallback((model: string) => {
     const supportedLangs = getModelLanguages(model);
     const newLang = supportedLangs.includes(effectiveTtsLanguage) ? effectiveTtsLanguage : 'en';
+    const compat = resolveCompatibleVoice(effectiveApiSettings.voiceId, newLang);
     setTTSSettings({
       engine: 'supertone_api',
       language: newLang as TTSOutputLanguage,
-      supertoneApi: { ...effectiveApiSettings, model: model as SupertoneApiSettings['model'], language: newLang },
+      supertoneApi: {
+        ...effectiveApiSettings,
+        model: model as SupertoneApiSettings['model'],
+        language: newLang,
+        ...(compat ?? {}),
+      },
     });
-  }, [setTTSSettings, effectiveApiSettings, effectiveTtsLanguage]);
+  }, [setTTSSettings, effectiveApiSettings, effectiveTtsLanguage, resolveCompatibleVoice]);
 
   const handleLanguageChange = useCallback((language: string) => {
-    // 공용 tts.language와 apiSettings.language 동시 업데이트 (호환 유지)
+    // 공용 tts.language와 apiSettings.language 동시 업데이트 (호환 유지) +
+    // 현재 voiceId가 새 언어를 지원하지 않으면 호환 음성으로 자동 전환.
+    const compat = resolveCompatibleVoice(effectiveApiSettings.voiceId, language);
     setTTSSettings({
       language: language as TTSOutputLanguage,
-      supertoneApi: { ...effectiveApiSettings, language },
+      supertoneApi: {
+        ...effectiveApiSettings,
+        language,
+        ...(compat ?? {}),
+      },
     });
-  }, [setTTSSettings, effectiveApiSettings]);
+  }, [setTTSSettings, effectiveApiSettings, resolveCompatibleVoice]);
 
   const handleStyleChange = useCallback((style: string) => {
     setTTSSettings({ supertoneApi: { ...effectiveApiSettings, style } });

@@ -58,6 +58,15 @@ export function useScreenWatcher(): void {
       isObservingRef.current = false;
       lastObservationAtRef.current = 0;
       void screenWatchService.clearState();
+
+      // Vision 미지원 provider로 전환된 상태에서 enabled가 여전히 true면, UI 토글은
+      // visionOk로 인해 OFF로 보이지만 persist된 설정은 ON이라 표시·실제 상태가
+      // 어긋난다. 다시 Vision 지원 provider로 돌아오면 사용자 확인 없이 자동
+      // 재활성화되는 회귀로도 이어진다. 정책: 미지원 전환 순간 enabled를 false로
+      // 정규화해 표시·persist를 일치시키고, 사용자가 명시적으로 다시 켜야만 동작.
+      if (enabled && !isVisionAvailable(provider)) {
+        useSettingsStore.getState().setScreenWatchSettings({ enabled: false });
+      }
       return;
     }
 

@@ -99,9 +99,10 @@ export function useCodexConnection() {
       ]);
       setInstalled(installResult.installed);
       setAuthenticated(authResult.authenticated);
-      if (statusResult.connected) {
-        setConnectionState('connected');
-      }
+      // 외부 종료/충돌 등으로 프로세스가 끊긴 상태에서 새로고침했을 때, 이전
+      // 'connected'를 그대로 두면 UI가 잘못된 상태를 계속 보여 사용자가 진단을
+      // 잘못한다. connected/disconnected를 항상 최신 상태로 덮어쓴다.
+      setConnectionState(statusResult.connected ? 'connected' : 'disconnected');
     } catch {
       // 무시
     }

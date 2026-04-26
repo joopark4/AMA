@@ -116,6 +116,7 @@ export function Pill({
         whiteSpace: 'nowrap',
       }}
       data-interactive="true"
+      aria-pressed={active}
     >
       {children}
     </button>
