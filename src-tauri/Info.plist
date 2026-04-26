@@ -25,7 +25,7 @@
             <string>com.mypartnerai</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>mypartnerai</string>
+                <string>ama</string>
             </array>
         </dict>
     </array>

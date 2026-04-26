@@ -17,11 +17,44 @@ export default function UpdateSettings() {
     ready,
     error,
     checking,
+    lastCheckedAt,
     checkForUpdate,
     startUpdate,
     restartApp,
   } = useAutoUpdateStore();
   const [appVersion, setAppVersion] = useState('');
+
+  const lastCheckedLabel = lastCheckedAt
+    ? new Date(lastCheckedAt).toLocaleString()
+    : null;
+
+  const friendlyErrorKey = (() => {
+    if (!error) return null;
+    const msg = error.toLowerCase();
+    if (
+      msg.includes('404') ||
+      msg.includes('not found') ||
+      msg.includes('could not fetch') ||
+      msg.includes('no such file') ||
+      msg.includes('release json')
+    ) {
+      return 'settings.update.errorNotAvailable';
+    }
+    if (msg.includes('signature') || msg.includes('verify') || msg.includes('pubkey')) {
+      return 'settings.update.errorSignature';
+    }
+    if (
+      msg.includes('timeout') ||
+      msg.includes('dns') ||
+      msg.includes('offline') ||
+      msg.includes('connection refused') ||
+      msg.includes('connect error') ||
+      msg.includes('unreachable')
+    ) {
+      return 'settings.update.errorNetwork';
+    }
+    return 'settings.update.errorRetry';
+  })();
 
   useEffect(() => {
     import('@tauri-apps/api/app')
@@ -64,8 +97,19 @@ export default function UpdateSettings() {
         </div>
       )}
       {error && (
-        <div style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 4 }}>
+        <div style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 4, wordBreak: 'break-word' }}>
           {t('settings.update.error')}
+          {friendlyErrorKey && (
+            <span style={{ color: 'var(--ink-3)', fontWeight: 400, marginLeft: 6 }}>
+              · {t(friendlyErrorKey)}
+            </span>
+          )}
+        </div>
+      )}
+
+      {lastCheckedLabel && (
+        <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 4 }}>
+          {t('settings.update.lastChecked', { time: lastCheckedLabel })}
         </div>
       )}
 
@@ -127,7 +171,7 @@ export default function UpdateSettings() {
       </button>
 
       {/* 액션 버튼 */}
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {ready ? (
           <button
             type="button"
@@ -146,24 +190,45 @@ export default function UpdateSettings() {
             {t('update.restart')}
           </button>
         ) : info?.available ? (
-          <button
-            type="button"
-            onClick={startUpdate}
-            disabled={downloading}
-            className="w-full focus-ring"
-            style={{
-              padding: '10px 14px',
-              borderRadius: 10,
-              background: downloading ? 'oklch(0.85 0.005 60)' : 'var(--accent)',
-              color: downloading ? 'var(--ink-3)' : 'white',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: downloading ? 'not-allowed' : 'pointer',
-            }}
-            data-interactive="true"
-          >
-            {downloading ? t('update.downloading') : t('update.install')}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={startUpdate}
+              disabled={downloading}
+              className="w-full focus-ring"
+              style={{
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: downloading ? 'oklch(0.85 0.005 60)' : 'var(--accent)',
+                color: downloading ? 'var(--ink-3)' : 'white',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: downloading ? 'not-allowed' : 'pointer',
+              }}
+              data-interactive="true"
+            >
+              {downloading ? t('update.downloading') : t('update.install')}
+            </button>
+            <button
+              type="button"
+              onClick={checkForUpdate}
+              disabled={checking || downloading}
+              className="w-full focus-ring"
+              style={{
+                padding: '8px 14px',
+                borderRadius: 10,
+                background: 'transparent',
+                color: 'var(--ink-2)',
+                fontSize: 12,
+                boxShadow: 'inset 0 0 0 1px var(--hairline)',
+                opacity: checking || downloading ? 0.5 : 1,
+                cursor: checking || downloading ? 'not-allowed' : 'pointer',
+              }}
+              data-interactive="true"
+            >
+              {checking ? t('settings.update.checking') : t('settings.update.checkButton')}
+            </button>
+          </>
         ) : (
           <button
             type="button"

@@ -318,6 +318,11 @@
       "checking": "확인 중...",
       "upToDate": "최신 버전입니다",
       "error": "업데이트 확인 실패",
+      "errorNetwork": "네트워크 연결을 확인해 주세요",
+      "errorNotAvailable": "업데이트 파일을 찾지 못했습니다",
+      "errorSignature": "업데이트 파일 검증에 실패했습니다",
+      "errorRetry": "잠시 후 다시 시도해 주세요",
+      "lastChecked": "마지막 확인: {{time}}",
       "modelFolder": "다운로드 모델 폴더 열기"
     },
     "licenses": {
@@ -856,7 +861,6 @@
   "about": {
     "title": "AMA 정보",
     "version": "버전",
-    "license": "라이선스",
     "close": "닫기"
   },
   "errors": {

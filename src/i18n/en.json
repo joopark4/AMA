@@ -318,6 +318,11 @@
       "checking": "Checking...",
       "upToDate": "Up to date",
       "error": "Update check failed",
+      "errorNetwork": "Please check your network connection",
+      "errorNotAvailable": "Update file not found",
+      "errorSignature": "Update file verification failed",
+      "errorRetry": "Please try again in a moment",
+      "lastChecked": "Last checked: {{time}}",
       "modelFolder": "Open Model Folder"
     },
     "licenses": {
@@ -856,7 +861,6 @@
   "about": {
     "title": "About AMA",
     "version": "Version",
-    "license": "License",
     "close": "Close"
   },
   "errors": {

@@ -24,9 +24,13 @@ class SupabaseAuthService implements IAuthService {
 
     // 개발 모드: Vite dev 서버의 OAuth 콜백 미들웨어로 리다이렉트
     // 프로덕션: 딥링크 URL 스킴으로 리다이렉트
+    // 프로덕션: GitHub Pages에 호스팅된 브릿지 페이지로 redirect.
+    // 그 페이지가 사용자에게 "로그인 완료" UI를 보여준 뒤 ama://auth/callback?... 로
+    // 자동 이동시켜 앱 deep link 핸들러가 인증 코드를 처리한다.
+    // (직접 ama:// 로 redirect 하면 브라우저 탭이 빈 화면으로 남는 UX 이슈가 있음.)
     const redirectTo = import.meta.env.DEV
       ? 'http://localhost:1420/auth/callback'
-      : 'mypartnerai://auth/callback';
+      : 'https://joopark4.github.io/apps/ama/auth/callback';
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: supabaseProvider as Parameters<typeof supabase.auth.signInWithOAuth>[0]['provider'],
@@ -109,16 +113,27 @@ class SupabaseAuthService implements IAuthService {
   }
 
   async deleteAccount(accessToken: string): Promise<void> {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase 설정이 없습니다');
+    }
+
     const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
+      `${supabaseUrl}/functions/v1/delete-account`,
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': supabaseAnonKey,
+          'Content-Type': 'application/json',
+        },
       }
     );
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error((data as { error?: string }).error ?? `계정 삭제 실패: ${res.status}`);
+      const reason = (data as { error?: string }).error ?? `${res.status} ${res.statusText}`;
+      throw new Error(`계정 삭제 실패: ${reason}`);
     }
   }
 }
@@ -132,7 +147,7 @@ class MockAuthService implements IAuthService {
     _state: string
   ): Promise<OAuthInitResult> {
     return {
-      authUrl: 'mypartnerai://auth/callback?code=mock_code&state=mock_state',
+      authUrl: 'ama://auth/callback?code=mock_code&state=mock_state',
       state: 'mock_state',
     };
   }

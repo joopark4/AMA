@@ -85,7 +85,7 @@ export default defineConfig({
   build: {
     target: 'esnext',
     minify: 'esbuild',
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === 'production' ? 'hidden' : true,
     rollupOptions: {
       output: {
         // WASM 파일을 별도로 분리
@@ -94,6 +94,9 @@ export default defineConfig({
         },
       },
     },
+  },
+  esbuild: {
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
   },
   // WASM 모듈 특수 처리
   optimizeDeps: {

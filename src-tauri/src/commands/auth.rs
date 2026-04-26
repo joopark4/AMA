@@ -37,12 +37,12 @@ pub async fn open_oauth_url(app: tauri::AppHandle, url: String) -> Result<(), St
 }
 
 /// 딥링크 URL에서 OAuth 콜백 파라미터 파싱
-/// mypartnerai://auth/callback?code=...&state=...
+/// ama://auth/callback?code=...&state=...
 #[tauri::command]
 pub fn parse_auth_callback(url: String) -> Result<AuthCallbackParams, String> {
     let parsed = url::Url::parse(&url).map_err(|e| format!("URL 파싱 실패: {e}"))?;
 
-    // mypartnerai://auth/callback 형식 검증
+    // ama://auth/callback 형식 검증
     // - standard URL: host="auth", path="/callback"
     // - cannot-be-a-base URL: path="auth/callback"
     let is_valid = match parsed.host_str() {

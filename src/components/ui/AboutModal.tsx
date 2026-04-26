@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getVersion } from '@tauri-apps/api/app';
 
-const APP_LICENSE = 'BSD 2-Clause';
-
 interface AboutModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -57,11 +55,6 @@ export default function AboutModal({ isOpen, onClose }: AboutModalProps) {
               {t('about.version')} {version}
             </p>
           )}
-
-          {/* 라이선스 */}
-          <p className="text-xs text-gray-400">
-            {t('about.license')}: {APP_LICENSE}
-          </p>
         </div>
       </div>
     </div>

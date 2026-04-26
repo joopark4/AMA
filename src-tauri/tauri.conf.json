@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.0",
   "productName": "AMA",
-  "version": "1.9.0",
+  "version": "1.9.8",
   "identifier": "com.mypartnerai",
   "build": {
     "beforeBuildCommand": "npm run build",
@@ -28,12 +28,21 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' tauri: ipc: https://ipc.localhost asset: https://asset.localhost; connect-src 'self' blob: data: tauri: ipc: https://ipc.localhost asset: https://asset.localhost https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://huggingface.co https://*.huggingface.co https://api.supertone.ai http://localhost:* ws://localhost:*; script-src 'self' 'wasm-unsafe-eval' tauri:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: asset: https://asset.localhost; font-src 'self' data:; media-src 'self' data: blob: asset: https://asset.localhost; worker-src 'self' blob:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "**"
+        ]
+      }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "createUpdaterArtifacts": true,
     "resources": {
       "resources/bin/": "bin/",
@@ -76,15 +85,17 @@
       "mobile": [],
       "desktop": [
         {
-          "schemes": ["mypartnerai"]
+          "schemes": [
+            "ama"
+          ]
         }
       ]
     },
     "updater": {
       "endpoints": [
-        "https://joopark4.github.io/apps/ama/latest.json"
+        "https://github.com/joopark4/AMA/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE4MzY5NThGOTZBOTNDODEKUldTQlBLbVdqNVUyR0w0eTdEcXMvTktNMW84cGdoK202ZTJSeXpsU2FkZkhUbjZoU1hIM1hkdHQK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc4NkY5NUEwNTAyRTc3QTQKUldTa2R5NVFvSlZ2ZUlCclFyM0FRbFY4NmtDSGY1SmxsR1U2MXYvUFVac2drbUxEVENSN3pFdVEK",
       "dialog": false
     }
   }

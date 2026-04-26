@@ -288,7 +288,7 @@ function packageArtifacts(version) {
 }
 
 // ─── 7. GITHUB RELEASE ─────────────────────────────────────────────────
-function githubRelease(version, dmgPath) {
+function githubRelease(version, dmgPath, tarGzPath) {
   log('─── Step 7: GITHUB RELEASE ───');
 
   if (flags.skipRelease) {
@@ -297,6 +297,36 @@ function githubRelease(version, dmgPath) {
   }
 
   const tag = `v${version}`;
+  const sigPath = tarGzPath ? `${tarGzPath}.sig` : null;
+  const bundleDir = tarGzPath ? dirname(tarGzPath) : null;
+  const latestJsonPath = bundleDir ? join(bundleDir, 'latest.json') : null;
+
+  // Generate latest.json pointing to GitHub Release download URLs (matches tauri.conf.json updater endpoint)
+  if (latestJsonPath && sigPath && existsSync(sigPath) && existsSync(tarGzPath)) {
+    const sig = readFileSync(sigPath, 'utf8').trim();
+    const downloadBase = `https://github.com/joopark4/AMA/releases/download/${tag}`;
+    const latestJson = {
+      version: `v${version}`,
+      notes: `AMA ${tag} release`,
+      pub_date: new Date().toISOString(),
+      platforms: {
+        'darwin-aarch64': {
+          signature: sig,
+          url: `${downloadBase}/AMA.app.tar.gz`,
+        },
+        'darwin-x86_64': {
+          signature: sig,
+          url: `${downloadBase}/AMA.app.tar.gz`,
+        },
+      },
+    };
+    writeFileSync(latestJsonPath, JSON.stringify(latestJson, null, 2) + '\n');
+    log('Generated latest.json (GitHub Release URLs).');
+  }
+
+  const uploadAssets = [dmgPath, tarGzPath, sigPath, latestJsonPath].filter(
+    (p) => p && existsSync(p)
+  );
 
   // Check if release already exists
   const checkResult = spawnSync('gh', ['release', 'view', tag], {
@@ -305,21 +335,21 @@ function githubRelease(version, dmgPath) {
   });
 
   if (checkResult.status === 0) {
-    warn(`Release ${tag} already exists. Uploading DMG as additional asset.`);
-    run('gh', ['release', 'upload', tag, dmgPath, '--clobber']);
+    warn(`Release ${tag} already exists. Uploading assets with --clobber.`);
+    if (uploadAssets.length > 0) {
+      run('gh', ['release', 'upload', tag, ...uploadAssets, '--clobber']);
+    }
   } else {
     const releaseArgs = [
       'release', 'create', tag,
       '--title', `AMA ${tag}`,
       '--notes', `AMA ${tag} release`,
+      ...uploadAssets,
     ];
-    if (dmgPath) {
-      releaseArgs.push(dmgPath);
-    }
     run('gh', releaseArgs);
   }
 
-  log(`GitHub Release ${tag} done.`);
+  log(`GitHub Release ${tag} done. Uploaded ${uploadAssets.length} asset(s).`);
 }
 
 // ─── 8. GITHUB PAGES ───────────────────────────────────────────────────
@@ -410,7 +440,7 @@ function main() {
   sign();
   notarize();
   const { tarGzPath, dmgPath } = packageArtifacts(version);
-  githubRelease(version, dmgPath);
+  githubRelease(version, dmgPath, tarGzPath);
   githubPages(version, tarGzPath);
 
   log('=== Release pipeline complete! ===');

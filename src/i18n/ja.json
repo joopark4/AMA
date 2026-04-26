@@ -318,6 +318,11 @@
       "checking": "確認中...",
       "upToDate": "最新バージョンです",
       "error": "更新の確認に失敗しました",
+      "errorNetwork": "ネットワーク接続を確認してください",
+      "errorNotAvailable": "更新ファイルが見つかりません",
+      "errorSignature": "更新ファイルの検証に失敗しました",
+      "errorRetry": "しばらくしてから再度お試しください",
+      "lastChecked": "最終確認: {{time}}",
       "modelFolder": "ダウンロードモデルフォルダを開く"
     },
     "licenses": {
@@ -856,7 +861,6 @@
   "about": {
     "title": "AMAについて",
     "version": "バージョン",
-    "license": "ライセンス",
     "close": "閉じる"
   },
   "errors": {

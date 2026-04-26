@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
+import { onOpenUrl, getCurrent as getCurrentDeepLink } from '@tauri-apps/plugin-deep-link';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import AvatarCanvas from './components/avatar/AvatarCanvas';
@@ -20,6 +20,7 @@ import { useAvatarStore } from './stores/avatarStore';
 import { useModelDownloadStore } from './stores/modelDownloadStore';
 import { useClickThrough } from './hooks/useClickThrough';
 import { useMenuListeners } from './hooks/useMenuListeners';
+import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useMonitorStore } from './stores/monitorStore';
 import { useAboutStore } from './stores/aboutStore';
 import { useMcpSpeakListener } from './features/channels';
@@ -70,6 +71,7 @@ function App() {
 
   // macOS 네이티브 메뉴 이벤트 리스너
   useMenuListeners();
+  useAuthBootstrap();
 
   useEffect(() => {
     i18n.changeLanguage(settings.language);
@@ -81,16 +83,13 @@ function App() {
     }
   }, [settings.avatarName, initialAvatarName]);
 
-  // Deep-link OAuth 콜백 처리 (인증 기능 미완성 — 개발 환경에서만 활성화)
+  // Deep-link OAuth 콜백 처리 — 프로덕션 dmg와 dev 모두 활성화.
+  // (Dev 모드는 추가로 Vite 미들웨어 폴링도 사용 — UserProfile.tsx 참조.)
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
-
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
 
-    onOpenUrl(async (urls) => {
-      const callbackUrl = urls.find((u) => u.includes('auth/callback'));
-      if (!callbackUrl) return;
-
+    const handleCallbackUrl = async (callbackUrl: string) => {
       try {
         const params: { code?: string; state?: string; error?: string } =
           await invoke('parse_auth_callback', { url: callbackUrl });
@@ -107,11 +106,8 @@ function App() {
           return;
         }
 
-        if (!pendingProvider) {
-          setLoading(false);
-          return;
-        }
-
+        // pendingProvider가 비어 있어도 진행 — useAuthBootstrap의 onAuthStateChange가
+        // Supabase 세션 확정 시 자동으로 authStore를 갱신해주므로 안전.
         const result = await authService.handleCallback(params.code, params.state ?? '', '');
 
         setUser(result.user);
@@ -127,9 +123,33 @@ function App() {
         setLoading(false);
         setPendingProvider(null);
       }
+    };
+
+    // 콜드 스타트(앱이 deep link로 처음 실행됨) 시 초기 URL 처리
+    void (async () => {
+      try {
+        const initial = await getCurrentDeepLink();
+        if (cancelled) return;
+        const callbackUrl = initial?.find((u) => u.includes('auth/callback'));
+        if (callbackUrl) {
+          await handleCallbackUrl(callbackUrl);
+        }
+      } catch {
+        // 플러그인 미가용 등 무시
+      }
+    })();
+
+    // 웜 스타트(앱 실행 중 deep link 도착) 리스너
+    onOpenUrl(async (urls) => {
+      const callbackUrl = urls.find((u) => u.includes('auth/callback'));
+      if (!callbackUrl) return;
+      await handleCallbackUrl(callbackUrl);
     }).then((fn) => { unlisten = fn; });
 
-    return () => { unlisten?.(); };
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingProvider]);
 

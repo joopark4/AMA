@@ -98,8 +98,9 @@ export default function UserProfile() {
       // 로컬 대화 기록도 삭제
       clearMessages();
       logout();
-    } catch {
-      setDeleteError(t('auth.errors.deleteAccountFailed'));
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      setDeleteError(`${t('auth.errors.deleteAccountFailed')} · ${detail}`);
     } finally {
       setLoading(false);
       setDeleteConfirm(false);

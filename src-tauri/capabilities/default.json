@@ -14,7 +14,6 @@
     "fs:allow-app-read-recursive",
     "fs:allow-resource-read-recursive",
     "fs:allow-home-read-recursive",
-    "fs:allow-home-write-recursive",
     {
       "identifier": "fs:scope",
       "allow": [

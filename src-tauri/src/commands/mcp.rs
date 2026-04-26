@@ -420,10 +420,11 @@ pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String
     //    (Homebrew, nvm, fnm, volta 등 모든 Node.js 설치 방식 대응)
     let nm_dst = target_dir.join("node_modules");
     if !nm_dst.exists() {
-        let target_dir_str = target_dir.to_string_lossy().to_string();
+        let target_dir_clone = target_dir.clone();
         let output = tokio::task::spawn_blocking(move || {
             std::process::Command::new("/bin/sh")
-                .args(["-l", "-c", &format!("cd '{}' && npm install", target_dir_str)])
+                .args(["-l", "-c", "npm install"])
+                .current_dir(&target_dir_clone)
                 .output()
         })
         .await

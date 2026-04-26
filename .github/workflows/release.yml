@@ -41,7 +41,11 @@ jobs:
 
       - name: Install whisper-cli (macOS)
         if: runner.os == 'macOS'
-        run: brew install whisper-cpp
+        run: |
+          brew install whisper-cpp
+          WHISPER_PREFIX="$(brew --prefix whisper-cpp)"
+          echo "WHISPER_CPP_LIB_DIR=${WHISPER_PREFIX}/libexec/lib" >> $GITHUB_ENV
+          echo "WHISPER_CLI_PATH=${WHISPER_PREFIX}/bin/whisper-cli" >> $GITHUB_ENV
 
       - name: Prepare assets (runtime only, no models)
         run: |
@@ -49,7 +53,7 @@ jobs:
           PREPARE_BUNDLE_RESOURCES=1 \
           PREPARE_DOWNLOAD_WHISPER=0 \
           PREPARE_DOWNLOAD_SUPERTONIC=0 \
-          npm run prepare:assets || true
+          npm run prepare:assets
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
