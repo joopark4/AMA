@@ -879,8 +879,17 @@ export function useConversation(): UseConversationReturn {
       ].filter(Boolean).join('\n\n');
 
       // memoryManager가 생성한 recentMessages 위에 screen-watch 필터를 추가 적용:
-      //   - 'external' 알림은 완전 제외
+      //   - 'external' 알림은 완전 제외 (buildMessageWindow가 이미 처리)
       //   - 'screen-watch' 관찰은 전체 기록에서 최근 5개만 포함 (토큰 축적 방지)
+      //
+      // 과거에는 `currentMessages.length - recentMessages.length + idx`로 정렬을
+      // 가정해 recentMessages → currentMessages 인덱스를 역산했지만,
+      // `buildMessageWindow`가 이미 external을 제거한 뒤 slice를 반환하므로 두
+      // 배열이 suffix-aligned가 아니다. external이 중간에 끼면 정렬이 깨져 잘못된
+      // source를 참조해 정상 user/assistant 턴이 누락되던 회귀가 있었다.
+      //
+      // `recentMessages`(role/content)에는 source/id가 없으므로, 같은 필터(external
+      // 제거)를 적용한 currentMessages 슬라이스를 만들어 인덱스 정렬을 보장한다.
       const SCREEN_WATCH_WINDOW = 5;
       const screenWatchIdsInWindow = new Set(
         currentMessages
@@ -888,12 +897,12 @@ export function useConversation(): UseConversationReturn {
           .slice(-SCREEN_WATCH_WINDOW)
           .map((m) => m.id)
       );
-      // recentMessages는 currentMessages의 뒤쪽 슬라이스라 인덱스 정렬로 원본 source를 참조.
+      const internalCurrent = currentMessages.filter((m) => m.source !== 'external');
+      const recentInternalSlice = internalCurrent.slice(-recentMessages.length);
       const filteredRecentMessages = recentMessages.filter((_m, idx) => {
-        const aligned = currentMessages[currentMessages.length - recentMessages.length + idx];
-        const source = aligned?.source;
-        if (source === 'external') return false;
-        if (source === 'screen-watch') return aligned ? screenWatchIdsInWindow.has(aligned.id) : false;
+        const aligned = recentInternalSlice[idx];
+        if (!aligned) return true;
+        if (aligned.source === 'screen-watch') return screenWatchIdsInWindow.has(aligned.id);
         return true;
       });
       const llmMessages: LLMMessage[] = [
