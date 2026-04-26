@@ -9,7 +9,6 @@ import { Play } from 'lucide-react';
 import {
   useSettingsStore,
   type SupertoneApiSettings,
-  type TTSOutputLanguage,
 } from '../../stores/settingsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { usePremiumStore, type SupertoneVoice, type ApiStatus, type ApiVoiceUsageInfo } from './premiumStore';
@@ -138,11 +137,11 @@ export default function PremiumVoiceSettings() {
     });
   }, [setTTSSettings, effectiveApiSettings]);
 
-  // 공용 TTS 출력 언어 우선 (auto 제외), 없으면 apiSettings 폴백
-  const effectiveTtsLanguage =
-    settings.tts.language && settings.tts.language !== 'auto'
-      ? settings.tts.language
-      : effectiveApiSettings.language || 'ko';
+  // 프리미엄 엔진의 언어는 `supertoneApi.language`만을 단일 진실로 사용한다.
+  // 과거에는 공용 `tts.language`(supertonic용)도 함께 동기화해서 supertone-only
+  // 언어(zh 등)를 선택하면 그것이 supertonic 측 설정으로 새어나가는 회귀가 있었다.
+  // 두 엔진 언어 설정을 독립적으로 관리하도록 분리.
+  const effectiveTtsLanguage = effectiveApiSettings.language || 'ko';
 
   /**
    * 새 언어를 선택할 때 현재 `voiceId`가 그 언어를 지원하지 않으면 호환 음성으로
@@ -180,9 +179,11 @@ export default function PremiumVoiceSettings() {
     const supportedLangs = getModelLanguages(model);
     const newLang = supportedLangs.includes(effectiveTtsLanguage) ? effectiveTtsLanguage : 'en';
     const compat = resolveCompatibleVoice(effectiveApiSettings.voiceId, newLang);
+    // NOTE: 공용 `tts.language`(supertonic 전용 진실)는 건드리지 않는다. 프리미엄
+    // 엔진은 `supertoneApi.language`로만 관리되어야 하고, supertone-only 언어
+    // (예: zh)가 supertonic 설정으로 새어나가지 않도록 분리된 채 유지.
     setTTSSettings({
       engine: 'supertone_api',
-      language: newLang as TTSOutputLanguage,
       supertoneApi: {
         ...effectiveApiSettings,
         model: model as SupertoneApiSettings['model'],
@@ -193,11 +194,10 @@ export default function PremiumVoiceSettings() {
   }, [setTTSSettings, effectiveApiSettings, effectiveTtsLanguage, resolveCompatibleVoice]);
 
   const handleLanguageChange = useCallback((language: string) => {
-    // 공용 tts.language와 apiSettings.language 동시 업데이트 (호환 유지) +
-    // 현재 voiceId가 새 언어를 지원하지 않으면 호환 음성으로 자동 전환.
+    // 프리미엄 전용 언어 변경 — 공용 `tts.language`는 건드리지 않는다(supertonic
+    // 사용자가 의도하지 않은 언어로 끌려가는 회귀 방지). voiceId 호환만 검증.
     const compat = resolveCompatibleVoice(effectiveApiSettings.voiceId, language);
     setTTSSettings({
-      language: language as TTSOutputLanguage,
       supertoneApi: {
         ...effectiveApiSettings,
         language,

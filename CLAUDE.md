@@ -141,16 +141,24 @@ const { t } = useTranslation();
 - 원격 세션 감지 시 음성 인식 차단 (텍스트 입력은 사용 가능)
 - TTS 테스트 버튼: 음성 설정 섹션에 위치 (엔진 + TTS 언어 조합별 네이티브 샘플 문장 재생)
 - 오디오 디바이스: 마이크 입력/스피커 출력 독립 선택 + 마이크 피크 미터 + setSinkId 기반 출력 라우팅
-- **대화·음성 언어 선택** (`settings.tts.language`, 기본 `auto`): `auto / ko / en / ja / es / pt / fr`
-  - `auto`는 앱 UI 언어(`settings.language`)를 그대로 따라감 (텍스트 감지 아님)
-  - Supertonic은 ja 미지원 → 런타임에 `en`으로 폴백 + 설정 UI에 경고 표시
-  - 프리미엄 TTS UI 드롭다운과 공용 필드 동기화
+- **대화·음성 언어 — 엔진별 독립 관리**:
+  - 로컬 `supertonic` → `settings.tts.language`(기본 `auto`): `auto / ko / en / ja / es / pt / fr`
+    - `auto`는 앱 UI 언어(`settings.language`)를 그대로 따라감 (텍스트 감지 아님)
+    - Supertonic은 ja 미지원 → 런타임에 `en` 폴백 + 설정 UI 경고
+  - 프리미엄 `supertone_api` → `settings.tts.supertoneApi.language`: 모델 지원 언어 전체(예: zh, de)
+    - 프리미엄 측 언어 변경이 로컬 `tts.language`로 새지 않고 그 반대도 마찬가지
+    - 모델 변경 시 현재 언어가 새 모델 미지원이면 `en`으로 자동 정규화
+    - 언어 변경 시 현재 voiceId가 새 언어 미지원이면 Bella → 첫 호환 음성 → 첫 음성 폴백
   - 프리미엄 엔진 전환 시 `voiceId`가 비어있으면 **Bella**를 기본으로 자동 주입
 
 ### 대화·음성 언어 계약
-- **요구사항**: `settings.language`는 앱 UI 전용, 대화 내용은 `settings.tts.language` 기준. LLM 응답과 TTS 합성이 **같은 언어**를 공유해 발음이 엇갈리지 않도록.
-- **결정자**: `resolveResponseLanguage()` (`src/hooks/useConversation.ts`) — 인자 없음. `tts.language`가 auto이면 UI 언어로, 아니면 명시 값으로. Supertonic + 미지원 언어면 `en` 폴백.
-- **같은 기준 공유**: `supertonicClient.detectLanguage`와 `supertoneApiClient.synthesize` 모두 동일한 계약으로 합성 언어 결정 → LLM 응답과 엇갈림 방지
+- **요구사항**: `settings.language`는 앱 UI 전용. 대화·합성 언어는 **엔진별 단일 진실** 필드(`tts.language` / `supertoneApi.language`)를 따른다.
+- **결정자**: `resolveResponseLanguage()` (`src/hooks/useConversation.ts`) — 엔진 분기.
+  - `supertonic` → `tts.language`(auto면 UI 언어), supertonic 미지원이면 `en` 폴백
+  - `supertone_api` → `supertoneApi.language`(없으면 UI 언어). LLM 프롬프트 템플릿 외 언어(zh 등)는 LLM은 `en`, TTS 합성은 해당 언어 그대로
+- **같은 기준 공유**:
+  - `supertonicClient.detectLanguage` → `tts.language` 기준
+  - `supertoneApiClient.synthesize` → `apiSettings.language` 기준 (모델 미지원 시 `en`)
 - **Layer 0 언어 강제 지시**: `characterProfile.buildCharacterPrompt`가 해당 언어로 "always respond in …" 지시문을 시스템 프롬프트 최상단에 삽입 (ko/en/ja/es/pt/fr)
 - 호출부 통일: `useConversation.sendMessage`, `useClaudeCodeChat`, `proactiveEngine`, `screenWatchService`
 

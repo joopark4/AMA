@@ -148,16 +148,14 @@ export class SupertoneApiClient implements TTSClient {
       await new Promise(resolve => setTimeout(resolve, this.minRequestInterval - elapsed));
     }
 
-    // 언어 결정 — **대화·음성 언어 계약** 준수:
-    //   settings.tts.language !== 'auto' → 명시 값
-    //   settings.tts.language === 'auto' → 앱 UI 언어(settings.language)
-    //   모델 미지원이면 'en'으로 폴백
-    // (apiSettings.language는 v20 이전 레거시 필드이며 현재는 공용 tts.language와
-    //  UI 조작 시점에 동기화되어 있어 별도 우선순위로 취급하지 않는다.)
+    // 언어 결정 — **대화·음성 언어 계약** 준수.
+    // 프리미엄 엔진은 `supertoneApi.language`를 단일 진실로 사용한다. 공용
+    // `tts.language`는 supertonic 전용 필드이므로 여기서는 참조하지 않는다.
+    // - apiSettings.language가 비어있으면 앱 UI 언어로 폴백 (초기 마운트 보호용).
+    // - 모델 지원 언어 목록에 없으면 'en'으로 폴백 — UI에서 미지원 옵션을 노출하지
+    //   않지만 외부 마이그레이션이나 store 손상 등 엣지 케이스 안전망.
     const supportedLanguages = getModelLanguages(apiSettings.model);
-    const ttsOutputLang = settings.tts.language;
-    let language: string =
-      ttsOutputLang && ttsOutputLang !== 'auto' ? ttsOutputLang : settings.language;
+    let language: string = apiSettings.language || settings.language || 'en';
     if (!supportedLanguages.includes(language)) {
       log(`Language '${language}' not supported by ${apiSettings.model}, falling back to 'en'`);
       language = 'en';
