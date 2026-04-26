@@ -141,7 +141,15 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
 let mcpConnected = false;
 
 // --- HTTP 서버 ---
+//
+// 핸들러 전체를 outer try/catch로 감싼다. mcp.notification(), body 스트리밍,
+// JSON.parse 등 모든 await가 throw 가능하며, 잡히지 않으면 unhandled rejection이
+// 되어 클라이언트는 응답 없이 hang한다. 응답이 아직 안 갔으면 500 + 구조화된
+// 에러 코드(INTERNAL_ERROR / INVALID_REQUEST_FORMAT)로 회신해 클라이언트가
+// 명확한 실패 신호를 받도록 한다. 사용자용 한국어/영어 문구는 클라이언트 i18n
+// 레이어에서 매핑한다 (서비스 레이어는 코드만 노출).
 const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+  try {
   if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', pending: pendingReplies.size, mcpConnected }));
@@ -247,6 +255,20 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
   } catch (err) {
     res.writeHead(504, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ id, error: (err as Error).message }));
+  }
+  } catch (err) {
+    console.error('[ama-bridge] Unhandled handler error:', err);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          error: 'INTERNAL_ERROR',
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    } else {
+      try { res.end(); } catch { /* ignore */ }
+    }
   }
 });
 
