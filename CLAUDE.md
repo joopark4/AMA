@@ -128,7 +128,7 @@ const { t } = useTranslation();
 
 ---
 
-## 현재 구현 요약 (v1.5.0)
+## 현재 구현 요약 (v1.9.0)
 
 ### 음성 파이프라인
 - STT: `Whisper(whisper-cli)` 단일 경로

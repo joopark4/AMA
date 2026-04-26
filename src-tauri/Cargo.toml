@@ -1,6 +1,6 @@
 [package]
 name = "AMA"
-version = "1.0.0"
+version = "1.9.0"
 description = "AI Avatar Desktop Companion"
 authors = ["MyPartnerAI"]
 license = "MIT"
