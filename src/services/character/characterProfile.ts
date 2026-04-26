@@ -72,11 +72,35 @@ export const DEFAULT_CHARACTER_PROFILE: CharacterProfile = {
 /**
  * 시스템 프롬프트에서 사용하는 응답 언어.
  *
- * TTS 출력 언어(`settings.tts.language`)에 맞춰 LLM 응답 언어를 고정한다.
- * UI 언어(`settings.language`)는 `auto`일 때의 폴백으로만 쓰이므로 ko/en/ja만
- * 호환된다. es/pt/fr는 TTS 경로에서만 도달할 수 있다.
+ * TTS 출력 언어에 맞춰 LLM 응답 언어를 고정한다. supertonic은 `tts.language`,
+ * supertone_api는 `tts.supertoneApi.language`가 단일 진실. 후자는 supertone
+ * 모델이 지원하는 모든 언어(zh/de/it 등)를 허용하므로 PromptLanguage 타입은
+ * 임의 ISO 639-1 코드를 받을 수 있도록 `string`으로 일반화한다.
+ *
+ * 핵심 6개(ko/en/ja/es/pt/fr)는 native 언어 지시문을 가지고 있어 LLM 응답
+ * 품질이 가장 높다. 그 외 코드는 영어로 작성된 generic directive로 처리.
  */
-export type PromptLanguage = 'ko' | 'en' | 'ja' | 'es' | 'pt' | 'fr';
+export type PromptLanguage = string;
+
+/** Native directive를 가진 핵심 언어 — 그 외는 generic 영문 directive로 폴백. */
+const NATIVE_DIRECTIVE_LANGS = new Set(['ko', 'en', 'ja', 'es', 'pt', 'fr']);
+
+/** ISO 639-1 코드 → 영문 언어명. supertone API 모델 지원 언어 위주. generic
+ *  directive에 사용되며, 미등록 코드는 코드 자체(대문자)를 사용. */
+const LANGUAGE_NAMES_EN: Record<string, string> = {
+  ko: 'Korean', en: 'English', ja: 'Japanese',
+  es: 'Spanish', pt: 'Portuguese', fr: 'French',
+  it: 'Italian', de: 'German', zh: 'Chinese',
+  ru: 'Russian', nl: 'Dutch', pl: 'Polish',
+  sv: 'Swedish', da: 'Danish', fi: 'Finnish',
+  no: 'Norwegian', tr: 'Turkish', ar: 'Arabic',
+  hi: 'Hindi', th: 'Thai', vi: 'Vietnamese',
+  id: 'Indonesian', ms: 'Malay',
+};
+
+export function describeLanguageEn(language: string): string {
+  return LANGUAGE_NAMES_EN[language] || language.toUpperCase();
+}
 
 /**
  * Layer 0: 응답 언어 강제 지시
@@ -85,7 +109,8 @@ export type PromptLanguage = 'ko' | 'en' | 'ja' | 'es' | 'pt' | 'fr';
  * 나머지 레이어가 한국어 지시로 작성되어 있어 영어/일본어 UI에서도 응답이
  * 한국어로 고정되는 문제가 있으므로, 최상단에 명시적 언어 지시를 박아 넣는다.
  *
- * 텍스트는 해당 언어로 작성해 LLM이 확실히 그 언어로 응답하도록 유도한다.
+ * 핵심 6개는 해당 언어 native 텍스트로, 그 외(it/zh/de 등)는 영문 directive로
+ * 작성한다. LLM 입장에선 영문이라도 강한 지시면 해당 언어로 응답한다.
  */
 function buildLanguageLayer(language: PromptLanguage): string {
   switch (language) {
@@ -100,9 +125,18 @@ function buildLanguageLayer(language: PromptLanguage): string {
     case 'fr':
       return "Répondez toujours en français, quelle que soit la langue utilisée dans les messages précédents. Ne changez pas de langue sauf si l'utilisateur demande explicitement une traduction.";
     case 'ko':
-    default:
       return '사용자가 명시적으로 다른 언어를 요청하지 않는 한, 반드시 한국어로 응답합니다.';
+    default: {
+      // 핵심 6개 외 — 영문 generic directive로 강한 언어 지시.
+      const name = describeLanguageEn(language);
+      return `Always respond in ${name}, regardless of the language used in the prompt above or below. Do not switch to another language unless the user explicitly asks for a translation.`;
+    }
   }
+}
+
+/** Layer 0 native 지원 여부 — 디버깅·UI 표시용 export. */
+export function hasNativeLanguageDirective(language: string): boolean {
+  return NATIVE_DIRECTIVE_LANGS.has(language);
 }
 
 /**

@@ -20,6 +20,7 @@ import {
   analyzeEmotion,
   emotionToVec,
   NEUTRAL_MOOD,
+  describeLanguageEn,
   type PromptLanguage,
 } from '../services/character';
 import { ttsQueue } from '../services/voice/ttsQueue';
@@ -37,20 +38,9 @@ const log = (...args: any[]) => {
 };
 
 /** Supertonic(로컬 TTS)이 네이티브 지원하는 언어 — 이 외는 런타임에 `en`으로 폴백된다. */
-const SUPERTONIC_NATIVE_LANGS: ReadonlySet<PromptLanguage> = new Set<PromptLanguage>([
+const SUPERTONIC_NATIVE_LANGS: ReadonlySet<string> = new Set([
   'ko', 'en', 'es', 'pt', 'fr',
 ]);
-
-/** LLM 응답 언어로 다룰 수 있는 PromptLanguage 화이트리스트 — supertone-only 언어
- *  (zh/de 등)는 LLM 프롬프트 템플릿에 대응 항목이 없어 'en'으로 폴백한다. */
-const PROMPT_LANGUAGES: ReadonlySet<string> = new Set([
-  'ko', 'en', 'ja', 'es', 'pt', 'fr',
-]);
-
-function toPromptLanguage(value: string | undefined): PromptLanguage {
-  if (value && PROMPT_LANGUAGES.has(value)) return value as PromptLanguage;
-  return 'en';
-}
 
 /**
  * 대화·음성 언어(LLM 응답 + TTS 합성) 결정.
@@ -59,27 +49,30 @@ function toPromptLanguage(value: string | undefined): PromptLanguage {
  * - `settings.language`는 **앱 UI 전용**(메뉴/라벨)이며 대화 언어에 영향 없음.
  * - 엔진별로 별도 언어 필드를 단일 진실로 사용한다 (두 엔진 언어는 독립 관리):
  *   - `supertonic` → `settings.tts.language` (auto / ko / en / ja / es / pt / fr)
- *   - `supertone_api` → `settings.tts.supertoneApi.language` (모델 지원 언어 전체)
+ *   - `supertone_api` → `settings.tts.supertoneApi.language` (모델 지원 언어 전체,
+ *     it/zh/de 등 임의 ISO 639-1 코드)
  * - `auto`는 supertonic 측 한정으로 "앱 UI 언어를 그대로 따라감"을 의미.
  * - 엔진 제약:
  *   - Supertonic은 `ja`를 지원하지 않으므로 `ja` 선택 시 `en`으로 폴백.
- *   - 프리미엄에서 zh 등 LLM 템플릿이 없는 언어를 선택했다면 `en` 폴백
- *     (TTS 합성은 그대로 zh로 진행하지만 LLM 응답 텍스트는 영어로).
+ *   - 프리미엄은 supertone API 모델 지원 언어를 그대로 LLM 응답 언어로 사용한다.
+ *     캐릭터 프롬프트의 Layer 0 언어 지시(`buildLanguageLayer`)가 핵심 6개 외에는
+ *     영문 generic directive로 처리해 LLM이 해당 언어로 응답하도록 유도.
  */
 export function resolveResponseLanguage(): PromptLanguage {
   const { settings } = useSettingsStore.getState();
   const engine = settings.tts.engine;
 
-  // 프리미엄: supertoneApi.language를 단일 진실로 사용.
+  // 프리미엄: supertoneApi.language 그대로 사용. it/zh/de 등 LLM 템플릿이 없는
+  // 언어도 그대로 반환 — 프롬프트 빌더가 generic directive로 LLM에게 그 언어로
+  // 응답하도록 강제한다.
   if (engine === 'supertone_api') {
-    const apiLang = settings.tts.supertoneApi?.language;
-    return toPromptLanguage(apiLang || settings.language);
+    return settings.tts.supertoneApi?.language || settings.language;
   }
 
   // 로컬 supertonic: 공용 tts.language.
   const tts = settings.tts.language;
   const base: PromptLanguage =
-    tts && tts !== 'auto' ? (tts as PromptLanguage) : (settings.language as PromptLanguage);
+    tts && tts !== 'auto' ? tts : settings.language;
 
   if (!SUPERTONIC_NATIVE_LANGS.has(base)) {
     return 'en';
@@ -87,17 +80,21 @@ export function resolveResponseLanguage(): PromptLanguage {
   return base;
 }
 
+interface LegacyPromptTemplate {
+  header: (name: string) => string;
+  languageDirective: string;
+  personalityHeader: string;
+  personalityFooter: string;
+}
+
 /**
  * 응답 언어별 폴백 기본 프롬프트 지시문 — 캐릭터 프로필이 비었을 때만 사용.
  *
- * `PromptLanguage`(ko/en/ja/es/pt/fr) 전 언어를 커버해야 한다. 과거 ko/en/ja만 두고
- * 그 외는 en으로 강제 폴백했더니, 사용자가 `tts.language`로 es/pt/fr를 선택하고
- * 캐릭터 프로필이 비어있는 상태에선 LLM 응답이 영어로만 나오는 회귀가 있었다.
+ * 핵심 6개(ko/en/ja/es/pt/fr)에는 native 템플릿이 있다. 그 외 언어(it/zh/de 등
+ * supertone API 모델 지원 언어)에는 `buildGenericLegacyTemplate()`이 영문 base에
+ * 명시적 언어 directive를 붙여 LLM이 해당 언어로 응답하도록 강제한다.
  */
-const LEGACY_PROMPT_TEMPLATES: Record<
-  PromptLanguage,
-  { header: (name: string) => string; languageDirective: string; personalityHeader: string; personalityFooter: string }
-> = {
+const LEGACY_PROMPT_TEMPLATES: Partial<Record<string, LegacyPromptTemplate>> = {
   ko: {
     header: (name: string) => `당신은 "${name}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
@@ -173,6 +170,27 @@ Règles :
 };
 
 /**
+ * 핵심 6개 외 언어용 generic legacy template — 영문 base + 명시적 언어 directive.
+ * supertone API 모델이 지원하는 it/zh/de/ru 등에서 캐릭터 프로필이 비어있을 때
+ * LLM이 해당 언어로 응답하도록 강제한다.
+ */
+function buildGenericLegacyTemplate(language: string): LegacyPromptTemplate {
+  const name = describeLanguageEn(language);
+  return {
+    header: (n: string) => `You are an AI assistant named "${n}" — friendly and cute.
+Personality: Bright, positive, treating the user like a friend.
+Tone: Casual, short, natural conversational style.
+Rules:
+- Do not use emoji
+- Keep replies to about 2-3 sentences
+- Show empathy and emotional expression`,
+    languageDirective: `- Always respond in ${name} unless the user explicitly asks for another language`,
+    personalityHeader: 'Additional personality guide (user-specified):',
+    personalityFooter: 'Apply the user-specified guide above together with the base personality, giving it priority.',
+  };
+}
+
+/**
  * 시스템 프롬프트 빌드 — 캐릭터 프로필 기반
  *
  * @param avatarName 레거시 아바타 이름
@@ -194,19 +212,21 @@ export function buildSystemPrompt(
     return buildCharacterPrompt(character, effectiveLanguage);
   }
 
-  // 폴백: 프로필이 없으면 기본 템플릿. PromptLanguage 전 언어(ko/en/ja/es/pt/fr)에
-  // 대해 native 템플릿이 있으므로 강제 폴백 없이 그대로 사용한다.
+  // 폴백: 프로필이 없으면 기본 템플릿. 핵심 6개(ko/en/ja/es/pt/fr)는 native
+  // 템플릿을, 그 외(it/zh/de 등 supertone API 언어)는 영문 base + generic
+  // languageDirective로 폴백해 LLM이 해당 언어로 응답하도록 강제한다.
   // Layer 0 언어 지시는 buildCharacterPrompt 경로에서만 박히므로, legacy 경로에서는
   // template 내부의 languageDirective가 LLM 응답 언어를 강제한다.
-  const templateLanguage: PromptLanguage = effectiveLanguage;
-  const template = LEGACY_PROMPT_TEMPLATES[templateLanguage];
+  const nativeTemplate = LEGACY_PROMPT_TEMPLATES[effectiveLanguage];
+  const template = nativeTemplate ?? buildGenericLegacyTemplate(effectiveLanguage);
   const fallbackName =
-    templateLanguage === 'ja' ? 'アバター'
-    : templateLanguage === 'en' ? 'Avatar'
-    : templateLanguage === 'es' ? 'Asistente'
-    : templateLanguage === 'pt' ? 'Assistente'
-    : templateLanguage === 'fr' ? 'Assistant'
-    : '아바타';
+    effectiveLanguage === 'ja' ? 'アバター'
+    : effectiveLanguage === 'en' ? 'Avatar'
+    : effectiveLanguage === 'es' ? 'Asistente'
+    : effectiveLanguage === 'pt' ? 'Assistente'
+    : effectiveLanguage === 'fr' ? 'Assistant'
+    : effectiveLanguage === 'ko' ? '아바타'
+    : 'Avatar';
   const normalizedName = avatarName.trim() || fallbackName;
   const basePrompt = `${template.header(normalizedName)}
 ${template.languageDirective}`;

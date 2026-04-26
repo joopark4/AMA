@@ -18,6 +18,8 @@ export {
   DEFAULT_CHARACTER_PROFILE,
   buildCharacterPrompt,
   migrateFromLegacy,
+  describeLanguageEn,
+  hasNativeLanguageDirective,
 } from './characterProfile';
 
 // 프리셋

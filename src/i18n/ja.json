@@ -70,9 +70,9 @@
       "collapse": "折りたたむ"
     },
     "voice": {
-      "title": "音声",
+      "title": "音声（ローカル）",
       "stt": {
-        "title": "音声認識（STT）",
+        "title": "音声認識（ローカルSTT）",
         "engine": "エンジン",
         "model": "モデル",
         "whisperInfo": "ローカルwhisper-cli音声認識を使用",
@@ -87,15 +87,15 @@
         }
       },
       "tts": {
-        "title": "音声合成（TTS）",
+        "title": "音声合成（ローカルTTS）",
         "engine": "エンジン",
         "voice": "音声",
         "supertonicInfo": "高品質ローカルTTS - 韓国語/英語対応",
         "speaker": "出力デバイス",
         "speakerDefault": "システムデフォルト",
         "speakerNotFound": "出力デバイスが見つかりません",
-        "language": "会話・音声の言語",
-        "languageDesc": "AIの返答とTTSの発声に共通で使われる言語です。アプリのUI言語（メニュー・ラベル）とは分離されています。",
+        "language": "ローカル音声の言語",
+        "languageDesc": "ローカルTTSの発声に使われる言語です。プレミアム（Supertone API）言語とは分けて管理されます。",
         "languageAuto": "アプリの言語を使用",
         "languageUnsupportedLocal": "ローカルTTS（Supertonic）はこの言語に対応していないため、英語に切り替わります。プレミアム音声に切り替えるとより多くの言語が使えます。",
         "engines": {
@@ -572,25 +572,82 @@
       "channels": "Channels",
       "proactive": "自発的会話"
     },
-    "avatarHidden": { "title": "アバターを隠す", "desc": "アバターを一時的に非表示" },
-    "freeMovement": { "title": "自由移動モード", "desc": "ドラッグでどこへでも配置" },
-    "autoRoam": { "title": "自動徘徊", "desc": "ゆっくりと自動で動く" },
-    "showSpeechBubble": { "title": "吹き出し表示", "desc": "AI応答を吹き出しで表示" },
-    "physics": { "title": "物理シミュレーション", "desc": "髪・服の揺れ" },
-    "lightingControl": { "title": "ライティングコントロール", "desc": "ドラッグ可能な太陽アイコン" },
-    "faceOnly": { "title": "表情のみモード", "desc": "体は動かさず表情だけ" },
-    "breathing": { "title": "呼吸", "desc": "静かな胸の動き" },
-    "eyeDrift": { "title": "視線ドリフト", "desc": "ランダムな視線移動" },
-    "gazeFollow": { "title": "視線追従", "desc": "カーソルを目で追う" },
-    "backchannel": { "title": "うなずき", "desc": "聞いている間に小さくうなずく" },
-    "gestures": { "title": "ジェスチャー", "desc": "感情に応じた手の動き" },
-    "motionClips": { "title": "モーションクリップ", "desc": "モーションライブラリを使用" },
-    "dancing": { "title": "ダンス", "desc": "嬉しい時に踊る" },
-    "globalShortcut": { "title": "グローバルショートカット", "desc": "ホットキーで音声入力" },
-    "screenWatch": { "title": "画面観察", "desc": "周期的に画面を見て発話" },
-    "silentHours": { "title": "サイレント時間帯", "desc": "指定時間は画面観察を休止" },
-    "channels": { "title": "Claude Code Channels", "desc": "外部 Claude Code と双方向接続" },
-    "proactive": { "title": "自発的会話", "desc": "話したいことがあれば先に話しかける" }
+    "avatarHidden": {
+      "title": "アバターを隠す",
+      "desc": "アバターを一時的に非表示"
+    },
+    "freeMovement": {
+      "title": "自由移動モード",
+      "desc": "ドラッグでどこへでも配置"
+    },
+    "autoRoam": {
+      "title": "自動徘徊",
+      "desc": "ゆっくりと自動で動く"
+    },
+    "showSpeechBubble": {
+      "title": "吹き出し表示",
+      "desc": "AI応答を吹き出しで表示"
+    },
+    "physics": {
+      "title": "物理シミュレーション",
+      "desc": "髪・服の揺れ"
+    },
+    "lightingControl": {
+      "title": "ライティングコントロール",
+      "desc": "ドラッグ可能な太陽アイコン"
+    },
+    "faceOnly": {
+      "title": "表情のみモード",
+      "desc": "体は動かさず表情だけ"
+    },
+    "breathing": {
+      "title": "呼吸",
+      "desc": "静かな胸の動き"
+    },
+    "eyeDrift": {
+      "title": "視線ドリフト",
+      "desc": "ランダムな視線移動"
+    },
+    "gazeFollow": {
+      "title": "視線追従",
+      "desc": "カーソルを目で追う"
+    },
+    "backchannel": {
+      "title": "うなずき",
+      "desc": "聞いている間に小さくうなずく"
+    },
+    "gestures": {
+      "title": "ジェスチャー",
+      "desc": "感情に応じた手の動き"
+    },
+    "motionClips": {
+      "title": "モーションクリップ",
+      "desc": "モーションライブラリを使用"
+    },
+    "dancing": {
+      "title": "ダンス",
+      "desc": "嬉しい時に踊る"
+    },
+    "globalShortcut": {
+      "title": "グローバルショートカット",
+      "desc": "ホットキーで音声入力"
+    },
+    "screenWatch": {
+      "title": "画面観察",
+      "desc": "周期的に画面を見て発話"
+    },
+    "silentHours": {
+      "title": "サイレント時間帯",
+      "desc": "指定時間は画面観察を休止"
+    },
+    "channels": {
+      "title": "Claude Code Channels",
+      "desc": "外部 Claude Code と双方向接続"
+    },
+    "proactive": {
+      "title": "自発的会話",
+      "desc": "話したいことがあれば先に話しかける"
+    }
   },
   "quickActions": {
     "title": "よく使う機能",
