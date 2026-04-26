@@ -48,7 +48,12 @@ export class CodexClient implements LLMClient {
           let myTurnId: string | null = null;
 
           unlistens.push(await listen<CodexCompleteEvent>('codex-complete', (event) => {
-            if (myTurnId && event.payload.turnId !== myTurnId) return;
+            // myTurnId가 아직 할당되지 않은 시점(invokeMessage가 turnId를 돌려주기 전)에
+            // 도착하는 complete는 모두 다른 턴(이전 턴 또는 동시 진행 턴) 소속이다.
+            // 무시하지 않으면 이전 턴의 응답을 자기 응답으로 잘못 resolve해 코러션이
+            // 발생한다(Screen Watch ↔ 일반 채팅 동시 실행 시 재현).
+            if (!myTurnId) return;
+            if (event.payload.turnId !== myTurnId) return;
             clearTimeout(timeout);
             cleanup();
             resolve({ content: event.payload.text, finishReason: 'stop' });
@@ -100,15 +105,20 @@ export class CodexClient implements LLMClient {
           let myTurnId: string | null = null;
 
           unlistens.push(await listen<CodexTokenEvent>('codex-token', (event) => {
-            if (myTurnId && event.payload.itemId && !event.payload.itemId.includes(myTurnId)) {
-              // turnId 기반 필터링은 token 이벤트에서는 하지 않음 (itemId 형식이 다름)
-            }
+            // turnId가 채워지기 전 도착한 토큰, 또는 다른 턴의 itemId가 들어온 토큰은
+            // 누적하지 않는다. 이전엔 if 조건에 빈 본문을 둬 항상 누적했고, 동시 턴
+            // 실행 시 다른 요청의 토큰이 fullResponse에 섞여 corrupted 응답이
+            // 만들어졌다.
+            if (!myTurnId) return;
+            if (event.payload.itemId && !event.payload.itemId.includes(myTurnId)) return;
             fullResponse += event.payload.text;
             callbacks.onToken?.(event.payload.text);
           }));
 
           unlistens.push(await listen<CodexCompleteEvent>('codex-complete', (event) => {
-            if (myTurnId && event.payload.turnId !== myTurnId) return;
+            // chat()과 동일 정책: turnId가 아직 없으면 다른 턴의 complete로 간주.
+            if (!myTurnId) return;
+            if (event.payload.turnId !== myTurnId) return;
             clearTimeout(timeout);
             cleanup();
             callbacks.onComplete?.(fullResponse);
