@@ -15,6 +15,20 @@ import { invoke } from '@tauri-apps/api/core';
 import { emotionTuningGlobal, getEmotionTuning } from '../config/emotionTuning';
 import { selectMotionClip } from '../services/avatar/motionSelector';
 import { useClaudeCodeChat } from '../features/channels';
+import {
+  buildCharacterPrompt,
+  analyzeEmotion,
+  emotionToVec,
+  NEUTRAL_MOOD,
+  describeLanguageEn,
+  type PromptLanguage,
+} from '../services/character';
+import { ttsQueue } from '../services/voice/ttsQueue';
+import { buildMessageWindow, summarizeIfNeeded } from '../services/ai/memoryManager';
+import { proactiveEngine } from '../services/ai/proactiveEngine';
+import { presenceTracker } from '../services/presence/presenceTracker';
+import { processExternalResponse } from '../features/channels/responseProcessor';
+import { collectContext, formatContextForPrompt } from '../services/context';
 
 // Helper function to log to terminal
 const log = (...args: any[]) => {
@@ -23,16 +37,199 @@ const log = (...args: any[]) => {
   invoke('log_to_terminal', { message: `[useConversation] ${message}` }).catch(() => {});
 };
 
-export function buildSystemPrompt(avatarName: string, personalityPrompt: string): string {
-  const normalizedName = avatarName.trim() || '아바타';
-  const basePrompt = `당신은 "${normalizedName}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
+/** Supertonic(로컬 TTS)이 네이티브 지원하는 언어 — 이 외는 런타임에 `en`으로 폴백된다. */
+const SUPERTONIC_NATIVE_LANGS: ReadonlySet<string> = new Set([
+  'ko', 'en', 'es', 'pt', 'fr',
+]);
+
+/**
+ * 대화·음성 언어(LLM 응답 + TTS 합성) 결정.
+ *
+ * 요구사항 정리:
+ * - `settings.language`는 **앱 UI 전용**(메뉴/라벨)이며 대화 언어에 영향 없음.
+ * - 엔진별로 별도 언어 필드를 단일 진실로 사용한다 (두 엔진 언어는 독립 관리):
+ *   - `supertonic` → `settings.tts.language` (auto / ko / en / ja / es / pt / fr)
+ *   - `supertone_api` → `settings.tts.supertoneApi.language` (모델 지원 언어 전체,
+ *     it/zh/de 등 임의 ISO 639-1 코드)
+ * - `auto`는 supertonic 측 한정으로 "앱 UI 언어를 그대로 따라감"을 의미.
+ * - 엔진 제약:
+ *   - Supertonic은 `ja`를 지원하지 않으므로 `ja` 선택 시 `en`으로 폴백.
+ *   - 프리미엄은 supertone API 모델 지원 언어를 그대로 LLM 응답 언어로 사용한다.
+ *     캐릭터 프롬프트의 Layer 0 언어 지시(`buildLanguageLayer`)가 핵심 6개 외에는
+ *     영문 generic directive로 처리해 LLM이 해당 언어로 응답하도록 유도.
+ */
+export function resolveResponseLanguage(): PromptLanguage {
+  const { settings } = useSettingsStore.getState();
+  const engine = settings.tts.engine;
+
+  // 프리미엄: supertoneApi.language 그대로 사용. it/zh/de 등 LLM 템플릿이 없는
+  // 언어도 그대로 반환 — 프롬프트 빌더가 generic directive로 LLM에게 그 언어로
+  // 응답하도록 강제한다.
+  if (engine === 'supertone_api') {
+    return settings.tts.supertoneApi?.language || settings.language;
+  }
+
+  // 로컬 supertonic: 공용 tts.language.
+  const tts = settings.tts.language;
+  const base: PromptLanguage =
+    tts && tts !== 'auto' ? tts : settings.language;
+
+  if (!SUPERTONIC_NATIVE_LANGS.has(base)) {
+    return 'en';
+  }
+  return base;
+}
+
+interface LegacyPromptTemplate {
+  header: (name: string) => string;
+  languageDirective: string;
+  personalityHeader: string;
+  personalityFooter: string;
+}
+
+/**
+ * 응답 언어별 폴백 기본 프롬프트 지시문 — 캐릭터 프로필이 비었을 때만 사용.
+ *
+ * 핵심 6개(ko/en/ja/es/pt/fr)에는 native 템플릿이 있다. 그 외 언어(it/zh/de 등
+ * supertone API 모델 지원 언어)에는 `buildGenericLegacyTemplate()`이 영문 base에
+ * 명시적 언어 directive를 붙여 LLM이 해당 언어로 응답하도록 강제한다.
+ */
+const LEGACY_PROMPT_TEMPLATES: Partial<Record<string, LegacyPromptTemplate>> = {
+  ko: {
+    header: (name: string) => `당신은 "${name}"이라는 이름의 친근하고 귀여운 AI 어시스턴트입니다.
 성격: 밝고 긍정적이며, 사용자를 친구처럼 대합니다.
 말투: 반말을 사용하고, 짧고 자연스러운 대화체로 말합니다.
 특징:
 - 이모티콘은 사용하지 않습니다
 - 답변은 2-3문장 정도로 짧게 합니다
-- 공감과 감정 표현을 잘합니다
-- 한국어로 대화합니다`;
+- 공감과 감정 표현을 잘합니다`,
+    languageDirective: '- 사용자가 다른 언어를 명시적으로 요청하지 않는 한 한국어로 대화합니다',
+    personalityHeader: '추가 성격 가이드(사용자 지정):',
+    personalityFooter: '위 사용자 지정 가이드를 기본 성격과 함께 우선 반영하세요.',
+  },
+  en: {
+    header: (name: string) => `You are an AI assistant named "${name}" — friendly and cute.
+Personality: Bright, positive, treating the user like a friend.
+Tone: Casual, short, natural conversational style.
+Rules:
+- Do not use emoji
+- Keep replies to about 2-3 sentences
+- Show empathy and emotional expression`,
+    languageDirective: '- Always respond in English unless the user explicitly asks for another language',
+    personalityHeader: 'Additional personality guide (user-specified):',
+    personalityFooter: 'Apply the user-specified guide above together with the base personality, giving it priority.',
+  },
+  ja: {
+    header: (name: string) => `あなたは "${name}" という名前のフレンドリーで可愛いAIアシスタントです。
+性格: 明るくポジティブで、ユーザーを友達のように扱います。
+話し方: カジュアルで短く、自然な会話スタイル。
+ルール:
+- 絵文字は使いません
+- 返答は2〜3文程度に留めます
+- 共感と感情表現を大切にします`,
+    languageDirective: '- ユーザーが他の言語を明示的に要求しない限り、必ず日本語で応答します',
+    personalityHeader: '追加の性格ガイド(ユーザー指定):',
+    personalityFooter: '上記のユーザー指定ガイドを基本性格と共に優先的に反映してください。',
+  },
+  es: {
+    header: (name: string) => `Eres una asistente de IA llamada "${name}", amigable y adorable.
+Personalidad: alegre, positiva y trata al usuario como a un amigo.
+Tono: casual, breve y natural en estilo conversacional.
+Reglas:
+- No uses emojis
+- Responde con 2 o 3 frases cortas
+- Muestra empatía y expresión emocional`,
+    languageDirective: '- Responde siempre en español a menos que el usuario pida explícitamente otro idioma',
+    personalityHeader: 'Guía de personalidad adicional (especificada por el usuario):',
+    personalityFooter: 'Aplica la guía indicada por el usuario junto con la personalidad base, dándole prioridad.',
+  },
+  pt: {
+    header: (name: string) => `Você é uma assistente de IA chamada "${name}", amigável e fofa.
+Personalidade: alegre, positiva e trata o usuário como amigo.
+Tom: casual, curto e em estilo de conversa natural.
+Regras:
+- Não use emojis
+- Responda com 2 ou 3 frases curtas
+- Demonstre empatia e expressão emocional`,
+    languageDirective: '- Responda sempre em português, a menos que o usuário peça explicitamente outro idioma',
+    personalityHeader: 'Guia de personalidade adicional (especificado pelo usuário):',
+    personalityFooter: 'Aplique a guia do usuário acima junto com a personalidade base, dando-lhe prioridade.',
+  },
+  fr: {
+    header: (name: string) => `Tu es une assistante IA nommée "${name}", amicale et mignonne.
+Personnalité : joyeuse, positive, traite l'utilisateur comme un ami.
+Ton : décontracté, court, style conversationnel naturel.
+Règles :
+- N'utilise pas d'emoji
+- Réponds en 2 ou 3 phrases courtes
+- Montre de l'empathie et des émotions`,
+    languageDirective: '- Réponds toujours en français sauf si l\'utilisateur demande explicitement une autre langue',
+    personalityHeader: 'Guide de personnalité supplémentaire (spécifié par l\'utilisateur) :',
+    personalityFooter: 'Applique le guide ci-dessus en complément de la personnalité de base, en lui donnant la priorité.',
+  },
+};
+
+/**
+ * 핵심 6개 외 언어용 generic legacy template — 영문 base + 명시적 언어 directive.
+ * supertone API 모델이 지원하는 it/zh/de/ru 등에서 캐릭터 프로필이 비어있을 때
+ * LLM이 해당 언어로 응답하도록 강제한다.
+ */
+function buildGenericLegacyTemplate(language: string): LegacyPromptTemplate {
+  const name = describeLanguageEn(language);
+  return {
+    header: (n: string) => `You are an AI assistant named "${n}" — friendly and cute.
+Personality: Bright, positive, treating the user like a friend.
+Tone: Casual, short, natural conversational style.
+Rules:
+- Do not use emoji
+- Keep replies to about 2-3 sentences
+- Show empathy and emotional expression`,
+    languageDirective: `- Always respond in ${name} unless the user explicitly asks for another language`,
+    personalityHeader: 'Additional personality guide (user-specified):',
+    personalityFooter: 'Apply the user-specified guide above together with the base personality, giving it priority.',
+  };
+}
+
+/**
+ * 시스템 프롬프트 빌드 — 캐릭터 프로필 기반
+ *
+ * @param avatarName 레거시 아바타 이름
+ * @param personalityPrompt 레거시 사용자 지정 성격 프롬프트
+ * @param language 응답 언어 (기본값은 `resolveResponseLanguage()` — TTS 언어 기준)
+ *
+ * @deprecated 레거시 시그니처, sendMessage 내에서 직접 character 프로필 사용 권장
+ */
+export function buildSystemPrompt(
+  avatarName: string,
+  personalityPrompt: string,
+  language?: PromptLanguage
+): string {
+  const effectiveLanguage: PromptLanguage = language ?? resolveResponseLanguage();
+
+  // 레거시 호환: 캐릭터 프로필이 설정되어 있으면 그것을 사용
+  const character = useSettingsStore.getState().settings.character;
+  if (character && (character.name || character.personality.traits.length > 0)) {
+    return buildCharacterPrompt(character, effectiveLanguage);
+  }
+
+  // 폴백: 프로필이 없으면 기본 템플릿. 핵심 6개(ko/en/ja/es/pt/fr)는 native
+  // 템플릿을, 그 외(it/zh/de 등 supertone API 언어)는 영문 base + generic
+  // languageDirective로 폴백해 LLM이 해당 언어로 응답하도록 강제한다.
+  // Layer 0 언어 지시는 buildCharacterPrompt 경로에서만 박히므로, legacy 경로에서는
+  // template 내부의 languageDirective가 LLM 응답 언어를 강제한다.
+  const nativeTemplate = LEGACY_PROMPT_TEMPLATES[effectiveLanguage];
+  const template = nativeTemplate ?? buildGenericLegacyTemplate(effectiveLanguage);
+  const fallbackName =
+    effectiveLanguage === 'ja' ? 'アバター'
+    : effectiveLanguage === 'en' ? 'Avatar'
+    : effectiveLanguage === 'es' ? 'Asistente'
+    : effectiveLanguage === 'pt' ? 'Assistente'
+    : effectiveLanguage === 'fr' ? 'Assistant'
+    : effectiveLanguage === 'ko' ? '아바타'
+    : 'Avatar';
+  const normalizedName = avatarName.trim() || fallbackName;
+  const basePrompt = `${template.header(normalizedName)}
+${template.languageDirective}`;
 
   const normalizedPersonalityPrompt = personalityPrompt.trim();
   if (!normalizedPersonalityPrompt) {
@@ -41,10 +238,10 @@ export function buildSystemPrompt(avatarName: string, personalityPrompt: string)
 
   return `${basePrompt}
 
-추가 성격 가이드(사용자 지정):
+${template.personalityHeader}
 ${normalizedPersonalityPrompt}
 
-위 사용자 지정 가이드를 기본 성격과 함께 우선 반영하세요.`;
+${template.personalityFooter}`;
 }
 
 function isTauriDesktopRuntime(): boolean {
@@ -142,38 +339,7 @@ function isScreenRequest(text: string): boolean {
   return /(화면|스크린|screen)/i.test(text);
 }
 
-interface EmotionMatch {
-  emotion: Emotion;
-  score: number;
-}
-
-const EMOTION_KEYWORDS: Record<Emotion, string[]> = {
-  neutral: [],
-  happy: ['happy', 'great', 'love', 'awesome', '좋아', '행복', '기뻐', '최고', '고마워'],
-  sad: ['sad', 'sorry', 'unfortunately', '슬퍼', '미안', '힘들', '우울', '걱정'],
-  angry: ['angry', 'annoyed', 'frustrated', '화나', '짜증', '열받', '빡쳐'],
-  surprised: ['wow', 'surprised', 'amazing', '대박', '놀라', '헉', '와'],
-  relaxed: ['calm', 'relaxed', 'peaceful', '차분', '편안', '여유'],
-  thinking: ['think', 'maybe', 'hmm', '음', '생각', '고민', '글쎄'],
-};
-
-function analyzeEmotion(text: string): EmotionMatch {
-  const normalized = text.toLowerCase();
-  let best: EmotionMatch = { emotion: 'neutral', score: 0 };
-
-  for (const [emotion, keywords] of Object.entries(EMOTION_KEYWORDS) as [Emotion, string[]][]) {
-    if (emotion === 'neutral') continue;
-    let score = 0;
-    for (const keyword of keywords) {
-      if (normalized.includes(keyword)) score += 1;
-    }
-    if (score > best.score) {
-      best = { emotion, score };
-    }
-  }
-
-  return best;
-}
+// analyzeEmotion은 src/services/character/analyzeEmotion.ts에서 import
 
 function pickGesture(emotion: Emotion, text: string): GestureType {
   const normalized = text.toLowerCase();
@@ -290,6 +456,10 @@ export function useConversation(): UseConversationReturn {
   const {
     addMessage,
     setCurrentResponse,
+    setStreamingResponse,
+    appendStreamingToken,
+    setMemory,
+    setMoodTarget,
     setStatus,
     clearCurrentResponse,
     clearMessages,
@@ -337,29 +507,36 @@ export function useConversation(): UseConversationReturn {
     speakOut = true
   ) => {
     addMessage({ role: 'assistant', content: message });
-    setCurrentResponse(message);
+    clearCurrentResponse(); // 이전 말풍선 즉시 제거
     setEmotion(emotion);
 
     if (speakOut) {
       setStatus('speaking');
       try {
-        await speak(message);
+        await speak(message, {
+          onPlaybackStart: () => {
+            setCurrentResponse(message);
+          },
+        });
       } catch (err) {
         log('Voice command TTS error:', err);
       }
+      // TTS 실패 시에도 새 응답 말풍선 보장
+      if (useConversationStore.getState().currentResponse !== message) {
+        setCurrentResponse(message);
+      }
       setStatus('idle');
     } else {
+      setCurrentResponse(message);
       setStatus('idle');
     }
 
-    const responseHoldMs = Math.max(
-      emotionTuningGlobal.responseClearMs,
-      getEmotionTuning(emotion).expressionHoldMs
-    );
+    setTimeout(() => {
+      clearCurrentResponse();
+    }, emotionTuningGlobal.responseClearMs);
     setTimeout(() => {
       setEmotion('neutral');
-      clearCurrentResponse();
-    }, responseHoldMs);
+    }, getEmotionTuning(emotion).expressionHoldMs);
   }, [addMessage, setCurrentResponse, setEmotion, setStatus, speak, clearCurrentResponse]);
 
   const triggerEmotionMotion = useCallback(
@@ -586,6 +763,7 @@ export function useConversation(): UseConversationReturn {
         return true;
       }
       case 'stop-speaking': {
+        ttsQueue.flush();
         stopSpeaking();
         clearCurrentResponse();
         await showVoiceCommandFeedback(
@@ -625,15 +803,16 @@ export function useConversation(): UseConversationReturn {
   // Send message to LLM and get response
   const sendMessage = useCallback(async (text: string) => {
     log('sendMessage called with:', text);
+    proactiveEngine.notifyUserActivity();
 
     if (!text.trim()) {
       log('Empty text, returning');
       return;
     }
 
-    // Claude Code 모드: 비동기 처리 (입력 비차단, 타임아웃 없음)
-    if (isClaudeCodeProvider()) {
-      // fire-and-forget: 응답 대기 중에도 새 입력 가능
+    // Claude Code / Codex: 비동기 처리 (fire-and-forget, 입력 비차단)
+    const currentProvider = useSettingsStore.getState().settings.llm.provider;
+    if (isClaudeCodeProvider() || currentProvider === 'codex') {
       setError(null);
       sendToClaudeCode(text, (errMsg) => setError(errMsg));
       return;
@@ -644,7 +823,9 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
-    const userEmotionMatch = analyzeEmotion(text);
+    const currentCharacter = useSettingsStore.getState().settings.character;
+    const archetype = currentCharacter?.personality?.archetype;
+    const userEmotionMatch = analyzeEmotion(text, archetype);
     if (userEmotionMatch.score > 0) {
       setEmotion(userEmotionMatch.emotion);
       triggerEmotionMotion(userEmotionMatch.emotion, userEmotionMatch.score, text);
@@ -661,28 +842,77 @@ export function useConversation(): UseConversationReturn {
     addMessage({ role: 'user', content: text });
 
     try {
-      // Get current messages from store (fresh)
-      const currentMessages = useConversationStore.getState().messages;
+      // Get current messages + memory from store (fresh)
+      const storeState = useConversationStore.getState();
+      const currentMessages = storeState.messages;
+      const currentMemory = storeState.memory;
 
-      const systemPrompt = buildSystemPrompt(
-        settings.avatarName || '',
-        settings.avatarPersonalityPrompt || ''
+      // 대화·음성 언어는 `settings.tts.language` 기준(auto면 UI 언어 그대로).
+      const responseLanguage = resolveResponseLanguage();
+      const systemPrompt = currentCharacter?.name || currentCharacter?.personality?.traits?.length
+        ? buildCharacterPrompt(currentCharacter, responseLanguage)
+        : buildSystemPrompt(
+            settings.avatarName || '',
+            settings.avatarPersonalityPrompt || '',
+            responseLanguage
+          );
+
+      // Phase 2: 메모리 기반 메시지 윈도우 구성
+      const { memoryContext, recentMessages } = buildMessageWindow(currentMessages, currentMemory);
+
+      // Phase 4: 환경 컨텍스트 수집
+      const contextStr = formatContextForPrompt(collectContext());
+
+      // Phase 5: 지속 감정(mood) 주입 — v2: VAD 연속 감정 기반
+      const { mood: currentMood, moodIntensity } = useConversationStore.getState();
+      // 강도가 약하면(< 0.2) mood 힌트를 생략해 중립 톤 유지
+      const moodHint = currentMood !== 'neutral' && moodIntensity >= 0.2
+        ? `[현재 기분: ${currentMood} (강도 ${moodIntensity.toFixed(2)}) — 이 기분을 대화 톤에 자연스럽게 반영하세요]`
+        : '';
+
+      // 시스템 프롬프트에 메모리 + 환경 컨텍스트 + mood 결합
+      const fullSystemPrompt = [
+        systemPrompt,
+        memoryContext,
+        contextStr,
+        moodHint,
+      ].filter(Boolean).join('\n\n');
+
+      // memoryManager가 생성한 recentMessages 위에 screen-watch 필터를 추가 적용:
+      //   - 'external' 알림은 완전 제외 (buildMessageWindow가 이미 처리)
+      //   - 'screen-watch' 관찰은 전체 기록에서 최근 5개만 포함 (토큰 축적 방지)
+      //
+      // 과거에는 `currentMessages.length - recentMessages.length + idx`로 정렬을
+      // 가정해 recentMessages → currentMessages 인덱스를 역산했지만,
+      // `buildMessageWindow`가 이미 external을 제거한 뒤 slice를 반환하므로 두
+      // 배열이 suffix-aligned가 아니다. external이 중간에 끼면 정렬이 깨져 잘못된
+      // source를 참조해 정상 user/assistant 턴이 누락되던 회귀가 있었다.
+      //
+      // `recentMessages`(role/content)에는 source/id가 없으므로, 같은 필터(external
+      // 제거)를 적용한 currentMessages 슬라이스를 만들어 인덱스 정렬을 보장한다.
+      const SCREEN_WATCH_WINDOW = 5;
+      const screenWatchIdsInWindow = new Set(
+        currentMessages
+          .filter((m) => m.source === 'screen-watch')
+          .slice(-SCREEN_WATCH_WINDOW)
+          .map((m) => m.id)
       );
-
-      // Prepare messages for LLM (외부 알림은 프롬프트에서 제외)
+      const internalCurrent = currentMessages.filter((m) => m.source !== 'external');
+      const recentInternalSlice = internalCurrent.slice(-recentMessages.length);
+      const filteredRecentMessages = recentMessages.filter((_m, idx) => {
+        const aligned = recentInternalSlice[idx];
+        if (!aligned) return true;
+        if (aligned.source === 'screen-watch') return screenWatchIdsInWindow.has(aligned.id);
+        return true;
+      });
       const llmMessages: LLMMessage[] = [
-        { role: 'system', content: systemPrompt },
-        ...currentMessages
-          .filter((m) => m.source !== 'external')
-          .map((m) => ({
-            role: m.role as 'user' | 'assistant' | 'system',
-            content: m.content,
-          })),
+        { role: 'system', content: fullSystemPrompt },
+        ...filteredRecentMessages,
       ];
 
-      log('Sending to LLM:', llmMessages.length, 'messages');
+      log('Sending to LLM:', llmMessages.length, 'messages (window:', recentMessages.length, ')');
 
-      // Screen analysis request route (Vision models only)
+      // Screen analysis request route (Vision models only) — 스트리밍 미적용
       let responseText = '';
       if (isScreenRequest(text)) {
         try {
@@ -695,17 +925,88 @@ export function useConversation(): UseConversationReturn {
           throw screenError;
         }
       } else {
-        const response = await llmRouter.chat(llmMessages, {
-          temperature: 0.7,
-          maxTokens: 1024,
+        // ── 스트리밍 응답 + TTS 큐 파이프라인 (Phase 1) ──
+        setStreamingResponse('');
+        setCurrentResponse('');
+        setStatus('speaking');
+
+        // 립싱크 헬퍼 (TTS 큐에서 문장 재생 시 사용)
+        let lipSyncInterval: ReturnType<typeof setInterval> | null = null;
+        const startLipSync = () => {
+          if (lipSyncInterval) return;
+          let phase = 0;
+          lipSyncInterval = setInterval(() => {
+            phase += 0.3;
+            const v = Math.abs(Math.sin(phase)) * 0.7 + Math.random() * 0.3;
+            useAvatarStore.getState().setLipSyncValue(Math.min(1, v));
+          }, 80);
+        };
+        const stopLipSync = () => {
+          if (lipSyncInterval) {
+            clearInterval(lipSyncInterval);
+            lipSyncInterval = null;
+          }
+          useAvatarStore.getState().setLipSyncValue(0);
+        };
+
+        // TTS 큐 시작
+        ttsQueue.start({
+          ttsOptions: { voice: settings.tts.voice },
+          onLipSyncStart: startLipSync,
+          onLipSyncStop: stopLipSync,
         });
-        responseText = response.content;
-        log('LLM response received:', response.content?.substring(0, 50) + '...');
+
+        // 실시간 감정 추적
+        let lastDetectedEmotion: Emotion = 'neutral';
+
+        responseText = await new Promise<string>((resolve, reject) => {
+          // chatStream은 Promise를 반환 — pre-callback에서 throw하면 onError가 호출되지
+          // 않아 외부 Promise가 영원히 pending될 수 있음. 반환 promise에 .catch(reject)
+          // 부착으로 사전 실패도 반드시 surface.
+          const streamPromise = llmRouter.chatStream(
+            llmMessages,
+            {
+              onToken: (token) => {
+                appendStreamingToken(token);
+                // 말풍선 실시간 업데이트
+                const accumulated = (useConversationStore.getState().streamingResponse ?? '') ;
+                setCurrentResponse(accumulated);
+                // TTS 큐에 토큰 전달 (문장 종결 시 자동 재생)
+                ttsQueue.pushToken(token);
+                // 실시간 감정 분석 (누적 텍스트 기반, 매 토큰마다는 비효율 → 50자마다)
+                if (accumulated.length % 50 < token.length) {
+                  const emotionMatch = analyzeEmotion(accumulated, archetype);
+                  if (emotionMatch.score > 0 && emotionMatch.emotion !== lastDetectedEmotion) {
+                    lastDetectedEmotion = emotionMatch.emotion;
+                    setEmotion(emotionMatch.emotion);
+                    triggerEmotionMotion(emotionMatch.emotion, emotionMatch.score, accumulated, true);
+                  }
+                }
+              },
+              onComplete: (fullResponse) => {
+                log('Streaming complete:', fullResponse.substring(0, 50) + '...');
+                resolve(fullResponse);
+              },
+              onError: (error) => {
+                reject(error);
+              },
+            },
+            { temperature: 0.7, maxTokens: 1024 }
+          );
+          if (streamPromise && typeof (streamPromise as Promise<unknown>).catch === 'function') {
+            void (streamPromise as Promise<unknown>).catch(reject);
+          }
+        });
+
+        // TTS 큐 잔여분 재생 완료 대기
+        await ttsQueue.complete();
+        stopLipSync();
+        setStreamingResponse(null);
       }
 
       setError(null);
 
-      const responseEmotionMatch = analyzeEmotion(responseText);
+      const responseEmotionMatch = analyzeEmotion(responseText, archetype);
       const responseEmotion =
         responseEmotionMatch.score > 0 ? responseEmotionMatch.emotion : 'neutral';
       const faceOnlyModeEnabled =
@@ -713,6 +1014,10 @@ export function useConversation(): UseConversationReturn {
 
       if (responseEmotionMatch.score > 0) {
         setEmotion(responseEmotionMatch.emotion);
+        // v2: VAD 연속 감정 — 매 응답마다 target 설정 후 lerp (강도 임계값 없이 항상 갱신).
+        // score를 alpha에 반영하면 강한 감정일수록 더 빨리 수렴한다 (0.25 ~ 0.55 범위).
+        const alpha = Math.min(0.55, 0.25 + responseEmotionMatch.score * 0.15);
+        setMoodTarget(emotionToVec(responseEmotionMatch.emotion), alpha);
         triggerEmotionMotion(
           responseEmotionMatch.emotion,
           responseEmotionMatch.score,
@@ -725,38 +1030,65 @@ export function useConversation(): UseConversationReturn {
         }
       } else {
         stopDancing();
+        // v2: 감정 없는 응답일 때 neutral로 서서히 수렴 (직행 금지, 한 턴에 20%씩만)
+        setMoodTarget(NEUTRAL_MOOD, 0.2);
       }
 
-      // Add assistant message and show popup immediately
+      // Add assistant message (스트리밍 경로는 ttsQueue가 말풍선/TTS를 이미 동기화했음)
       addMessage({ role: 'assistant', content: responseText });
       setCurrentResponse(responseText);
-      setStatus('speaking');
-      log('Popup shown, starting TTS...');
 
-      // Small delay to ensure React state update is rendered before TTS starts
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // Speak the response (감정 정보를 TTS 옵션으로 전달)
-      try {
-        await speak(responseText, { emotion: responseEmotion });
-        log('TTS completed');
-      } catch (ttsErr) {
-        log('TTS error:', ttsErr);
+      // 화면 분석 요청은 스트리밍 미적용 → develop의 onPlaybackStart 패턴 사용
+      if (isScreenRequest(text)) {
+        clearCurrentResponse(); // stale 말풍선 제거
+        setStatus('speaking');
+        log('Starting TTS for screen analysis (bubble will sync with playback)...');
+        try {
+          await speak(responseText, {
+            emotion: responseEmotion,
+            onPlaybackStart: () => {
+              setCurrentResponse(responseText);
+              log('TTS playback started, bubble shown');
+            },
+          });
+          log('TTS completed');
+        } catch (ttsErr) {
+          log('TTS error:', ttsErr);
+        }
+      }
+      // TTS 실패 또는 onPlaybackStart 미도달 시에도 새 응답 말풍선 보장
+      if (useConversationStore.getState().currentResponse !== responseText) {
+        setCurrentResponse(responseText);
       }
 
-      // Keep response visible for 5 seconds after speaking
+      // Phase 2: 비동기 메모리 요약 (UI 차단 없이 백그라운드 실행)
+      void (async () => {
+        try {
+          const freshMessages = useConversationStore.getState().messages;
+          const freshMemory = useConversationStore.getState().memory;
+          const updated = await summarizeIfNeeded(freshMessages, freshMemory);
+          if (updated) {
+            setMemory(updated);
+            log('Memory updated: summary length', updated.summary.length, 'facts', updated.importantFacts.length);
+          }
+        } catch (err) {
+          log('Memory summarization error (non-fatal):', err);
+        }
+      })();
+
+      // TTS 완료 후: 말풍선은 responseClearMs 후 제거, 표정은 expressionHoldMs 후 초기화
       setStatus('idle');
-      const responseHoldMs = Math.max(
-        emotionTuningGlobal.responseClearMs,
-        getEmotionTuning(responseEmotion).expressionHoldMs
-      );
+      setTimeout(() => {
+        clearCurrentResponse();
+        log('Bubble cleared after', emotionTuningGlobal.responseClearMs, 'ms');
+      }, emotionTuningGlobal.responseClearMs);
       setTimeout(() => {
         setEmotion('neutral');
-        clearCurrentResponse();
-        log('Response cleared after', responseHoldMs, 'ms');
-      }, responseHoldMs);
+      }, getEmotionTuning(responseEmotion).expressionHoldMs);
     } catch (err) {
       log('LLM error:', err);
+      ttsQueue.flush();
+      setStreamingResponse(null);
       const rawErrorMessage = err instanceof Error ? err.message : 'Failed to get response';
       const isRateLimit = /\b429\b|rate.?limit|quota|resource_exhausted|too many requests/i.test(rawErrorMessage);
       const providerLabel =
@@ -787,9 +1119,13 @@ export function useConversation(): UseConversationReturn {
     }
   }, [
     addMessage,
+    settings.character,
     settings.avatarName,
     settings.avatarPersonalityPrompt,
+    settings.tts.voice,
     setCurrentResponse,
+    setStreamingResponse,
+    appendStreamingToken,
     clearCurrentResponse,
     setStatus,
     setEmotion,
@@ -818,6 +1154,30 @@ export function useConversation(): UseConversationReturn {
     };
   }, []);
 
+  // Phase 3 / v2: 자발적 대화 엔진 start/stop (PresenceTracker 연동)
+  useEffect(() => {
+    const proactive = settings.proactive ?? { enabled: false };
+    if (!proactive.enabled) {
+      proactiveEngine.stop();
+      return;
+    }
+
+    // DOM 이벤트 기반 활동 추적 시작 (v2)
+    presenceTracker.bindDOM();
+    presenceTracker.setIdleThresholdMs(proactive.idleMinutes * 60_000);
+
+    proactiveEngine.start((text, trigger) => {
+      log('Proactive message:', trigger, text.substring(0, 50));
+      void processExternalResponse({ text, source: 'internal' });
+    });
+
+    return () => {
+      proactiveEngine.stop();
+      presenceTracker.stop();
+      // DOM 리스너는 유지 (재시작 대비) — 완전 언바인드는 앱 종료 시
+    };
+  }, [settings.proactive?.enabled, settings.proactive?.idleMinutes]);
+
   // Start voice recognition (local Whisper only)
   const startListening = useCallback(async () => {
     if (isListening || isProcessingRef.current) return;
@@ -832,7 +1192,8 @@ export function useConversation(): UseConversationReturn {
       return;
     }
 
-    // Stop any ongoing speech
+    // Stop any ongoing speech + streaming TTS queue
+    ttsQueue.flush();
     stopSpeaking();
     clearCurrentResponse();
     setError(null);
@@ -846,6 +1207,16 @@ export function useConversation(): UseConversationReturn {
     }
 
     try {
+      // 선택된 마이크가 변경되었으면 재초기화
+      const selectedDeviceId = useSettingsStore.getState().settings.stt.audioInputDeviceId;
+      if (audioProcessor.getDeviceId() !== selectedDeviceId) {
+        await audioProcessor.reinitialize(selectedDeviceId);
+        // 폴백 발생 시 (선택 디바이스 분리 등) 설정도 동기화하여 반복 재초기화 방지
+        if (selectedDeviceId && audioProcessor.getDeviceId() !== selectedDeviceId) {
+          useSettingsStore.getState().setSTTSettings({ audioInputDeviceId: audioProcessor.getDeviceId() });
+        }
+      }
+
       await audioProcessor.startRecording();
       localRecordingRef.current = true;
       setTranscript('');

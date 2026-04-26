@@ -1,3 +1,9 @@
+/**
+ * ModelDownloadModal — 첫 실행 시 필수 모델(Supertonic + Whisper) 다운로드 (v2 리디자인).
+ *
+ * 기존 기능 유지: Supertonic/Whisper 상태 표시, 진행률 바, 에러 표시.
+ * 디자인: white/blue → glass-strong + accent + ok/danger 톤.
+ */
 import { useTranslation } from 'react-i18next';
 import { useModelDownloadStore } from '../../stores/modelDownloadStore';
 
@@ -45,68 +51,78 @@ export default function ModelDownloadModal() {
       className="fixed inset-0 z-[230] flex items-center justify-center px-4"
       data-interactive="true"
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-5">
-        <h2 className="text-xl font-semibold text-gray-800">
-          {t('modelDownload.title')}
-        </h2>
-        <p className="text-sm text-gray-600">
-          {t('modelDownload.description')}
-        </p>
-
-        {/* Model list */}
-        <div className="space-y-3">
-          {/* Supertonic */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-700">
-                {t('modelDownload.supertonic')}
-              </p>
-              <p className="text-xs text-gray-500">~257 MB</p>
-            </div>
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${
-                supertonicNeeded
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-green-100 text-green-700'
-              }`}
-            >
-              {supertonicNeeded
-                ? t('modelDownload.required')
-                : t('modelDownload.ready')}
-            </span>
-          </div>
-
-          {/* Whisper base */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-700">
-                {t('modelDownload.whisperBase')}
-              </p>
-              <p className="text-xs text-gray-500">~142 MB</p>
-            </div>
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full ${
-                whisperBaseNeeded
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-green-100 text-green-700'
-              }`}
-            >
-              {whisperBaseNeeded
-                ? t('modelDownload.required')
-                : t('modelDownload.ready')}
-            </span>
-          </div>
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'oklch(0.2 0 0 / 0.55)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+        }}
+      />
+      <div
+        className="glass-strong relative w-full max-w-lg"
+        style={{
+          padding: 24,
+          borderRadius: 'var(--r-lg)',
+          animation: 'scaleIn 280ms var(--ease)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+        }}
+        data-interactive="true"
+      >
+        <div>
+          <h2
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: 'var(--ink)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {t('modelDownload.title')}
+          </h2>
+          <p
+            style={{
+              fontSize: 13,
+              color: 'var(--ink-2)',
+              marginTop: 4,
+              lineHeight: 1.55,
+            }}
+          >
+            {t('modelDownload.description')}
+          </p>
         </div>
 
-        <p className="text-xs text-gray-500">
+        {/* Model list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <ModelRow
+            name={t('modelDownload.supertonic')}
+            size="~257 MB"
+            ready={!supertonicNeeded}
+            readyLabel={t('modelDownload.ready')}
+            requiredLabel={t('modelDownload.required')}
+          />
+          <ModelRow
+            name={t('modelDownload.whisperBase')}
+            size="~142 MB"
+            ready={!whisperBaseNeeded}
+            readyLabel={t('modelDownload.ready')}
+            requiredLabel={t('modelDownload.required')}
+          />
+        </div>
+
+        <p style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
           {t('modelDownload.totalSize', { size: '~400 MB' })}
         </p>
 
         {/* Progress */}
         {isDownloading && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-gray-600">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div
+              className="flex items-center justify-between"
+              style={{ fontSize: 11.5, color: 'var(--ink-2)' }}
+            >
               <span>
                 {progress
                   ? t('modelDownload.fileProgress', {
@@ -116,27 +132,26 @@ export default function ModelDownloadModal() {
                     })
                   : t('modelDownload.downloading')}
               </span>
-              <span>{overallPercent}%</span>
+              <span style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}>
+                {overallPercent}%
+              </span>
             </div>
 
             {/* Overall progress bar */}
-            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                style={{ width: `${overallPercent}%` }}
-              />
-            </div>
+            <ProgressBar percent={overallPercent} />
 
-            {/* File progress bar */}
+            {/* File-level progress */}
             {progress && progress.totalBytes > 0 && (
-              <div className="space-y-1">
-                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-400 rounded-full transition-all duration-200"
-                    style={{ width: `${filePercent}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-400 text-right">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <ProgressBar percent={filePercent} thin />
+                <p
+                  className="text-right"
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--ink-3)',
+                    fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  }}
+                >
                   {formatBytes(progress.downloadedBytes)} / {formatBytes(progress.totalBytes)}
                 </p>
               </div>
@@ -146,16 +161,28 @@ export default function ModelDownloadModal() {
 
         {/* Error */}
         {error && (
-          <p className="text-sm text-red-600">
+          <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>
             {t('modelDownload.error', { error })}
           </p>
         )}
 
         {/* Action button */}
         <button
+          type="button"
           onClick={handleDownload}
           disabled={isDownloading}
-          className="w-full px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full focus-ring"
+          style={{
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: isDownloading ? 'oklch(0.85 0.005 60)' : 'var(--accent)',
+            color: isDownloading ? 'var(--ink-3)' : 'white',
+            fontSize: 13.5,
+            fontWeight: 500,
+            cursor: isDownloading ? 'not-allowed' : 'pointer',
+            transition: 'background 200ms var(--ease)',
+          }}
+          data-interactive="true"
         >
           {isDownloading
             ? t('modelDownload.downloading')
@@ -164,6 +191,82 @@ export default function ModelDownloadModal() {
               : t('modelDownload.startDownload')}
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ─── 보조 컴포넌트 ─── */
+
+function ModelRow({
+  name,
+  size,
+  ready,
+  readyLabel,
+  requiredLabel,
+}: {
+  name: string;
+  size: string;
+  ready: boolean;
+  readyLabel: string;
+  requiredLabel: string;
+}) {
+  return (
+    <div
+      className="flex items-center justify-between"
+      style={{
+        padding: '12px 14px',
+        borderRadius: 12,
+        background: 'oklch(1 0 0 / 0.55)',
+        boxShadow: 'inset 0 0 0 1px var(--hairline)',
+      }}
+    >
+      <div>
+        <p
+          style={{
+            fontSize: 13.5,
+            fontWeight: 500,
+            color: 'var(--ink)',
+          }}
+        >
+          {name}
+        </p>
+        <p style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>{size}</p>
+      </div>
+      <span
+        style={{
+          fontSize: 11,
+          padding: '3px 9px',
+          borderRadius: 99,
+          background: ready ? 'oklch(0.95 0.05 160 / 0.7)' : 'oklch(0.95 0.04 25 / 0.7)',
+          color: ready ? 'var(--ok)' : 'var(--danger)',
+          fontWeight: 600,
+        }}
+      >
+        {ready ? readyLabel : requiredLabel}
+      </span>
+    </div>
+  );
+}
+
+function ProgressBar({ percent, thin }: { percent: number; thin?: boolean }) {
+  return (
+    <div
+      className="w-full overflow-hidden"
+      style={{
+        height: thin ? 4 : 8,
+        background: 'oklch(0.85 0.005 60)',
+        borderRadius: 99,
+      }}
+    >
+      <div
+        style={{
+          width: `${percent}%`,
+          height: '100%',
+          background: 'var(--accent)',
+          borderRadius: 99,
+          transition: 'width 220ms var(--ease)',
+        }}
+      />
     </div>
   );
 }

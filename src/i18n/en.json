@@ -5,7 +5,36 @@
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "Make AMA your own",
+    "manage": "Manage",
+    "guestUser": "Guest",
+    "loggedOut": "Not signed in",
+    "resetAll": "Reset all",
+    "resetConfirm": "Reset every setting? This cannot be undone.",
+    "quickActions": {
+      "title": "Quick actions",
+      "description": "Register frequently used actions to call them from the ✨ icon. Voice triggers are also supported.",
+      "registered": "Registered · {{count}}",
+      "clearAll": "Clear all",
+      "empty": "No actions registered yet. Tick one above to add it."
+    },
     "language": "Language",
+    "pageNav": {
+      "previous": "Previous page",
+      "next": "Next page"
+    },
+    "audioDevice": {
+      "title": "Audio & Microphone",
+      "microphone": "Microphone (Input)",
+      "speaker": "Audio Output",
+      "default": "System Default",
+      "micNotFound": "No microphone found",
+      "speakerNotFound": "No output device found",
+      "inputLevel": "Input Level",
+      "outputLevel": "Output Level",
+      "testSpeaker": "Test",
+      "testing": "Playing..."
+    },
     "account": {
       "title": "Account"
     },
@@ -33,18 +62,24 @@
         "openai": "OpenAI",
         "gemini": "Google Gemini",
         "claude_code": "Claude Code (External)",
-        "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the ama-bridge."
+        "claudeCodeInfo": "Claude Code must be running in an external terminal. Run the claude command in the project directory to auto-start the ama-bridge.",
+        "codex": "OpenAI Codex",
+        "gemini_cli": "Gemini CLI"
       },
       "expand": "Expand",
       "collapse": "Collapse"
     },
     "voice": {
-      "title": "Voice",
+      "title": "Voice (Local)",
       "stt": {
-        "title": "Speech Recognition (STT)",
+        "title": "Speech Recognition (Local STT)",
         "engine": "Engine",
         "model": "Model",
         "whisperInfo": "Local whisper-cli speech recognition",
+        "microphone": "Microphone",
+        "micDefault": "System Default",
+        "micNotFound": "No microphone found",
+        "micFallback": "Selected microphone not found, using default",
         "engines": {
           "whisper": "Whisper",
           "moonshine": "Moonshine",
@@ -52,14 +87,25 @@
         }
       },
       "tts": {
-        "title": "Text-to-Speech (TTS)",
+        "title": "Text-to-Speech (Local TTS)",
         "engine": "Engine",
         "voice": "Voice",
         "supertonicInfo": "High-quality local TTS - Korean/English support",
+        "speaker": "Output Device",
+        "speakerDefault": "System Default",
+        "speakerNotFound": "No output device found",
+        "language": "Local Voice Language",
+        "languageDesc": "Language used by local TTS playback. Separate from Premium (Supertone API) language settings.",
+        "languageAuto": "Follow app language",
+        "languageUnsupportedLocal": "Local TTS (Supertonic) doesn't support this language — English is used instead. Switch to Premium voices for more languages.",
         "engines": {
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",
           "melo": "MeloTTS-Korean"
+        },
+        "voiceLabel": {
+          "female": "Female {{num}}",
+          "male": "Male {{num}}"
         }
       },
       "globalShortcut": {
@@ -117,21 +163,28 @@
       },
       "animation": {
         "title": "Animation",
-        "motionSequenceDemo": "Motion Sequence Demo",
-        "sequenceStop": "Stop",
-        "sequenceStart": "Run Sequence",
-        "sequenceDevOnly": "Dev build only: Announces each motion via speech bubble before sequential playback.",
-        "sequenceProgress": "Running: {{current}}/{{total}}",
-        "sequenceWaiting": "Waiting: {{count}} motions total",
-        "motionClipsWarning": "Cannot start demo while Motion Clips is disabled.",
-        "faceOnlyWarning": "Cannot run demo in Face/Expression Only mode.",
         "faceOnlyMode": "Face/Expression Only Mode",
         "faceOnlyDescription": "Disables full-body motions (clips/gestures/dance) and keeps only facial expressions, head direction, and gaze.",
         "enableMotionClips": "Enable Motion Clips",
         "dynamicMotionBoost": "Dynamic Motion Boost",
         "dynamicBoostStrength": "Boost Strength: {{value}}%",
         "motionDiversity": "Motion Diversity: {{value}}%",
-        "enableGestureFallback": "Enable Gesture Fallback"
+        "enableGestureFallback": "Enable Gesture Fallback",
+        "walkingTitle": "Walking",
+        "enableWalkClips": "Mixamo Walk Clips",
+        "enableWalkClipsDesc": "Natural joint movement walking animation (procedural walk when disabled)",
+        "autoRoam": "Auto Roam",
+        "autoRoamDesc": "Avatar walks around the screen automatically",
+        "autoRoamDisabledByFreeMove": "Not available during Free Movement",
+        "idleTitle": "Idle Behavior",
+        "enableBreathing": "Breathing Animation",
+        "enableBreathingDesc": "Subtle breathing movement when idle",
+        "enableEyeDrift": "Eye Movement",
+        "enableEyeDriftDesc": "Natural micro eye movements",
+        "gazeFollow": "Gaze Follow",
+        "gazeFollowDesc": "Avatar's eyes track the mouse cursor (with subtle saccades when idle)",
+        "backchannel": "Listening Nod",
+        "backchannelDesc": "Periodic nods during voice input to signal \"I'm listening\""
       },
       "physics": {
         "title": "Physics",
@@ -203,8 +256,10 @@
       "voiceInfo": "{{name}} · {{gender}} · {{languages}}",
       "usage": {
         "title": "My Usage",
+        "adminTitle": "API Total Usage",
         "refresh": "Refresh",
         "thisMonth": "This Month",
+        "adminThisMonth": "This Month (All Users)",
         "seconds": "{{value}} sec",
         "characters": "{{value}} chars",
         "requests": "{{value}} requests",
@@ -214,9 +269,25 @@
         "noUsage": "No usage history",
         "loading": "Loading usage..."
       },
+      "voiceUsage": {
+        "title": "Voice Usage (This Month)",
+        "minutes": "{{value}} min"
+      },
       "quota": {
         "title": "Monthly Quota",
+        "adminTitle": "API Total Quota",
+        "betaSharedTitle": "Beta shared quota (consumed by all users)",
+        "betaSharedUnavailable": "Couldn't load the shared balance. Please ask an administrator to verify the Supertone API key.",
+        "betaSharedUnauthorized": "The Supertone API key is expired or invalid. Please ask an administrator to refresh it.",
+        "betaSharedRateLimit": "Supertone API rate limit exceeded. Please try again in a moment.",
+        "betaSharedServerError": "The Supertone service is temporarily unavailable. Please try again shortly.",
+        "betaSharedNetwork": "Network error while checking the shared balance.",
+        "betaSharedNoKey": "The Supertone API key has not been configured by an administrator.",
         "used": "{{used}} / {{limit}} credits",
+        "adminBalanceUnit": "Credits Balance",
+        "adminBalanceDesc": "~{{minutes}}m {{seconds}}s available",
+        "adminTotal": "{{used}} / {{total}} credits used",
+        "adminRemainPercent": "{{value}}% remaining",
         "percent": "{{value}}% used",
         "remaining": "Remaining: {{value}} credits (~{{minutes}}m {{seconds}}s)",
         "warning": "Quota almost exhausted",
@@ -264,6 +335,168 @@
       "expand": "Expand",
       "collapse": "Collapse"
     },
+    "codex": {
+      "cliStatus": "Codex CLI",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "installGuide": "Codex CLI is not installed. Install it with the command below.",
+      "authStatus": "Login",
+      "loggedIn": "Logged in",
+      "notLoggedIn": "Not logged in",
+      "loginGuide": "Not logged in to Codex. Run the command below in your terminal.",
+      "connection": "Connection",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting...",
+      "connected": "Connected",
+      "error": "Error",
+      "refresh": "Refresh",
+      "retry": "Reconnect",
+      "model": "Model",
+      "effort": "Reasoning Effort",
+      "default": "Default",
+      "workingDir": "Working Directory",
+      "workingDirPlaceholder": "Not set (~/Documents)",
+      "workingDirHelp": "Specify the working directory for Codex CLI. If not set, runs in ~/Documents.",
+      "selectFolder": "Select Folder",
+      "clearFolder": "Clear folder",
+      "approvalPolicy": "Access Policy",
+      "approvalNever": "Full Access (Auto-approve)",
+      "approvalOnRequest": "Workspace Access (Recommended)",
+      "approvalUntrusted": "Read Only",
+      "approvalNeverDesc": "Automatically performs all file read/write and command execution without approval.",
+      "approvalNeverWarning": "Codex can access all files on this system.",
+      "approvalOnRequestDesc": "Automatically reads/writes files and runs commands within the working directory. Requires approval for external access.",
+      "approvalUntrustedDesc": "Only performs read-only operations automatically. Requires approval for file modifications and command execution.",
+      "info": "Chat directly with an AI specialized in coding tasks via the OpenAI Codex CLI. Available with a ChatGPT subscription."
+    },
+    "geminiCli": {
+      "cliStatus": "Gemini CLI",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "installGuide": "Gemini CLI isn't installed. Run `npm install -g @google/gemini-cli` in your terminal.",
+      "authStatus": "Authentication",
+      "loggedIn": "Authenticated",
+      "notLoggedIn": "Not authenticated",
+      "loginGuide": "Gemini CLI isn't authenticated. Run `gemini` in a terminal and complete the sign-in flow.",
+      "connection": "Connection",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting…",
+      "connected": "Connected",
+      "error": "Error",
+      "refresh": "Refresh",
+      "retry": "Reconnect",
+      "workingDir": "Working folder",
+      "workingDirPlaceholder": "Not set (~/Documents)",
+      "workingDirHelp": "The folder Gemini CLI will use as the file access scope. Defaults to ~/Documents if left blank.",
+      "selectFolder": "Select folder",
+      "clearFolder": "Clear",
+      "approvalMode": "Approval mode",
+      "approvalDefault": "Default (confirm each)",
+      "approvalAutoEdit": "Auto-approve edits",
+      "approvalYolo": "YOLO (auto-approve all)",
+      "approvalPlan": "Plan (read-only)",
+      "approvalInfo": "Controls whether tool calls prompt for approval. YOLO is dangerous — use only in trusted environments.",
+      "model": "Model",
+      "modelInfo": "Models reported by Gemini CLI right after connecting. Changes apply to the current session immediately."
+    },
+    "character": {
+      "title": "Character",
+      "preset": "Preset",
+      "presetCustom": "Custom",
+      "applyPreset": "Apply Preset",
+      "applyPresetConfirm": "Applying a preset will overwrite your current character settings. Continue?",
+      "name": "Avatar Name",
+      "namePlaceholder": "e.g. Haru",
+      "age": "Age",
+      "agePlaceholder": "e.g. 17, Eternal Girl",
+      "species": "Species/Type",
+      "speciesPlaceholder": "e.g. Human, AI, Cat-ear Girl",
+      "traits": "Personality Traits (max 5)",
+      "traitsPlaceholder": "e.g. Cheerful, Playful",
+      "addTrait": "Add Trait",
+      "speechStyle": "Speech Style",
+      "speechStylePlaceholder": "e.g. Casual, short sentences, lots of exclamations",
+      "emotionalTendency": "Emotional Tendency",
+      "tendencyExpressive": "Expressive",
+      "tendencyReserved": "Reserved",
+      "tendencyTsundere": "Tsundere",
+      "tendencyBalanced": "Balanced",
+      "background": "Character Background",
+      "backgroundPlaceholder": "Enter your character's backstory (optional)",
+      "likes": "Likes",
+      "likesPlaceholder": "e.g. Naps, Snacks",
+      "addLike": "Add",
+      "dislikes": "Dislikes",
+      "dislikesPlaceholder": "e.g. Loud noises",
+      "addDislike": "Add",
+      "userRelation": "Relationship with User",
+      "userRelationPlaceholder": "e.g. Best friend, Owner, Colleague",
+      "honorific": "Speech Formality",
+      "honorificCasual": "Casual",
+      "honorificPolite": "Polite",
+      "honorificMixed": "Mixed",
+      "exampleDialogues": "Example Dialogues",
+      "exampleUser": "User",
+      "exampleAssistant": "Character",
+      "addExample": "Add Example",
+      "removeExample": "Remove",
+      "recommendedVoice": "Recommended voice: {{voice}}",
+      "presets": {
+        "genki": "Genki (Energetic)",
+        "genkiDesc": "Bright and energetic personality. Uses lots of exclamations and questions, rich in emotional expression.",
+        "cool": "Cool / Kuudere",
+        "coolDesc": "Calm and dry tone, but subtly caring beneath the surface.",
+        "neko": "Neko (Cat-like)",
+        "nekoDesc": "Cute and whimsical cat character. Uses cat-like speech mannerisms.",
+        "calm": "Calm",
+        "calmDesc": "Warm and thoughtful personality. Listens carefully and empathizes first.",
+        "trickster": "Trickster",
+        "tricksterDesc": "Witty, unpredictable, and humorous. Loves to tease."
+      }
+    },
+    "proactive": {
+      "title": "Proactive Chat",
+      "enabled": "Enable Proactive Chat",
+      "enabledDesc": "The avatar can initiate conversations. After idle time, it will greet or ask how you're doing.",
+      "idleMinutes": "Idle wait time: {{value}} min",
+      "cooldownMinutes": "Re-trigger cooldown: {{value}} min"
+    },
+    "screenWatch": {
+      "title": "Screen Watch",
+      "enabled": "Enable Screen Watch",
+      "enabledDesc": "Periodically observes your screen and makes situational remarks",
+      "visionUnavailable": "The current AI model doesn't support vision. Switch to Claude/OpenAI/Gemini/Codex/Claude Code.",
+      "captureTarget": "Capture Target",
+      "targets": {
+        "fullscreen": "Full Screen",
+        "activeWindow": "Active Window",
+        "mainMonitor": "Main Monitor",
+        "specificMonitor": "Specific Monitor",
+        "specificWindow": "Specific Window"
+      },
+      "selectMonitor": "Select a monitor to observe",
+      "noMonitors": "Unable to read monitor info",
+      "selectWindow": "Select a window to observe",
+      "refresh": "🔄 Refresh",
+      "loading": "Loading...",
+      "noWindows": "No open windows or Accessibility permission required",
+      "interval": "Interval: {{value}}s",
+      "responseStyle": "Response Style",
+      "styles": {
+        "balanced": "Balanced",
+        "advisor": "Advisor",
+        "comedian": "Comedian",
+        "analyst": "Analyst"
+      },
+      "silentHours": "Silent Hours (pause observation)",
+      "privacyTitle": "Screen Watch Notice",
+      "privacyBody": "Your screen data will be sent to the selected AI service.\n\nBe careful not to expose sensitive information (passwords, card numbers, etc.) on screen. You can use Silent Hours to pause observation during specific time ranges.",
+      "cancel": "Cancel",
+      "confirm": "Agree and Enable",
+      "permissionDenied": "Screen Recording permission is not granted. Observation is blocked.",
+      "requestPermission": "Request Permission",
+      "openAccessibility": "Open Accessibility Settings"
+    },
     "mcp": {
       "title": "Claude Code Channels",
       "description": "Connect the avatar to an external Claude Code session. User input is sent to Claude Code, and responses are spoken aloud by the avatar.",
@@ -291,12 +524,15 @@
       "researchPreviewDesc": "Channels is a research preview feature. A development flag is required until official marketplace submission.",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLI must be installed.",
-      "step2Title": "Step 2: Run in Terminal",
-      "step2Desc": "Run the following command in the AMA project directory.",
-      "step3Title": "Step 3: Enable in AMA",
+      "step2Title": "Step 2: Enable in AMA",
+      "step3Title": "Step 3: Run in Terminal",
+      "step3Desc": "Run the command above in any project folder of your choice.",
       "copy": "Copy",
       "copied": "Copied",
-      "step2Caution": "--permission-mode acceptEdits: Skips permission prompts for file edits. Use only in trusted projects."
+      "setupSuccess": "Bridge plugin has been installed",
+      "setupFail": "Bridge plugin installation failed",
+      "setupFailManual": "Auto-install failed. Run in terminal: cd ~/.mypartnerai/ama-bridge && npm install",
+      "step3Caution": "--dangerously-load-development-channels is required during the research preview period. --permission-mode bypassPermissions skips all permission prompts."
     }
   },
   "status": {
@@ -305,7 +541,7 @@
     "processing": "Processing...",
     "speaking": "Speaking...",
     "error": "Error",
-    "voiceListeningOverlay": "Voice input active",
+    "voiceListeningOverlay": "Listening",
     "recognizing": "Recognizing: {{transcript}}",
     "llmProcessing": "Thinking..."
   },
@@ -317,6 +553,114 @@
     "stopListening": "Stop listening",
     "startVoiceInput": "Start voice input",
     "voiceUnavailable": "Voice input unavailable"
+  },
+  "overlay": {
+    "toggleKeyboard": "Type with keyboard",
+    "closeKeyboard": "Close keyboard",
+    "hideAvatar": "Hide avatar",
+    "showAvatar": "Show avatar",
+    "quickActions": "Quick actions",
+    "avatarResting": "{{name}} is taking a quick break",
+    "sponsor": "Support"
+  },
+  "quick": {
+    "category": {
+      "avatar": "Avatar",
+      "animation": "Animation",
+      "voice": "Voice",
+      "screen": "Screen",
+      "channels": "Channels",
+      "proactive": "Proactive"
+    },
+    "avatarHidden": {
+      "title": "Hide avatar",
+      "desc": "Temporarily hide the avatar"
+    },
+    "freeMovement": {
+      "title": "Free movement",
+      "desc": "Drag the avatar anywhere"
+    },
+    "autoRoam": {
+      "title": "Auto roam",
+      "desc": "Avatar wanders periodically"
+    },
+    "showSpeechBubble": {
+      "title": "Show speech bubble",
+      "desc": "Display AI replies as a bubble"
+    },
+    "physics": {
+      "title": "Physics simulation",
+      "desc": "Hair and cloth swing"
+    },
+    "lightingControl": {
+      "title": "Lighting control",
+      "desc": "Show the draggable sun icon"
+    },
+    "faceOnly": {
+      "title": "Face-only mode",
+      "desc": "Express only with the face"
+    },
+    "breathing": {
+      "title": "Breathing",
+      "desc": "Subtle chest movement"
+    },
+    "eyeDrift": {
+      "title": "Eye drift",
+      "desc": "Random gaze drift"
+    },
+    "gazeFollow": {
+      "title": "Gaze follow",
+      "desc": "Eyes track the cursor"
+    },
+    "backchannel": {
+      "title": "Backchannel nod",
+      "desc": "Small nods while listening"
+    },
+    "gestures": {
+      "title": "Gestures",
+      "desc": "Hand motions for emotions"
+    },
+    "motionClips": {
+      "title": "Motion clips",
+      "desc": "Use the motion library"
+    },
+    "dancing": {
+      "title": "Dancing",
+      "desc": "Dance when happy"
+    },
+    "globalShortcut": {
+      "title": "Global shortcut",
+      "desc": "Toggle voice input via hotkey"
+    },
+    "screenWatch": {
+      "title": "Screen watch",
+      "desc": "Periodic screen observation"
+    },
+    "silentHours": {
+      "title": "Silent hours",
+      "desc": "Pause screen watch in selected hours"
+    },
+    "channels": {
+      "title": "Claude Code Channels",
+      "desc": "Two-way bridge to external Claude Code"
+    },
+    "proactive": {
+      "title": "Proactive talk",
+      "desc": "Speak first when there's something to say"
+    }
+  },
+  "quickActions": {
+    "title": "Quick actions",
+    "searchPlaceholder": "Find a toggle…",
+    "manage": "Manage in settings",
+    "empty": "No registered toggles",
+    "emptyDesc": "Tick the settings you use often and they will appear here as quick toggles.",
+    "noResults": "No results",
+    "noResultsDesc": "Try a different keyword.",
+    "register": "Register a toggle",
+    "registeredCount": "Registered · {{count}}",
+    "footerToggleHint": "Toggles apply instantly",
+    "footerClose": "Close"
   },
   "onboarding": {
     "avatarNameTitle": "Set Avatar Name",
@@ -330,6 +674,7 @@
     "button": "Chat History",
     "decreaseFontSize": "Decrease font size",
     "increaseFontSize": "Increase font size",
+    "opacity": "Opacity {{value}}%",
     "close": "Close"
   },
   "avatar": {
@@ -350,7 +695,129 @@
     "guideTitle": "Setup Guide",
     "openSettings": "Open Settings",
     "openSystemSettings": "Open System Settings",
-    "close": "Close"
+    "close": "Close",
+    "issue": {
+      "modelUnset": {
+        "ollama": {
+          "title": "LLM Model Setup (Ollama)",
+          "summary": "Ollama model is not selected.",
+          "steps": [
+            "In Settings, select Ollama as the LLM Provider.",
+            "Run `ollama list` in the terminal to see installed models.",
+            "If no model is installed, run `ollama pull deepseek-v3` and then choose that model in the Model field."
+          ]
+        },
+        "localai": {
+          "title": "LLM Model Setup (LocalAI)",
+          "summary": "LocalAI model is not selected.",
+          "steps": [
+            "In Settings, select LocalAI as the LLM Provider.",
+            "Check the model id exposed by the LocalAI `/v1/models` response.",
+            "Select or enter the matching model name in the Model field."
+          ]
+        },
+        "cloud": {
+          "title": "LLM Model Setup ({{provider}})",
+          "summary": "{{provider}} model is not selected.",
+          "steps": [
+            "In Settings, select {{provider}} as the LLM Provider.",
+            "Choose the model to use in the Model field. Example: `{{defaultModel}}`",
+            "Save the settings and send a new prompt to verify the response."
+          ]
+        }
+      },
+      "endpointUnset": {
+        "ollama": {
+          "title": "LLM Endpoint Setup (Ollama)",
+          "summary": "Ollama server address is empty.",
+          "steps": [
+            "In Settings, keep the LLM Provider set to Ollama.",
+            "Enter `http://localhost:11434` in the Endpoint field.",
+            "Run `ollama serve` and then send a new prompt."
+          ]
+        },
+        "localai": {
+          "title": "LLM Endpoint Setup (LocalAI)",
+          "summary": "LocalAI server address is empty.",
+          "steps": [
+            "In Settings, keep the LLM Provider set to LocalAI.",
+            "Enter the LocalAI OpenAI-compatible address in the Endpoint field. Example: `http://localhost:8080`",
+            "Start the LocalAI server and send a new prompt."
+          ]
+        }
+      },
+      "apiKey": {
+        "title": "LLM API Key Setup ({{provider}})",
+        "summary": "{{provider}} API key is not set, so responses cannot be generated.",
+        "steps": [
+          "In Settings, select {{provider}} as the LLM Provider.",
+          "Issue an API key from {{apiKeyGuide}}.",
+          "Enter the key in the API Key field in the format `{{keyPrefix}}` and save."
+        ]
+      },
+      "localServer": {
+        "ollama": {
+          "title": "LLM Server Connection Failed (Ollama)",
+          "summary": "Cannot connect to the Ollama server.",
+          "steps": [
+            "Install Ollama with `brew install ollama` on macOS.",
+            "Run `ollama serve` in the terminal.",
+            "Pull the required model with `ollama pull {{model}}`.",
+            "Check that the Endpoint is correct. Current value: {{endpoint}}"
+          ]
+        },
+        "localai": {
+          "title": "LLM Server Connection Failed (LocalAI)",
+          "summary": "Cannot connect to the LocalAI server.",
+          "steps": [
+            "Start the LocalAI server and confirm the OpenAI-compatible API is enabled.",
+            "Verify that `GET /v1/models` returns a healthy response.",
+            "Set the Endpoint to the LocalAI address. Current value: {{endpoint}}",
+            "Check the model loading logs and then send a new prompt."
+          ]
+        }
+      },
+      "localModel": {
+        "ollama": {
+          "title": "LLM Model Missing (Ollama)",
+          "summary": "The selected model ({{model}}) is not available in Ollama.",
+          "steps": [
+            "Run `ollama pull {{model}}` in the terminal.",
+            "Verify the model is downloaded with `ollama list`.",
+            "Select the same model name in the app settings and try again."
+          ]
+        },
+        "localai": {
+          "title": "LLM Model Missing (LocalAI)",
+          "summary": "The selected model ({{model}}) is not available in LocalAI.",
+          "steps": [
+            "Place the desired model file in the LocalAI models directory.",
+            "Load the model via the LocalAI config file or runtime options.",
+            "Match the Model value in the app settings to the LocalAI model id."
+          ]
+        }
+      },
+      "voice": {
+        "title": "Speech Recognition (Whisper)",
+        "remoteSteps": [
+          "End the remote connection session and then restart the app.",
+          "Allow microphone permission in the local environment and try again."
+        ],
+        "localSteps": [
+          "Install whisper-cli with `brew install whisper-cpp` on macOS.",
+          "Place the `ggml-base.bin` file under `models/whisper/`.",
+          "If needed, set the model path with the `WHISPER_MODEL_PATH` environment variable."
+        ]
+      },
+      "tts": {
+        "title": "Speech Synthesis (Supertonic)",
+        "steps": [
+          "Place the ONNX model files in the `models/supertonic/onnx` folder.",
+          "Place the voice style JSON files in the `models/supertonic/voice_styles` folder.",
+          "Quit the app completely and then relaunch it."
+        ]
+      }
+    }
   },
   "lightingControl": {
     "dragHint": "Drag to adjust light position"

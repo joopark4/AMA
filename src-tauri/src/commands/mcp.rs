@@ -272,87 +272,246 @@ pub fn start_mcp_listener(app_handle: AppHandle) {
     });
 }
 
+/// 디렉토리를 재귀적으로 복사
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
+// ─── Node.js 경路 탐색 ───
+
+/// macOS 앱 번들에서는 셸 PATH가 제한되므로 npm/npx를 직접 탐색한다.
+/// Homebrew(ARM/Intel), nvm, fnm, volta, 시스템 경로를 모두 확인.
+fn find_node_bin(name: &str) -> Result<String, String> {
+    // 1. PATH에서 직접 찾기 — which로 절대경로 확보
+    if let Ok(output) = std::process::Command::new("which").arg(name).output() {
+        if output.status.success() {
+            let abs_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !abs_path.is_empty() && std::path::Path::new(&abs_path).exists() {
+                return Ok(abs_path);
+            }
+        }
+    }
+
+    // 2. 잘 알려진 경로 후보
+    let home = dirs::home_dir().unwrap_or_default();
+    let mut candidates: Vec<std::path::PathBuf> = vec![
+        // Homebrew (Apple Silicon)
+        std::path::PathBuf::from(format!("/opt/homebrew/bin/{}", name)),
+        // Homebrew (Intel)
+        std::path::PathBuf::from(format!("/usr/local/bin/{}", name)),
+        // 시스템
+        std::path::PathBuf::from(format!("/usr/bin/{}", name)),
+        // volta
+        home.join(format!(".volta/bin/{}", name)),
+    ];
+
+    // 3. nvm — 현재 default alias 또는 최신 설치 버전
+    let nvm_dir = home.join(".nvm/versions/node");
+    if nvm_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+            let mut versions: Vec<std::path::PathBuf> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| p.is_dir())
+                .collect();
+            // 최신 버전 우선 (역순 정렬)
+            versions.sort();
+            versions.reverse();
+            for v in versions {
+                candidates.push(v.join(format!("bin/{}", name)));
+            }
+        }
+    }
+
+    // 4. fnm
+    let fnm_dir = home.join(".fnm/aliases/default");
+    if fnm_dir.exists() {
+        candidates.push(fnm_dir.join(format!("bin/{}", name)));
+    }
+
+    for candidate in &candidates {
+        if candidate.exists() {
+            if let Ok(output) = std::process::Command::new(candidate).arg("--version").output() {
+                if output.status.success() {
+                    return Ok(candidate.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    Err(format!(
+        "{} not found. Please install Node.js (https://nodejs.org). Checked: PATH, {}",
+        name,
+        candidates.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<_>>().join(", ")
+    ))
+}
+
 // ─── Claude Code 글로벌 채널 등록/해제 ───
 
-/// ~/.mypartnerai/mcp-channels/ 에 dev-bridge 파일을 복사하고
+/// 앱 번들 리소스에서 ama-bridge 플러그인 파일을 ~/.mypartnerai/ama-bridge/에 추출하고
+/// npm install을 실행한다. 배포 앱에서 bridge 파일을 사용할 수 있게 한다.
+#[tauri::command]
+pub async fn setup_bridge_plugin(app: tauri::AppHandle) -> Result<String, String> {
+    use tauri::Manager;
+
+    let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    let target_dir = home.join(".mypartnerai").join("ama-bridge");
+    let shared_dir = target_dir.join("shared");
+    let plugin_dir = target_dir.join(".claude-plugin");
+
+    // 1. 대상 디렉토리 생성
+    std::fs::create_dir_all(&shared_dir)
+        .map_err(|e| format!("Failed to create shared dir: {}", e))?;
+    std::fs::create_dir_all(&plugin_dir)
+        .map_err(|e| format!("Failed to create .claude-plugin dir: {}", e))?;
+
+    // 2. 앱 번들 리소스에서 파일 복사
+    let resource_dir = app.path().resource_dir()
+        .map_err(|e| format!("Failed to get resource dir: {}", e))?;
+    let bridge_resource = resource_dir.join("ama-bridge");
+
+    let files: &[&str] = &[
+        "server.ts",
+        "package.json",
+        "tsconfig.json",
+        "shared/config.mts",
+        ".claude-plugin/plugin.json",
+        ".mcp.json",
+    ];
+
+    let mut copied_count = 0;
+    for file in files {
+        let src = bridge_resource.join(file);
+        let dst = target_dir.join(file);
+        if src.exists() {
+            // 부모 디렉토리 보장
+            if let Some(parent) = dst.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            std::fs::copy(&src, &dst).map_err(|e| {
+                format!("Failed to copy {}: {}", file, e)
+            })?;
+            copied_count += 1;
+        } else {
+            eprintln!("[MCP] Resource file not found: {}", src.display());
+        }
+    }
+
+    if copied_count == 0 {
+        return Err(format!(
+            "No bridge resource files found in {}. Is the app bundle intact?",
+            bridge_resource.display()
+        ));
+    }
+
+    // 3. node_modules가 없으면 로그인 셸로 npm install 실행
+    //    /bin/sh -l -c 로 실행하면 ~/.zshrc/.bashrc에서 PATH가 로드됨
+    //    (Homebrew, nvm, fnm, volta 등 모든 Node.js 설치 방식 대응)
+    let nm_dst = target_dir.join("node_modules");
+    if !nm_dst.exists() {
+        let target_dir_str = target_dir.to_string_lossy().to_string();
+        let output = tokio::task::spawn_blocking(move || {
+            std::process::Command::new("/bin/sh")
+                .args(["-l", "-c", &format!("cd '{}' && npm install", target_dir_str)])
+                .output()
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?
+        .map_err(|e| format!("npm install failed to start: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("npm install failed: {}", stderr));
+        }
+    }
+
+    Ok(format!(
+        "Bridge plugin set up at {} ({} files)",
+        target_dir.display(),
+        copied_count
+    ))
+}
+
+/// ~/.mypartnerai/ama-bridge/ 에 bridge 파일을 준비하고
 /// ~/.claude.json (user scope)에 ama-bridge 서버를 등록한다.
+///
+/// 소스 우선순위:
+/// 1. 개발 환경: project_dir의 claude-plugin/ama-bridge/
+/// 2. 배포 환경: ~/.mypartnerai/ama-bridge/ (setup_bridge_plugin으로 추출된 파일)
 #[tauri::command]
 pub fn register_channel_global(project_dir: Option<String>) -> Result<String, String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory")?;
-    let install_dir = home.join(".mypartnerai").join("mcp-channels");
+    let install_dir = home.join(".mypartnerai").join("ama-bridge");
     let shared_dir = install_dir.join("shared");
     let mcp_json_path = home.join(".claude.json");
 
-    // 1. 소스 디렉토리: claude-plugin/ama-bridge/ (우선) > mcp-channels/ (fallback)
+    // 1. 소스 디렉토리 결정
     let base_dir = project_dir
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
     let plugin_dir = base_dir.join("claude-plugin").join("ama-bridge");
-    let legacy_dir = base_dir.join("mcp-channels");
 
-    let (source_dir, use_plugin_layout) = if plugin_dir.join("package.json").exists() {
-        (plugin_dir, true)
-    } else if legacy_dir.join("package.json").exists() {
-        (legacy_dir, false)
-    } else {
-        return Err(format!(
-            "Neither claude-plugin/ama-bridge/ nor mcp-channels/ found in {}",
-            base_dir.display()
-        ));
-    };
-
-    // 경로 탐색 방지: 정규화 후 유효한 디렉토리인지 검증
-    let canonical = source_dir.canonicalize().unwrap_or_else(|_| source_dir.clone());
-    if use_plugin_layout {
+    // 개발 환경: claude-plugin/ama-bridge/ 소스가 있으면 파일 복사
+    if plugin_dir.join("package.json").exists() {
+        let canonical = plugin_dir.canonicalize().unwrap_or_else(|_| plugin_dir.clone());
         if !canonical.ends_with("ama-bridge") {
             return Err("Invalid source directory".to_string());
         }
-    } else if !canonical.ends_with("mcp-channels") {
-        return Err("Invalid source directory".to_string());
-    }
 
-    // 2. 대상 디렉토리 생성 + 파일 복사
-    std::fs::create_dir_all(&shared_dir)
-        .map_err(|e| format!("Failed to create {}: {}", shared_dir.display(), e))?;
+        std::fs::create_dir_all(&shared_dir)
+            .map_err(|e| format!("Failed to create {}: {}", shared_dir.display(), e))?;
 
-    let files: &[&str] = if use_plugin_layout {
-        &[
+        let files: &[&str] = &[
             "package.json",
             "tsconfig.json",
             "server.ts",
             "shared/config.mts",
-        ]
-    } else {
-        // Legacy: mcp-channels layout
-        &[
-            "package.json",
-            "tsconfig.json",
-            "dev-bridge.mts",
-            "shared/config.mts",
-            "shared/ama-client.mts",
-        ]
-    };
+        ];
 
-    for file in files {
-        let src = source_dir.join(file);
-        let dst = install_dir.join(file);
-        if src.exists() {
-            std::fs::copy(&src, &dst).map_err(|e| {
-                format!("Failed to copy {}: {}", file, e)
-            })?;
+        for file in files {
+            let src = plugin_dir.join(file);
+            let dst = install_dir.join(file);
+            if src.exists() {
+                std::fs::copy(&src, &dst).map_err(|e| {
+                    format!("Failed to copy {}: {}", file, e)
+                })?;
+            }
         }
+
+        // node_modules 복사 (없으면)
+        let src_nm = plugin_dir.join("node_modules");
+        let dst_nm = install_dir.join("node_modules");
+        if src_nm.exists() && !dst_nm.exists() {
+            copy_dir_recursive(&src_nm, &dst_nm)
+                .map_err(|e| format!("Failed to copy node_modules: {}", e))?;
+        }
+    } else {
+        // 배포 환경: ~/.mypartnerai/ama-bridge/에 이미 파일이 있는지 확인
+        if !install_dir.join("package.json").exists() {
+            return Err(
+                "Bridge plugin not found. Please enable Channels toggle to auto-setup first."
+                    .to_string(),
+            );
+        }
+        eprintln!(
+            "[MCP] Using existing bridge at {}",
+            install_dir.display()
+        );
     }
 
-    // node_modules 복사 (없으면)
-    let src_nm = source_dir.join("node_modules");
-    let dst_nm = install_dir.join("node_modules");
-    if src_nm.exists() && !dst_nm.exists() {
-        copy_dir_recursive(&src_nm, &dst_nm)
-            .map_err(|e| format!("Failed to copy node_modules: {}", e))?;
-    }
-
-    // 3. ~/.mcp.json 에 등록
+    // 3. ~/.claude.json 에 등록
     let mut settings: serde_json::Value = if mcp_json_path.exists() {
         let content = std::fs::read_to_string(&mcp_json_path).unwrap_or_default();
         serde_json::from_str(&content).unwrap_or(serde_json::json!({}))
@@ -360,19 +519,23 @@ pub fn register_channel_global(project_dir: Option<String>) -> Result<String, St
         serde_json::json!({})
     };
 
-    let bridge_file = if use_plugin_layout { "server.ts" } else { "dev-bridge.mts" };
-    let bridge_path = install_dir.join(bridge_file).to_string_lossy().to_string();
+    let bridge_path = install_dir.join("server.ts").to_string_lossy().to_string();
     let install_dir_str = install_dir.to_string_lossy().to_string();
 
     if settings.get("mcpServers").is_none() {
         settings["mcpServers"] = serde_json::json!({});
     }
 
+    // npx 전체 경로를 사용 (macOS 앱 번들에서 PATH가 제한될 수 있음)
+    let npx_cmd = find_node_bin("npx").unwrap_or_else(|_| "npx".to_string());
+
     settings["mcpServers"]["ama-bridge"] = serde_json::json!({
         "type": "stdio",
-        "command": "npx",
+        "command": npx_cmd,
         "args": ["--prefix", install_dir_str, "tsx", bridge_path],
-        "env": {}
+        "env": {
+            "BRIDGE_PORT": "8790"
+        }
     });
 
     let output = serde_json::to_string_pretty(&settings)
@@ -491,41 +654,27 @@ pub async fn check_bridge_health() -> Result<bool, String> {
     }
 }
 
-/// dev-bridge 채널 연결 테스트 (5초 타임아웃으로 실제 채널 동작 확인)
+/// dev-bridge 채널 연결 확인 (/health 의 mcpConnected 필드로 즉시 판별)
 #[tauri::command]
 pub async fn check_bridge_channel() -> Result<bool, String> {
     let port_str = std::env::var("BRIDGE_PORT").unwrap_or_else(|_| "8790".to_string());
-    let url = format!("http://127.0.0.1:{}/channel-test", port_str);
+    let url = format!("http://127.0.0.1:{}/health", port_str);
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(8)) // 5초 채널 테스트 + 여유
-        .build()
-        .map_err(|e| format!("Client build failed: {}", e))?;
-
-    match client.post(&url).send().await {
+    match reqwest::Client::new()
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(3))
+        .send()
+        .await
+    {
         Ok(res) => {
             if !res.status().is_success() {
                 return Ok(false);
             }
             let text = res.text().await.unwrap_or_default();
-            // { "channel": true/false }
-            Ok(text.contains("\"channel\":true") || text.contains("\"channel\": true"))
+            // { "status": "ok", "pending": 0, "mcpConnected": true/false }
+            Ok(text.contains("\"mcpConnected\":true") || text.contains("\"mcpConnected\": true"))
         }
         Err(_) => Ok(false),
     }
 }
 
-fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(dst)?;
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        let dst_path = dst.join(entry.file_name());
-        if ty.is_dir() {
-            copy_dir_recursive(&entry.path(), &dst_path)?;
-        } else {
-            std::fs::copy(entry.path(), &dst_path)?;
-        }
-    }
-    Ok(())
-}

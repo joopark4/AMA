@@ -138,12 +138,23 @@ export async function callEdgeFunction<T = unknown>(
       return retry.data as T;
     }
 
-    // 에러 body 파싱 시도
+    // 에러 body 파싱 시도. Supabase JS가 non-2xx 응답을 error.context(Response)에 담아
+    // 보낼 수 있어서 거기서 body를 읽어 진단 메시지를 보존한다.
     let errorBody: Record<string, unknown> = {};
     if (typeof data === 'string') {
       try { errorBody = JSON.parse(data); } catch { /* ignore */ }
     } else if (data && typeof data === 'object') {
       errorBody = data as Record<string, unknown>;
+    }
+    const ctx = (error as unknown as { context?: Response }).context;
+    if (ctx && typeof ctx.text === 'function') {
+      try {
+        const text = await ctx.clone().text();
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed === 'object') {
+          errorBody = { ...errorBody, ...parsed };
+        }
+      } catch { /* body가 비거나 JSON 아니면 무시 */ }
     }
 
     const status = (error as unknown as { status?: number }).status || 500;

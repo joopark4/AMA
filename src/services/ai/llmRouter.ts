@@ -5,6 +5,8 @@ import { ClaudeClient } from './claudeClient';
 import { OpenAIClient } from './openaiClient';
 import { GeminiClient } from './geminiClient';
 import { ClaudeCodeClient } from '../../features/channels';
+import { CodexClient } from '../../features/codex';
+import { GeminiCliClient } from '../../features/gemini-cli';
 import { useSettingsStore, LLMProvider } from '../../stores/settingsStore';
 
 class LLMRouter {
@@ -21,6 +23,9 @@ class LLMRouter {
     this.clients.set('openai', new OpenAIClient());
     this.clients.set('gemini', new GeminiClient());
     this.clients.set('claude_code', new ClaudeCodeClient());
+    this.clients.set('codex', new CodexClient());
+    // Gemini CLI(ACP) — 스캐폴딩 단계. 실제 chat 시 "구현 중" 에러를 throw.
+    this.clients.set('gemini_cli', new GeminiCliClient());
   }
 
   private getClient(): LLMClient {

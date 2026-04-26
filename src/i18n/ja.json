@@ -5,7 +5,36 @@
   },
   "settings": {
     "title": "設定",
+    "subtitle": "AMAを自分らしく整える",
+    "manage": "管理",
+    "guestUser": "ゲスト",
+    "loggedOut": "未ログイン",
+    "resetAll": "すべてリセット",
+    "resetConfirm": "すべての設定をリセットしますか？元に戻せません。",
+    "quickActions": {
+      "title": "よく使う機能",
+      "description": "よく使う機能を登録すると ✨ アイコンからすぐ呼び出せます。音声からも呼び出せます。",
+      "registered": "登録済み · {{count}}件",
+      "clearAll": "すべて解除",
+      "empty": "登録された機能はまだありません。上でチェックしてください。"
+    },
     "language": "言語",
+    "pageNav": {
+      "previous": "前のページ",
+      "next": "次のページ"
+    },
+    "audioDevice": {
+      "title": "オーディオ & マイク",
+      "microphone": "マイク（入力）",
+      "speaker": "オーディオ出力",
+      "default": "システムデフォルト",
+      "micNotFound": "マイクが見つかりません",
+      "speakerNotFound": "出力デバイスが見つかりません",
+      "inputLevel": "入力レベル",
+      "outputLevel": "出力レベル",
+      "testSpeaker": "テスト",
+      "testing": "再生中..."
+    },
     "account": {
       "title": "アカウント"
     },
@@ -33,18 +62,24 @@
         "openai": "OpenAI",
         "gemini": "Google Gemini",
         "claude_code": "Claude Code（外部連携）",
-        "claudeCodeInfo": "外部ターミナルでClaude Codeが実行中である必要があります。プロジェクトディレクトリでclaudeコマンドを実行するとama-bridgeが自動起動します。"
+        "claudeCodeInfo": "外部ターミナルでClaude Codeが実行中である必要があります。プロジェクトディレクトリでclaudeコマンドを実行するとama-bridgeが自動起動します。",
+        "codex": "OpenAI Codex",
+        "gemini_cli": "Gemini CLI"
       },
       "expand": "展開",
       "collapse": "折りたたむ"
     },
     "voice": {
-      "title": "音声",
+      "title": "音声（ローカル）",
       "stt": {
-        "title": "音声認識（STT）",
+        "title": "音声認識（ローカルSTT）",
         "engine": "エンジン",
         "model": "モデル",
         "whisperInfo": "ローカルwhisper-cli音声認識を使用",
+        "microphone": "マイク選択",
+        "micDefault": "システムデフォルト",
+        "micNotFound": "マイクが見つかりません",
+        "micFallback": "選択したマイクが見つからないため、デフォルトを使用します",
         "engines": {
           "whisper": "Whisper",
           "moonshine": "Moonshine",
@@ -52,14 +87,25 @@
         }
       },
       "tts": {
-        "title": "音声合成（TTS）",
+        "title": "音声合成（ローカルTTS）",
         "engine": "エンジン",
         "voice": "音声",
         "supertonicInfo": "高品質ローカルTTS - 韓国語/英語対応",
+        "speaker": "出力デバイス",
+        "speakerDefault": "システムデフォルト",
+        "speakerNotFound": "出力デバイスが見つかりません",
+        "language": "ローカル音声の言語",
+        "languageDesc": "ローカルTTSの発声に使われる言語です。プレミアム（Supertone API）言語とは分けて管理されます。",
+        "languageAuto": "アプリの言語を使用",
+        "languageUnsupportedLocal": "ローカルTTS（Supertonic）はこの言語に対応していないため、英語に切り替わります。プレミアム音声に切り替えるとより多くの言語が使えます。",
         "engines": {
           "qwen3": "Qwen3-TTS",
           "kokoro": "Kokoro-82M",
           "melo": "MeloTTS-Korean"
+        },
+        "voiceLabel": {
+          "female": "女性 {{num}}",
+          "male": "男性 {{num}}"
         }
       },
       "globalShortcut": {
@@ -117,21 +163,28 @@
       },
       "animation": {
         "title": "アニメーション",
-        "motionSequenceDemo": "モーションシーケンスデモ",
-        "sequenceStop": "停止",
-        "sequenceStart": "シーケンス実行",
-        "sequenceDevOnly": "開発ビルド専用機能: 各モーション実行前に吹き出し/音声案内の後、順次再生します。",
-        "sequenceProgress": "実行中: {{current}}/{{total}}",
-        "sequenceWaiting": "待機中: 全{{count}}モーション",
-        "motionClipsWarning": "モーションクリップが無効の場合、デモを開始できません。",
-        "faceOnlyWarning": "表情専用モードではデモを実行できません。",
         "faceOnlyMode": "表情専用モード",
         "faceOnlyDescription": "全身モーション（クリップ/ジェスチャー/ダンス）を無効にし、表情、顔の向き、視線のみを維持します。",
         "enableMotionClips": "モーションクリップを使用",
         "dynamicMotionBoost": "ダイナミックモーションブースト",
         "dynamicBoostStrength": "ブースト強度: {{value}}%",
         "motionDiversity": "モーション多様性: {{value}}%",
-        "enableGestureFallback": "ジェスチャーフォールバックを使用"
+        "enableGestureFallback": "ジェスチャーフォールバックを使用",
+        "walkingTitle": "歩行",
+        "enableWalkClips": "Mixamo歩行クリップ",
+        "enableWalkClipsDesc": "自然な関節動作の歩行アニメーション（無効時はプロシージャル歩行）",
+        "autoRoam": "自動散歩",
+        "autoRoamDesc": "アバターが画面内を自動的に歩き回ります",
+        "autoRoamDisabledByFreeMove": "自由移動中は使用できません",
+        "idleTitle": "待機動作",
+        "enableBreathing": "呼吸アニメーション",
+        "enableBreathingDesc": "待機中の微細な呼吸動作",
+        "enableEyeDrift": "視線移動",
+        "enableEyeDriftDesc": "自然な目の微細な動き",
+        "gazeFollow": "カーソル追従視線",
+        "gazeFollowDesc": "アバターの目がマウスカーソルを追いかけます (停止時は微細な視線の揺れ)",
+        "backchannel": "相づちのうなずき",
+        "backchannelDesc": "音声入力中、定期的にうなずいて「聞いています」を表現"
       },
       "physics": {
         "title": "物理エンジン",
@@ -203,8 +256,10 @@
       "voiceInfo": "{{name}} · {{gender}} · {{languages}}",
       "usage": {
         "title": "使用量",
+        "adminTitle": "API全体使用量",
         "refresh": "更新",
         "thisMonth": "今月",
+        "adminThisMonth": "今月（全ユーザー）",
         "seconds": "{{value}}秒",
         "characters": "{{value}}文字",
         "requests": "{{value}}回",
@@ -214,9 +269,25 @@
         "noUsage": "使用履歴がありません",
         "loading": "使用量を確認中..."
       },
+      "voiceUsage": {
+        "title": "音声別使用量（今月）",
+        "minutes": "{{value}}分"
+      },
       "quota": {
         "title": "月間割り当て",
+        "adminTitle": "API総割り当て",
+        "betaSharedTitle": "ベータ共有枠（全ユーザーで消費）",
+        "betaSharedUnavailable": "共有残高情報を取得できませんでした。Supertone APIキーの状態を管理者にご確認ください。",
+        "betaSharedUnauthorized": "Supertone APIキーの有効期限が切れているか、無効です。管理者にキーの更新を依頼してください。",
+        "betaSharedRateLimit": "Supertone APIのリクエスト上限を超えました。しばらくしてから再度お試しください。",
+        "betaSharedServerError": "Supertoneサーバーが一時的に応答しません。しばらくしてから再度お試しください。",
+        "betaSharedNetwork": "ネットワークエラーにより共有残高を確認できませんでした。",
+        "betaSharedNoKey": "管理者がSupertone APIキーを設定していません。",
         "used": "{{used}} / {{limit}} クレジット",
+        "adminBalanceUnit": "クレジット残高",
+        "adminBalanceDesc": "約{{minutes}}分{{seconds}}秒使用可能",
+        "adminTotal": "{{used}} / {{total}} クレジット使用",
+        "adminRemainPercent": "{{value}}% 残り",
         "percent": "{{value}}% 使用済み",
         "remaining": "残りクレジット: {{value}}（約{{minutes}}分{{seconds}}秒）",
         "warning": "割り当てがほぼ使い切られています",
@@ -264,6 +335,168 @@
       "expand": "展開",
       "collapse": "折りたたむ"
     },
+    "codex": {
+      "cliStatus": "Codex CLI",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "installGuide": "Codex CLIがインストールされていません。以下のコマンドでインストールしてください。",
+      "authStatus": "ログイン",
+      "loggedIn": "ログイン済み",
+      "notLoggedIn": "未ログイン",
+      "loginGuide": "Codexにログインしていません。ターミナルで以下のコマンドを実行してください。",
+      "connection": "接続状態",
+      "disconnected": "未接続",
+      "connecting": "接続中...",
+      "connected": "接続済み",
+      "error": "エラー",
+      "refresh": "更新",
+      "retry": "再接続",
+      "model": "モデル",
+      "effort": "推論性能",
+      "default": "デフォルト",
+      "workingDir": "作業フォルダ",
+      "workingDirPlaceholder": "未設定（~/Documents）",
+      "workingDirHelp": "Codex CLIが実行される作業フォルダを指定します。未設定の場合、~/Documentsで実行されます。",
+      "selectFolder": "フォルダ選択",
+      "clearFolder": "フォルダ初期化",
+      "approvalPolicy": "アクセス権限",
+      "approvalNever": "全許可（自動承認）",
+      "approvalOnRequest": "作業フォルダ内許可（推奨）",
+      "approvalUntrusted": "読み取り専用",
+      "approvalNeverDesc": "すべてのファイル読み書きとコマンド実行を承認なしで自動実行します。",
+      "approvalNeverWarning": "Codexがすべてのファイルにアクセスできます。",
+      "approvalOnRequestDesc": "作業フォルダ内のファイル読み書きとコマンド実行を自動実行します。外部アクセス時は承認が必要です。",
+      "approvalUntrustedDesc": "読み取り専用の操作のみ自動実行します。ファイル変更やコマンド実行には承認が必要です。",
+      "info": "OpenAI Codex CLIを通じてコーディングに特化したAIと直接対話します。ChatGPTサブスクリプションで利用可能です。"
+    },
+    "geminiCli": {
+      "cliStatus": "Gemini CLI",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "installGuide": "Gemini CLIがインストールされていません。ターミナルで `npm install -g @google/gemini-cli` を実行してください。",
+      "authStatus": "認証",
+      "loggedIn": "認証済み",
+      "notLoggedIn": "未認証",
+      "loginGuide": "Gemini CLIが認証されていません。ターミナルで `gemini` を実行し、サインインフローを完了してください。",
+      "connection": "接続状態",
+      "disconnected": "未接続",
+      "connecting": "接続中...",
+      "connected": "接続済み",
+      "error": "エラー",
+      "refresh": "更新",
+      "retry": "再接続",
+      "workingDir": "作業フォルダ",
+      "workingDirPlaceholder": "未設定 (~/Documents)",
+      "workingDirHelp": "Gemini CLIがファイルアクセスの基準にするフォルダです。未設定時は ~/Documents が使われます。",
+      "selectFolder": "フォルダ選択",
+      "clearFolder": "フォルダ解除",
+      "approvalMode": "承認モード",
+      "approvalDefault": "デフォルト（毎回確認）",
+      "approvalAutoEdit": "編集を自動承認",
+      "approvalYolo": "YOLO（すべて自動）",
+      "approvalPlan": "読み取り専用（計画）",
+      "approvalInfo": "ツール実行の承認要求動作を決めます。YOLO は危険なため信頼できる環境でのみ使用してください。",
+      "model": "モデル",
+      "modelInfo": "接続直後に Gemini CLI が報告した利用可能なモデル一覧です。変更すると現在のセッションに即時反映されます。"
+    },
+    "character": {
+      "title": "キャラクター",
+      "preset": "プリセット",
+      "presetCustom": "カスタム",
+      "applyPreset": "プリセットを適用",
+      "applyPresetConfirm": "プリセットを適用すると、現在のキャラクター設定が上書きされます。続行しますか？",
+      "name": "アバター名",
+      "namePlaceholder": "例: はる",
+      "age": "年齢",
+      "agePlaceholder": "例: 17歳、永遠の少女",
+      "species": "種族/タイプ",
+      "speciesPlaceholder": "例: 人間、AI、猫耳少女",
+      "traits": "性格特性（最大5個）",
+      "traitsPlaceholder": "例: 明るい、いたずら好き",
+      "addTrait": "特性を追加",
+      "speechStyle": "話し方",
+      "speechStylePlaceholder": "例: タメ口、短い文、感嘆詞多め",
+      "emotionalTendency": "感情表現の傾向",
+      "tendencyExpressive": "豊か",
+      "tendencyReserved": "控えめ",
+      "tendencyTsundere": "ツンデレ",
+      "tendencyBalanced": "バランス",
+      "background": "キャラクター背景",
+      "backgroundPlaceholder": "キャラクターのバックストーリーを入力（任意）",
+      "likes": "好きなもの",
+      "likesPlaceholder": "例: 昼寝、おやつ",
+      "addLike": "追加",
+      "dislikes": "嫌いなもの",
+      "dislikesPlaceholder": "例: 大きな音",
+      "addDislike": "追加",
+      "userRelation": "ユーザーとの関係",
+      "userRelationPlaceholder": "例: 親友、ご主人様、同僚",
+      "honorific": "敬語",
+      "honorificCasual": "タメ口",
+      "honorificPolite": "敬語",
+      "honorificMixed": "混合",
+      "exampleDialogues": "会話の例",
+      "exampleUser": "ユーザー",
+      "exampleAssistant": "キャラクター",
+      "addExample": "例を追加",
+      "removeExample": "削除",
+      "recommendedVoice": "おすすめ音声: {{voice}}",
+      "presets": {
+        "genki": "元気",
+        "genkiDesc": "明るくエネルギッシュな性格。感嘆詞や質問が多く、感情表現が豊かです。",
+        "cool": "クールデレ",
+        "coolDesc": "落ち着いてドライなトーンですが、実はさりげなく優しい面があります。",
+        "neko": "ネコ系",
+        "nekoDesc": "かわいくて気まぐれな猫キャラ。語尾に「にゃ」を使ったり擬音語が多いです。",
+        "calm": "穏やか",
+        "calmDesc": "温かく思慮深い性格。よく聞いて、まず共感を示します。",
+        "trickster": "いたずら好き",
+        "tricksterDesc": "機知に富み、予測不能でユーモラスな性格。からかうのが大好きです。"
+      }
+    },
+    "proactive": {
+      "title": "自発的会話",
+      "enabled": "自発的会話を有効化",
+      "enabledDesc": "アバターが自ら話しかけることができます。アイドル時間が過ぎると挨拶や様子を伺います。",
+      "idleMinutes": "アイドル待機時間: {{value}}分",
+      "cooldownMinutes": "再発話クールダウン: {{value}}分"
+    },
+    "screenWatch": {
+      "title": "画面観察",
+      "enabled": "画面観察を有効化",
+      "enabledDesc": "定期的に画面を観察し、状況に応じた一言を伝えます",
+      "visionUnavailable": "現在のAIモデルは画像認識に対応していません。Claude/OpenAI/Gemini/Codex/Claude Codeに切り替えてください。",
+      "captureTarget": "キャプチャ対象",
+      "targets": {
+        "fullscreen": "全画面",
+        "activeWindow": "アクティブウィンドウ",
+        "mainMonitor": "メインモニター",
+        "specificMonitor": "特定モニター",
+        "specificWindow": "特定ウィンドウ"
+      },
+      "selectMonitor": "観察するモニターを選択",
+      "noMonitors": "モニター情報を読み込めません",
+      "selectWindow": "観察するウィンドウを選択",
+      "refresh": "🔄 更新",
+      "loading": "読み込み中...",
+      "noWindows": "開いているウィンドウがないか、Accessibility権限が必要です",
+      "interval": "観察間隔: {{value}}秒",
+      "responseStyle": "応答スタイル",
+      "styles": {
+        "balanced": "バランス",
+        "advisor": "アドバイザー",
+        "comedian": "コメディアン",
+        "analyst": "アナリスト"
+      },
+      "silentHours": "サイレント時間 (観察停止)",
+      "privacyTitle": "画面観察について",
+      "privacyBody": "画面データが選択したAIサービスに送信されます。\n\nパスワードやカード番号などの機密情報が画面に表示されないようご注意ください。サイレント時間設定で特定時間帯の観察を停止できます。",
+      "cancel": "キャンセル",
+      "confirm": "同意して有効化",
+      "permissionDenied": "画面録画権限がありません。観察は即座にブロックされます。",
+      "requestPermission": "権限をリクエスト",
+      "openAccessibility": "アクセシビリティ設定を開く"
+    },
     "mcp": {
       "title": "Claude Code Channels",
       "description": "外部で実行中のClaude Codeとアバターを接続します。ユーザー入力がClaude Codeに送信され、応答をアバターが音声で読み上げます。",
@@ -291,12 +524,15 @@
       "researchPreviewDesc": "Channelsはリサーチプレビュー機能です。公式マーケットプレイス提出まで開発フラグが必要です。",
       "step1Title": "Step 1: Claude Code CLI",
       "step1Desc": "Claude Code CLIがインストールされている必要があります。",
-      "step2Title": "Step 2: ターミナルで実行",
-      "step2Desc": "AMAプロジェクトディレクトリで以下のコマンドを実行してください。",
-      "step3Title": "Step 3: AMAで有効化",
+      "step2Title": "Step 2: AMAで有効化",
+      "step3Title": "Step 3: ターミナルで実行",
+      "step3Desc": "お好きなプロジェクトフォルダで上記のコマンドを実行してください。",
       "copy": "コピー",
       "copied": "コピー済み",
-      "step2Caution": "--permission-mode acceptEdits: ファイル編集時の権限確認をスキップします。信頼できるプロジェクトでのみ使用してください。"
+      "setupSuccess": "Bridgeプラグインがインストールされました",
+      "setupFail": "Bridgeプラグインのインストールに失敗しました",
+      "setupFailManual": "自動インストールに失敗しました。ターミナルで実行: cd ~/.mypartnerai/ama-bridge && npm install",
+      "step3Caution": "--dangerously-load-development-channelsはリサーチプレビュー期間中に必要なフラグです。--permission-mode bypassPermissionsはすべての権限確認をスキップします。"
     }
   },
   "status": {
@@ -318,6 +554,114 @@
     "startVoiceInput": "音声入力を開始",
     "voiceUnavailable": "音声入力は利用できません"
   },
+  "overlay": {
+    "toggleKeyboard": "キーボードで入力",
+    "closeKeyboard": "キーボードを閉じる",
+    "hideAvatar": "アバターを隠す",
+    "showAvatar": "アバターを表示",
+    "quickActions": "よく使う機能",
+    "avatarResting": "{{name}}はちょっと休憩中です",
+    "sponsor": "支援する"
+  },
+  "quick": {
+    "category": {
+      "avatar": "アバター",
+      "animation": "アニメーション",
+      "voice": "音声",
+      "screen": "画面",
+      "channels": "Channels",
+      "proactive": "自発的会話"
+    },
+    "avatarHidden": {
+      "title": "アバターを隠す",
+      "desc": "アバターを一時的に非表示"
+    },
+    "freeMovement": {
+      "title": "自由移動モード",
+      "desc": "ドラッグでどこへでも配置"
+    },
+    "autoRoam": {
+      "title": "自動徘徊",
+      "desc": "ゆっくりと自動で動く"
+    },
+    "showSpeechBubble": {
+      "title": "吹き出し表示",
+      "desc": "AI応答を吹き出しで表示"
+    },
+    "physics": {
+      "title": "物理シミュレーション",
+      "desc": "髪・服の揺れ"
+    },
+    "lightingControl": {
+      "title": "ライティングコントロール",
+      "desc": "ドラッグ可能な太陽アイコン"
+    },
+    "faceOnly": {
+      "title": "表情のみモード",
+      "desc": "体は動かさず表情だけ"
+    },
+    "breathing": {
+      "title": "呼吸",
+      "desc": "静かな胸の動き"
+    },
+    "eyeDrift": {
+      "title": "視線ドリフト",
+      "desc": "ランダムな視線移動"
+    },
+    "gazeFollow": {
+      "title": "視線追従",
+      "desc": "カーソルを目で追う"
+    },
+    "backchannel": {
+      "title": "うなずき",
+      "desc": "聞いている間に小さくうなずく"
+    },
+    "gestures": {
+      "title": "ジェスチャー",
+      "desc": "感情に応じた手の動き"
+    },
+    "motionClips": {
+      "title": "モーションクリップ",
+      "desc": "モーションライブラリを使用"
+    },
+    "dancing": {
+      "title": "ダンス",
+      "desc": "嬉しい時に踊る"
+    },
+    "globalShortcut": {
+      "title": "グローバルショートカット",
+      "desc": "ホットキーで音声入力"
+    },
+    "screenWatch": {
+      "title": "画面観察",
+      "desc": "周期的に画面を見て発話"
+    },
+    "silentHours": {
+      "title": "サイレント時間帯",
+      "desc": "指定時間は画面観察を休止"
+    },
+    "channels": {
+      "title": "Claude Code Channels",
+      "desc": "外部 Claude Code と双方向接続"
+    },
+    "proactive": {
+      "title": "自発的会話",
+      "desc": "話したいことがあれば先に話しかける"
+    }
+  },
+  "quickActions": {
+    "title": "よく使う機能",
+    "searchPlaceholder": "機能を検索…",
+    "manage": "設定で管理",
+    "empty": "登録された機能はありません",
+    "emptyDesc": "設定でよく使う機能をチェックすると、ここにトグルで表示されます。",
+    "noResults": "結果がありません",
+    "noResultsDesc": "別のキーワードで試してみてください。",
+    "register": "機能を登録",
+    "registeredCount": "登録済み · {{count}}件",
+    "footerToggleHint": "トグルで即時適用",
+    "footerClose": "閉じる"
+  },
   "onboarding": {
     "avatarNameTitle": "アバター名の設定",
     "avatarNameDescription": "初回起動です。使用するアバター名を入力してください。",
@@ -330,6 +674,7 @@
     "button": "会話履歴",
     "decreaseFontSize": "文字サイズを縮小",
     "increaseFontSize": "文字サイズを拡大",
+    "opacity": "不透明度 {{value}}%",
     "close": "閉じる"
   },
   "avatar": {
@@ -350,7 +695,129 @@
     "guideTitle": "セットアップガイド",
     "openSettings": "設定を開く",
     "openSystemSettings": "システム設定を開く",
-    "close": "閉じる"
+    "close": "閉じる",
+    "issue": {
+      "modelUnset": {
+        "ollama": {
+          "title": "LLM モデル設定 (Ollama)",
+          "summary": "Ollama モデルが選択されていません。",
+          "steps": [
+            "設定で LLM Provider を Ollama に選択します。",
+            "ターミナルで `ollama list` を実行し、インストール済みのモデルを確認します。",
+            "モデルがない場合は `ollama pull deepseek-v3` を実行し、Model 項目で該当モデルを選択します。"
+          ]
+        },
+        "localai": {
+          "title": "LLM モデル設定 (LocalAI)",
+          "summary": "LocalAI モデルが選択されていません。",
+          "steps": [
+            "設定で LLM Provider を LocalAI に選択します。",
+            "LocalAI の `/v1/models` レスポンスに表示されるモデル id を確認します。",
+            "Model 項目に同じモデル名を選択／入力します。"
+          ]
+        },
+        "cloud": {
+          "title": "LLM モデル設定 ({{provider}})",
+          "summary": "{{provider}} モデルが選択されていません。",
+          "steps": [
+            "設定で LLM Provider を {{provider}} に選択します。",
+            "Model 項目で使用するモデルを選択します。例: `{{defaultModel}}`",
+            "設定を保存してから再度プロンプトを入力し、応答を確認します。"
+          ]
+        }
+      },
+      "endpointUnset": {
+        "ollama": {
+          "title": "LLM エンドポイント設定 (Ollama)",
+          "summary": "Ollama サーバーアドレスが空です。",
+          "steps": [
+            "設定で LLM Provider を Ollama のままにします。",
+            "Endpoint に `http://localhost:11434` を入力します。",
+            "`ollama serve` を実行してから再度プロンプトを入力します。"
+          ]
+        },
+        "localai": {
+          "title": "LLM エンドポイント設定 (LocalAI)",
+          "summary": "LocalAI サーバーアドレスが空です。",
+          "steps": [
+            "設定で LLM Provider を LocalAI のままにします。",
+            "Endpoint に LocalAI の OpenAI 互換アドレスを入力します。例: `http://localhost:8080`",
+            "LocalAI サーバーを起動してから再度プロンプトを入力します。"
+          ]
+        }
+      },
+      "apiKey": {
+        "title": "LLM API キー設定 ({{provider}})",
+        "summary": "{{provider}} API キーが設定されていないため、応答を生成できません。",
+        "steps": [
+          "設定で LLM Provider を {{provider}} に選択します。",
+          "{{apiKeyGuide}} で API キーを発行します。",
+          "API Key 入力欄に `{{keyPrefix}}` 形式のキーを入力して保存します。"
+        ]
+      },
+      "localServer": {
+        "ollama": {
+          "title": "LLM サーバー接続失敗 (Ollama)",
+          "summary": "Ollama サーバーに接続できません。",
+          "steps": [
+            "macOS で `brew install ollama` を実行してインストールします。",
+            "ターミナルで `ollama serve` を実行します。",
+            "必要なモデルを `ollama pull {{model}}` で取得します。",
+            "Endpoint が正しいか確認します。現在の値: {{endpoint}}"
+          ]
+        },
+        "localai": {
+          "title": "LLM サーバー接続失敗 (LocalAI)",
+          "summary": "LocalAI サーバーに接続できません。",
+          "steps": [
+            "LocalAI サーバーを起動し、OpenAI 互換 API が有効になっていることを確認します。",
+            "ヘルスチェックとして `GET /v1/models` の応答が返るか確認します。",
+            "Endpoint を LocalAI のアドレスに合わせます。現在の値: {{endpoint}}",
+            "モデルロードのログを確認してから再度プロンプトを入力します。"
+          ]
+        }
+      },
+      "localModel": {
+        "ollama": {
+          "title": "LLM モデル不足 (Ollama)",
+          "summary": "選択されたモデル ({{model}}) が Ollama に準備されていません。",
+          "steps": [
+            "ターミナルで `ollama pull {{model}}` を実行します。",
+            "`ollama list` でモデルがダウンロードされたか確認します。",
+            "アプリ設定で同じモデル名を選択してから再度プロンプトを入力します。"
+          ]
+        },
+        "localai": {
+          "title": "LLM モデル不足 (LocalAI)",
+          "summary": "選択されたモデル ({{model}}) が LocalAI に準備されていません。",
+          "steps": [
+            "LocalAI のモデルディレクトリに目的のモデルファイルを配置します。",
+            "LocalAI の設定ファイルまたは実行オプションでモデルをロードします。",
+            "アプリ設定の Model 値を LocalAI のモデル id と同じにします。"
+          ]
+        }
+      },
+      "voice": {
+        "title": "音声認識 (Whisper)",
+        "remoteSteps": [
+          "リモート接続セッションを終了してからアプリを再起動します。",
+          "ローカル環境でマイクの権限を許可して再度お試しください。"
+        ],
+        "localSteps": [
+          "macOS で `brew install whisper-cpp` を実行して whisper-cli をインストールします。",
+          "`ggml-base.bin` ファイルを `models/whisper/` パスに配置します。",
+          "必要に応じて `WHISPER_MODEL_PATH` 環境変数でモデルパスを指定します。"
+        ]
+      },
+      "tts": {
+        "title": "音声合成 (Supertonic)",
+        "steps": [
+          "`models/supertonic/onnx` フォルダに ONNX モデルファイルを配置します。",
+          "`models/supertonic/voice_styles` フォルダにボイススタイル JSON ファイルを配置します。",
+          "アプリを完全に終了してから再起動します。"
+        ]
+      }
+    }
   },
   "lightingControl": {
     "dragHint": "ドラッグしてライティング位置を調整"

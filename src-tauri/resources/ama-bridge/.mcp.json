@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ama-bridge": {
+      "command": "npx",
+      "args": ["tsx", "./server.ts"],
+      "env": { "BRIDGE_PORT": "8790" }
+    }
+  }
+}

@@ -209,6 +209,14 @@ export const GESTURE_DEFINITIONS: Record<NonNullable<GestureType>, GestureDefini
       { bone: 'spine', time: 1.0, rotation: { y: 0 } },
     ],
   },
+  jump: {
+    duration: 1.0,
+    triggerKeywords: [],
+    blendInTime: 0.1,
+    blendOutTime: 0.2,
+    priority: 4,
+    keyframes: [], // Mixamo FBX 클립으로 재생 — 프로시저럴 키프레임 불필요
+  },
 };
 
 // Find matching gesture from text

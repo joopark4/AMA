@@ -1,3 +1,5 @@
+import { getSharedAudioContext } from './sharedAudioContext';
+
 export interface BeatInfo {
   isBeat: boolean;
   energy: number; // 0-1, current audio energy
@@ -7,7 +9,6 @@ export interface BeatInfo {
 }
 
 export class RhythmAnalyzer {
-  private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private sourceNode: MediaElementAudioSourceNode | null = null;
   private dataArray: Uint8Array<ArrayBuffer> | null = null;
@@ -35,25 +36,22 @@ export class RhythmAnalyzer {
    */
   connect(audioElement: HTMLAudioElement): boolean {
     try {
-      // Create audio context if needed
-      if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
+      const audioContext = getSharedAudioContext();
 
       // Resume context if suspended
-      if (this.audioContext.state === 'suspended') {
-        this.audioContext.resume();
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
       }
 
       // Create analyser
-      this.analyser = this.audioContext.createAnalyser();
+      this.analyser = audioContext.createAnalyser();
       this.analyser.fftSize = this.FFT_SIZE;
       this.analyser.smoothingTimeConstant = 0.8;
 
       // Connect source
-      this.sourceNode = this.audioContext.createMediaElementSource(audioElement);
+      this.sourceNode = audioContext.createMediaElementSource(audioElement);
       this.sourceNode.connect(this.analyser);
-      this.analyser.connect(this.audioContext.destination);
+      this.analyser.connect(audioContext.destination);
 
       // Create data array
       this.dataArray = new Uint8Array(this.analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>;
@@ -135,9 +133,8 @@ export class RhythmAnalyzer {
    * Calculate bass (low frequency) energy
    */
   private calculateBassEnergy(data: Uint8Array): number {
-    if (!this.audioContext) return 0;
-
-    const nyquist = this.audioContext.sampleRate / 2;
+    const audioContext = getSharedAudioContext();
+    const nyquist = audioContext.sampleRate / 2;
     const binWidth = nyquist / data.length;
 
     const startBin = Math.floor(this.BASS_FREQ_RANGE[0] / binWidth);

@@ -1,6 +1,6 @@
 [package]
 name = "AMA"
-version = "0.8.0"
+version = "1.9.0"
 description = "AI Avatar Desktop Companion"
 authors = ["MyPartnerAI"]
 license = "MIT"
@@ -33,10 +33,13 @@ tauri-plugin-updater = "2.0"
 tauri-plugin-process = "2.0"
 axum = "0.8"
 uuid = { version = "1", features = ["v4"] }
+image = "0.25"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
 objc = "0.2"
+core-foundation = "0.10"
+core-graphics = "0.24"
 
 [features]
 default = ["custom-protocol"]

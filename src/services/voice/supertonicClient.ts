@@ -567,7 +567,7 @@ export class SupertonicClient implements TTSClient {
     const { settings } = useSettingsStore.getState();
     const voice = normalizeVoice(options?.voice || settings.tts.voice, this.config.defaultVoice);
     const speed = options?.speed || this.config.defaultSpeed;
-    const language = this.detectLanguage(text, settings.language);
+    const language = this.detectLanguage(text, settings.tts.language ?? 'auto', settings.language);
     const totalStep = this.config.defaultSteps;
 
     log('Synthesizing:', { voice, language, speed, totalStep, textLength: text.length });
@@ -857,15 +857,28 @@ export class SupertonicClient implements TTSClient {
   }
 
   /**
-   * 언어 감지
+   * TTS 출력 언어 결정 — **대화·음성 언어 계약과 동일**.
+   *
+   * - `settings.tts.language`가 명시된 경우(auto 제외) 그 값을 사용.
+   *   Supertonic 미지원 언어(`ja` 등)는 `en`으로 폴백.
+   * - `auto`인 경우 UI 언어(`settings.language`)를 그대로 따라감.
+   *   UI 언어도 Supertonic 지원 목록에 없으면 `en`으로 폴백.
+   *
+   * 참고: 입력 텍스트에 기반한 언어 감지는 대화·음성 언어 계약상 존재하지 않는다 —
+   * LLM 응답 언어 결정(`resolveResponseLanguage`)과 동일한 기준으로 유지하여
+   * 합성 언어와 응답 언어가 엇갈리지 않도록 한다.
    */
-  private detectLanguage(text: string, defaultLang: string): SupertonicLanguage {
-    if (/[\u3131-\u314e\u314f-\u3163\uac00-\ud7a3]/.test(text)) {
-      return 'ko';
+  private detectLanguage(
+    _text: string,
+    ttsLanguage: string,
+    uiLanguage: string
+  ): SupertonicLanguage {
+    const requested = ttsLanguage && ttsLanguage !== 'auto' ? ttsLanguage : uiLanguage;
+    if (AVAILABLE_LANGS.includes(requested as SupertonicLanguage)) {
+      return requested as SupertonicLanguage;
     }
-    return AVAILABLE_LANGS.includes(defaultLang as SupertonicLanguage)
-      ? (defaultLang as SupertonicLanguage)
-      : 'en';
+    log(`Language '${requested}' not supported by Supertonic, falling back to 'en'`);
+    return 'en';
   }
 
   /**
