@@ -41,25 +41,47 @@ const SUPERTONIC_NATIVE_LANGS: ReadonlySet<PromptLanguage> = new Set<PromptLangu
   'ko', 'en', 'es', 'pt', 'fr',
 ]);
 
+/** LLM 응답 언어로 다룰 수 있는 PromptLanguage 화이트리스트 — supertone-only 언어
+ *  (zh/de 등)는 LLM 프롬프트 템플릿에 대응 항목이 없어 'en'으로 폴백한다. */
+const PROMPT_LANGUAGES: ReadonlySet<string> = new Set([
+  'ko', 'en', 'ja', 'es', 'pt', 'fr',
+]);
+
+function toPromptLanguage(value: string | undefined): PromptLanguage {
+  if (value && PROMPT_LANGUAGES.has(value)) return value as PromptLanguage;
+  return 'en';
+}
+
 /**
  * 대화·음성 언어(LLM 응답 + TTS 합성) 결정.
  *
  * 요구사항 정리:
  * - `settings.language`는 **앱 UI 전용**(메뉴/라벨)이며 대화 언어에 영향 없음.
- * - `settings.tts.language`가 **대화·음성 언어**의 단일 진실. LLM 응답과 TTS 합성이
- *   동일한 언어를 쓰도록 같은 값을 공유한다.
- * - `auto`는 "앱 UI 언어를 그대로 따라감"을 의미. 입력 텍스트 기반 감지는 하지 않는다
- *   (초기 구현에 있던 텍스트 감지는 사용자 요구사항 외 기능이라 제거).
- * - 엔진 제약: Supertonic은 `ja`를 지원하지 않으므로, 로컬 엔진 + `ja` 조합은
- *   런타임에 `en`으로 폴백해 LLM 응답과 실제 발음을 일치시킨다.
+ * - 엔진별로 별도 언어 필드를 단일 진실로 사용한다 (두 엔진 언어는 독립 관리):
+ *   - `supertonic` → `settings.tts.language` (auto / ko / en / ja / es / pt / fr)
+ *   - `supertone_api` → `settings.tts.supertoneApi.language` (모델 지원 언어 전체)
+ * - `auto`는 supertonic 측 한정으로 "앱 UI 언어를 그대로 따라감"을 의미.
+ * - 엔진 제약:
+ *   - Supertonic은 `ja`를 지원하지 않으므로 `ja` 선택 시 `en`으로 폴백.
+ *   - 프리미엄에서 zh 등 LLM 템플릿이 없는 언어를 선택했다면 `en` 폴백
+ *     (TTS 합성은 그대로 zh로 진행하지만 LLM 응답 텍스트는 영어로).
  */
 export function resolveResponseLanguage(): PromptLanguage {
   const { settings } = useSettingsStore.getState();
+  const engine = settings.tts.engine;
+
+  // 프리미엄: supertoneApi.language를 단일 진실로 사용.
+  if (engine === 'supertone_api') {
+    const apiLang = settings.tts.supertoneApi?.language;
+    return toPromptLanguage(apiLang || settings.language);
+  }
+
+  // 로컬 supertonic: 공용 tts.language.
   const tts = settings.tts.language;
   const base: PromptLanguage =
     tts && tts !== 'auto' ? (tts as PromptLanguage) : (settings.language as PromptLanguage);
 
-  if (settings.tts.engine === 'supertonic' && !SUPERTONIC_NATIVE_LANGS.has(base)) {
+  if (!SUPERTONIC_NATIVE_LANGS.has(base)) {
     return 'en';
   }
   return base;
