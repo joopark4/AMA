@@ -70,9 +70,9 @@
       "collapse": "접기"
     },
     "voice": {
-      "title": "음성",
+      "title": "음성 (로컬)",
       "stt": {
-        "title": "음성 인식 (STT)",
+        "title": "음성 인식 (로컬 STT)",
         "engine": "엔진",
         "model": "모델",
         "whisperInfo": "로컬 whisper-cli 음성 인식 사용",
@@ -87,15 +87,15 @@
         }
       },
       "tts": {
-        "title": "음성 합성 (TTS)",
+        "title": "음성 합성 (로컬 TTS)",
         "engine": "엔진",
         "voice": "음성",
         "supertonicInfo": "고품질 로컬 TTS - 한국어/영어 지원",
         "speaker": "출력 장치",
         "speakerDefault": "시스템 기본",
         "speakerNotFound": "출력 장치를 찾을 수 없습니다",
-        "language": "대화·음성 언어",
-        "languageDesc": "AI 응답과 TTS 발음이 함께 사용할 언어입니다. 앱 UI 언어(메뉴/라벨)와는 분리돼요.",
+        "language": "로컬 음성 언어",
+        "languageDesc": "로컬 음성 합성에 쓰일 언어입니다. 프리미엄(Supertone API) 언어와는 분리돼 관리됩니다.",
         "languageAuto": "앱 언어 사용",
         "languageUnsupportedLocal": "로컬 TTS(Supertonic)는 이 언어를 지원하지 않아 영어로 대체됩니다. 프리미엄 음성으로 전환하면 더 많은 언어를 쓸 수 있어요.",
         "engines": {
@@ -572,25 +572,82 @@
       "channels": "Channels",
       "proactive": "자발적 대화"
     },
-    "avatarHidden": { "title": "아바타 숨기기", "desc": "아바타를 화면에서 일시 숨김" },
-    "freeMovement": { "title": "자유 이동 모드", "desc": "마우스 드래그로 어디든 배치" },
-    "autoRoam": { "title": "자동 배회", "desc": "주기적으로 천천히 움직임" },
-    "showSpeechBubble": { "title": "말풍선 표시", "desc": "AI 응답을 말풍선으로 표시" },
-    "physics": { "title": "물리 시뮬레이션", "desc": "머리카락·옷자락 흔들림" },
-    "lightingControl": { "title": "조명 컨트롤", "desc": "드래그 가능한 태양 아이콘 표시" },
-    "faceOnly": { "title": "표정 전용 모드", "desc": "몸 동작 없이 표정만" },
-    "breathing": { "title": "호흡 애니메이션", "desc": "조용한 가슴 움직임" },
-    "eyeDrift": { "title": "눈동자 드리프트", "desc": "랜덤하게 시선 이동" },
-    "gazeFollow": { "title": "시선 따라오기", "desc": "마우스 커서를 따라 시선 이동" },
-    "backchannel": { "title": "끄덕임", "desc": "듣고 있을 때 살짝 끄덕임" },
-    "gestures": { "title": "제스처", "desc": "감정에 따른 손 동작" },
-    "motionClips": { "title": "모션 클립", "desc": "다양한 모션 라이브러리 사용" },
-    "dancing": { "title": "춤추기", "desc": "기쁠 때 춤" },
-    "globalShortcut": { "title": "글로벌 단축키", "desc": "단축키로 음성 입력 시작/중지" },
-    "screenWatch": { "title": "화면 관찰", "desc": "주기적으로 화면 보고 능동 발화" },
-    "silentHours": { "title": "조용한 시간대", "desc": "지정한 시간엔 화면 관찰 끔" },
-    "channels": { "title": "Claude Code Channels", "desc": "외부 Claude Code와 양방향 연결" },
-    "proactive": { "title": "자발적 대화", "desc": "할 말이 있으면 먼저 말 걸기" }
+    "avatarHidden": {
+      "title": "아바타 숨기기",
+      "desc": "아바타를 화면에서 일시 숨김"
+    },
+    "freeMovement": {
+      "title": "자유 이동 모드",
+      "desc": "마우스 드래그로 어디든 배치"
+    },
+    "autoRoam": {
+      "title": "자동 배회",
+      "desc": "주기적으로 천천히 움직임"
+    },
+    "showSpeechBubble": {
+      "title": "말풍선 표시",
+      "desc": "AI 응답을 말풍선으로 표시"
+    },
+    "physics": {
+      "title": "물리 시뮬레이션",
+      "desc": "머리카락·옷자락 흔들림"
+    },
+    "lightingControl": {
+      "title": "조명 컨트롤",
+      "desc": "드래그 가능한 태양 아이콘 표시"
+    },
+    "faceOnly": {
+      "title": "표정 전용 모드",
+      "desc": "몸 동작 없이 표정만"
+    },
+    "breathing": {
+      "title": "호흡 애니메이션",
+      "desc": "조용한 가슴 움직임"
+    },
+    "eyeDrift": {
+      "title": "눈동자 드리프트",
+      "desc": "랜덤하게 시선 이동"
+    },
+    "gazeFollow": {
+      "title": "시선 따라오기",
+      "desc": "마우스 커서를 따라 시선 이동"
+    },
+    "backchannel": {
+      "title": "끄덕임",
+      "desc": "듣고 있을 때 살짝 끄덕임"
+    },
+    "gestures": {
+      "title": "제스처",
+      "desc": "감정에 따른 손 동작"
+    },
+    "motionClips": {
+      "title": "모션 클립",
+      "desc": "다양한 모션 라이브러리 사용"
+    },
+    "dancing": {
+      "title": "춤추기",
+      "desc": "기쁠 때 춤"
+    },
+    "globalShortcut": {
+      "title": "글로벌 단축키",
+      "desc": "단축키로 음성 입력 시작/중지"
+    },
+    "screenWatch": {
+      "title": "화면 관찰",
+      "desc": "주기적으로 화면 보고 능동 발화"
+    },
+    "silentHours": {
+      "title": "조용한 시간대",
+      "desc": "지정한 시간엔 화면 관찰 끔"
+    },
+    "channels": {
+      "title": "Claude Code Channels",
+      "desc": "외부 Claude Code와 양방향 연결"
+    },
+    "proactive": {
+      "title": "자발적 대화",
+      "desc": "할 말이 있으면 먼저 말 걸기"
+    }
   },
   "quickActions": {
     "title": "자주 쓰는 기능",

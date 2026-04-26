@@ -47,13 +47,12 @@ const TTS_LANGUAGE_OPTIONS: { value: TTSOutputLanguage; label: string }[] = [
 const SUPERTONIC_SUPPORTED_LANGUAGES = new Set<TTSOutputLanguage>(['ko', 'en', 'es', 'pt', 'fr']);
 
 /**
- * TTS 테스트용 샘플 문장 — 언어별 네이티브 문장.
- *
- * 현재 선택된 엔진 + TTS 언어에 맞는 언어로 발음되도록 `resolveResponseLanguage()` 결과를
- * 키로 사용해 선택한다. 사용자가 UI 언어와 다른 TTS 언어를 고르면
- * (예: UI=ko, TTS=en) 영어 샘플이 재생된다.
+ * TTS 테스트용 샘플 문장 — 핵심 6개 언어별 네이티브. 그 외(it/zh 등 supertone API
+ * 언어)는 resolveResponseLanguage()가 supertonic 미지원이면 'en'으로 폴백해주므로
+ * 로컬 측에선 도달하지 않지만, supertone_api에서 it/zh 등을 선택했을 때는 등록되지
+ * 않은 키가 들어올 수 있다. 그 경우 영어 샘플을 폴백으로 사용한다.
  */
-const TTS_SAMPLE_BY_LANGUAGE: Record<PromptLanguage, (name: string) => string> = {
+const TTS_SAMPLE_BY_LANGUAGE: Partial<Record<string, (name: string) => string>> = {
   ko: (name) => `안녕하세요! 저는 ${name}이에요. 음성 테스트 중입니다.`,
   en: (name) => `Hello! I'm ${name}. This is a voice test.`,
   ja: (name) => `こんにちは!私は${name}です。音声テストをしています。`,
@@ -62,8 +61,8 @@ const TTS_SAMPLE_BY_LANGUAGE: Record<PromptLanguage, (name: string) => string> =
   fr: (name) => `Bonjour ! Je suis ${name}. Ceci est un test vocal.`,
 };
 
-/** 아바타 이름 미설정 시 사용할 언어별 기본값. */
-const DEFAULT_AVATAR_NAME_BY_LANGUAGE: Record<PromptLanguage, string> = {
+/** 아바타 이름 미설정 시 사용할 언어별 기본값. 미등록 언어는 `Avatar` 폴백. */
+const DEFAULT_AVATAR_NAME_BY_LANGUAGE: Partial<Record<string, string>> = {
   ko: '아바타',
   en: 'Avatar',
   ja: 'アバター',
@@ -124,8 +123,12 @@ export default function VoiceSettings() {
     [settings.tts.engine, settings.tts.language, settings.language]
   );
   const avatarName =
-    settings.avatarName?.trim() || DEFAULT_AVATAR_NAME_BY_LANGUAGE[ttsLanguageForSample];
-  const ttsSample = TTS_SAMPLE_BY_LANGUAGE[ttsLanguageForSample](avatarName);
+    settings.avatarName?.trim()
+    || DEFAULT_AVATAR_NAME_BY_LANGUAGE[ttsLanguageForSample]
+    || 'Avatar';
+  const ttsSampleBuilder =
+    TTS_SAMPLE_BY_LANGUAGE[ttsLanguageForSample] ?? TTS_SAMPLE_BY_LANGUAGE.en!;
+  const ttsSample = ttsSampleBuilder(avatarName);
   const [isCapturingShortcut, setIsCapturingShortcut] = useState(false);
   const [shortcutInputError, setShortcutInputError] = useState<string | null>(null);
   const shortcutRegisterError = useAppStatusStore(

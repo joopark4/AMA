@@ -70,9 +70,9 @@
       "collapse": "Collapse"
     },
     "voice": {
-      "title": "Voice",
+      "title": "Voice (Local)",
       "stt": {
-        "title": "Speech Recognition (STT)",
+        "title": "Speech Recognition (Local STT)",
         "engine": "Engine",
         "model": "Model",
         "whisperInfo": "Local whisper-cli speech recognition",
@@ -87,15 +87,15 @@
         }
       },
       "tts": {
-        "title": "Text-to-Speech (TTS)",
+        "title": "Text-to-Speech (Local TTS)",
         "engine": "Engine",
         "voice": "Voice",
         "supertonicInfo": "High-quality local TTS - Korean/English support",
         "speaker": "Output Device",
         "speakerDefault": "System Default",
         "speakerNotFound": "No output device found",
-        "language": "Conversation & Voice Language",
-        "languageDesc": "Language used by both the AI response and TTS playback. Separate from the app UI language (menus/labels).",
+        "language": "Local Voice Language",
+        "languageDesc": "Language used by local TTS playback. Separate from Premium (Supertone API) language settings.",
         "languageAuto": "Follow app language",
         "languageUnsupportedLocal": "Local TTS (Supertonic) doesn't support this language — English is used instead. Switch to Premium voices for more languages.",
         "engines": {
@@ -572,25 +572,82 @@
       "channels": "Channels",
       "proactive": "Proactive"
     },
-    "avatarHidden": { "title": "Hide avatar", "desc": "Temporarily hide the avatar" },
-    "freeMovement": { "title": "Free movement", "desc": "Drag the avatar anywhere" },
-    "autoRoam": { "title": "Auto roam", "desc": "Avatar wanders periodically" },
-    "showSpeechBubble": { "title": "Show speech bubble", "desc": "Display AI replies as a bubble" },
-    "physics": { "title": "Physics simulation", "desc": "Hair and cloth swing" },
-    "lightingControl": { "title": "Lighting control", "desc": "Show the draggable sun icon" },
-    "faceOnly": { "title": "Face-only mode", "desc": "Express only with the face" },
-    "breathing": { "title": "Breathing", "desc": "Subtle chest movement" },
-    "eyeDrift": { "title": "Eye drift", "desc": "Random gaze drift" },
-    "gazeFollow": { "title": "Gaze follow", "desc": "Eyes track the cursor" },
-    "backchannel": { "title": "Backchannel nod", "desc": "Small nods while listening" },
-    "gestures": { "title": "Gestures", "desc": "Hand motions for emotions" },
-    "motionClips": { "title": "Motion clips", "desc": "Use the motion library" },
-    "dancing": { "title": "Dancing", "desc": "Dance when happy" },
-    "globalShortcut": { "title": "Global shortcut", "desc": "Toggle voice input via hotkey" },
-    "screenWatch": { "title": "Screen watch", "desc": "Periodic screen observation" },
-    "silentHours": { "title": "Silent hours", "desc": "Pause screen watch in selected hours" },
-    "channels": { "title": "Claude Code Channels", "desc": "Two-way bridge to external Claude Code" },
-    "proactive": { "title": "Proactive talk", "desc": "Speak first when there's something to say" }
+    "avatarHidden": {
+      "title": "Hide avatar",
+      "desc": "Temporarily hide the avatar"
+    },
+    "freeMovement": {
+      "title": "Free movement",
+      "desc": "Drag the avatar anywhere"
+    },
+    "autoRoam": {
+      "title": "Auto roam",
+      "desc": "Avatar wanders periodically"
+    },
+    "showSpeechBubble": {
+      "title": "Show speech bubble",
+      "desc": "Display AI replies as a bubble"
+    },
+    "physics": {
+      "title": "Physics simulation",
+      "desc": "Hair and cloth swing"
+    },
+    "lightingControl": {
+      "title": "Lighting control",
+      "desc": "Show the draggable sun icon"
+    },
+    "faceOnly": {
+      "title": "Face-only mode",
+      "desc": "Express only with the face"
+    },
+    "breathing": {
+      "title": "Breathing",
+      "desc": "Subtle chest movement"
+    },
+    "eyeDrift": {
+      "title": "Eye drift",
+      "desc": "Random gaze drift"
+    },
+    "gazeFollow": {
+      "title": "Gaze follow",
+      "desc": "Eyes track the cursor"
+    },
+    "backchannel": {
+      "title": "Backchannel nod",
+      "desc": "Small nods while listening"
+    },
+    "gestures": {
+      "title": "Gestures",
+      "desc": "Hand motions for emotions"
+    },
+    "motionClips": {
+      "title": "Motion clips",
+      "desc": "Use the motion library"
+    },
+    "dancing": {
+      "title": "Dancing",
+      "desc": "Dance when happy"
+    },
+    "globalShortcut": {
+      "title": "Global shortcut",
+      "desc": "Toggle voice input via hotkey"
+    },
+    "screenWatch": {
+      "title": "Screen watch",
+      "desc": "Periodic screen observation"
+    },
+    "silentHours": {
+      "title": "Silent hours",
+      "desc": "Pause screen watch in selected hours"
+    },
+    "channels": {
+      "title": "Claude Code Channels",
+      "desc": "Two-way bridge to external Claude Code"
+    },
+    "proactive": {
+      "title": "Proactive talk",
+      "desc": "Speak first when there's something to say"
+    }
   },
   "quickActions": {
     "title": "Quick actions",

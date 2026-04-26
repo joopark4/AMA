@@ -159,7 +159,7 @@ const { t } = useTranslation();
 - **같은 기준 공유**:
   - `supertonicClient.detectLanguage` → `tts.language` 기준
   - `supertoneApiClient.synthesize` → `apiSettings.language` 기준 (모델 미지원 시 `en`)
-- **Layer 0 언어 강제 지시**: `characterProfile.buildCharacterPrompt`가 해당 언어로 "always respond in …" 지시문을 시스템 프롬프트 최상단에 삽입 (ko/en/ja/es/pt/fr)
+- **Layer 0 언어 강제 지시**: `characterProfile.buildLanguageLayer`가 핵심 6개(ko/en/ja/es/pt/fr)는 native 텍스트 directive를, 그 외(it/zh/de 등 supertone API 언어)는 영문 generic directive(`Always respond in <Language>`)를 시스템 프롬프트 최상단에 삽입. PromptLanguage 타입은 임의 ISO 639-1 코드를 받도록 `string`으로 일반화.
 - 호출부 통일: `useConversation.sendMessage`, `useClaudeCodeChat`, `proactiveEngine`, `screenWatchService`
 
 ### 아바타/UI
