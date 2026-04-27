@@ -277,7 +277,7 @@
         "title": "月間割り当て",
         "adminTitle": "API総割り当て",
         "betaSharedTitle": "ベータ共有枠（全ユーザーで消費）",
-        "betaSharedUnavailable": "共有残高情報を取得できませんでした。Supertone APIキーの状態を管理者にご確認ください。",
+        "betaSharedUnavailable": "共有残高情報を取得できません。すべて使い切られている可能性があります。",
         "betaSharedUnauthorized": "Supertone APIキーの有効期限が切れているか、無効です。管理者にキーの更新を依頼してください。",
         "betaSharedRateLimit": "Supertone APIのリクエスト上限を超えました。しばらくしてから再度お試しください。",
         "betaSharedServerError": "Supertoneサーバーが一時的に応答しません。しばらくしてから再度お試しください。",

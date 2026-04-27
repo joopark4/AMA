@@ -277,7 +277,7 @@
         "title": "월간 할당량",
         "adminTitle": "API 총 할당량",
         "betaSharedTitle": "베타 공유 할당량 (모든 사용자 공동 소비)",
-        "betaSharedUnavailable": "공유 잔고 정보를 가져올 수 없어요. Supertone API 키 상태를 관리자에게 확인 요청해 주세요.",
+        "betaSharedUnavailable": "공유잔고 정보를 가져올 수 없어요, 전부 소진됐을 수 있습니다.",
         "betaSharedUnauthorized": "Supertone API 키가 만료되었거나 유효하지 않아요. 관리자에게 키 갱신을 요청해 주세요.",
         "betaSharedRateLimit": "Supertone API 요청 한도를 초과했어요. 잠시 후 다시 시도해 주세요.",
         "betaSharedServerError": "Supertone 서버가 일시적으로 응답하지 않아요. 잠시 후 다시 시도해 주세요.",

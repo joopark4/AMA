@@ -277,7 +277,7 @@
         "title": "Monthly Quota",
         "adminTitle": "API Total Quota",
         "betaSharedTitle": "Beta shared quota (consumed by all users)",
-        "betaSharedUnavailable": "Couldn't load the shared balance. Please ask an administrator to verify the Supertone API key.",
+        "betaSharedUnavailable": "Couldn't load the shared balance — it may be fully depleted.",
         "betaSharedUnauthorized": "The Supertone API key is expired or invalid. Please ask an administrator to refresh it.",
         "betaSharedRateLimit": "Supertone API rate limit exceeded. Please try again in a moment.",
         "betaSharedServerError": "The Supertone service is temporarily unavailable. Please try again shortly.",
