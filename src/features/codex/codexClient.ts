@@ -193,7 +193,11 @@ export class CodexClient implements LLMClient {
 
           unlistens.push(
             await listen<CodexCompleteEvent>('codex-complete', (event) => {
-              if (myTurnId && event.payload.turnId !== myTurnId) return;
+              // myTurnId가 아직 할당되지 않은 시점(invokeMessage가 turnId를 돌려주기 전)에
+              // 다른 턴(예: screen-watch)이 종료되어 codex-complete가 먼저 도착할 수 있다.
+              // 우리 턴이 확정되기 전 이벤트는 모두 무시 — chat()/chatStream() 과 동일한 패턴.
+              if (!myTurnId) return;
+              if (event.payload.turnId !== myTurnId) return;
               clearTimeout(timeout);
               cleanup();
               resolve({ content: event.payload.text, finishReason: 'stop' });

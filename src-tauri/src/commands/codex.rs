@@ -410,6 +410,11 @@ async fn spawn_codex_process(
             }
         }
 
+        // 진행 중이던 턴이 있다면 wait 루프에 갇힌 호출자를 깨움 (P1).
+        // 그렇지 않으면 codex_send_message가 turn_ready.notified()에서 영구 블록.
+        turn_active.store(false, Ordering::SeqCst);
+        turn_ready.notify_waiters();
+
         // state에서 process 제거 (codex_get_status가 disconnected 반환하도록)
         {
             let mut guard = process_state.lock().await;
