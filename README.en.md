@@ -44,11 +44,11 @@ Korean version: [README.md](README.md) | 日本語版: [README.ja.md](README.ja.
 
 > A live demo of two-way conversation between the AMA avatar and Claude Code via Claude Code Channels. The user asks a question in AMA, Claude Code responds, and the avatar delivers the answer via TTS.
 
-<img src="etc/demo/ccc-01.gif" alt="Claude Code Channels Demo" style="max-width:100%;height:auto;" width="360">
+<img src="public/demo/ccc-01.gif" alt="Claude Code Channels Demo" style="max-width:100%;height:auto;" width="360">
 
 > A live demo of two-way conversation between the AMA avatar and Codex via OpenAI Codex CLI. The user asks a question in AMA, Codex performs coding tasks and responds, and the avatar delivers the answer via TTS.
 
-<img src="etc/demo/codex-demo.gif" alt="OpenAI Codex CLI Demo" style="max-width:100%;height:auto;" width="360">
+<img src="public/demo/codex-demo.gif" alt="OpenAI Codex CLI Demo" style="max-width:100%;height:auto;" width="360">
 
 ## Tested Hardware
 

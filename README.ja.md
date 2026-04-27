@@ -45,11 +45,11 @@
 
 > Claude Code Channels を通じた AMA アバターと Claude Code 間のリアルタイム双方向対話デモです。ユーザーが AMA で質問すると Claude Code が応答し、アバターが TTS で音声回答を提供します。
 
-<img src="etc/demo/ccc-01.gif" alt="Claude Code Channels デモ" style="max-width:100%;height:auto;" width="360">
+<img src="public/demo/ccc-01.gif" alt="Claude Code Channels デモ" style="max-width:100%;height:auto;" width="360">
 
 > OpenAI Codex CLI を通じた AMA アバターと Codex 間のリアルタイム双方向対話デモです。ユーザーが AMA で質問すると Codex がコーディング作業を実行して応答し、アバターが TTS で音声回答を提供します。
 
-<img src="etc/demo/codex-demo.gif" alt="OpenAI Codex CLI デモ" style="max-width:100%;height:auto;" width="360">
+<img src="public/demo/codex-demo.gif" alt="OpenAI Codex CLI デモ" style="max-width:100%;height:auto;" width="360">
 
 ## テスト環境
 
