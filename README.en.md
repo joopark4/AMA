@@ -177,8 +177,7 @@ When a new version is available, it downloads automatically and restarts.
 > This repository **does not include** assets that cannot be redistributed under their license, or that are governed by the author/platform's terms of use. Notably:
 >
 > - **Mixamo FBX motion files** (`motions/mixamo/*.fbx`) — Adobe Mixamo terms allow personal use only; redistribution prohibited
-> - **Default VRM avatar** (`src-tauri/assets/default.vrm`) and its encryption key (`src-tauri/src/commands/vrm_key.bin`) — author copyright
-> - **Local Supabase backend** (`supabase/`) and environment file (`.env`) — operations-private
+> - **Default VRM avatar** (`src-tauri/assets/default.vrm`) — author copyright
 >
 > To build from source, you'll need to **prepare and place these assets yourself**, then rebuild. Without them, the embedded default VRM will be empty (no default avatar shown), and the motion catalog may be empty (some animations won't run). See the [VRM acquisition guide](#how-to-get-or-buy-vrm-files) and per-category notes for details.
 
