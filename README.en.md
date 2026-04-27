@@ -40,6 +40,49 @@ Korean version: [README.md](README.md) | 日本語版: [README.ja.md](README.ja.
   - Voice input (STT) is blocked
   - Text chat remains available
 
+## Usage Notes (v2.0.0)
+
+### 🔄 Auto Update
+- **In-app auto update check is supported from v2.0.0 onwards.**
+- Settings → App Update → "Check for Updates" (manual). Background re-check every 24 hours.
+- When an update is found, the top-right notification card guides you through Install → Download → Restart.
+- Users on v1.x or earlier must manually download the v2.0.0 dmg and reinstall (old signing key is incompatible).
+
+### ✨ Premium Voice (Beta)
+Premium (cloud) TTS is offered as **a limited beta feature**.
+
+- Available **only to signed-in users** (Google OAuth)
+- **Shared-pool model**: all beta users consume from a single pool — there is no per-user allocation.
+- Replenishment timing is not fixed; once the pool is depleted, premium voice is temporarily unavailable.
+- When depleted, the app **automatically falls back to local voice (Supertonic)** — no user action needed.
+- **Beta may be disabled without prior notice** when the beta period ends.
+- The shape of the eventual GA offering (subscription or other) will be announced separately.
+
+> If the shared balance shows "Couldn't load the shared balance" or doesn't appear, the pool may be fully depleted. Try again later or continue with the local voice.
+
+### 💃 Avatar Motions (current limitation)
+- The current default motion catalog leans **toward more feminine motion styles**.
+- A wider variety of gender/style motions will be added.
+- Source-build users can download FBX from [Mixamo](https://www.mixamo.com/) into `motions/mixamo/` and run `npm run motion:refresh` to regenerate the catalog.
+
+### 🤝 AI CLI Connection Status (Codex / Gemini CLI / Claude Code Channels)
+These external CLIs **spawn their backend process on the first conversation**. Right after installation, the connection status in the settings panel may show **"Disconnected" — this is expected.**
+
+How to resolve:
+1. First confirm the CLI is properly installed and signed in (see each guide's "Verify install").
+   ```bash
+   codex --version       && codex login status        # OpenAI Codex CLI
+   gemini --version      && gemini auth print          # Gemini CLI (ACP)
+   claude --version                                    # Claude Code
+   ```
+2. Select the provider in Settings → AI Model.
+3. **Have 1–3 short conversations with the avatar.**
+4. The backend spawns on the first message; the status flips to "Connected" automatically thereafter.
+
+> If it still says "Disconnected" after a few conversations, check CLI login state and working-folder permissions first. If the issue persists, please [file a bug report](mailto:jooparkhappy4@gmail.com).
+
+---
+
 ## Demo
 
 > A live demo of two-way conversation between the AMA avatar and Claude Code via Claude Code Channels. The user asks a question in AMA, Claude Code responds, and the avatar delivers the answer via TTS.
