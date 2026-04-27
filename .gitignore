@@ -77,3 +77,6 @@ CODE_REVIEW_*.md
 /.mcp.json
 scripts/oauth-bridge/
 src-tauri/src/commands/vrm_key.bin
+
+# Supabase (private project — backend deployment)
+supabase/
