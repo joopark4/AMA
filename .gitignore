@@ -84,3 +84,4 @@ supabase/
 # Cargo (per-environment build settings)
 .cargo/
 src-tauri/.cargo/
+.env.example
