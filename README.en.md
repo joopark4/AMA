@@ -238,6 +238,29 @@ npm run tauri build
 
 ---
 
+## Settings Overview
+
+The Settings panel (right-side slide-in) is organized into the following sections. Each is a collapsible card; expanded state is restored on next launch.
+
+| Section | What it does |
+|---|---|
+| Account | OAuth sign-in (Google) / Terms of service / Account deletion |
+| Language | UI language (한국어 / English / 日本語) |
+| AI Model | LLM provider — Ollama · LocalAI (local) / Claude · OpenAI · Gemini (cloud) / Codex · Gemini CLI (local CLI) |
+| Audio Device | Independent microphone input / speaker output selection + mic peak meter |
+| Voice | STT engine (Whisper) · model (base/small/medium) + local TTS (Supertonic) voice/language + global shortcut |
+| Premium Voice | Supertone API cloud TTS (subscription) + voice/model/style/usage dashboard |
+| Avatar | VRM swap / expressions / initial gaze / free move / speech bubble / animation / physics / lighting |
+| Screen Watch | Periodic Vision LLM observation (proactive speech) — target / interval / response style / quiet hours |
+| Claude Code Channels | MCP auto registration + bidirectional dialogue with Claude Code |
+| Codex | OpenAI Codex CLI status / model / reasoning effort / working folder / approval policy |
+| App Update | Current version / check / download / restart |
+| Licenses | Open source / AI service / model license info |
+
+> Open Settings via the gear icon in the top-right or the macOS menu bar `AMA → Settings...` (`⌘,`).
+
+---
+
 ## Common Guide
 
 ### Global Voice Shortcut
