@@ -63,3 +63,17 @@ GEMINI.md
 release/
 #docs/
 
+
+# ── Internal/private — local only, never commit ──
+ClaudeDesign/
+docs/
+admin/
+mcp-channels/
+etc/
+motions/mixamo/
+motions/raw/
+motions/reports/
+CODE_REVIEW_*.md
+.mcp.json
+scripts/oauth-bridge/
+src-tauri/src/commands/vrm_key.bin
