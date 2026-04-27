@@ -384,6 +384,46 @@ Connect your AMA avatar to the OpenAI Codex CLI for two-way conversations with a
 - Setting the approval policy to "Auto-approve" allows Codex to modify and execute files automatically. **Use only in trusted environments.**
 - Switching to a different LLM provider automatically disconnects Codex.
 
+### How to Use Gemini CLI
+
+Connect your AMA avatar to Google Gemini CLI (ACP) for two-way conversations with a coding agent.
+
+#### Prerequisites
+
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli) installed (`npm install -g @google/gemini-cli`)
+- Gemini auth completed (`gemini auth login` — Google OAuth or API key)
+- Node.js 20+
+
+#### Verify install
+
+```bash
+gemini --version       # version output
+gemini auth print      # auth status
+```
+
+#### Setup Steps
+
+1. Launch AMA app
+2. `Settings > AI Model > Gemini CLI`
+3. CLI installation and auth status are verified automatically
+4. Once connected, additional options become available:
+   - **Model**: select from available models returned by `session/new`
+   - **Working Directory**: the directory Gemini CLI reads/writes (defaults to home)
+   - **Approval Mode** — policy applied when tools request permission:
+     - `default` — automatically deny risky tool requests (safe)
+     - `auto_edit` — auto-approve file edits, deny shell execution
+     - `yolo` — auto-approve all tool requests (trusted environments only)
+     - `plan` — display the plan without executing
+5. Chat via AMA → Gemini CLI performs coding tasks and responds → avatar speaks via TTS
+
+#### Important Notes
+
+- Gemini CLI automatically launches `gemini --experimental-acp` in the background. No separate terminal setup is needed.
+- `yolo` mode auto-approves file edits, shell execution, and terminal sessions. **Use only in trusted environments.**
+- File access outside the working directory is blocked (security isolation).
+- When Screen Watch is active, captured images are delivered as ACP `image` ContentBlock.
+- Switching to a different LLM provider automatically disconnects Gemini CLI.
+
 ---
 
 ## Troubleshooting
