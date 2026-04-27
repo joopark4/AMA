@@ -80,3 +80,7 @@ src-tauri/src/commands/vrm_key.bin
 
 # Supabase (private project — backend deployment)
 supabase/
+
+# Cargo (per-environment build settings)
+.cargo/
+src-tauri/.cargo/
