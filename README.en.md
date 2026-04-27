@@ -281,24 +281,26 @@ npm run tauri build
 
 ## Settings Overview
 
-The Settings panel (right-side slide-in) is organized into the following sections. Each is a collapsible card; expanded state is restored on next launch.
+The Settings panel slides in from the right. The **header** of the panel always shows an Account card (OAuth sign-in / Terms of service / Account deletion). Below it, the body is organized into the 14 sections below — each is a collapsible card whose expanded state is restored on next launch.
 
-| Section | What it does |
-|---|---|
-| Account | OAuth sign-in (Google) / Terms of service / Account deletion |
-| Language | UI language (한국어 / English / 日本語) |
-| AI Model | LLM provider — Ollama · LocalAI (local) / Claude · OpenAI · Gemini (cloud) / Codex · Gemini CLI (local CLI) |
-| Audio Device | Independent microphone input / speaker output selection + mic peak meter |
-| Voice | STT engine (Whisper) · model (base/small/medium) + local TTS (Supertonic) voice/language + global shortcut |
-| Premium Voice | Supertone API cloud TTS (subscription) + voice/model/style/usage dashboard |
-| Avatar | VRM swap / expressions / initial gaze / free move / speech bubble / animation / physics / lighting |
-| Screen Watch | Periodic Vision LLM observation (proactive speech) — target / interval / response style / quiet hours |
-| Claude Code Channels | MCP auto registration + bidirectional dialogue with Claude Code |
-| Codex | OpenAI Codex CLI status / model / reasoning effort / working folder / approval policy |
-| App Update | Current version / check / download / restart |
-| Licenses | Open source / AI service / model license info |
+| # | Section | What it does |
+|---|---|---|
+| 1 | **Language** | UI language (한국어 / English / 日本語) |
+| 2 | **Premium Voice** | Supertone API cloud TTS (Beta — shared pool for signed-in users). Voice / model / style / usage card |
+| 3 | **AI Model** | LLM provider — Ollama · LocalAI (local) / Claude · OpenAI · Gemini (cloud) / OpenAI Codex CLI · Gemini CLI (local CLI agents). **When Codex or Gemini CLI is selected, that CLI's specific options (connection status / model / reasoning effort / working folder / approval policy) expand inside this same section.** |
+| 4 | **Claude Code Channels** | MCP server auto registration + bidirectional dialogue between an external Claude Code session and the avatar |
+| 5 | **Audio & Microphone** | Independent microphone input / speaker output device selection + mic peak meter |
+| 6 | **Avatar** | VRM swap / expressions / initial gaze / free move / speech bubble / animation / physics / lighting |
+| 7 | **Character** | Character preset (archetype) / personality keywords / emotional tendency / honorifics / example dialogues / proactive-speech toggle |
+| 8 | **Voice (Local)** | STT engine (Whisper) · model (base/small/medium) + local TTS (Supertonic) voice & output language + global voice shortcut |
+| 9 | **Screen Watch** | Periodic screen capture + Vision LLM analysis for proactive avatar speech — target / interval / response style / quiet hours / permissions |
+| 10 | **Monitor** | Pick the monitor to display the avatar on (multi-monitor) |
+| 11 | **Quick Actions** | Register frequently-used setting toggles → invoke instantly via the bottom-right ✨ icon or by voice |
+| 12 | **App Update** | Current version / check / download progress / restart (re-checks every 24h) |
+| 13 | **Data Management** | Manage downloaded AI model data (not removed automatically when uninstalling the app) |
+| 14 | **Open-source / Model Licenses** | Licenses and official links for libraries · AI services · models |
 
-> Open Settings via the gear icon in the top-right or the macOS menu bar `AMA → Settings...` (`⌘,`).
+> Open Settings via the gear icon in the bottom-right or the macOS menu bar `AMA → Settings...` (`⌘,`).
 
 ---
 
