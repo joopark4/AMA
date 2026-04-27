@@ -209,6 +209,7 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
     totalSize += (chunk as Buffer).length;
     if (totalSize > 8192) {
       res.writeHead(413).end('Payload Too Large');
+      req.destroy();
       return;
     }
     chunks.push(chunk as Buffer);
@@ -281,8 +282,13 @@ async function tryListen(): Promise<void> {
       if (err.code === 'EADDRINUSE') {
         console.error(`[ama-bridge] Port ${port} in use — killing old server and retrying...`);
         try {
-          // 기존 서버에 종료 요청
-          const res = await fetch(`http://127.0.0.1:${port}/shutdown`, { method: 'POST' }).catch(() => null);
+          // 기존 서버에 종료 요청 — 응답 없거나 무관한 프로세스에 걸리지 않도록 3초 타임아웃
+          const ac = new AbortController();
+          const timer = setTimeout(() => ac.abort(), 3000);
+          const res = await fetch(`http://127.0.0.1:${port}/shutdown`, {
+            method: 'POST',
+            signal: ac.signal,
+          }).catch(() => null).finally(() => clearTimeout(timer));
           if (!res) {
             await new Promise(r => setTimeout(r, 1000));
           }

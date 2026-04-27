@@ -108,3 +108,13 @@ Validation checks:
 - root jump guard
 
 If validation fails, clips should not be considered release-ready.
+
+## 모션 카탈로그(motions/clean/catalog.json)
+
+`catalog.json`의 `clips` 배열은 **의도적으로 빈 상태로 커밋**됩니다. Mixamo FBX는 라이선스상 저장소에 포함되지 않으므로, 로컬에서 다음 명령으로 카탈로그를 생성/갱신하세요:
+
+```bash
+npm run motion:refresh
+```
+
+런타임은 `public/motions/clips/*.json`(generated locally)을 사용합니다.

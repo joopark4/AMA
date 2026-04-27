@@ -77,4 +77,4 @@ Claude Code Channels는 현재 리서치 프리뷰 단계입니다.
 
 ## 라이선스
 
-BSD 2-Clause (AMA 프로젝트와 동일)
+MIT (AMA 프로젝트와 동일)
