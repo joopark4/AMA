@@ -408,7 +408,7 @@ gemini auth print      # auth status
 3. CLI installation and auth status are verified automatically
 4. Once connected, additional options become available:
    - **Model**: select from available models returned by `session/new`
-   - **Working Directory**: the directory Gemini CLI reads/writes (defaults to home)
+   - **Working Directory**: the directory Gemini CLI reads/writes (defaults to `~/Documents`)
    - **Approval Mode** — policy applied when tools request permission:
      - `default` — automatically deny risky tool requests (safe)
      - `auto_edit` — auto-approve file edits, deny shell execution
