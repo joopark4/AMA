@@ -43,7 +43,7 @@ VITE_SUPABASE_ANON_KEY=<anon-public-key>
 
 두 값 모두 없으면 MockAuthService가 동작합니다 (테스트 모드).
 
-> **현재 프로젝트:** `opbiegtmhqqlxgkamwml` (AMA - AI My Avatar, Singapore)
+> **현재 프로젝트:** `<project-ref>` (AMA - AI My Avatar, Singapore — 실제 ref는 비공개 운영 노트)
 > `.env` 파일은 `.gitignore`에 포함되어 있어 커밋되지 않음.
 
 ---

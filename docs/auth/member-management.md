@@ -71,7 +71,7 @@ Edge Function을 통해 서버 측에서 안전하게 처리.
 
 **배포:**
 ```bash
-SUPABASE_ACCESS_TOKEN=<token> supabase functions deploy delete-account --project-ref opbiegtmhqqlxgkamwml
+SUPABASE_ACCESS_TOKEN=<token> supabase functions deploy delete-account --project-ref <project-ref>
 ```
 
 > **현재 상태:** 배포 완료 (2026-02-23) ✅

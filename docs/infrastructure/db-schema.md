@@ -187,7 +187,7 @@ TTS API 사용량 추적. 매 요청마다 기록.
 ```bash
 # Supabase CLI 사용
 export SUPABASE_ACCESS_TOKEN=<personal-access-token>  # supabase.com/dashboard/account/tokens
-supabase link --project-ref opbiegtmhqqlxgkamwml
+supabase link --project-ref <project-ref>
 supabase db push
 
 # 또는 Supabase SQL Editor에서 직접 실행

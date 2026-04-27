@@ -76,9 +76,7 @@ CREATE FUNCTION public.is_admin() RETURNS boolean
 
 ## 현재 관리자 계정
 
-| Email | ID | 설정일 |
-|-------|-----|--------|
-| jooparkhappy4@gmail.com | `6abb2c92-b3ef-484e-9834-7aff95e74439` | 2026-03-21 |
+운영자 정보는 비공개 운영 노트에서 관리합니다. 공개 저장소에는 식별자(이메일·UUID·설정일)를 포함하지 않습니다.
 
 ## 주의사항
 
