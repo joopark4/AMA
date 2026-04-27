@@ -1,7 +1,5 @@
 # AMA - AI My Avatar
 
-> **안내:** 현재 자동 업데이트 기능이 작동하지 않습니다. 새 버전은 [Releases](https://github.com/joopark4/AMA/releases) 페이지에서 DMG 파일을 직접 다운로드하여 설치해 주세요.
-
 화면 위를 자유롭게 이동하는 AI 아바타 데스크톱 앱입니다.
 대화 입력(텍스트/음성), 음성 답변(TTS), VRM 아바타 상호작용을 제공합니다.
 
