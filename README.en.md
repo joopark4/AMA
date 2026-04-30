@@ -104,7 +104,7 @@ How to resolve:
 
 ### Installation
 
-1. Download `AMA_x.x.x_aarch64.dmg` from [Latest Release](https://github.com/joopark4/AMA/releases/latest) — [v0.8.0 direct link](https://github.com/joopark4/AMA/releases/tag/v0.8.0)
+1. Download `AMA_x.x.x_aarch64.dmg` from [Latest Release](https://github.com/joopark4/AMA/releases/latest) — [v2.0.0 direct link](https://github.com/joopark4/AMA/releases/tag/v2.0.0)
 2. Open the DMG and drag `AMA.app` to the `Applications` folder
 3. Launch AMA from Launchpad or Applications
 
@@ -455,6 +455,7 @@ gemini auth print      # auth status
 |------|------|------|
 | [VRoid Hub](https://hub.vroid.com/en/) | Mostly free shared models | Download is available only when the creator allows it |
 | [BOOTH (VRM search)](https://booth.pm/en/search/VRM) | Free + paid | Largest marketplace for creator-made VRM assets |
+| [EDENWORLD](https://eden-world.net/) | Mostly paid (some free) | Korean virtual avatar marketplace; also sells outfits, hair, and accessories |
 | [VRoid Studio](https://vroid.com/en/studio/) | Create your own (free) | Build your own avatar and export as `.vrm` |
 
 ### VRM License Checklist

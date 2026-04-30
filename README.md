@@ -105,7 +105,7 @@ English version: [README.en.md](README.en.md) | 日本語版: [README.ja.md](REA
 
 ### 설치
 
-1. [최신 릴리스](https://github.com/joopark4/AMA/releases/latest)에서 `AMA_x.x.x_aarch64.dmg` 다운로드 — [v0.8.0 바로가기](https://github.com/joopark4/AMA/releases/tag/v0.8.0)
+1. [최신 릴리스](https://github.com/joopark4/AMA/releases/latest)에서 `AMA_x.x.x_aarch64.dmg` 다운로드 — [v2.0.0 바로가기](https://github.com/joopark4/AMA/releases/tag/v2.0.0)
 2. DMG를 열고 `AMA.app`을 `Applications` 폴더로 드래그
 3. Launchpad 또는 Applications에서 AMA 실행
 
@@ -456,6 +456,7 @@ gemini auth print      # 인증 상태 확인
 |--------|------|------|
 | [VRoid Hub](https://hub.vroid.com/en/) | 무료 중심(공유 모델) | 작가가 다운로드 허용한 모델을 사용 가능 |
 | [BOOTH (VRM 검색)](https://booth.pm/en/search/VRM) | 무료 + 유료 | 개인 창작자 모델 판매/배포가 가장 활발한 마켓 |
+| [EDENWORLD](https://eden-world.net/) | 유료 중심(일부 무료) | 한국어 기반 버추얼 아바타 마켓플레이스, 의상/헤어/악세서리도 거래 |
 | [VRoid Studio](https://vroid.com/en/studio/) | 직접 제작(무료) | 직접 캐릭터 제작 후 `.vrm`으로 내보내기 가능 |
 
 ### VRM 사용 전 체크리스트

@@ -105,7 +105,7 @@
 
 ### インストール
 
-1. [最新リリース](https://github.com/joopark4/AMA/releases/latest)から `AMA_x.x.x_aarch64.dmg` をダウンロード — [v0.8.0 直リンク](https://github.com/joopark4/AMA/releases/tag/v0.8.0)
+1. [最新リリース](https://github.com/joopark4/AMA/releases/latest)から `AMA_x.x.x_aarch64.dmg` をダウンロード — [v2.0.0 直リンク](https://github.com/joopark4/AMA/releases/tag/v2.0.0)
 2. DMG を開き、`AMA.app` を `Applications` フォルダにドラッグ
 3. Launchpad または Applications から AMA を起動
 
@@ -456,6 +456,7 @@ gemini auth print      # 認証状態確認
 |--------|--------|------|
 | [VRoid Hub](https://hub.vroid.com/en/) | 無料中心（共有モデル） | 作者がダウンロードを許可したモデルを使用可能 |
 | [BOOTH（VRM 検索）](https://booth.pm/en/search/VRM) | 無料 + 有料 | 個人クリエイターのモデル販売/配布が最も活発なマーケット |
+| [EDENWORLD](https://eden-world.net/) | 有料中心（一部無料） | 韓国系バーチャルアバターマーケットプレイス。衣装/ヘア/アクセサリーも取引 |
 | [VRoid Studio](https://vroid.com/en/studio/) | 自作（無料） | 自分でキャラクターを制作し `.vrm` でエクスポート可能 |
 
 ### VRM 使用前チェックリスト
